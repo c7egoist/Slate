@@ -2,6 +2,7 @@
 //                                                    SURFACESPECIFICATION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Geometry/SurfaceSpecification/Api/SurfaceSpecification.h"
 
 namespace Slate
@@ -9,13 +10,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
-
     bool PatchDeclared(const PatchSurface& Declared, bool Rational)
     {
         if (Declared.ControlRows.size() < 2u)

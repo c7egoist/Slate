@@ -2,6 +2,7 @@
 //                                                         PROFILEBOOLEAN.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/ProfileBoolean/Api/ProfileBoolean.h"
 #include "SlateShape/Sketch/SketchPolyline/Api/SketchPolyline.h"
 
@@ -23,31 +24,6 @@ namespace
     {
         std::vector<FlatLoop> Loops = {};
     };
-
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left + Direction.Up * Direction.Up + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
-    }
-
-    SpatialDirection Cross(const SpatialDirection& LeftDirection, const SpatialDirection& RightDirection)
-    {
-        return {
-            LeftDirection.Up * RightDirection.Forward - LeftDirection.Forward * RightDirection.Up,
-            LeftDirection.Forward * RightDirection.Left - LeftDirection.Left * RightDirection.Forward,
-            LeftDirection.Left * RightDirection.Up - LeftDirection.Up * RightDirection.Left
-        };
-    }
-
-    double Dot(const SpatialDirection& LeftDirection, const SpatialDirection& RightDirection)
-    {
-        return LeftDirection.Left * RightDirection.Left + LeftDirection.Up * RightDirection.Up + LeftDirection.Forward * RightDirection.Forward;
-    }
 
     PlanarPoint FlattenPoint(const ProfilePlane& Plane, const SpatialPoint& Position)
     {

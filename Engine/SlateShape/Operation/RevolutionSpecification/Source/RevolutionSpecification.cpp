@@ -2,6 +2,7 @@
 //                                                 REVOLUTIONSPECIFICATION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Operation/RevolutionSpecification/Api/RevolutionSpecification.h"
 
 namespace Slate
@@ -9,12 +10,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
 }
 
 bool RevolutionSpecification::Declared() const

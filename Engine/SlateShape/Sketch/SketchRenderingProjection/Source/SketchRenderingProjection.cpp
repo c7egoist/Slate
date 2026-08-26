@@ -2,6 +2,7 @@
 //                                                  SKETCHRENDERINGPROJECTION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 
 #include "SlateShape/Sketch/SketchPolyline/Api/SketchPolyline.h"
@@ -34,46 +35,6 @@ struct FillCandidate
     std::vector<PlanarVertex> Outline = {};
     bool Inner = false;
 };
-
-constexpr double LengthSquared(const SpatialDirection& Direction)
-{
-    return Direction.Left * Direction.Left + Direction.Up * Direction.Up + Direction.Forward * Direction.Forward;
-}
-
-SpatialDirection Normalize(const SpatialDirection& Direction)
-{
-    const double Length = std::sqrt(LengthSquared(Direction));
-    return Length > 0.0 ? SpatialDirection{ Direction.Left / Length,
-                                            Direction.Up / Length,
-                                            Direction.Forward / Length }
-                        : SpatialDirection{ 1.0, 0.0, 0.0 };
-}
-
-SpatialDirection Difference(const SpatialPoint& LeftPoint,
-                            const SpatialPoint& RightPoint)
-{
-    return { RightPoint.Left - LeftPoint.Left,
-             RightPoint.Up - LeftPoint.Up,
-             RightPoint.Forward - LeftPoint.Forward };
-}
-
-SpatialDirection Cross(const SpatialDirection& LeftDirection,
-                       const SpatialDirection& RightDirection)
-{
-    return {
-        LeftDirection.Up * RightDirection.Forward - LeftDirection.Forward * RightDirection.Up,
-        LeftDirection.Forward * RightDirection.Left - LeftDirection.Left * RightDirection.Forward,
-        LeftDirection.Left * RightDirection.Up - LeftDirection.Up * RightDirection.Left
-    };
-}
-
-constexpr double Dot(const SpatialDirection& LeftDirection,
-                     const SpatialDirection& RightDirection)
-{
-    return LeftDirection.Left * RightDirection.Left
-         + LeftDirection.Up * RightDirection.Up
-         + LeftDirection.Forward * RightDirection.Forward;
-}
 
 PlanarBasis ResolvePlanarBasis(const SketchPlane& Plane)
 {

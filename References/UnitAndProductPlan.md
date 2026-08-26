@@ -186,7 +186,7 @@ whole exercise is recovering from.
 | 7 ✅| Create `SlateRuntime`. Lift the shared seam out of `EditorHost` and `PaintHost` into one tick — **26** identical calls, not 27; see §4.2 | 🚩 | One tick loop exists; `PaintHost` holds **zero** `Lifetime.*` calls |
 | 8 ✅| Create `SketchToolset` + `TextureToolset`. Placement machine lifted; duplicated enum and cast bridge deleted; 22 subjects split into 13 shapes × 5 methods — see §4.3 | 🔴 | One vocabulary, no redundant tools |
 | 9 ✅| Create `SlateWorkspace`. Four declarations replace three arrangement procedures — see §4.4 | 🚩 | Disciplines are data |
-| 10| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
+| 10 ◐| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
 | 11| **Delete** `PaintHost/`, `ParametricSketchHost/`, the **4** `Application/Api/*Bridge*.h`, and dead `SkyImage.cpp` | ✔️ | The duplication is physically gone       |
 | 12| Rename `EditorHost/` → `AuthoringHost/`; both products build from it                                     | ✔️  | Two products, one source                      |
 | 13| Validators warn → **fail**                                                                                | ✔️  | Rules enforced, not documented                |
@@ -367,3 +367,36 @@ changes how it hands out ordinals, every arrangement fails at once, which is the
 the layer stack, so it produced `[Vacant, Viewport]`. Reading the declaration, that looks right — the bug is
 that `Divide` leaves the vacant side where the declaration expected the panel. Only running it showed the
 `Vacant`.
+
+### 4.5 What step 10 has found so far
+
+**10a — 195 abandoned lines, and a detector that lied.** Five file-local functions were defined and never
+called: `RecordViewportGrid` (60), a three-argument `RecordCadFallback` overload shadowed by the six-argument
+one actually used (70), `AppendOverlayArrow` (25), `AppendOverlayArc` (23), `AppendOverlaySquare` (12).
+
+🔴 **The first `-Wunused-function` run reported zero on a host holding five dead functions.** `ParseHosts`
+compiles with `-fsyntax-only`, which stops the compiler before the analysis that finds unreachable
+definitions — the warning is accepted, never fires, and the report is empty. That is the fourth detector in
+this refactor to report zero because it was broken. It is now tested: a known-dead probe is inserted and the
+report must name it. `ParseHosts` gained an `abandoned()` check that compiles for real, and it is
+negative-tested.
+
+**10b — 119 definitions of nine functions, in 21 files.** `LengthSquared`, `Dot`, `Cross`, `Scaled`,
+`Negated`, two `Added` overloads, `Difference` and `Normalize` had been copied byte-for-byte into the
+anonymous namespace of nearly every translation unit in the CAD kernel. They now live once, in
+`CurveSpecification.h`, beside the `SpatialPoint` and `SpatialDirection` they operate on — **no new unit and
+no new role suffix**, because arithmetic on a type belongs with the type.
+
+⚠️ **The sweep is all-or-nothing per file.** A file that kept a local copy AND included the header would
+find both by overload resolution — the anonymous-namespace copy and the one found by argument-dependent
+lookup are equally good candidates — so every call becomes ambiguous. Verified with a minimal probe before
+touching anything, which is why this was one commit and not twenty-one.
+
+📝 Two things were deliberately NOT folded. `FacetPanel::Scaled(float, const ThemeProfile&)` shares only the
+name — it scales a figure by display scale. And `Difference(Left, Right)` returns the direction **from** Left
+**to** Right, which reads backwards against its name; it is preserved exactly, and pinned by a claim, because
+15 files depend on it.
+
+The fold has a wide blast radius by design: a wrong sign is now wrong everywhere at once rather than in one
+file. `SpatialArithmeticProof` therefore states the arithmetic independently of the implementation — `Cross`
+is checked by perpendicularity as well as by components — and is negative-tested with three sabotages.

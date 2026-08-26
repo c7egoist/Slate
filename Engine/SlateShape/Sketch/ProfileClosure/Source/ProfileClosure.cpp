@@ -2,6 +2,7 @@
 //                                                        PROFILECLOSURE.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/ProfileClosure/Api/ProfileClosure.h"
 
 #include <algorithm>
@@ -12,18 +13,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left + Direction.Up * Direction.Up + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
     bool SamePoint(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
     {
         return LengthSquared(Difference(LeftPoint, RightPoint)) <= 1.0e-18;

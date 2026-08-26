@@ -2,6 +2,7 @@
 //                                                       SKETCHCREATION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/SketchCreation/Api/SketchCreation.h"
 
 #include <cmath>
@@ -30,27 +31,6 @@ namespace
             case SketchCreationSubject::SubjectCount:  return 0u;
         }
         return 0u;
-    }
-
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint,
-                                const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
     }
 
     CircleCurve ResolveCircle(const SketchPlane& Plane,

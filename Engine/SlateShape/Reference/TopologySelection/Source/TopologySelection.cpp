@@ -2,6 +2,7 @@
 //                                                     TOPOLOGYSELECTION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Reference/TopologySelection/Api/TopologySelection.h"
 
 #include <algorithm>
@@ -12,35 +13,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint,
-                                const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
-    SpatialDirection Scaled(const SpatialDirection& Direction,
-                            double Amount)
-    {
-        return { Direction.Left * Amount, Direction.Up * Amount, Direction.Forward * Amount };
-    }
-
-    SpatialPoint Added(const SpatialPoint& Position,
-                       const SpatialDirection& Offset)
-    {
-        return { Position.Left + Offset.Left,
-                 Position.Up + Offset.Up,
-                 Position.Forward + Offset.Forward };
-    }
-
     double DistanceSquared(const SpatialPoint& LeftPoint,
                            const SpatialPoint& RightPoint)
     {
@@ -61,30 +33,6 @@ namespace
                                             0.0, 1.0);
         const SpatialPoint Closest = Added(StartPoint, Scaled(Span, Parameter));
         return DistanceSquared(Probe, Closest);
-    }
-
-    double Dot(const SpatialDirection& LeftDirection,
-               const SpatialDirection& RightDirection)
-    {
-        return LeftDirection.Left * RightDirection.Left
-             + LeftDirection.Up * RightDirection.Up
-             + LeftDirection.Forward * RightDirection.Forward;
-    }
-
-    SpatialDirection Cross(const SpatialDirection& LeftDirection,
-                           const SpatialDirection& RightDirection)
-    {
-        return {
-            LeftDirection.Up * RightDirection.Forward - LeftDirection.Forward * RightDirection.Up,
-            LeftDirection.Forward * RightDirection.Left - LeftDirection.Left * RightDirection.Forward,
-            LeftDirection.Left * RightDirection.Up - LeftDirection.Up * RightDirection.Left
-        };
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
     }
 
     EdgeSpanNameInFeature EncodeSpanName(LoopName Loop, std::uint32_t LocalIndex)

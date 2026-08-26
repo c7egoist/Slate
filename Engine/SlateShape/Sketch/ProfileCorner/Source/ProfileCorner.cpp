@@ -2,6 +2,7 @@
 //                                                         PROFILECORNER.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/ProfileCorner/Api/ProfileCorner.h"
 #include "SlateShape/Sketch/ProfileReshape/Api/ProfileReshape.h"
 #include "SlateShape/Sketch/SketchPolyline/Api/SketchPolyline.h"
@@ -14,39 +15,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left + Direction.Up * Direction.Up + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
-    SpatialDirection Scaled(const SpatialDirection& Direction, double Amount)
-    {
-        return { Direction.Left * Amount, Direction.Up * Amount, Direction.Forward * Amount };
-    }
-
-    SpatialPoint Added(const SpatialPoint& Position, const SpatialDirection& Offset)
-    {
-        return { Position.Left + Offset.Left, Position.Up + Offset.Up, Position.Forward + Offset.Forward };
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
-    }
-
-    double Dot(const SpatialDirection& LeftDirection, const SpatialDirection& RightDirection)
-    {
-        return LeftDirection.Left * RightDirection.Left + LeftDirection.Up * RightDirection.Up + LeftDirection.Forward * RightDirection.Forward;
-    }
-
     bool SamePoint(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
     {
         return LengthSquared(Difference(LeftPoint, RightPoint)) <= 1.0e-18;

@@ -2,6 +2,7 @@
 //                                                  EXTRUSIONSPECIFICATION.CPP
 //============================================================================================================================================
 
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Operation/ExtrusionSpecification/Api/ExtrusionSpecification.h"
 
 #include <cmath>
@@ -35,37 +36,6 @@ namespace
         std::vector<SurfaceNameInSolid> WallSurfaces = {};
     };
 
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
-    }
-
-    SpatialDirection Negated(const SpatialDirection& Direction)
-    {
-        return { -Direction.Left, -Direction.Up, -Direction.Forward };
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
-    SpatialDirection Scaled(const SpatialDirection& Direction,
-                            double Amount)
-    {
-        return { Direction.Left * Amount, Direction.Up * Amount, Direction.Forward * Amount };
-    }
-
     SpatialPoint Shifted(const SpatialPoint& Position,
                          const SpatialDirection& Direction,
                          double Distance)
@@ -73,32 +43,6 @@ namespace
         return { Position.Left + Direction.Left * Distance,
                  Position.Up + Direction.Up * Distance,
                  Position.Forward + Direction.Forward * Distance };
-    }
-
-    SpatialDirection Cross(const SpatialDirection& LeftDirection,
-                           const SpatialDirection& RightDirection)
-    {
-        return {
-            LeftDirection.Up * RightDirection.Forward - LeftDirection.Forward * RightDirection.Up,
-            LeftDirection.Forward * RightDirection.Left - LeftDirection.Left * RightDirection.Forward,
-            LeftDirection.Left * RightDirection.Up - LeftDirection.Up * RightDirection.Left
-        };
-    }
-
-    double Dot(const SpatialDirection& LeftDirection,
-               const SpatialDirection& RightDirection)
-    {
-        return LeftDirection.Left * RightDirection.Left
-             + LeftDirection.Up * RightDirection.Up
-             + LeftDirection.Forward * RightDirection.Forward;
-    }
-
-    SpatialDirection Added(const SpatialDirection& LeftDirection,
-                           const SpatialDirection& RightDirection)
-    {
-        return { LeftDirection.Left + RightDirection.Left,
-                 LeftDirection.Up + RightDirection.Up,
-                 LeftDirection.Forward + RightDirection.Forward };
     }
 
     bool SamePoint(const SpatialPoint& LeftPoint,

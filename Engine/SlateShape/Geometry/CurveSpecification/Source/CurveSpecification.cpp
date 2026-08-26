@@ -11,66 +11,6 @@ namespace Slate
 
 namespace
 {
-    double LengthSquared(const SpatialDirection& Direction)
-    {
-        return Direction.Left * Direction.Left
-             + Direction.Up * Direction.Up
-             + Direction.Forward * Direction.Forward;
-    }
-
-    SpatialDirection Difference(const SpatialPoint& LeftPoint, const SpatialPoint& RightPoint)
-    {
-        return { RightPoint.Left - LeftPoint.Left,
-                 RightPoint.Up - LeftPoint.Up,
-                 RightPoint.Forward - LeftPoint.Forward };
-    }
-
-    SpatialDirection Cross(const SpatialDirection& LeftDirection,
-                           const SpatialDirection& RightDirection)
-    {
-        return {
-            LeftDirection.Up * RightDirection.Forward - LeftDirection.Forward * RightDirection.Up,
-            LeftDirection.Forward * RightDirection.Left - LeftDirection.Left * RightDirection.Forward,
-            LeftDirection.Left * RightDirection.Up - LeftDirection.Up * RightDirection.Left
-        };
-    }
-
-    double Dot(const SpatialDirection& LeftDirection,
-               const SpatialDirection& RightDirection)
-    {
-        return LeftDirection.Left * RightDirection.Left
-             + LeftDirection.Up * RightDirection.Up
-             + LeftDirection.Forward * RightDirection.Forward;
-    }
-
-    SpatialDirection Normalize(const SpatialDirection& Direction)
-    {
-        const double Length = std::sqrt(LengthSquared(Direction));
-        return { Direction.Left / Length, Direction.Up / Length, Direction.Forward / Length };
-    }
-
-    SpatialDirection Scaled(const SpatialDirection& Direction,
-                            double Amount)
-    {
-        return { Direction.Left * Amount, Direction.Up * Amount, Direction.Forward * Amount };
-    }
-
-    SpatialDirection Added(const SpatialDirection& LeftDirection,
-                           const SpatialDirection& RightDirection)
-    {
-        return { LeftDirection.Left + RightDirection.Left,
-                 LeftDirection.Up + RightDirection.Up,
-                 LeftDirection.Forward + RightDirection.Forward };
-    }
-
-    SpatialPoint Added(const SpatialPoint& Position,
-                       const SpatialDirection& Offset)
-    {
-        return { Position.Left + Offset.Left,
-                 Position.Up + Offset.Up,
-                 Position.Forward + Offset.Forward };
-    }
-
     SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
                                       const SpatialDirection& Axis,
                                       double Radians)
