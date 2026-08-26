@@ -2,14 +2,14 @@
 //                                                       GEOMETRYPROJECTION.H
 //============================================================================================================================================
 // 🧩 Exact-solid projection into the standing polygon document topology. This adapter belongs outside
-//    SlateGeometry so the exact kernel remains independent of the current polygon, paint and render pipeline.
+//    SlateShape so the exact kernel remains independent of the current polygon, paint and render pipeline.
 
 #pragma once
 
 #include "Foundation/DeliveryOutcome.h"
 #include "SlateDocument/Document/TopologyStructure/Api/TopologyStructure.h"
-#include "SlateGeometry/Discrete/TessellationSpecification/Api/TessellationSpecification.h"
-#include "SlateGeometry/Topology/SolidStructure/Api/SolidStructure.h"
+#include "SlateShape/Discrete/TessellationSpecification/Api/TessellationSpecification.h"
+#include "SlateShape/Topology/SolidStructure/Api/SolidStructure.h"
 
 namespace Slate
 {

@@ -8,7 +8,7 @@
 
 #include "Foundation/DeliveryOutcome.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
-#include "SlateGeometry/Operation/BooleanSolver/Api/BooleanSolver.h"
+#include "SlateShape/Operation/BooleanSolver/Api/BooleanSolver.h"
 
 #include <vector>
 

@@ -6,7 +6,7 @@
 #pragma once
 
 #include "SlateFeature/Reference/ReferenceSpecification/Api/ReferenceSpecification.h"
-#include "SlateGeometry/Geometry/CurveSpecification/Api/CurveSpecification.h"
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 
 #include <cstdint>
 

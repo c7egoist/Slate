@@ -1,4 +1,4 @@
-# SlateFeature — feature history, sketch declarations and reference resolution above SlateGeometry.
+# SlateFeature — feature history, sketch declarations and reference resolution above SlateShape.
 
 [unit]
 name    = "SlateFeature"
@@ -6,12 +6,12 @@ product = "StaticLibrary"
 subject = [ "Feature", "Reference", "Sketch" ]
 
 [requires]
-unit = [ "SlateGeometry", "SlateMath" ]
+unit = [ "SlateShape", "SlateMath" ]
 
 [external]
 include = [ "ExternalPackages/earcut/include", "ExternalPackages/clipper2/CPP/Clipper2Lib/include" ]
 declare = []
 
 [link]
-unit    = [ "SlateGeometry", "SlateMath" ]
+unit    = [ "SlateShape", "SlateMath" ]
 library = []

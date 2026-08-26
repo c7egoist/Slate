@@ -7,8 +7,8 @@
 #pragma once
 
 #include "Foundation/DeliveryOutcome.h"
-#include "SlateGeometry/Geometry/CurveSpecification/Api/CurveSpecification.h"
-#include "SlateGeometry/Geometry/ProfileSpecification/Api/ProfileSpecification.h"
+#include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
+#include "SlateShape/Geometry/ProfileSpecification/Api/ProfileSpecification.h"
 #include "SlateFeature/Sketch/ConstraintSpecification/Api/ConstraintSpecification.h"
 #include "SlateFeature/Sketch/DimensionSpecification/Api/DimensionSpecification.h"
 

@@ -1,0 +1,17 @@
+# SlateShape — exact geometry, topology and modelling declarations.
+
+[unit]
+name    = "SlateShape"
+product = "StaticLibrary"
+subject = [ "Geometry", "Topology", "Operation", "Discrete" ]
+
+[requires]
+unit = []
+
+[external]
+include = []
+declare = []
+
+[link]
+unit    = []
+library = []

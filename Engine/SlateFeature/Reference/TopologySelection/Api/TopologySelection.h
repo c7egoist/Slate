@@ -8,7 +8,7 @@
 #pragma once
 
 #include "SlateFeature/Reference/ReferenceSpecification/Api/ReferenceSpecification.h"
-#include "SlateGeometry/Topology/SolidStructure/Api/SolidStructure.h"
+#include "SlateShape/Topology/SolidStructure/Api/SolidStructure.h"
 
 #include <vector>
 
