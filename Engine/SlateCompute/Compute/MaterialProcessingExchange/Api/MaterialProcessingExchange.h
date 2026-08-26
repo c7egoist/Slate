@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/Identity.h"
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/PhysicalSurfacePacket.h"
 #include "SlateCompute/Compute/PreviewProjection/Api/PreviewProjection.h"
@@ -149,18 +149,18 @@ struct MaterialProcessingCapabilities
 class MaterialProcessingExchange
 {
 public:
-    Outcome<LayerIdentity> InitialiseDielectric(MaterialSpecification& Material,
+    Deliver<LayerIdentity> InitialiseDielectric(MaterialSpecification& Material,
                                                 SurfaceLayerSequence& Layers) const;
-    Outcome<bool> DeclareScalar(MaterialSpecification& Material,
+    Deliver<bool> DeclareScalar(MaterialSpecification& Material,
                                 const SurfaceLayerSequence& Layers,
                                 LayerIdentity Layer, ChannelSubject Channel, double Value) const;
-    Outcome<bool> DeclareColour(MaterialSpecification& Material,
+    Deliver<bool> DeclareColour(MaterialSpecification& Material,
                                 const SurfaceLayerSequence& Layers,
                                 LayerIdentity Layer, ChannelSubject Channel,
                                 ColourSpecification Value) const;
 
     /// 🧩 Applies one document-backed layer command; UI rows are presentation, this is the material authority.
-    Outcome<MaterialLayerCommandResult> ApplyLayerCommand(SurfaceLayerSequence& Layers,
+    Deliver<MaterialLayerCommandResult> ApplyLayerCommand(SurfaceLayerSequence& Layers,
                                                           const MaterialLayerCommand& Command) const;
 
     /// 🧩 Copies document-owned declarations before asynchronous processing begins.
@@ -176,7 +176,7 @@ public:
 
     /// 🧩 Resolves one channel through PreviewProjection, preserving its one-resolver and non-mutating guarantees.
     /// This is for immediate paint/material presentation; persistent browser previews use a later bake route.
-    Outcome<MaterialLiveChannelPreview> ResolveLiveChannelPreview(
+    Deliver<MaterialLiveChannelPreview> ResolveLiveChannelPreview(
         const MaterialProcessingSnapshot& Snapshot,
         const PreviewProjection& Preview,
         const SurfaceLayerSequence& Layers,
@@ -187,7 +187,7 @@ public:
 
     /// 🧩 Resolves the current pass' supported mask shape: uniform/generator coverage with optional inversion and
     /// channel targeting. Image and painted mask data keep their declarations but resolve through this placeholder.
-    Outcome<MaterialLayerCoveragePreview> ResolveLayerCoveragePreview(
+    Deliver<MaterialLayerCoveragePreview> ResolveLayerCoveragePreview(
         const MaterialProcessingSnapshot& Snapshot,
         LayerIdentity Layer,
         ChannelSubject Channel) const;
@@ -195,7 +195,7 @@ public:
     MaterialProcessingCapabilities Capabilities() const;
 
 private:
-    Outcome<const LayerSpecification*> BaseLayer(const SurfaceLayerSequence& Layers,
+    Deliver<const LayerSpecification*> BaseLayer(const SurfaceLayerSequence& Layers,
                                                  LayerIdentity Layer) const;
 };
 

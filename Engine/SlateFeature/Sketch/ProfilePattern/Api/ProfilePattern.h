@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <vector>
@@ -19,29 +19,29 @@ struct PatternResult
     std::vector<ProfileNameInFeature> ProfileSet = {};
 };
 
-Outcome<PatternResult> DuplicateCurves(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateCurves(SketchStructure& Declared,
                                        const std::vector<SketchCurveName>& CurveSet,
                                        const SpatialDirection& Offset);
-Outcome<PatternResult> DuplicateProfiles(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateProfiles(SketchStructure& Declared,
                                          const std::vector<ProfileNameInFeature>& ProfileSet,
                                          const SpatialDirection& Offset);
-Outcome<PatternResult> DuplicateBetween(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateBetween(SketchStructure& Declared,
                                         const std::vector<SketchCurveName>& CurveSet,
                                         const SpatialPoint& StartPoint,
                                         const SpatialPoint& EndPoint);
-Outcome<PatternResult> MirrorCurves(SketchStructure& Declared,
+Deliver<PatternResult> MirrorCurves(SketchStructure& Declared,
                                     const std::vector<SketchCurveName>& CurveSet,
                                     const SpatialPoint& AxisStart,
                                     const SpatialPoint& AxisEnd);
-Outcome<PatternResult> MirrorProfiles(SketchStructure& Declared,
+Deliver<PatternResult> MirrorProfiles(SketchStructure& Declared,
                                       const std::vector<ProfileNameInFeature>& ProfileSet,
                                       const SpatialPoint& AxisStart,
                                       const SpatialPoint& AxisEnd);
-Outcome<PatternResult> DeclareLinearPattern(SketchStructure& Declared,
+Deliver<PatternResult> DeclareLinearPattern(SketchStructure& Declared,
                                             const std::vector<SketchCurveName>& CurveSet,
                                             const SpatialDirection& Step,
                                             std::uint32_t Count);
-Outcome<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
+Deliver<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
                                             const std::vector<SketchCurveName>& CurveSet,
                                             const SpatialPoint& Centre,
                                             const SpatialDirection& Axis,

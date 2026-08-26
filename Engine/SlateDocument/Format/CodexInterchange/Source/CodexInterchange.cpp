@@ -140,19 +140,19 @@ bool EndsWith(const std::string& Subject, const char* Suffix)
            Subject.compare(Subject.size() - SuffixBytes, SuffixBytes, Suffix) == 0;
 }
 
-Outcome<std::vector<std::uint8_t>> ExtractFile(const std::filesystem::path& Origin)
+Deliver<std::vector<std::uint8_t>> ExtractFile(const std::filesystem::path& Origin)
 {
     std::ifstream Reading(Origin, std::ios::binary | std::ios::ate);
     if (!Reading)
     {
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::HostDenied, "the Codex stream could not be opened" });
     }
 
     const std::streamoff Extent = Reading.tellg();
     if (Extent <= 0 || static_cast<std::uint64_t>(Extent) > std::numeric_limits<std::size_t>::max())
     {
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex stream has an unsupported byte extent" });
     }
 
@@ -161,19 +161,19 @@ Outcome<std::vector<std::uint8_t>> ExtractFile(const std::filesystem::path& Orig
     Reading.read(reinterpret_cast<char*>(Stream.data()), Extent);
     if (!Reading)
     {
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::HostDenied, "the Codex stream could not be read whole" });
     }
 
-    return Outcome<std::vector<std::uint8_t>>::Result(std::move(Stream));
+    return Deliver<std::vector<std::uint8_t>>::Result(std::move(Stream));
 }
 
-Outcome<bool> InscribeFile(const std::filesystem::path& Origin, const std::vector<std::uint8_t>& Stream)
+Deliver<bool> InscribeFile(const std::filesystem::path& Origin, const std::vector<std::uint8_t>& Stream)
 {
     std::ofstream Writing(Origin, std::ios::binary | std::ios::trunc);
     if (!Writing)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "the Codex temporary stream could not be opened" });
     }
 
@@ -181,21 +181,21 @@ Outcome<bool> InscribeFile(const std::filesystem::path& Origin, const std::vecto
     Writing.flush();
     if (!Writing)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "the Codex temporary stream could not be written whole" });
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 }
 
-Outcome<std::vector<std::uint8_t>> CodexInterchange::Encode(const CodexDocument& Document) const
+Deliver<std::vector<std::uint8_t>> CodexInterchange::Encode(const CodexDocument& Document) const
 {
     if (!ProfileRecognised(static_cast<std::uint32_t>(Document.Profile)) ||
         Document.Sections.size() > std::numeric_limits<std::uint32_t>::max())
     {
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex profile or section extent cannot be represented" });
     }
 
@@ -208,7 +208,7 @@ Outcome<std::vector<std::uint8_t>> CodexInterchange::Encode(const CodexDocument&
         if (Current.Code == 0u || std::any_of(Indexed.begin(), Indexed.end(),
             [&Current](const IndexedSection& Prior) { return Prior.Code == Current.Code; }))
         {
-            return Outcome<std::vector<std::uint8_t>>::Refuse(
+            return Deliver<std::vector<std::uint8_t>>::Refuse(
                 { RefusalReason::ContentUnsupported, "a Codex section identity is absent or repeated" });
         }
 
@@ -267,14 +267,14 @@ Outcome<std::vector<std::uint8_t>> CodexInterchange::Encode(const CodexDocument&
     Inscribe64(Preamble, 0u);
 
     std::copy(Preamble.begin(), Preamble.end(), Stream.begin());
-    return Outcome<std::vector<std::uint8_t>>::Result(std::move(Stream));
+    return Deliver<std::vector<std::uint8_t>>::Result(std::move(Stream));
 }
 
-Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>& Stream) const
+Deliver<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>& Stream) const
 {
     if (Stream.size() < PreambleBytes + CompletionBytes)
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex stream is smaller than its fixed records" });
     }
 
@@ -303,21 +303,21 @@ Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>&
         !Extract64(Stream, PreamblePosition, IndexDigest) ||
         !Extract64(Stream, PreamblePosition, Reserved))
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex preamble is incomplete" });
     }
 
     if (Signature != CodexSignature || StreamMajor != MajorVersion ||
         DeclaredPreambleBytes != PreambleBytes || !ProfileRecognised(Profile))
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex preamble declares an unsupported arrangement" });
     }
 
     if (IndexPosition > Stream.size() || IndexBytes > Stream.size() - IndexPosition ||
         IndexBytes < IndexLeadBytes || DigestOf(Stream.data() + IndexPosition, static_cast<std::size_t>(IndexBytes)) != IndexDigest)
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex section index is absent or damaged" });
     }
 
@@ -335,7 +335,7 @@ Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>&
         Completion != CompletionSignature || CompletedIndexPosition != IndexPosition ||
         CompletedIndexBytes != IndexBytes || CompletedIndexDigest != IndexDigest)
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex completion record does not confirm the index" });
     }
 
@@ -347,7 +347,7 @@ Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>&
         SectionCount > (IndexBytes - IndexLeadBytes) / IndexEntryBytes ||
         IndexLeadBytes + static_cast<std::uint64_t>(SectionCount) * IndexEntryBytes != IndexBytes)
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex section index has an invalid extent" });
     }
 
@@ -372,14 +372,14 @@ Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>&
             std::any_of(Decoded.Sections.begin(), Decoded.Sections.end(),
                 [&Entry](const CodexSection& Prior) { return Prior.Code == Entry.Code; }))
         {
-            return Outcome<CodexDocument>::Refuse(
+            return Deliver<CodexDocument>::Refuse(
                 { RefusalReason::ContentUnsupported, "a Codex section entry is inconsistent" });
         }
 
         const std::uint8_t* Content = Stream.data() + Entry.Position;
         if (DigestOf(Content, static_cast<std::size_t>(Entry.ByteCount)) != Entry.Digest)
         {
-            return Outcome<CodexDocument>::Refuse(
+            return Deliver<CodexDocument>::Refuse(
                 { RefusalReason::ContentUnsupported, "a Codex section payload digest disagrees" });
         }
 
@@ -392,10 +392,10 @@ Outcome<CodexDocument> CodexInterchange::Decode(const std::vector<std::uint8_t>&
         Decoded.Sections.push_back(std::move(Section));
     }
 
-    return Outcome<CodexDocument>::Result(std::move(Decoded));
+    return Deliver<CodexDocument>::Result(std::move(Decoded));
 }
 
-Outcome<CodexProfile> CodexInterchange::ProfileOf(const std::string& OriginPath)
+Deliver<CodexProfile> CodexInterchange::ProfileOf(const std::string& OriginPath)
 {
     const std::string Classified = Lowered(OriginPath);
 
@@ -431,18 +431,18 @@ Outcome<CodexProfile> CodexInterchange::ProfileOf(const std::string& OriginPath)
     for (const ProfileSuffix& Current : Declared)
     {
         if (EndsWith(Classified, Current.Suffix))
-            return Outcome<CodexProfile>::Result(Current.Profile);
+            return Deliver<CodexProfile>::Result(Current.Profile);
     }
 
-    return Outcome<CodexProfile>::Refuse(
+    return Deliver<CodexProfile>::Refuse(
         { RefusalReason::ContentUnsupported, "the path names no supported Codex profile" });
 }
 
-Outcome<CodexDocument> CodexInterchange::Open(const std::string& OriginPath) const
+Deliver<CodexDocument> CodexInterchange::Open(const std::string& OriginPath) const
 {
-    const Outcome<CodexProfile> Expected = ProfileOf(OriginPath);
+    const Deliver<CodexProfile> Expected = ProfileOf(OriginPath);
     if (!Expected.Resolved)
-        return Outcome<CodexDocument>::Refuse(Expected.Error);
+        return Deliver<CodexDocument>::Refuse(Expected.Error);
 
     const std::filesystem::path Origin(OriginPath);
     const std::filesystem::path Candidates[] =
@@ -461,11 +461,11 @@ Outcome<CodexDocument> CodexInterchange::Open(const std::string& OriginPath) con
         if (!std::filesystem::exists(Candidate, Error) || Error)
             continue;
 
-        const Outcome<std::vector<std::uint8_t>> Stream = ExtractFile(Candidate);
+        const Deliver<std::vector<std::uint8_t>> Stream = ExtractFile(Candidate);
         if (!Stream.Resolved)
             continue;
 
-        const Outcome<CodexDocument> Decoded = Decode(Stream.Resolve());
+        const Deliver<CodexDocument> Decoded = Decode(Stream.Resolve());
         if (!Decoded.Resolved || Decoded.Resolve().Profile != Expected.Resolve())
             continue;
 
@@ -478,33 +478,33 @@ Outcome<CodexDocument> CodexInterchange::Open(const std::string& OriginPath) con
 
     if (!Delivered)
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ContentUnsupported, "no complete profile-matching Codex stream could be recovered" });
     }
 
-    return Outcome<CodexDocument>::Result(std::move(Newest));
+    return Deliver<CodexDocument>::Result(std::move(Newest));
 }
 
-Outcome<bool> CodexInterchange::Inscribe(const CodexDocument& Document, const std::string& OriginPath) const
+Deliver<bool> CodexInterchange::Inscribe(const CodexDocument& Document, const std::string& OriginPath) const
 {
-    const Outcome<CodexProfile> Expected = ProfileOf(OriginPath);
+    const Deliver<CodexProfile> Expected = ProfileOf(OriginPath);
     if (!Expected.Resolved)
-        return Outcome<bool>::Refuse(Expected.Error);
+        return Deliver<bool>::Refuse(Expected.Error);
 
     if (Document.Profile != Expected.Resolve())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex profile disagrees with the target suffix" });
     }
 
-    const Outcome<std::vector<std::uint8_t>> Stream = Encode(Document);
+    const Deliver<std::vector<std::uint8_t>> Stream = Encode(Document);
     if (!Stream.Resolved)
-        return Outcome<bool>::Refuse(Stream.Error);
+        return Deliver<bool>::Refuse(Stream.Error);
 
     const std::filesystem::path Origin(OriginPath);
     const std::filesystem::path Incoming = Origin.string() + ".new";
     const std::filesystem::path Prior = Origin.string() + ".prior";
-    const Outcome<bool> Written = InscribeFile(Incoming, Stream.Resolve());
+    const Deliver<bool> Written = InscribeFile(Incoming, Stream.Resolve());
     if (!Written.Resolved)
         return Written;
 
@@ -518,7 +518,7 @@ Outcome<bool> CodexInterchange::Inscribe(const CodexDocument& Document, const st
         std::filesystem::rename(Origin, Prior, Error);
         if (Error)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::HostDenied, "the preceding Codex stream could not be retained for recovery" });
         }
     }
@@ -532,12 +532,12 @@ Outcome<bool> CodexInterchange::Inscribe(const CodexDocument& Document, const st
             std::filesystem::rename(Prior, Origin, Error);
         }
 
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "the completed Codex stream could not replace the target" });
     }
 
     std::filesystem::remove(Prior, Error);
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 }   // namespace Slate

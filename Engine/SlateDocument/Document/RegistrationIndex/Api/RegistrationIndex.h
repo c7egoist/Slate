@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <vector>
@@ -106,7 +106,7 @@ public:
     ///        no partial state behind. `12` §10 rejects at commit and resolves nothing silently.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Register(OwnerIdentity Subject, SubsetSubject RegisteredSubset);
+    Deliver<bool> Register(OwnerIdentity Subject, SubsetSubject RegisteredSubset);
 
     /// 🧩 Withdraws one owner from a subset, dividing the run it sat inside.
     /// in    Subject         [-]  the owner
@@ -114,7 +114,7 @@ public:
     /// out   Result         [-]  refuses with IdentityStale when the owner was not registered
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Unenrol(OwnerIdentity Subject, SubsetSubject RegisteredSubset);
+    Deliver<bool> Unenrol(OwnerIdentity Subject, SubsetSubject RegisteredSubset);
 
     /// 🧩 Withdraws one owner from every subset — the subset half of invariant 8.
     /// in    Subject  [-]  the owner being retired

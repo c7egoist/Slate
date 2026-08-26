@@ -37,10 +37,10 @@ namespace Slate
 //                                                     THE HOST REPORT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PlatformInterchange::Resolve()
+Deliver<bool> PlatformInterchange::Resolve()
 {
     if (ReportDelivered)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     HostReport Reading;
 
@@ -65,7 +65,7 @@ Outcome<bool> PlatformInterchange::Resolve()
     InstalledExtent.dwLength       = sizeof(InstalledExtent);
 
     if (GlobalMemoryStatusEx(&InstalledExtent) == FALSE)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the host failed to report its extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the host failed to report its extent" });
 
     Reading.PhysicalBytes = static_cast<std::uint64_t>(InstalledExtent.ullTotalPhys);
 
@@ -121,7 +121,7 @@ Outcome<bool> PlatformInterchange::Resolve()
     const long PageCount    = sysconf(_SC_PHYS_PAGES);
 
     if (GranuleBytes <= 0 || PageCount <= 0)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the host failed to report its extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the host failed to report its extent" });
 
     Reading.ExtentGranule = static_cast<std::uint32_t>(GranuleBytes);
     Reading.PhysicalBytes = static_cast<std::uint64_t>(GranuleBytes) * static_cast<std::uint64_t>(PageCount);
@@ -136,7 +136,7 @@ Outcome<bool> PlatformInterchange::Resolve()
     ResolvedReport  = Reading;
     ReportDelivered = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const HostReport& PlatformInterchange::Report() const
@@ -188,7 +188,7 @@ void PlatformInterchange::DeclareThreadName(const char* ThreadName)
 //                                                      DIRECTORIES
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::string> PlatformInterchange::ExecutableDirectory()
+Deliver<std::string> PlatformInterchange::ExecutableDirectory()
 {
 #if defined(_WIN32)
 
@@ -201,14 +201,14 @@ Outcome<std::string> PlatformInterchange::ExecutableDirectory()
     const DWORD Spanned = GetModuleFileNameW(nullptr, Located.data(), PathCapacity);
 
     if (Spanned == 0u || Spanned >= PathCapacity)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected the executable path" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected the executable path" });
 
     Located.resize(Spanned);
 
     const std::size_t Separated = Located.find_last_of(L"\\/");
 
     if (Separated == std::wstring::npos)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path names no directory" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path names no directory" });
 
     Located.resize(Separated + 1u);
 
@@ -216,14 +216,14 @@ Outcome<std::string> PlatformInterchange::ExecutableDirectory()
                                              nullptr, 0, nullptr, nullptr);
 
     if (Narrowed <= 0)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path is not representable" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path is not representable" });
 
     std::string Narrow(static_cast<std::size_t>(Narrowed), '\0');
 
     WideCharToMultiByte(CP_UTF8, 0, Located.c_str(), static_cast<int>(Located.size()),
                         Narrow.data(), Narrowed, nullptr, nullptr);
 
-    return Outcome<std::string>::Result(Narrow);
+    return Deliver<std::string>::Result(Narrow);
 
 #else
 
@@ -234,26 +234,26 @@ Outcome<std::string> PlatformInterchange::ExecutableDirectory()
     const ssize_t Spanned = readlink("/proc/self/exe", Located.data(), PathCapacity - 1u);
 
     if (Spanned <= 0)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected the executable path" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected the executable path" });
 
     Located.resize(static_cast<std::size_t>(Spanned));
 
     const std::size_t Separated = Located.find_last_of('/');
 
     if (Separated == std::string::npos)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path names no directory" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the executable path names no directory" });
 
     Located.resize(Separated + 1u);
 
-    return Outcome<std::string>::Result(Located);
+    return Deliver<std::string>::Result(Located);
 
 #endif
 }
 
-Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* ApplicationName)
+Deliver<std::string> PlatformInterchange::RetainedDirectory(const char* ApplicationName)
 {
     if (ApplicationName == nullptr)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "no application name was declared" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "no application name was declared" });
 
 #if defined(_WIN32)
 
@@ -262,7 +262,7 @@ Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* Applicat
     if (SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &Located) != S_OK)
     {
         CoTaskMemFree(Located);
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected its retained directory" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the host rejected its retained directory" });
     }
 
     const int Narrowed = WideCharToMultiByte(CP_UTF8, 0, Located, -1, nullptr, 0, nullptr, nullptr);
@@ -270,7 +270,7 @@ Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* Applicat
     if (Narrowed <= 0)
     {
         CoTaskMemFree(Located);
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the retained path is not representable" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the retained path is not representable" });
     }
 
     std::string Narrow(static_cast<std::size_t>(Narrowed) - 1u, '\0');
@@ -293,12 +293,12 @@ Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* Applicat
         MultiByteToWideChar(CP_UTF8, 0, Narrow.c_str(), -1, Widened.data(), Widths);
 
         if (CreateDirectoryW(Widened.c_str(), nullptr) == FALSE && GetLastError() != ERROR_ALREADY_EXISTS)
-            return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the retained directory was rejected" });
+            return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the retained directory was rejected" });
     }
 
     Narrow.push_back('\\');
 
-    return Outcome<std::string>::Result(Narrow);
+    return Deliver<std::string>::Result(Narrow);
 
 #else
 
@@ -314,7 +314,7 @@ Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* Applicat
         const char* HomeDirectory = std::getenv("HOME");
 
         if (HomeDirectory == nullptr || HomeDirectory[0] == '\0')
-            return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the host declared no home directory" });
+            return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the host declared no home directory" });
 
         Located.assign(HomeDirectory);
         Located.append("/.local/share");
@@ -328,12 +328,12 @@ Outcome<std::string> PlatformInterchange::RetainedDirectory(const char* Applicat
         struct stat Existing = {};
 
         if (stat(Located.c_str(), &Existing) != 0)
-            return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the retained directory was rejected" });
+            return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the retained directory was rejected" });
     }
 
     Located.push_back('/');
 
-    return Outcome<std::string>::Result(Located);
+    return Deliver<std::string>::Result(Located);
 
 #endif
 }

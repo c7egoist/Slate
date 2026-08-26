@@ -956,14 +956,14 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
 //                                                       CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& IncomingInteraction,
+Deliver<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& IncomingInteraction,
                                            MotionIntegrator& Integrator,
                                            RecordingSurface& IncomingSurface,
                                            const ThemeProfile& Resolved)
 {
     if (Interaction != nullptr)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the texture paint panel is already constructed" });
     }
 
@@ -976,7 +976,7 @@ Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
         !SharedControls.ConstructComponents(IncomingInteraction, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the texture paint controls were rejected" });
     }
 
@@ -985,7 +985,7 @@ Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
         !MaskFacets.ConstructFacetPanel(Integrator, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the texture paint filters were rejected" });
     }
 
@@ -1026,27 +1026,27 @@ Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
 
     for (ControlIdentity* Identity : Every)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
 
         *Identity = Registered.Resolve();
     }
 
     for (ControlIdentity& Identity : MenuIdentities)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
 
         Identity = Registered.Resolve();
     }
 
     for (ControlIdentity& Identity : InlineControls)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
 
         Identity = Registered.Resolve();
     }
@@ -1063,9 +1063,9 @@ Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
 
         for (ControlIdentity* Identity : Rows)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
             if (!Registered.Resolved)
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
 
             *Identity = Registered.Resolve();
         }
@@ -1083,31 +1083,31 @@ Outcome<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
 
         for (ControlIdentity* Identity : Rows)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
             if (!Registered.Resolved)
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
 
             *Identity = Registered.Resolve();
         }
     }
 
     // 📐 The carousel's own travel. Registered here, never mid-tick.
-    if (const Outcome<bool> Pages = StackPages.ConstructSlidingPages(Integrator, 0u, 260.0,
+    if (const Deliver<bool> Pages = StackPages.ConstructSlidingPages(Integrator, 0u, 260.0,
                                                                     EaseCurve::Standard);
         !Pages.Resolved)
         return Pages;
 
     for (std::uint32_t Index = 0u; Index < 3u; ++Index)
     {
-        const Outcome<std::uint32_t> Registered = Integrator.RegisterEased(1.0);
+        const Deliver<std::uint32_t> Registered = Integrator.RegisterEased(1.0);
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
         ExportMotion[Index] = Registered.Resolve();
     }
 
     Reapply(Resolved);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void TexturePaintPanel::Reapply(const ThemeProfile& Resolved)

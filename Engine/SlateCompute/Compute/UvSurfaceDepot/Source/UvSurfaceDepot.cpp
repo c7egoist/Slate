@@ -137,11 +137,11 @@ double AlignmentBetween(SurfaceDirection Working, SurfaceDirection Faced)
 
 }   // namespace
 
-Outcome<bool> UvSurfaceDepot::Declare(const TransferSpecification& Transferring_)
+Deliver<bool> UvSurfaceDepot::Declare(const TransferSpecification& Transferring_)
 {
     if (!(Transferring_.SearchExtent > 0.0))
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "a search extent of nothing corresponds to no source surface" });
     }
 
@@ -150,57 +150,57 @@ Outcome<bool> UvSurfaceDepot::Declare(const TransferSpecification& Transferring_
     //    never asked for.
     if (Transferring_.ChannelMask == 0u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "no channel was declared for transfer" });
     }
 
     if (Transferring_.DomainExtent == 0u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "a domain extent of nothing writes the result nowhere" });
     }
 
     if (!(Transferring_.ConvergenceCriterion > 0.0) || Transferring_.ConvergenceCriterion > 1.0)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the convergence criterion lies outside the unit interval" });
     }
 
     if (Transferring_.IterationLimit == 0u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "an iteration ceiling of nothing accepts no sweep at all" });
     }
 
     if (Transferring_.Correspondence == CorrespondenceSubject::CorrespondenceCount)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the closed count is not a correspondence rule" });
     }
 
     Transferring     = Transferring_;
     TransferCurrent = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE CONTENT KEY
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ContentKey> UvSurfaceDepot::KeyOf(const TopologyStructure& Source,
+Deliver<ContentKey> UvSurfaceDepot::KeyOf(const TopologyStructure& Source,
                                           const TopologyStructure& Working,
                                           const ChartPartition&    Partitioning) const
 {
     if (!TransferCurrent)
     {
-        return Outcome<ContentKey>::Refuse(
+        return Deliver<ContentKey>::Refuse(
             { RefusalReason::ContentUnsupported, "no transfer was declared to key" });
     }
 
     if (!Source.Sealed() || !Working.Sealed())
     {
-        return Outcome<ContentKey>::Refuse(
+        return Deliver<ContentKey>::Refuse(
             { RefusalReason::ContentUnsupported, "an unsealed topology carries no revision to key on" });
     }
 
@@ -208,7 +208,7 @@ Outcome<ContentKey> UvSurfaceDepot::KeyOf(const TopologyStructure& Source,
     //    it survives a re-unwrap and is then read at positions that mean something else.
     if (!Partitioning.PartitionCurrent())
     {
-        return Outcome<ContentKey>::Refuse(
+        return Deliver<ContentKey>::Refuse(
             { RefusalReason::ContentUnsupported, "no partition stands, so no domain position means anything yet" });
     }
 
@@ -220,20 +220,20 @@ Outcome<ContentKey> UvSurfaceDepot::KeyOf(const TopologyStructure& Source,
     Keyed.ExtentTexels         = Transferring.DomainExtent;
     Keyed.ChannelMask          = Transferring.ChannelMask;
 
-    return Outcome<ContentKey>::Result(Keyed);
+    return Deliver<ContentKey>::Result(Keyed);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  THE CORRESPONDENCE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<SourceCorrespondence> UvSurfaceDepot::Correspond(DocumentPosition         WorkingPosition,
+Deliver<SourceCorrespondence> UvSurfaceDepot::Correspond(DocumentPosition         WorkingPosition,
                                                          SurfaceDirection         WorkingOrientation,
                                                          const TopologyStructure& Source) const
 {
     if (!TransferCurrent)
     {
-        return Outcome<SourceCorrespondence>::Refuse(
+        return Deliver<SourceCorrespondence>::Refuse(
             { RefusalReason::ContentUnsupported, "no transfer was declared to correspond against" });
     }
 
@@ -301,11 +301,11 @@ Outcome<SourceCorrespondence> UvSurfaceDepot::Correspond(DocumentPosition       
 
     if (Chosen.FaceIndex == AbsentCorrespondence)
     {
-        return Outcome<SourceCorrespondence>::Refuse(
+        return Deliver<SourceCorrespondence>::Refuse(
             { RefusalReason::ExtentExhausted, "no source surface stands within the declared search extent" });
     }
 
-    return Outcome<SourceCorrespondence>::Result(Chosen);
+    return Deliver<SourceCorrespondence>::Result(Chosen);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -362,7 +362,7 @@ ConvergentResult<TransferMetrics> UvSurfaceDepot::Transfer(const TopologyStructu
                 Orientation = WorkingOrientations[VertexIndex];
             }
 
-            const Outcome<SourceCorrespondence> Found =
+            const Deliver<SourceCorrespondence> Found =
                 Correspond(WorkingPositions[VertexIndex], Orientation, Source);
 
             if (Found.Resolved)
@@ -430,7 +430,7 @@ ConvergentResult<TransferMetrics> UvSurfaceDepot::Transfer(const TopologyStructu
 //                                                      THE ADMISSION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> UvSurfaceDepot::Accept(SurfaceDepot&     Depot,
+Deliver<bool> UvSurfaceDepot::Accept(SurfaceDepot&     Depot,
                                     const ContentKey& Keyed,
                                     std::uint64_t     ByteExtent,
                                     std::uint64_t     RecordingIndex) const

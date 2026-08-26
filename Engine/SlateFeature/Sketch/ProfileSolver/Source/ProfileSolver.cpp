@@ -40,12 +40,12 @@ ProfileDisposition EvaluateProfiles(const SketchStructure& Declared)
     return ProfileDisposition::Produced;
 }
 
-Outcome<ResolvedProfileSet> ResolveProfiles(const SketchStructure& Declared)
+Deliver<ResolvedProfileSet> ResolveProfiles(const SketchStructure& Declared)
 {
     if (!Declared.Declared())
-        return Outcome<ResolvedProfileSet>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<ResolvedProfileSet>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
     if (Declared.Profiles().empty())
-        return Outcome<ResolvedProfileSet>::Refuse({ RefusalReason::ContentUnsupported, "the sketch declares no profile" });
+        return Deliver<ResolvedProfileSet>::Refuse({ RefusalReason::ContentUnsupported, "the sketch declares no profile" });
 
     ResolvedProfileSet Resolved;
     Resolved.Curves.reserve(Declared.Curves().size());
@@ -57,28 +57,28 @@ Outcome<ResolvedProfileSet> ResolveProfiles(const SketchStructure& Declared)
     {
         if (!ProfileResolvedAgainst(Profile, static_cast<std::uint32_t>(Resolved.Curves.size())))
         {
-            return Outcome<ResolvedProfileSet>::Refuse(
+            return Deliver<ResolvedProfileSet>::Refuse(
                 { RefusalReason::ContentUnsupported, "the profile names a curve the sketch does not hold" });
         }
         Resolved.Profiles.push_back(Profile);
     }
 
-    return Outcome<ResolvedProfileSet>::Result(Resolved);
+    return Deliver<ResolvedProfileSet>::Result(Resolved);
 }
 
-Outcome<const ProfileSpecification*> ResolveProfile(const SketchStructure& Declared,
+Deliver<const ProfileSpecification*> ResolveProfile(const SketchStructure& Declared,
                                                     ProfileNameInFeature Profile)
 {
     if (!Declared.Declared())
-        return Outcome<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
     if (!Profile.Assigned() || Profile.IssuedIndex > Declared.Profiles().size())
-        return Outcome<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
+        return Deliver<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
 
     const ProfileSpecification* Held = &Declared.Profiles()[Profile.IssuedIndex - 1u];
     if (!ProfileResolvedAgainst(*Held, static_cast<std::uint32_t>(Declared.Curves().size())))
-        return Outcome<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "the profile names an absent curve" });
+        return Deliver<const ProfileSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "the profile names an absent curve" });
 
-    return Outcome<const ProfileSpecification*>::Result(Held);
+    return Deliver<const ProfileSpecification*>::Result(Held);
 }
 
 } // namespace Slate

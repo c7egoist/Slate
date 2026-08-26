@@ -63,7 +63,7 @@ double ChannelScalar(const WorkspaceMaterialRecord& Material, ChannelSubject Cha
         Request.Channel = Channel;
         Request.CoordinateU = U;
         Request.CoordinateV = V;
-        const Outcome<MaterialImageSample> Sampled = Sampling.SampleMaterialChannel(Material, Request);
+        const Deliver<MaterialImageSample> Sampled = Sampling.SampleMaterialChannel(Material, Request);
         if (Sampled.Resolved) return Sampled.Resolve().ColourSample ? Sampled.Resolve().Colour.RedCoordinate
                                                                     : Sampled.Resolve().Scalar;
     }
@@ -109,14 +109,14 @@ double ChannelLaneValue(const WorkspaceMaterialRecord& Material,
     return Lane.Invert ? 1.0 - ClampUnit(Value) : ClampUnit(Value);
 }
 
-Outcome<bool> WriteTga(const FlattenedMaterialTexture& Texture, const std::string& Path)
+Deliver<bool> WriteTga(const FlattenedMaterialTexture& Texture, const std::string& Path)
 {
     if (Texture.Width == 0u || Texture.Height == 0u || Texture.Texels.size() < static_cast<std::size_t>(Texture.Width) * Texture.Height * 4u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the flattened texture has no whole image" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the flattened texture has no whole image" });
 
     std::ofstream Output(Path, std::ios::binary);
     if (!Output)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the texture output file could not be opened" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the texture output file could not be opened" });
 
     std::uint8_t Header[18] = {};
     Header[2] = 2u;
@@ -138,26 +138,26 @@ Outcome<bool> WriteTga(const FlattenedMaterialTexture& Texture, const std::strin
             Output.write(reinterpret_cast<const char*>(Pixel), sizeof(Pixel));
         }
     }
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> ConvertTga(const std::string& TgaPath, const std::string& FinalPath)
+Deliver<bool> ConvertTga(const std::string& TgaPath, const std::string& FinalPath)
 {
     const std::string Command = "convert " + ShellQuote(TgaPath) + " " + ShellQuote(FinalPath);
     if (std::system(Command.c_str()) != 0)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the external image writer rejected the flattened texture" });
-    return Outcome<bool>::Result(true);
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the external image writer rejected the flattened texture" });
+    return Deliver<bool>::Result(true);
 }
 
 } // namespace
 
-Outcome<FlattenedMaterialTexture> MaterialTextureExport::FlattenImage(
+Deliver<FlattenedMaterialTexture> MaterialTextureExport::FlattenImage(
     const WorkspaceMaterialRecord& Material,
     const MaterialExportPackage& Package,
     const MaterialExportImageDeclaration& Image) const
 {
     if (Package.Options.Resolution == 0u)
-        return Outcome<FlattenedMaterialTexture>::Refuse({ RefusalReason::ContentUnsupported, "the export resolution is zero" });
+        return Deliver<FlattenedMaterialTexture>::Refuse({ RefusalReason::ContentUnsupported, "the export resolution is zero" });
 
     FlattenedMaterialTexture Texture;
     Texture.Path = TexturePath(Package, Image);
@@ -182,49 +182,49 @@ Outcome<FlattenedMaterialTexture> MaterialTextureExport::FlattenImage(
         }
     }
 
-    return Outcome<FlattenedMaterialTexture>::Result(std::move(Texture));
+    return Deliver<FlattenedMaterialTexture>::Result(std::move(Texture));
 }
 
-Outcome<bool> MaterialTextureExport::WriteImage(const FlattenedMaterialTexture& Texture) const
+Deliver<bool> MaterialTextureExport::WriteImage(const FlattenedMaterialTexture& Texture) const
 {
     std::filesystem::create_directories(std::filesystem::path(Texture.Path).parent_path());
     if (Texture.Declaration.Format == MaterialExportImageFormat::Tga)
         return WriteTga(Texture, Texture.Path);
 
     const std::string TemporaryTga = Texture.Path + ".slate_tmp.tga";
-    const Outcome<bool> Temporary = WriteTga(Texture, TemporaryTga);
+    const Deliver<bool> Temporary = WriteTga(Texture, TemporaryTga);
     if (!Temporary.Resolved) return Temporary;
-    const Outcome<bool> Converted = ConvertTga(TemporaryTga, Texture.Path);
+    const Deliver<bool> Converted = ConvertTga(TemporaryTga, Texture.Path);
     std::remove(TemporaryTga.c_str());
     return Converted;
 }
 
-Outcome<MaterialTextureExportReport> MaterialTextureExport::WritePackage(const WorkspaceMaterialRecord& Material,
+Deliver<MaterialTextureExportReport> MaterialTextureExport::WritePackage(const WorkspaceMaterialRecord& Material,
                                                                          const MaterialExportPackage& Package) const
 {
     MaterialTextureExportReport Report;
     for (const MaterialExportImageDeclaration& Image : Package.Images)
     {
-        const Outcome<FlattenedMaterialTexture> Flattened = FlattenImage(Material, Package, Image);
-        if (!Flattened.Resolved) return Outcome<MaterialTextureExportReport>::Refuse(Flattened.Error);
-        const Outcome<bool> Written = WriteImage(Flattened.Resolve());
-        if (!Written.Resolved) return Outcome<MaterialTextureExportReport>::Refuse(Written.Error);
+        const Deliver<FlattenedMaterialTexture> Flattened = FlattenImage(Material, Package, Image);
+        if (!Flattened.Resolved) return Deliver<MaterialTextureExportReport>::Refuse(Flattened.Error);
+        const Deliver<bool> Written = WriteImage(Flattened.Resolve());
+        if (!Written.Resolved) return Deliver<MaterialTextureExportReport>::Refuse(Written.Error);
         Report.WrittenFiles.push_back(Flattened.Resolve().Path);
         Report.PixelCount += Flattened.Resolve().Width * Flattened.Resolve().Height;
     }
 
-    const Outcome<std::string> Manifest = EncodeMaterialExportManifest(Package);
-    if (!Manifest.Resolved) return Outcome<MaterialTextureExportReport>::Refuse(Manifest.Error);
+    const Deliver<std::string> Manifest = EncodeMaterialExportManifest(Package);
+    if (!Manifest.Resolved) return Deliver<MaterialTextureExportReport>::Refuse(Manifest.Error);
     std::filesystem::create_directories(Package.Options.OutputDirectory);
     Report.ManifestPath = (std::filesystem::path(Package.Options.OutputDirectory) /
                            (Package.Options.OutputName + "_material_manifest.json")).string();
     std::ofstream ManifestFile(Report.ManifestPath);
     if (!ManifestFile)
-        return Outcome<MaterialTextureExportReport>::Refuse({ RefusalReason::HostDenied, "the export manifest could not be opened" });
+        return Deliver<MaterialTextureExportReport>::Refuse({ RefusalReason::HostDenied, "the export manifest could not be opened" });
     ManifestFile << Manifest.Resolve();
     Report.WrittenFiles.push_back(Report.ManifestPath);
     Report.ImageCount = static_cast<std::uint32_t>(Package.Images.size());
-    return Outcome<MaterialTextureExportReport>::Result(std::move(Report));
+    return Deliver<MaterialTextureExportReport>::Result(std::move(Report));
 }
 
 } // namespace Slate

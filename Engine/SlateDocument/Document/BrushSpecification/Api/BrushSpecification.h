@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Combination.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
@@ -232,7 +232,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for an undeclared profile at an analytic source
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareShape(const ImpressionShape& Declaring);
+    Deliver<bool> DeclareShape(const ImpressionShape& Declaring);
 
     /// 🧩 Declares the impression extent, in domain units.
     /// out   Result  [-]  refuses with ContentUnsupported for a non-positive extent
@@ -241,7 +241,7 @@ public:
     ///        resolution; the open row stands and nothing above reads a screen extent.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareExtent(double Extent);
+    Deliver<bool> DeclareExtent(double Extent);
 
     /// 🧩 Declares the spacing, bounded below by the declared floor.
     /// out   Result  [-]  refuses with ContentUnsupported for a non-positive spacing
@@ -250,14 +250,14 @@ public:
     ///        below its declared spacing paints a stroke the artist did not ask for and cannot account for.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareSpacing(double RelativeSpacing);
+    Deliver<bool> DeclareSpacing(double RelativeSpacing);
 
     /// 🧩 Declares one channel and the value written to it.
     /// out   Result  [-]  refuses with ContentUnsupported for an out-of-range channel, for a colour value
     ///                     declaring no space, and for a channel already declared
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareChannel(const BrushChannelValue& Declaring);
+    Deliver<bool> DeclareChannel(const BrushChannelValue& Declaring);
 
     /// 🧩 Declares one dynamic.
     /// out   Result  [-]  refuses with ContentUnsupported for an undeclared progression, for an out-of-range
@@ -266,7 +266,7 @@ public:
     ///        whichever the resolution applied second would win by accident of declaration order.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareDynamic(const DynamicSpecification& Declaring);
+    Deliver<bool> DeclareDynamic(const DynamicSpecification& Declaring);
 
     /// 🧩 Declares the combination this brush's strokes apply.
     /// cost  ✔️
@@ -344,10 +344,10 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted at the declared ceiling
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(const std::string& Named, const std::string& Grouping);
+    Deliver<std::uint32_t> Declare(const std::string& Named, const std::string& Grouping);
 
-    Outcome<const BrushSpecification*> Resolve(std::uint32_t BrushIndex) const;
-    Outcome<BrushSpecification*>       Amend(std::uint32_t BrushIndex);
+    Deliver<const BrushSpecification*> Resolve(std::uint32_t BrushIndex) const;
+    Deliver<BrushSpecification*>       Amend(std::uint32_t BrushIndex);
 
     const std::string& DeclaredName(std::uint32_t BrushIndex) const;
     const std::string& DeclaredGrouping(std::uint32_t BrushIndex) const;

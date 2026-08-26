@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -69,28 +69,28 @@ public:
     /// in    Document [-]  complete content to preserve
     /// out   Result   [B]  one seekable Codex stream
     /// err   refuses when section identities repeat or a payload cannot be represented
-    Outcome<std::vector<std::uint8_t>> Encode(const CodexDocument& Document) const;
+    Deliver<std::vector<std::uint8_t>> Encode(const CodexDocument& Document) const;
 
     /// 🧩 Decodes and validates one complete Codex stream while preserving every unrecognized section.
     /// in    Stream [B]  complete Codex bytes
     /// out   Result [-]  profile, identities, and retained payload sections
     /// err   refuses when signatures, positions, extents, or integrity digests disagree
-    Outcome<CodexDocument> Decode(const std::vector<std::uint8_t>& Stream) const;
+    Deliver<CodexDocument> Decode(const std::vector<std::uint8_t>& Stream) const;
 
     /// 🧩 Opens the newest complete Codex stream among the standing file and interrupted-save recovery files.
     /// in    OriginPath [-]  `.codex` or specialized Codex path
     /// out   Result     [-]  the highest complete revision whose profile agrees with the suffix
-    Outcome<CodexDocument> Open(const std::string& OriginPath) const;
+    Deliver<CodexDocument> Open(const std::string& OriginPath) const;
 
     /// 🧩 Inscribes one complete Codex stream through a recoverable temporary and preceding-revision route.
     /// in    Document   [-]  complete document to preserve
     /// in    OriginPath [-]  profile-matching target path
     /// out   Result     [-]  refuses without replacing the last complete stream when writing fails
-    Outcome<bool> Inscribe(const CodexDocument& Document, const std::string& OriginPath) const;
+    Deliver<bool> Inscribe(const CodexDocument& Document, const std::string& OriginPath) const;
 
     /// 🧩 Resolves one supported Codex profile from a case-insensitive file suffix.
     /// out   Result [-]  refuses for a suffix that names no Codex profile
-    static Outcome<CodexProfile> ProfileOf(const std::string& OriginPath);
+    static Deliver<CodexProfile> ProfileOf(const std::string& OriginPath);
 };
 
 }   // namespace Slate

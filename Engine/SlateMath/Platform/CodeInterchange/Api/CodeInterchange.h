@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -115,7 +115,7 @@ public:
     ///        and stayed resident has already run its own initialisation inside this process.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Acquire(const std::string& ModulePath, ForeignRequirement Required);
+    Deliver<std::uint32_t> Acquire(const std::string& ModulePath, ForeignRequirement Required);
 
     /// 🧩 The verified entry table of a standing module.
     /// in    ModuleIndex [-]  a module this component acquired
@@ -125,14 +125,14 @@ public:
     ///        every interface any consumer ever loads.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<const void*> EntryTable(std::uint32_t ModuleIndex) const;
+    Deliver<const void*> EntryTable(std::uint32_t ModuleIndex) const;
 
     /// 🧩 What a standing module reported about itself.
     /// in    ModuleIndex [-]  a module this component acquired
     /// out   Result       [-]  refuses with IdentityStale for an ordinal no module stands at
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<const SlateModuleReport*> Report(std::uint32_t ModuleIndex) const;
+    Deliver<const SlateModuleReport*> Report(std::uint32_t ModuleIndex) const;
 
     /// 🧩 Releases one standing module.
     /// in    ModuleIndex [-]  a module this component acquired

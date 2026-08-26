@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/VectorInterchange/Api/VectorInterchange.h"
 
@@ -51,7 +51,7 @@ struct DecodedOutline
 /// note  📝 The file route and the supplied-text route produce the identical specification — `52` §1 — so this
 ///        translation is the file route's half and nothing downstream can tell which route was taken.
 /// tag   api, nonthrowing
-Outcome<DecodedOutline> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
+Deliver<DecodedOutline> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded,
                          PrecisionGuarantee::Bounded,
@@ -64,7 +64,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded,
 /// note  🔴 The text is retained. A source whose only copy was a clipboard is unrecoverable after a reopen, and
 ///        the artist reads that as the document having lost their work — `52` §1.
 /// tag   api, nonthrowing
-Outcome<DecodedOutline> TranslateText(const std::string& SourceText);
+Deliver<DecodedOutline> TranslateText(const std::string& SourceText);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded,
                          PrecisionGuarantee::Bounded,

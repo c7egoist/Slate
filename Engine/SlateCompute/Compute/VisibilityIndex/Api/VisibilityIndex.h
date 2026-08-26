@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/DepthReduction.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/PartitionStructure.h"
@@ -108,7 +108,7 @@ public:
     ///        are in object space and `16` §1 forbids rebuilding them per rotation, let alone per resize.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructVisibilityIndex(std::uint32_t DisplayX, std::uint32_t DisplayY);
+    Deliver<bool> ConstructVisibilityIndex(std::uint32_t DisplayX, std::uint32_t DisplayY);
 
     /// 🧩 Contributes `08` §3 ②'s recording — the one that produces all four targets.
     /// in    Schedule  [-]  the schedule being assembled at bring-up
@@ -119,7 +119,7 @@ public:
     ///        recovers camera motion and never owner motion.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 Partitions one sealed topology, adopts the result, and declares it into `42`'s resolution.
     /// in    Owner     [-]  who the topology belongs to
@@ -132,7 +132,7 @@ public:
     ///        the derivation is the expensive half and it reads nothing but its arguments.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Register(OwnerIdentity            Owner,
+    Deliver<std::uint32_t> Register(OwnerIdentity            Owner,
                                   const TopologyStructure&    Imported,
                                   const TopologyConditioning& Conditioned,
                                   PartitionResolutionIndex&   Resolutions);
@@ -147,14 +147,14 @@ public:
     ///        resolution rather than deriving its own.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ResolvedPartition> Resolve(VisibilityWord                  Written,
+    Deliver<ResolvedPartition> Resolve(VisibilityWord                  Written,
                                        const PartitionResolutionIndex& Resolutions) const;
 
     /// 🧩 One registered topology's standing partitioning.
     /// out   Result  [-]  refuses with ContentUnsupported outside the registered count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const PartitionStructure*> Registered(std::uint32_t RegistrationIndex) const;
+    Deliver<const PartitionStructure*> Registered(std::uint32_t RegistrationIndex) const;
 
     /// 🧩 The reduction chain the culling tests against.
     /// cost  ✔️

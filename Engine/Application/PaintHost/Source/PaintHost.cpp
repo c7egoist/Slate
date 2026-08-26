@@ -4,7 +4,7 @@
 // 🧩 The painting application — lifetime and tick only, with every device concern held by HostLifecycle.
 
 #define SLATE_PAINT_HOST 1
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
@@ -437,7 +437,7 @@ int main(int ArgumentCount, char** ArgumentValues)
 
     // 📝 One workspace open by default, of the subject this host is for. A host that opened none would show
     //    the vacant run on first launch, which reads as a failure rather than as a fresh start.
-    const Outcome<std::uint32_t> DefaultWorkspace = Workspaces.Register(DefaultSubject);
+    const Deliver<std::uint32_t> DefaultWorkspace = Workspaces.Register(DefaultSubject);
     if (!DefaultWorkspace.Resolved)
     {
         std::printf("%s \u2014 the default workspace could not be opened\n", HostName);
@@ -666,7 +666,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    recorded until then. Applying it against the main space instead is what put a new
                 //    workspace in the wrong window.
                 RegisterIntoNode = AskingNode;
-                const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
+                const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
                     PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
             }
@@ -676,7 +676,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             //    on that ground registers one, which is the way out of a state that otherwise has none.
             if (OpenCount == 0u && Viewport.Seam().VacantPressed(Whole))
             {
-                const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
+                const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
                     PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
             }

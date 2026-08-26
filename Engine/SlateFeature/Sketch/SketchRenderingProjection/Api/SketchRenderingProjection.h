@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Shared/WorkspaceCadPacket.slang.h"
 #include "SlateFeature/Feature/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
@@ -37,7 +37,7 @@ struct SketchRenderingStyle
     Unsigned32 CurveSteps = 48u;
 };
 
-Outcome<bool> ProjectSketchRendering(const SketchStructure& Sketch,
+Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
                                      const WorkspaceRecordStructure& Records,
                                      WorkspaceCadPacket& Delivered,
                                      const SketchRenderingStyle& Style = {});

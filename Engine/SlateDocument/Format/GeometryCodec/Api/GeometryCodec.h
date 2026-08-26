@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/AssetInterchange/Api/AssetInterchange.h"
 
@@ -71,7 +71,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
 ///        assumption at intake. Materials referenced through an external library are not read — the codec
 ///        translates the stream it was handed — but each face still carries the enrollment its directives set.
 /// tag   api, nonthrowing
-Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
+Deliver<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded,
                          PrecisionGuarantee::Bounded,

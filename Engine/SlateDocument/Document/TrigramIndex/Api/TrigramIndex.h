@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -76,7 +76,7 @@ public:
     /// post  every trigram run mentioning this owner describes the new name only
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(OwnerIdentity Subject, const std::string& Declared);
+    Deliver<bool> Declare(OwnerIdentity Subject, const std::string& Declared);
 
     /// 🧩 Withdraws one owner's name and every trigram entry that reached it.
     /// in    Subject  [-]  the owner being retired or renamed

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "Shared/ToneProjection.slang.h"
@@ -117,7 +117,7 @@ public:
     ///        path by looking at it.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const ExposureSpecification& Exposing_,
+    Deliver<bool> Declare(const ExposureSpecification& Exposing_,
                           const ToneSpecification&     Toning_,
                           const EncodeSpecification&   Encoding_);
 
@@ -128,7 +128,7 @@ public:
     ///        it among the amenders of its own output.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 Advances the metered exposure one interval toward the reduction just measured.
     /// in    ReducedLuminance  [-]  the reduction `86`'s tick measured over the accumulated radiance
@@ -143,7 +143,7 @@ public:
     ///        loading rather than as the metering working.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> AdvanceMetering(double ReducedLuminance, double ElapsedSeconds);
+    Deliver<bool> AdvanceMetering(double ReducedLuminance, double ElapsedSeconds);
 
     /// 🧩 The linear scale the standing exposure applies to radiance.
     /// out   Scale  [-]  a doubling per stop, through `Shared/`'s own routine
@@ -164,7 +164,7 @@ public:
     ///        `36` is called, so ours is withheld rather than applied twice — `66` §4.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<ColourSpecification> Project(const ColourSpecification& Accumulated) const;
+    Deliver<ColourSpecification> Project(const ColourSpecification& Accumulated) const;
 
     /// 🧩 Declares every measure; appends nothing.
     /// note  🔴 `66` appears in no row of `86` §4's register. An exposure that adapts is the metering working,

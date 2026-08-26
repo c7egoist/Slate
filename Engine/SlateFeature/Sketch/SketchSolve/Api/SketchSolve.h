@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <cstdint>
@@ -31,7 +31,7 @@ struct SketchSolveReport
 };
 
 SketchSolveDisposition EvaluateSketchSolve(const SketchStructure& Declared);
-Outcome<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
+Deliver<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
                                             std::uint32_t IterationLimit = 8u,
                                             double TravelTolerance = 1.0e-6);
 

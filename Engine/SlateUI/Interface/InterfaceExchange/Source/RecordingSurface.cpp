@@ -58,10 +58,10 @@ ImDrawList* Commands(void* Slot)
 //                                                        THE ADOPTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RecordingSurface::Adopt(ShellLayer Layer)
+Deliver<bool> RecordingSurface::Adopt(ShellLayer Layer)
 {
     if (ImGui::GetCurrentContext() == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
 
     // 📝 A shell list rather than a window's. The shell covers the whole drawable extent and owns no
     //    window, so a window's list would clip the drawers to a region the source does not have.
@@ -73,7 +73,7 @@ Outcome<bool> RecordingSurface::Adopt(ShellLayer Layer)
                 : static_cast<void*>(ImGui::GetBackgroundDrawList());
 
     if (CommandSlot == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no command list is open" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no command list is open" });
 
     const ImGuiIO& Sampled = ImGui::GetIO();
 
@@ -127,18 +127,18 @@ Outcome<bool> RecordingSurface::Adopt(ShellLayer Layer)
     // 🔴 Cleared last, so a refusal above leaves the surface unadopted rather than half-open.
     ConfineDepth = 0u;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> RecordingSurface::SwitchLayer(ShellLayer Layer)
+Deliver<bool> RecordingSurface::SwitchLayer(ShellLayer Layer)
 {
     // 🔴 Refuses rather than adopting. A layer change on an unadopted surface would otherwise open a tick
     //    nothing had asked for, and the caller would record into a list no seal is going to assemble.
     if (CommandSlot == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no tick stands adopted" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no tick stands adopted" });
 
     if (ImGui::GetCurrentContext() == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
 
     // 📝 The destination list and nothing else. The pointer, the display condition, the confine depth and
     //    the tick ordinal all belong to the adoption and are left exactly as the tick found them.
@@ -147,21 +147,21 @@ Outcome<bool> RecordingSurface::SwitchLayer(ShellLayer Layer)
                 : static_cast<void*>(ImGui::GetBackgroundDrawList());
 
     if (CommandSlot == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no command list is open" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no command list is open" });
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> RecordingSurface::SwitchToWindow()
+Deliver<bool> RecordingSurface::SwitchToWindow()
 {
     if (CommandSlot == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no tick stands adopted" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no tick stands adopted" });
 
     if (ImGui::GetCurrentContext() == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no interface context is current" });
 
     CommandSlot = static_cast<void*>(ImGui::GetWindowDrawList());
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void RecordingSurface::Retire()

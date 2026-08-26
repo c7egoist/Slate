@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/GeometryInterchange/Api/GeometryInterchange.h"
 
 #include <string>
@@ -21,7 +21,7 @@ public:
     /// 🧩 Drains a selected source, decodes its complete byte stream, then registers it through GeometryInterchange.
     /// note  The format codec only receives the drained bytes and origin spelling. It cannot follow `mtllib` or
     ///       any other secondary path. Earcut and source face/corner retention remain wholly in document intake.
-    Outcome<GeometryAssetView> Import(const std::string& OriginPath,
+    Deliver<GeometryAssetView> Import(const std::string& OriginPath,
                                       const std::string& Naming,
                                       GeometryInterchange& Geometry,
                                       IntakeIndex& Intake) const;

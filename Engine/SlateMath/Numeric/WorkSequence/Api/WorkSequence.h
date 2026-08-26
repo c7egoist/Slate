@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Numeric/ReportSequence/Api/ReportSequence.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 
@@ -170,7 +170,7 @@ struct WorkDeclaration
     bool          ProgressReported = false;                     // [-] - whether the resolution declares progress
 
     // 📝 The captured inputs live inside this callable, which is why they are the requester's to make immutable.
-    std::function<Outcome<bool>(const WorkCancellation&, WorkProgress&)>  Resolve;   // [-] - the whole of the work
+    std::function<Deliver<bool>(const WorkCancellation&, WorkProgress&)>  Resolve;   // [-] - the whole of the work
 };
 
 /// 🧩 One completed declaration, crossing back to the tick.
@@ -206,7 +206,7 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted when nothing is pending
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> Reserve();
+    Deliver<std::uint32_t> Reserve();
 
     /// 🧩 Strikes one record ordinal from the order without claiming it.
     /// cost  ✔️
@@ -258,7 +258,7 @@ public:
     ///        reading this only asks for.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructWorkerSequence(std::uint32_t RequestedWorkers, const TickSequence& HostTimeline, ReportSequence& Reporting);
+    Deliver<bool> ConstructWorkerSequence(std::uint32_t RequestedWorkers, const TickSequence& HostTimeline, ReportSequence& Reporting);
 
     /// 🧩 Declares one unit of work, to be resolved by a worker.
     /// in    Incoming  [-]  the declaration, its inputs already captured
@@ -268,7 +268,7 @@ public:
     ///        claims it; nothing about the calling thread decides when.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<WorkIdentity> Declare(const WorkDeclaration& Incoming);
+    Deliver<WorkIdentity> Declare(const WorkDeclaration& Incoming);
 
     /// 🧩 Withdraws one declaration, because the requester no longer wants it.
     /// in    Subject  [-]  the identity Declare registered
@@ -276,7 +276,7 @@ public:
     /// post  the declaration concludes as Cancelled and produces no result — `34` §5
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Withdraw(WorkIdentity Subject);
+    Deliver<bool> Withdraw(WorkIdentity Subject);
 
     /// 🧩 Withdraws one declaration because a newer one replaces it.
     /// out   Result  [-]  refuses with IdentityStale when the declaration has already completed
@@ -284,7 +284,7 @@ public:
     ///        superseded cancellation ordinary operation, so nothing is appended to the register for it.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Supersede(WorkIdentity Subject);
+    Deliver<bool> Supersede(WorkIdentity Subject);
 
     /// 🧩 Delivers every conclusion recorded since the last drain, in declaration order.
     /// out   Completions  [-]  ordered by declaration ordinal within the drain, never by finishing order
@@ -306,13 +306,13 @@ public:
     /// out   Result  [-]  refuses with IdentityStale once the declaration has completed
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<double> Progress(WorkIdentity Subject) const;
+    Deliver<double> Progress(WorkIdentity Subject) const;
 
     /// 🧩 One declaration's resolved count.
     /// out   Result  [-]  refuses with IdentityStale once the declaration has completed
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint64_t> ProgressCount(WorkIdentity Subject) const;
+    Deliver<std::uint64_t> ProgressCount(WorkIdentity Subject) const;
 
     /// 🧩 How many workers stand.
     /// cost  ✔️
@@ -345,8 +345,8 @@ private:
     void          Serve(std::uint32_t WorkerIndex);
     bool          Reservable(std::uint32_t WorkerIndex) const;
     std::uint32_t Reserve(std::uint32_t WorkerIndex);
-    void          Seal(std::uint32_t RecordIndex, const Outcome<bool>& Resolved);
-    Outcome<bool> Cancel(WorkIdentity Subject, bool SupersessionPosed);
+    void          Seal(std::uint32_t RecordIndex, const Deliver<bool>& Resolved);
+    Deliver<bool> Cancel(WorkIdentity Subject, bool SupersessionPosed);
     std::uint32_t Resolved(WorkIdentity Subject) const;
 
     std::vector<std::thread>                   Workers;                     // [-] - fixed at Construct

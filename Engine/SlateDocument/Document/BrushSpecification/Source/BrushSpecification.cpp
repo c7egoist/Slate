@@ -78,36 +78,36 @@ bool AxisReported(const ResolvedAxes& Axes, DynamicAxis Axis, double& Reading)
 //                                                     DECLARATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> BrushSpecification::DeclareShape(const ImpressionShape& Declaring)
+Deliver<bool> BrushSpecification::DeclareShape(const ImpressionShape& Declaring)
 {
     if (Declaring.Source == ShapeSource::SourceCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such shape source" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such shape source" });
 
     if (Declaring.Source == ShapeSource::Analytic && Declaring.Profile == ProfileSubject::ProfileCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an analytic shape declares no profile" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an analytic shape declares no profile" });
 
     if (Declaring.Rotated == RotationSubject::RotationCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such rotation behaviour" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such rotation behaviour" });
 
     DeclaredShape = Declaring;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> BrushSpecification::DeclareExtent(double Extent)
+Deliver<bool> BrushSpecification::DeclareExtent(double Extent)
 {
     if (Extent <= 0.0)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an impression of no extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an impression of no extent" });
 
     DeclaredExtent = Extent;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> BrushSpecification::DeclareSpacing(double RelativeSpacing)
+Deliver<bool> BrushSpecification::DeclareSpacing(double RelativeSpacing)
 {
     if (RelativeSpacing <= 0.0)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a spacing of nothing never advances" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a spacing of nothing never advances" });
 
     // 🔴 The floor is applied and recorded, never applied silently — `58` §5. It bounds the impression count and
     //    therefore the work `22` §2 does per stroke, which is what stops a brush from stalling a stroke.
@@ -117,61 +117,61 @@ Outcome<bool> BrushSpecification::DeclareSpacing(double RelativeSpacing)
         DeclaredSpacing.FloorReached    = true;
         FloorReported                   = false;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     DeclaredSpacing.RelativeSpacing = RelativeSpacing;
     DeclaredSpacing.FloorReached    = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> BrushSpecification::DeclareChannel(const BrushChannelValue& Declaring)
+Deliver<bool> BrushSpecification::DeclareChannel(const BrushChannelValue& Declaring)
 {
     if (Declaring.Channel == ChannelSubject::ChannelCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such channel" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such channel" });
 
     // 🔴 `36` §1: a colour without its space is rejected rather than assumed to be in the working space.
     if (Declaring.ColourDeclared && !Declaring.ColourValue.ColourDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a brush colour declares no space" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a brush colour declares no space" });
 
     for (const BrushChannelValue& Held : DeclaredChannels)
     {
         if (Held.Channel == Declaring.Channel)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the brush already writes that channel" });
         }
     }
 
     DeclaredChannels.push_back(Declaring);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> BrushSpecification::DeclareDynamic(const DynamicSpecification& Declaring)
+Deliver<bool> BrushSpecification::DeclareDynamic(const DynamicSpecification& Declaring)
 {
     if (Declaring.Axis == DynamicAxis::AxisCount || Declaring.Parameter == DynamicParameter::ParameterCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such axis or parameter" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such axis or parameter" });
 
     // 🔴 `58` §4 and §10: every dynamic declares its progression, and none is linear by assumption. The
     //    undeclared value is rejected rather than defaulted, so the rule is enforced by the type rather than by a
     //    reviewer noticing.
     if (Declaring.Progression == ProgressionSubject::ProgressionCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dynamic declares no progression" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dynamic declares no progression" });
 
     for (const DynamicSpecification& Held : DeclaredDynamics)
     {
         if (Held.Parameter == Declaring.Parameter)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "that parameter already carries a dynamic" });
         }
     }
 
     DeclaredDynamics.push_back(Declaring);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void BrushSpecification::DeclareCombination(CombineSpecification Declaring)
@@ -314,10 +314,10 @@ bool BrushSpecification::ChannelDeclared(ChannelSubject Channel) const
 //                                                     THE BRUSHES
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> BrushIndex::Declare(const std::string& Named, const std::string& Grouping)
+Deliver<std::uint32_t> BrushIndex::Declare(const std::string& Named, const std::string& Grouping)
 {
     if (Declared.size() >= BrushLimit)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "the brush ceiling was reached" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "the brush ceiling was reached" });
 
     const std::uint32_t BrushIndex = static_cast<std::uint32_t>(Declared.size());
 
@@ -325,23 +325,23 @@ Outcome<std::uint32_t> BrushIndex::Declare(const std::string& Named, const std::
     DeclaredNames.push_back(Named);
     DeclaredGroupings.push_back(Grouping);
 
-    return Outcome<std::uint32_t>::Result(BrushIndex);
+    return Deliver<std::uint32_t>::Result(BrushIndex);
 }
 
-Outcome<const BrushSpecification*> BrushIndex::Resolve(std::uint32_t BrushIndex) const
+Deliver<const BrushSpecification*> BrushIndex::Resolve(std::uint32_t BrushIndex) const
 {
     if (BrushIndex >= Declared.size())
-        return Outcome<const BrushSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such brush" });
+        return Deliver<const BrushSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such brush" });
 
-    return Outcome<const BrushSpecification*>::Result(&Declared[BrushIndex]);
+    return Deliver<const BrushSpecification*>::Result(&Declared[BrushIndex]);
 }
 
-Outcome<BrushSpecification*> BrushIndex::Amend(std::uint32_t BrushIndex)
+Deliver<BrushSpecification*> BrushIndex::Amend(std::uint32_t BrushIndex)
 {
     if (BrushIndex >= Declared.size())
-        return Outcome<BrushSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such brush" });
+        return Deliver<BrushSpecification*>::Refuse({ RefusalReason::ContentUnsupported, "no such brush" });
 
-    return Outcome<BrushSpecification*>::Result(&Declared[BrushIndex]);
+    return Deliver<BrushSpecification*>::Result(&Declared[BrushIndex]);
 }
 
 const std::string& BrushIndex::DeclaredName(std::uint32_t BrushIndex) const

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <vector>
@@ -67,13 +67,13 @@ public:
     /// post  the seam survives every re-partition until it is withdrawn
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareAuthored(std::uint32_t FirstVertex, std::uint32_t SecondVertex);
+    Deliver<bool> DeclareAuthored(std::uint32_t FirstVertex, std::uint32_t SecondVertex);
 
     /// 🧩 Withdraws one authored seam.
     /// out   Result  [-]  refuses with ContentUnsupported when no authored seam runs between the two
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> RemoveAuthored(std::uint32_t FirstVertex, std::uint32_t SecondVertex);
+    Deliver<bool> RemoveAuthored(std::uint32_t FirstVertex, std::uint32_t SecondVertex);
 
     /// 🧩 Records one seam the partitioner derived, for reporting and for the standing partition.
     /// note  Held apart from the authored set so that `ReclaimDerived` cannot reach an authored seam. The two

@@ -103,7 +103,7 @@ std::string Trimmed(const std::string& Incoming)
 
 /// 🧩 Retains OBJ's named face memberships and material spelling independently of the vendor's MTL loader.
 /// note  Group membership is many-to-many. Flattening it to one face-group ordinal would lose valid OBJ data.
-Outcome<bool> RetainWavefrontStructure(const std::vector<std::uint8_t>& Stream,
+Deliver<bool> RetainWavefrontStructure(const std::vector<std::uint8_t>& Stream,
                                       std::uint32_t ExpectedFaces,
                                       DecodedTopology& Produced)
 {
@@ -200,19 +200,19 @@ Outcome<bool> RetainWavefrontStructure(const std::vector<std::uint8_t>& Stream,
         {
             Logical += Line;
             if (!Consume(Logical))
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "OBJ face membership does not match decoded topology" });
             Logical.clear();
         }
     }
     if (!Logical.empty() && !Consume(Logical))
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "OBJ face membership does not match decoded topology" });
 
     if (FaceIndex != ExpectedFaces)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "OBJ face membership does not match decoded topology" });
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 /// 🧩 Whether an origin's suffix matches one declared spelling, compared without regard to case.
@@ -256,17 +256,17 @@ GeometryContentSubject ClassifyContent(const std::string& OriginPath)
 //                                                   THE TRANSLATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath)
+Deliver<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath)
 {
     if (ClassifyContent(OriginPath) == GeometryContentSubject::Unrecognised)
     {
-        return Outcome<DecodedTopology>::Refuse(
+        return Deliver<DecodedTopology>::Refuse(
             { RefusalReason::ContentUnsupported, "the origin names no accepted polygon layout — `10` §1" });
     }
 
     if (Stream.empty())
     {
-        return Outcome<DecodedTopology>::Refuse(
+        return Deliver<DecodedTopology>::Refuse(
             { RefusalReason::ContentUnsupported, "a polygon stream of no bytes carries no topology" });
     }
 
@@ -283,7 +283,7 @@ Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, cons
 
     if (Parsed == nullptr)
     {
-        return Outcome<DecodedTopology>::Refuse(
+        return Deliver<DecodedTopology>::Refuse(
             { RefusalReason::ContentUnsupported, "the parser rejected the polygon stream" });
     }
 
@@ -291,7 +291,7 @@ Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, cons
     {
         fast_obj_destroy(Parsed);
 
-        return Outcome<DecodedTopology>::Refuse(
+        return Deliver<DecodedTopology>::Refuse(
             { RefusalReason::ExtentExhausted, "the polygon stream declares no face — `10` §1" });
     }
 
@@ -426,12 +426,12 @@ Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, cons
     //    derived basis incoming through a codec would be indistinguishable from an authored one — which is
     //    precisely the distinction `TopologyStructure::DeclareTangentBases` exists to keep.
 
-    const Outcome<bool> StructureRetained =
+    const Deliver<bool> StructureRetained =
         RetainWavefrontStructure(Stream, static_cast<std::uint32_t>(Parsed->face_count), Produced);
     if (!StructureRetained.Resolved)
     {
         fast_obj_destroy(Parsed);
-        return Outcome<DecodedTopology>::Refuse(StructureRetained.Error);
+        return Deliver<DecodedTopology>::Refuse(StructureRetained.Error);
     }
 
     Produced.OriginPath        = OriginPath;
@@ -440,7 +440,7 @@ Outcome<DecodedTopology> Translate(const std::vector<std::uint8_t>& Stream, cons
 
     fast_obj_destroy(Parsed);
 
-    return Outcome<DecodedTopology>::Result(Produced);
+    return Deliver<DecodedTopology>::Result(Produced);
 }
 
 }   // namespace Slate

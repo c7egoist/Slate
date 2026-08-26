@@ -55,7 +55,7 @@ std::uint32_t OccupancyIndex::SpannedCount() const
 //                                                      ENROLMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<OwnerIdentity> PopulationIndex::Register()
+Deliver<OwnerIdentity> PopulationIndex::Register()
 {
     std::uint32_t SlotIndex = 0u;
 
@@ -70,7 +70,7 @@ Outcome<OwnerIdentity> PopulationIndex::Register()
     {
         if (SlotGenerations.size() >= PopulationLimit)
         {
-            return Outcome<OwnerIdentity>::Refuse(
+            return Deliver<OwnerIdentity>::Refuse(
                 { RefusalReason::ExtentExhausted, "the population reached its declared ceiling" });
         }
 
@@ -85,17 +85,17 @@ Outcome<OwnerIdentity> PopulationIndex::Register()
     Registered.SlotIndex    = SlotIndex;
     Registered.SlotGeneration = SlotGenerations[SlotIndex];
 
-    return Outcome<OwnerIdentity>::Result(Registered);
+    return Deliver<OwnerIdentity>::Result(Registered);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      WITHDRAWAL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PopulationIndex::Withdraw(OwnerIdentity Subject)
+Deliver<bool> PopulationIndex::Withdraw(OwnerIdentity Subject)
 {
     if (!Resolve(Subject))
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves" });
 
     Occupancy.Release(Subject.SlotIndex);
 
@@ -106,7 +106,7 @@ Outcome<bool> PopulationIndex::Withdraw(OwnerIdentity Subject)
     ReleasedIndexs.push_back(Subject.SlotIndex);
     --OccupiedCount;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

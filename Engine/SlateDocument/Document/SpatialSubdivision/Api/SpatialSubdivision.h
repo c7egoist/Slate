@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/RegistrationIndex/Api/RegistrationIndex.h"
 #include "SlateDocument/Document/TopologyConditioning/Api/TopologyConditioning.h"
@@ -88,7 +88,7 @@ public:
     ///        confidently wrong.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructSubdivision(const TopologyStructure& Imported, const TopologyConditioning& Conditioned);
+    Deliver<bool> ConstructSubdivision(const TopologyStructure& Imported, const TopologyConditioning& Conditioned);
 
     /// 🧩 Intersects one ray, in the owner's own object space.
     /// in    Origin            [mm]  the ray's origin, in object space
@@ -190,13 +190,13 @@ public:
     /// post  the subdivision is owed a rebuild before the admission is traversable
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Accept(const AcceptedOwner& Incoming);
+    Deliver<bool> Accept(const AcceptedOwner& Incoming);
 
     /// 🧩 Withdraws one owner.
     /// out   Result  [-]  refuses with IdentityStale when the owner is not accepted
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Withdraw(OwnerIdentity Subject);
+    Deliver<bool> Withdraw(OwnerIdentity Subject);
 
     /// 🧩 Refits one owner's extent and composed transform, without rebuilding.
     /// out   Result  [-]  refuses with IdentityStale when the owner is not accepted
@@ -204,19 +204,19 @@ public:
     ///        untouched; only the extents along the path to the owner's record widen.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Refit(OwnerIdentity Subject, const DecomposedTransform& Composed, ConditionedExtent Extent);
+    Deliver<bool> Refit(OwnerIdentity Subject, const DecomposedTransform& Composed, ConditionedExtent Extent);
 
     /// 🧩 Returns one accepted owner's standing record.
     /// out   Result  [-]  refuses with IdentityStale when the owner is not accepted
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<AcceptedOwner> Current(OwnerIdentity Subject) const;
+    Deliver<AcceptedOwner> Current(OwnerIdentity Subject) const;
 
     /// 🧩 Rebuilds the subdivision's shape over every accepted owner.
     /// post  the shape is optimal for the current extents; nothing is owed
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructOctants();
+    Deliver<bool> ConstructOctants();
 
     /// 🧩 Resolves the nearest owner surface along one document-space ray — `74`'s precedence 2.
     /// in    Origin      [mm]  the ray's origin, in document space
@@ -325,13 +325,13 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted when no placement carries that ordinal
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Refit(std::uint32_t PlacementIndex, DomainExtent Amending);
+    Deliver<bool> Refit(std::uint32_t PlacementIndex, DomainExtent Amending);
 
     /// 🧩 Resolves the topmost placement containing one domain position.
     /// out   Result  [-]  refuses with ExtentExhausted when no placement contains it
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Resolve(double PositionX, double PositionY) const;
+    Deliver<std::uint32_t> Resolve(double PositionX, double PositionY) const;
 
     /// 🧩 Every placement whose extent overlaps a domain extent.
     /// cost  🚩

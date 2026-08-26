@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Format/WorkspaceSceneActivation/Api/WorkspaceSceneActivation.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
@@ -657,7 +657,7 @@ inline SharedCodexActivation ConsumeSharedCodexActivation(ContentBrowserConfigur
     Result.ScenePath = EngineContentRoot / (std::string(Requested.Naming) + Extension);
 
     WorkspaceSceneActivation Activating;
-    Outcome<ActivatedWorkspaceScene> Activated = Activating.Open(Result.ScenePath.string(), EngineContentRoot.string());
+    Deliver<ActivatedWorkspaceScene> Activated = Activating.Open(Result.ScenePath.string(), EngineContentRoot.string());
     if (!Activated.Resolved)
     {
         Result.Error = Activated.Error;

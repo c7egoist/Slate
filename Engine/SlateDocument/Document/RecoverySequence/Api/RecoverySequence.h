@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/RevisionSequence/Api/RevisionSequence.h"
 
 #include <cstdint>
@@ -91,7 +91,7 @@ public:
     ///        did not know its document could be replayed into whichever document happened to be open.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareDocument(const std::string& DeclaredDocument, const std::string& DeclaredJournal);
+    Deliver<bool> DeclareDocument(const std::string& DeclaredDocument, const std::string& DeclaredJournal);
 
     /// 🧩 Appends one sealed transaction to the journal.
     /// in    Sealing  [-]  the transaction as `RevisionSequence` sealed it
@@ -103,7 +103,7 @@ public:
     ///        is told the recovery is partial rather than handed a document assembled from a gap.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Append(const CommittedTransaction& Sealing, std::uint64_t RevisionIndex);
+    Deliver<bool> Append(const CommittedTransaction& Sealing, std::uint64_t RevisionIndex);
 
     /// 🧩 Retires every entry a completed save subsumes — `48` §3 ④.
     /// in    SavedThrough  [-]  the revision ordinal the saved document carries

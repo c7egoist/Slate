@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/AtmosphereIntegrator/Api/AtmosphereIntegrator.h"
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectorySpecification.h"
 
@@ -47,7 +47,7 @@ struct SkyCamera
 ///        the standing surfaces, which is exactly the rebuild discipline `28` §4 declares.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
+Deliver<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
                                const EnvironmentConfiguration& Environment,
                                const SkyCamera& Camera,
                                std::uint32_t Width,

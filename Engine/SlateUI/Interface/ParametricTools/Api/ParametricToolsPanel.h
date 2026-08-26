@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 #include "SlateUI/Interface/MotionIntegrator/Api/MotionIntegrator.h"
@@ -28,7 +28,7 @@ public:
     ParametricToolsPanel& operator=(const ParametricToolsPanel&) = delete;
     ~ParametricToolsPanel() = default;
 
-    Outcome<bool> ConstructParametricToolsPanel(ControlIndex& IncomingInteraction,
+    Deliver<bool> ConstructParametricToolsPanel(ControlIndex& IncomingInteraction,
                                                 MotionIntegrator& Integrator,
                                                 RecordingSurface& Surface,
                                                 const ThemeProfile& Resolved);

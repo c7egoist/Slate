@@ -20,13 +20,13 @@ void CopyColour(float Destination[4], const ColourSpecification& Source)
 }
 }
 
-Outcome<PhysicalSurfacePacket> BindPhysicalSurface(const CompiledPhysicalSurface& Compiled)
+Deliver<PhysicalSurfacePacket> BindPhysicalSurface(const CompiledPhysicalSurface& Compiled)
 {
     if (!Finite(Compiled.Metallic) || !Finite(Compiled.Roughness) || !Finite(Compiled.Opacity) ||
         !Finite(Compiled.Transmission) || !Finite(Compiled.RefractionRatio) ||
         !Compiled.Albedo.ColourDeclared() || !Compiled.NormalIncidenceReflectance.ColourDeclared())
     {
-        return Outcome<PhysicalSurfacePacket>::Refuse(
+        return Deliver<PhysicalSurfacePacket>::Refuse(
             { RefusalReason::ContentUnsupported, "the compiled physical surface cannot be represented by finite GPU constants" });
     }
 
@@ -45,7 +45,7 @@ Outcome<PhysicalSurfacePacket> BindPhysicalSurface(const CompiledPhysicalSurface
     Bound.Wall = static_cast<std::uint32_t>(Compiled.Declaration.Wall);
     Bound.Interface = static_cast<std::uint32_t>(Compiled.Declaration.Interface);
     Bound.TwoSided = Compiled.Declaration.TwoSided ? 1u : 0u;
-    return Outcome<PhysicalSurfacePacket>::Result(Bound);
+    return Deliver<PhysicalSurfacePacket>::Result(Bound);
 }
 
 } // namespace Slate

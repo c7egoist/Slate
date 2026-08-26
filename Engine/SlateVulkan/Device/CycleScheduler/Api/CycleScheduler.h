@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -65,7 +65,7 @@ public:
     ///        by address — an unnamed cycle makes every deadlock report the same sentence.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructCycleScheduler(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
+    Deliver<bool> ConstructCycleScheduler(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
 
     /// 🧩 Waits until the slot the standing ordinal names is no longer read, and makes it writable again.
     /// out   Result  [-]  refuses with HostDenied when the device does not complete within the ceiling, and
@@ -76,14 +76,14 @@ public:
     ///        anything is destroyed — which cannot happen from inside a wait that never returns.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Await();
+    Deliver<bool> Await();
 
     /// 🧩 Clears the completion of the standing slot, immediately before the submission that signals it.
     /// out   Result  [-]  refuses with HostDenied when the device declines
     /// pre   Await delivered for this slot
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Arm();
+    Deliver<bool> Arm();
 
     /// 🧩 Carries the standing ordinal to the next slot in the cycle.
     /// post  the ordinal is the previous one raised by one, modulo the slot count
@@ -95,7 +95,7 @@ public:
     /// out   Result  [-]  refuses with CapabilityAbsent before Construct delivered
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<CycleSlot> Current() const;
+    Deliver<CycleSlot> Current() const;
 
     /// 🧩 Which slot in the cycle is standing — what every per-slot claim is addressed by.
     /// cost  ✔️

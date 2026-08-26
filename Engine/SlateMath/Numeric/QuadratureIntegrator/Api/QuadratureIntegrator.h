@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
@@ -51,7 +51,7 @@ public:
     ///        same equation twice and would let the two halves disagree in their last bit.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Derive(std::uint32_t Requested);
+    Deliver<bool> Derive(std::uint32_t Requested);
 
     /// 🧩 One abscissa of the reference interval, in ascending order.
     /// pre   Index is below DeclaredCount
@@ -77,7 +77,7 @@ public:
     ///        separate scalar integrations would evaluate the same density profile three times.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Project(std::uint32_t Index,
+    Deliver<bool> Project(std::uint32_t Index,
                           double        Lower,
                           double        Upper,
                           double&       Position,

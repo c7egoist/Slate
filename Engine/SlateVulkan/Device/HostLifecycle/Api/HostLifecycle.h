@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 #include "SlateMath/Platform/WindowInterchange/Api/WindowInterchange.h"
 #include "SlateVulkan/Device/CommandSequence/Api/CommandSequence.h"
@@ -190,7 +190,7 @@ public:
     /// post  on delivery, `Interface` carries every handle the interface seam needs
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructHost(const HostDeclaration& Declared);
+    Deliver<bool> ConstructHost(const HostDeclaration& Declared);
 
     /// 🧩 Opens one tick — drains input, recovers the display if it moved, acquires an image, and opens a
     ///    command recording outside any rendering scope.
@@ -213,7 +213,7 @@ public:
     ///        rendering, so opening the display in `Await` made the declared geometry schedule impossible.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> BeginDisplay();
+    Deliver<bool> BeginDisplay();
 
     /// 🧩 Closes the rendering scope, submits the recording, presents, and advances the cycle.
     /// out   Result  [-]  refuses when no tick stands recording; a rejected present is recovered here and
@@ -223,7 +223,7 @@ public:
     /// post  no recording is open; the next Await may proceed
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Complete();
+    Deliver<bool> Complete();
 
     /// 🧩 Whether the host should keep ticking.
     /// cost  ✔️
@@ -284,7 +284,7 @@ public:
     ///        closed the host on the third press, which reads as the rebuild having crashed it.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> RebuildDevice();
+    Deliver<bool> RebuildDevice();
 
     /// 🧩 Retires the device tier and rebuilds it, leaving the window, instance and surface standing.
     /// out   Result  [-]  refuses when the rebuild declines, having left nothing half-constructed
@@ -296,7 +296,7 @@ public:
     ///        again to recover would stand a second window in front of the artist.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> RecoverDevice();
+    Deliver<bool> RecoverDevice();
 
     /// 🧩 Whether the device tier was rebuilt since the host last asked, and clears the record of it.
     /// use   A host calls this to rebuild every device resource it owns, exactly once per recovery.
@@ -336,7 +336,7 @@ public:
 
 private:
 
-    Outcome<bool> EstablishDisplay(std::uint32_t Width, std::uint32_t Height);
+    Deliver<bool> EstablishDisplay(std::uint32_t Width, std::uint32_t Height);
     bool          RecoverDisplay();
 
     /// 🧩 Retires an acquired image whose `ImageAvailable` no submission is going to wait down.

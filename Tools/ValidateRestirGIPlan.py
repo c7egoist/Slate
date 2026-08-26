@@ -61,7 +61,7 @@ def main() -> int:
 
     require_text(
         "Engine/SlateFeature/Sketch/ProfileReshape/Source/ProfileReshape.cpp",
-        "return Outcome<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, \"the curve cannot be trimmed\" });",
+        "return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, \"the curve cannot be trimmed\" });",
     )
 
     plan = require_text(

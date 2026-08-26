@@ -7,7 +7,7 @@ namespace Slate
 class WorkspaceGeometryIntake
 {
 public:
- Outcome<std::vector<GeometryIdentity>> Import(const std::vector<WorkspaceGeometryQueueEntry>& Queue,
+ Deliver<std::vector<GeometryIdentity>> Import(const std::vector<WorkspaceGeometryQueueEntry>& Queue,
                                                 GeometryFileInterchange& Files, GeometryInterchange& Geometry,
                                                 IntakeIndex& Intake) const;
 };

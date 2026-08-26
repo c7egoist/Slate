@@ -19,18 +19,18 @@ SpanSpace::~SpanSpace()
     Reclaim();
 }
 
-Outcome<bool> SpanSpace::ConstructSpanSpace(const VulkanExchange&      Exchange,
+Deliver<bool> SpanSpace::ConstructSpanSpace(const VulkanExchange&      Exchange,
                                    ByteSpace&                 BackingSpace,
                                    const DiagnosticExtension& Naming)
 {
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge   = &Exchange;
     BackingBytes = &BackingSpace;
     NamingEdge   = &Naming;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const char* SpanSpace::NameOf(SpanIntent Intent)
@@ -83,19 +83,19 @@ VkBufferUsageFlags SpanSpace::UsageOf(SpanIntent Intent)
 //                                                       THE CLAIM
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
+Deliver<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
 {
     if (DeviceEdge == nullptr || BackingBytes == nullptr)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     if (Declared.SpanBytes == 0u)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "a span of zero bytes" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "a span of zero bytes" });
 
     if (Declared.Intent == SpanIntent::IntentCount)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such span intent" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such span intent" });
 
     if (Declared.Residency == ExtentResidency::ResidencyCount)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such residency" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such residency" });
 
     const VkDevice Active = DeviceEdge->ActiveDevice();
 
@@ -108,7 +108,7 @@ Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
     VkBuffer Incoming = VK_NULL_HANDLE;
 
     if (vkCreateBuffer(Active, &SpanDeclaration, nullptr, &Incoming) != VK_SUCCESS)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the span" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the span" });
 
     // 📝 Read from the created span and never computed from the shape, for `ImageSpace`'s reason: the alignment
     //    a uniform read requires is the vendor's declaration and a computed figure is right on one driver.
@@ -117,7 +117,7 @@ Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
 
     // 🔴 Committed rather than discretionary. A span is the working set of whichever document claimed it, and
     //    `06` §7 makes exhaustion of a committed claim a reported failure rather than residency policy.
-    const Outcome<ByteReservation> Backing = BackingBytes->Reserve(Required.size,
+    const Deliver<ByteReservation> Backing = BackingBytes->Reserve(Required.size,
                                                           Required.alignment,
                                                           Declared.Residency,
                                                           ReservationCondition::Committed);
@@ -125,7 +125,7 @@ Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
     if (!Backing.Resolved)
     {
         vkDestroyBuffer(Active, Incoming, nullptr);
-        return Outcome<SpanReservation>::Refuse(Backing.Error);
+        return Deliver<SpanReservation>::Refuse(Backing.Error);
     }
 
     const ByteReservation Sliced = Backing.Resolve();
@@ -135,7 +135,7 @@ Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
         BackingBytes->Release(Sliced);
         vkDestroyBuffer(Active, Incoming, nullptr);
 
-        return Outcome<SpanReservation>::Refuse(
+        return Deliver<SpanReservation>::Refuse(
             { RefusalReason::ContentUnsupported, "the device failed to bind the claimed bytes to the span" });
     }
 
@@ -179,55 +179,55 @@ Outcome<SpanReservation> SpanSpace::Reserve(const SpanShape& Declared)
     Reserved.HostAddress = Sliced.HostAddress;
     Reserved.SpanIndex = SpanIndex;
 
-    return Outcome<SpanReservation>::Result(Reserved);
+    return Deliver<SpanReservation>::Result(Reserved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       THE WRITES
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> SpanSpace::Amend(std::uint32_t  SpanIndex,
+Deliver<bool> SpanSpace::Amend(std::uint32_t  SpanIndex,
                                const void*    Incoming,
                                VkDeviceSize   IncomingBytes,
                                VkDeviceSize   ByteOffset)
 {
     if (static_cast<std::size_t>(SpanIndex) >= Spans.size() || !Spans[SpanIndex].SlotOccupied)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no span stands at that ordinal" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no span stands at that ordinal" });
 
     HeldSpan& Held = Spans[SpanIndex];
 
     if (Held.Backing.HostAddress == nullptr)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "a device-local span carries no host address to write through" });
     }
 
     if (Incoming == nullptr || IncomingBytes == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing was supplied to write" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing was supplied to write" });
 
     if (ByteOffset > Held.Shape.SpanBytes || IncomingBytes > Held.Shape.SpanBytes - ByteOffset)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the write would run past the claimed span" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the write would run past the claimed span" });
 
     std::memcpy(static_cast<unsigned char*>(Held.Backing.HostAddress) + ByteOffset,
                 Incoming,
                 static_cast<std::size_t>(IncomingBytes));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SpanSpace::Transfer(VkCommandBuffer  Recorded,
+Deliver<bool> SpanSpace::Transfer(VkCommandBuffer  Recorded,
                                   std::uint32_t    SourceIndex,
                                   std::uint32_t    TargetIndex,
                                   VkDeviceSize     TransferBytes)
 {
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (static_cast<std::size_t>(SourceIndex) >= Spans.size() || !Spans[SourceIndex].SlotOccupied)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no source span stands at that ordinal" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no source span stands at that ordinal" });
 
     if (static_cast<std::size_t>(TargetIndex) >= Spans.size() || !Spans[TargetIndex].SlotOccupied)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no target span stands at that ordinal" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no target span stands at that ordinal" });
 
     const HeldSpan& Source = Spans[SourceIndex];
     const HeldSpan& Target = Spans[TargetIndex];
@@ -237,7 +237,7 @@ Outcome<bool> SpanSpace::Transfer(VkCommandBuffer  Recorded,
     const VkDeviceSize Carried = TransferBytes == 0u ? Source.Shape.SpanBytes : TransferBytes;
 
     if (Carried > Source.Shape.SpanBytes || Carried > Target.Shape.SpanBytes)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the transfer would run past one of the spans" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the transfer would run past one of the spans" });
 
     VkBufferCopy Carrying = {};
     Carrying.srcOffset    = 0u;
@@ -246,17 +246,17 @@ Outcome<bool> SpanSpace::Transfer(VkCommandBuffer  Recorded,
 
     vkCmdCopyBuffer(Recorded, Source.Extent, Target.Extent, 1u, &Carrying);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       THE READS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<SpanReservation> SpanSpace::Current(std::uint32_t SpanIndex) const
+Deliver<SpanReservation> SpanSpace::Current(std::uint32_t SpanIndex) const
 {
     if (static_cast<std::size_t>(SpanIndex) >= Spans.size() || !Spans[SpanIndex].SlotOccupied)
-        return Outcome<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no span stands at that ordinal" });
+        return Deliver<SpanReservation>::Refuse({ RefusalReason::ContentUnsupported, "no span stands at that ordinal" });
 
     const HeldSpan& Held = Spans[SpanIndex];
 
@@ -266,7 +266,7 @@ Outcome<SpanReservation> SpanSpace::Current(std::uint32_t SpanIndex) const
     Current.HostAddress = Held.Backing.HostAddress;
     Current.SpanIndex = SpanIndex;
 
-    return Outcome<SpanReservation>::Result(Current);
+    return Deliver<SpanReservation>::Result(Current);
 }
 
 std::uint32_t SpanSpace::ReservedCount() const

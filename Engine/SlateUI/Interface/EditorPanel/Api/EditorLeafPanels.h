@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 
@@ -42,9 +42,9 @@ public:
     /// in    IncomingSurface     [-]  the surface every recording is made against
     /// in    IncomingAppearance  [-]  the appearance declarations the ground colour is read from
     /// in    IncomingSubject     [-]  which leaf this instance presents
-    /// out   Outcome<bool>       [-]  refuses when a construction already stands
+    /// out   Deliver<bool>       [-]  refuses when a construction already stands
     /// cost  ✔️
-    Outcome<bool> ConstructLeafPanel(RecordingSurface& IncomingSurface,
+    Deliver<bool> ConstructLeafPanel(RecordingSurface& IncomingSurface,
                             const ThemeProfile& IncomingAppearance,
                             LeafSubject IncomingSubject);
 

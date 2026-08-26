@@ -44,33 +44,33 @@ float Scaled(float Figure, const ThemeProfile& Appearance)
 //                                                       CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> FacetPanel::ConstructFacetPanel(MotionIntegrator& IncomingMotion,
+Deliver<bool> FacetPanel::ConstructFacetPanel(MotionIntegrator& IncomingMotion,
                                     RecordingSurface& IncomingSurface,
                                     const ThemeProfile& IncomingAppearance)
 {
     if (Motion != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a facet panel construction stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a facet panel construction stands" });
 
     Motion     = &IncomingMotion;
     Surface    = &IncomingSurface;
     Appearance = &IncomingAppearance;
 
     if (!Interaction.AttachMotion(IncomingMotion).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "facet interaction was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "facet interaction was rejected" });
 
     if (!SharedControls.ConstructComponents(Interaction, IncomingSurface, IncomingAppearance).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "shared facet controls were rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "shared facet controls were rejected" });
 
     for (std::uint32_t Index = 0u; Index < FacetCapacity + 2u; ++Index)
     {
-        const Outcome<ControlIdentity> Registered = Interaction.Register();
+        const Deliver<ControlIdentity> Registered = Interaction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
 
         Controls[Index] = Registered.Resolve();
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void FacetPanel::Advance(const PointerCondition& Sampled, double Elapsed)
@@ -214,12 +214,12 @@ ThemeToken FacetPanel::FacetColour(const FacetDeclaration& Declared, std::uint32
 //                                                         RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> FacetPanel::Record(const PlaneExtent& Extent,
+Deliver<bool> FacetPanel::Record(const PlaneExtent& Extent,
                                  const FacetDeclaration& Declared,
                                  bool* Enabled)
 {
     if (Surface == nullptr || Appearance == nullptr || Motion == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no facet panel construction stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no facet panel construction stands" });
 
     const std::uint32_t Count = (Declared.OptionCount < FacetCapacity)
                               ? Declared.OptionCount : FacetCapacity;
@@ -338,7 +338,7 @@ Outcome<bool> FacetPanel::Record(const PlaneExtent& Extent,
         PendingSelection = 0u;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void FacetPanel::RecordDeferred()

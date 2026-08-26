@@ -12,17 +12,17 @@ namespace Slate
 //                                                       OPENING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RevisionSequence::Open(const std::string& Description, const std::string& OperationName)
+Deliver<bool> RevisionSequence::Open(const std::string& Description, const std::string& OperationName)
 {
     if (OpenDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "a transaction is already open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "a transaction is already open" });
 
     OpenTransaction               = {};
     OpenTransaction.Description   = Description;
     OpenTransaction.OperationName = OperationName;
     OpenDeclared                  = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void RevisionSequence::Abandon()
@@ -35,10 +35,10 @@ void RevisionSequence::Abandon()
 //                                                       SEALING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RevisionSequence::Seal(std::uint64_t SealedAt, bool MergeDeclared)
+Deliver<bool> RevisionSequence::Seal(std::uint64_t SealedAt, bool MergeDeclared)
 {
     if (!OpenDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "no transaction is open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "no transaction is open" });
 
     // 📝 Sealing after a retreat discards the transactions the artist scrubbed past. They are not reachable
     //    again, and keeping them would present two futures from one position.
@@ -72,29 +72,29 @@ Outcome<bool> RevisionSequence::Seal(std::uint64_t SealedAt, bool MergeDeclared)
     OpenTransaction = {};
     OpenDeclared    = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      SCRUBBING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RevisionSequence::Retreat()
+Deliver<bool> RevisionSequence::Retreat()
 {
     if (ScrubIndex == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the scrub position is at the beginning" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the scrub position is at the beginning" });
 
     --ScrubIndex;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> RevisionSequence::Advance()
+Deliver<bool> RevisionSequence::Advance()
 {
     if (ScrubIndex >= CommittedOrder.size())
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the scrub position is at the end" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the scrub position is at the end" });
 
     ++ScrubIndex;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

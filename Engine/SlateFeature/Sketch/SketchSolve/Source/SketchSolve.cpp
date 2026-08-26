@@ -75,18 +75,18 @@ SketchSolveDisposition EvaluateSketchSolve(const SketchStructure& Declared)
     return SketchSolveDisposition::Produced;
 }
 
-Outcome<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
+Deliver<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
                                             std::uint32_t IterationLimit,
                                             double TravelTolerance)
 {
     const SketchSolveDisposition Standing = EvaluateSketchSolve(Declared);
     if (Standing == SketchSolveDisposition::NotRequested)
-        return Outcome<SketchSolveReport>::Result({ Standing, 0u, 0.0 });
+        return Deliver<SketchSolveReport>::Result({ Standing, 0u, 0.0 });
     if (Standing != SketchSolveDisposition::Produced)
-        return Outcome<SketchSolveReport>::Refuse({ RefusalReason::ContentUnsupported, "the sketch solve is not supported" });
+        return Deliver<SketchSolveReport>::Refuse({ RefusalReason::ContentUnsupported, "the sketch solve is not supported" });
 
     if (IterationLimit == 0u)
-        return Outcome<SketchSolveReport>::Result({ SketchSolveDisposition::LimitReached, 0u, 0.0 });
+        return Deliver<SketchSolveReport>::Result({ SketchSolveDisposition::LimitReached, 0u, 0.0 });
 
     std::vector<CurveSample> Previous;
     std::vector<CurveSample> Current;
@@ -97,12 +97,12 @@ Outcome<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
 
     for (std::uint32_t Iteration = 0u; Iteration < IterationLimit; ++Iteration)
     {
-        const Outcome<bool> ConstraintsApplied = ApplyConstraints(Declared);
+        const Deliver<bool> ConstraintsApplied = ApplyConstraints(Declared);
         if (!ConstraintsApplied)
-            return Outcome<SketchSolveReport>::Refuse(ConstraintsApplied.Error);
-        const Outcome<bool> DimensionsApplied = ApplyDimensions(Declared);
+            return Deliver<SketchSolveReport>::Refuse(ConstraintsApplied.Error);
+        const Deliver<bool> DimensionsApplied = ApplyDimensions(Declared);
         if (!DimensionsApplied)
-            return Outcome<SketchSolveReport>::Refuse(DimensionsApplied.Error);
+            return Deliver<SketchSolveReport>::Refuse(DimensionsApplied.Error);
 
         CaptureSketch(Declared, Current);
         Report.IterationCount = Iteration + 1u;
@@ -110,12 +110,12 @@ Outcome<SketchSolveReport> ApplySketchSolve(SketchStructure& Declared,
         if (Report.MaximumTravel <= TravelTolerance)
         {
             Report.Standing = SketchSolveDisposition::Produced;
-            return Outcome<SketchSolveReport>::Result(Report);
+            return Deliver<SketchSolveReport>::Result(Report);
         }
         Previous = Current;
     }
 
-    return Outcome<SketchSolveReport>::Result(Report);
+    return Deliver<SketchSolveReport>::Result(Report);
 }
 
 } // namespace Slate

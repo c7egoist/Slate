@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/DrawerSpace/Api/DrawerSpace.h"
@@ -107,10 +107,10 @@ public:
     //    and were not. 256 applies the eight strips with the rest of the panel's controls intact.
     static constexpr std::uint32_t ControlCapacity = 256u;
 
-    Outcome<bool> ConstructControlCentrePanel(MotionIntegrator& Motion, RecordingSurface& Surface,
+    Deliver<bool> ConstructControlCentrePanel(MotionIntegrator& Motion, RecordingSurface& Surface,
                             const ThemeProfile& Appearance);
     void Advance(const PointerCondition& Sampled, double Elapsed);
-    Outcome<bool> Record(const PlaneExtent& Interior, ControlCentreConfiguration& Configuration);
+    Deliver<bool> Record(const PlaneExtent& Interior, ControlCentreConfiguration& Configuration);
     void Exclude(DrawerSpace& Drawers) const;
     void Reset();
     void SetFontFamilies(FontLoader& Loader);

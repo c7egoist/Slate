@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialPreviewAtlas.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -26,7 +26,7 @@ public:
     ~MaterialPreviewAtlasImage();
 
     /// Allocates one sampled/storage atlas image. AtlasCount is fixed for its device lifetime.
-    Outcome<bool> ConstructMaterialPreviewAtlasImage(const VulkanExchange& Exchange,
+    Deliver<bool> ConstructMaterialPreviewAtlasImage(const VulkanExchange& Exchange,
                                                      const DiagnosticExtension& Naming,
                                                      std::uint32_t AtlasCount);
 
@@ -34,9 +34,9 @@ public:
     VkImage Image(std::uint32_t AtlasIndex) const;
 
     /// Records the image-layout transition required before one compute bake writes an atlas.
-    Outcome<bool> PrepareForBake(VkCommandBuffer Recording, std::uint32_t AtlasIndex);
+    Deliver<bool> PrepareForBake(VkCommandBuffer Recording, std::uint32_t AtlasIndex);
     /// Records the image-layout transition required before Browser/UI sampling.
-    Outcome<bool> PrepareForSampling(VkCommandBuffer Recording, std::uint32_t AtlasIndex);
+    Deliver<bool> PrepareForSampling(VkCommandBuffer Recording, std::uint32_t AtlasIndex);
 
     VkSampler Sampler() const { return Sampling; }
     std::uint32_t DeclaredAtlasCount() const { return AtlasCount; }
@@ -52,7 +52,7 @@ private:
         VkImageLayout Layout = VK_IMAGE_LAYOUT_UNDEFINED;
     };
 
-    Outcome<bool> Transition(VkCommandBuffer Recording, AtlasImage& Atlas, VkImageLayout Wanted,
+    Deliver<bool> Transition(VkCommandBuffer Recording, AtlasImage& Atlas, VkImageLayout Wanted,
                              VkPipelineStageFlags SourceStage, VkPipelineStageFlags DestinationStage,
                              VkAccessFlags SourceAccess, VkAccessFlags DestinationAccess);
 

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h"
 
 #include <cstdint>
@@ -88,7 +88,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for a ceiling of zero
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ReserveSurfaceStorage(std::uint64_t ByteLimit);
+    Deliver<bool> ReserveSurfaceStorage(std::uint64_t ByteLimit);
 
     /// 🧩 Accepts one derived artefact, evicting to make room for it.
     /// in    Keyed       [-]  what it was derived from
@@ -102,7 +102,7 @@ public:
     ///        evicted under exactly the memory pressure a long painting session produces.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const ContentKey&  Keyed,
+    Deliver<bool> Declare(const ContentKey&  Keyed,
                           LayerContentSource Source,
                           std::uint64_t      ByteExtent,
                           std::uint64_t      RecordingIndex);
@@ -114,7 +114,7 @@ public:
     ///        through to the third — which is correct, and slower, and visible only as one deferred tile.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<DepotArtefact> Resolve(const ContentKey& Keyed, std::uint64_t RecordingIndex);
+    Deliver<DepotArtefact> Resolve(const ContentKey& Keyed, std::uint64_t RecordingIndex);
 
     /// 🧩 Evicts least-recently-resolved artefacts until the declared extent is free.
     /// out   Evicted  [-]  how many artefacts left

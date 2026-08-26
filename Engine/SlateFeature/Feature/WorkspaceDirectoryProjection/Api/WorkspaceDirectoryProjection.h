@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Feature/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 
 #include <cstdint>
@@ -55,7 +55,7 @@ const char* WorkspaceDirectorySubjectTags(WorkspaceRecordSubject Subject, bool C
 void ProjectWorkspaceDirectory(const WorkspaceRecordStructure& Records,
                                WorkspaceDirectoryProjection& Presented);
 
-Outcome<std::uint32_t> ResolveWorkspaceDirectoryRow(const WorkspaceDirectoryProjection& Presented,
+Deliver<std::uint32_t> ResolveWorkspaceDirectoryRow(const WorkspaceDirectoryProjection& Presented,
                                                     WorkspaceRecordName Subject);
 
 } // namespace Slate

@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/ControlPanel/Api/ControlPanel.h"
 #include "Shared/OverlayGeometry.slang.h"
@@ -215,7 +215,7 @@ public:
     ///                     ExtentExhausted when the index or the integrator declines an registration
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructSceneDirectoryPanel(ControlIndex&              IncomingInteraction,
+    Deliver<bool> ConstructSceneDirectoryPanel(ControlIndex&              IncomingInteraction,
                             MotionIntegrator&              Integrator,
                             RecordingSurface&              Surface,
                             const ThemeProfile& Resolved);

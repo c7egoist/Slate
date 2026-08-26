@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -74,7 +74,7 @@ public:
     WorkspaceScenePass& operator=(const WorkspaceScenePass&) = delete;
     ~WorkspaceScenePass();
 
-    Outcome<bool> ConstructWorkspaceScenePass(const VulkanExchange& Exchange,
+    Deliver<bool> ConstructWorkspaceScenePass(const VulkanExchange& Exchange,
                                               const DiagnosticExtension& Naming,
                                               ShaderCodec& Streams,
                                               VkFormat ColourFormat);

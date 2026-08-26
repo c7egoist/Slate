@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 #include "SlateUI/Interface/MotionIntegrator/Api/MotionIntegrator.h"
 
@@ -27,7 +27,7 @@ class SlidingPages
 public:
 
     /// 🧩 Reserves one eased travel and seats the strip at its initial page.
-    Outcome<bool> ConstructSlidingPages(MotionIntegrator& IncomingMotion, std::uint32_t InitialPage,
+    Deliver<bool> ConstructSlidingPages(MotionIntegrator& IncomingMotion, std::uint32_t InitialPage,
                                         double Duration = 260.0,
                                         EaseCurve Shape = EaseCurve::Carousel);
 

@@ -159,7 +159,7 @@ CornerDisposition EvaluateProfileCorner(const SketchStructure& Declared,
     return CornerDisposition::Produced;
 }
 
-Outcome<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
+Deliver<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
                                                  ProfileNameInFeature Subject,
                                                  std::uint32_t LoopIndex,
                                                  std::uint32_t CornerIndex,
@@ -167,7 +167,7 @@ Outcome<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
                                                  bool Chamfer)
 {
     if (EvaluateProfileCorner(Declared, Subject, LoopIndex, CornerIndex, Radius, Chamfer) != CornerDisposition::Produced)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested profile corner is unsupported" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested profile corner is unsupported" });
 
     const ProfileSpecification& Source = Declared.Profiles()[Subject.IssuedIndex - 1u];
     std::vector<LoopCurveEndpoint> Curves;
@@ -182,21 +182,21 @@ Outcome<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
     const double Cosine = std::clamp(Dot(Incoming, Outgoing), -1.0, 1.0);
     const double Radians = std::acos(Cosine);
     if (Radians <= 1.0e-6 || std::fabs(3.141592653589793 - Radians) <= 1.0e-6)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the selected corner is degenerate" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the selected corner is degenerate" });
 
     const double BackwardLength = std::sqrt(LengthSquared(Difference(Curves[PriorIndex].StartPoint, Corner)));
     const double ForwardLength = std::sqrt(LengthSquared(Difference(Corner, Curves[NextIndex].EndPoint)));
     const double TangentDistance = Radius / std::tan(Radians * 0.5);
     if (TangentDistance <= 0.0 || TangentDistance >= BackwardLength || TangentDistance >= ForwardLength)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested radius does not fit the selected corner" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested radius does not fit the selected corner" });
 
     const SpatialPoint EnterPoint = Added(Corner, Scaled(Incoming, -TangentDistance));
     const SpatialPoint ExitPoint = Added(Corner, Scaled(Outgoing, TangentDistance));
 
-    const Outcome<SketchCurveName> TrimmedPrior = TrimCurve(Declared, Curves[PriorIndex].Curve, EnterPoint, true);
-    const Outcome<SketchCurveName> TrimmedNext = TrimCurve(Declared, Curves[NextIndex].Curve, ExitPoint, false);
+    const Deliver<SketchCurveName> TrimmedPrior = TrimCurve(Declared, Curves[PriorIndex].Curve, EnterPoint, true);
+    const Deliver<SketchCurveName> TrimmedNext = TrimCurve(Declared, Curves[NextIndex].Curve, ExitPoint, false);
     if (!TrimmedPrior || !TrimmedNext)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "one neighbouring curve could not be trimmed" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "one neighbouring curve could not be trimmed" });
 
     ProfileSpecification Produced;
     Produced.DeclarePlane(Source.HeldPlane());
@@ -240,7 +240,7 @@ Outcome<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
         Produced.DeclareLoop(Loop);
     }
 
-    return Outcome<ProfileNameInFeature>::Result(Declared.DeclareProfile(Produced));
+    return Deliver<ProfileNameInFeature>::Result(Declared.DeclareProfile(Produced));
 }
 
 } // namespace Slate

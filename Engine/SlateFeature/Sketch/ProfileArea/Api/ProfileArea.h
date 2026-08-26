@@ -66,7 +66,7 @@ struct ProfileAreaAnalysis
 ProfileAreaAnalysis AnalyzeProfileAreas(const SketchStructure& Declared,
                                              double ClosureTolerance = 0.01);
 
-Outcome<std::vector<ProfileNameInFeature>> AutoDeclareClosedAreaProfiles(SketchStructure& Declared,
+Deliver<std::vector<ProfileNameInFeature>> AutoDeclareClosedAreaProfiles(SketchStructure& Declared,
                                                                             double ClosureTolerance = 0.01);
 
 } // namespace Slate

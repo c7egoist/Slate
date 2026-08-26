@@ -33,45 +33,45 @@ SurfaceNameInSolid SolidStructure::DeclareSurface(const SurfaceSpecification& De
     return { static_cast<std::uint32_t>(HeldSurfaces.size()) };
 }
 
-Outcome<EdgeName> SolidStructure::DeclareEdge(VertexName StartVertex,
+Deliver<EdgeName> SolidStructure::DeclareEdge(VertexName StartVertex,
                                               VertexName EndVertex,
                                               CurveNameInSolid SupportingCurve)
 {
     if (!StartVertex.Assigned() || !EndVertex.Assigned() || !SupportingCurve.Assigned())
     {
-        return Outcome<EdgeName>::Refuse(
+        return Deliver<EdgeName>::Refuse(
             { RefusalReason::ContentUnsupported, "edge requires two vertices and one supporting curve" });
     }
 
     if (StartVertex.IssuedIndex > HeldVertices.size() || EndVertex.IssuedIndex > HeldVertices.size())
-        return Outcome<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge names an absent vertex" });
+        return Deliver<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge names an absent vertex" });
     if (SupportingCurve.IssuedIndex > HeldCurves.size())
-        return Outcome<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge names an absent curve" });
+        return Deliver<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge names an absent curve" });
     if (SameVertex(StartVertex, EndVertex))
-        return Outcome<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge endpoints must differ" });
+        return Deliver<EdgeName>::Refuse({ RefusalReason::ContentUnsupported, "edge endpoints must differ" });
 
     HeldEdges.push_back({ StartVertex, EndVertex, SupportingCurve });
-    return Outcome<EdgeName>::Result({ static_cast<std::uint32_t>(HeldEdges.size()) });
+    return Deliver<EdgeName>::Result({ static_cast<std::uint32_t>(HeldEdges.size()) });
 }
 
-Outcome<CoedgeName> SolidStructure::DeclareCoedge(EdgeName TraversedEdge,
+Deliver<CoedgeName> SolidStructure::DeclareCoedge(EdgeName TraversedEdge,
                                                   EdgeOrientation Orientation)
 {
     if (!TraversedEdge.Assigned() || TraversedEdge.IssuedIndex > HeldEdges.size())
-        return Outcome<CoedgeName>::Refuse({ RefusalReason::ContentUnsupported, "coedge names an absent edge" });
+        return Deliver<CoedgeName>::Refuse({ RefusalReason::ContentUnsupported, "coedge names an absent edge" });
 
     HeldCoedges.push_back({ TraversedEdge, Orientation });
-    return Outcome<CoedgeName>::Result({ static_cast<std::uint32_t>(HeldCoedges.size()) });
+    return Deliver<CoedgeName>::Result({ static_cast<std::uint32_t>(HeldCoedges.size()) });
 }
 
-Outcome<LoopName> SolidStructure::DeclareLoop(const DeclaredLoop& Incoming)
+Deliver<LoopName> SolidStructure::DeclareLoop(const DeclaredLoop& Incoming)
 {
     if (Incoming.Traversal.empty())
-        return Outcome<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop requires at least one coedge" });
+        return Deliver<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop requires at least one coedge" });
 
     for (CoedgeName Traversed : Incoming.Traversal)
         if (!Traversed.Assigned() || Traversed.IssuedIndex > HeldCoedges.size())
-            return Outcome<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop names an absent coedge" });
+            return Deliver<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop names an absent coedge" });
 
     std::vector<VertexName> TraversalVertices;
     VertexName PreviousEnd = {};
@@ -81,53 +81,53 @@ Outcome<LoopName> SolidStructure::DeclareLoop(const DeclaredLoop& Incoming)
         VertexName StartVertex = {};
         VertexName EndVertex = {};
         if (!ResolveCoedgeVertices(Incoming.Traversal[Index], StartVertex, EndVertex))
-            return Outcome<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop names an unresolved coedge" });
+            return Deliver<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop names an unresolved coedge" });
         if (Index == 0u)
             FirstStart = StartVertex;
         else if (!SameVertex(PreviousEnd, StartVertex))
-            return Outcome<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop traversal does not connect" });
+            return Deliver<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop traversal does not connect" });
         PreviousEnd = EndVertex;
     }
     if (!SameVertex(PreviousEnd, FirstStart))
-        return Outcome<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop traversal does not close" });
+        return Deliver<LoopName>::Refuse({ RefusalReason::ContentUnsupported, "loop traversal does not close" });
 
     HeldLoops.push_back(Incoming);
-    return Outcome<LoopName>::Result({ static_cast<std::uint32_t>(HeldLoops.size()) });
+    return Deliver<LoopName>::Result({ static_cast<std::uint32_t>(HeldLoops.size()) });
 }
 
-Outcome<FaceName> SolidStructure::DeclareFace(const DeclaredFace& Incoming)
+Deliver<FaceName> SolidStructure::DeclareFace(const DeclaredFace& Incoming)
 {
     if (!Incoming.SupportingSurface.Assigned())
-        return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires one supporting surface" });
+        return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires one supporting surface" });
     if (Incoming.SupportingSurface.IssuedIndex > HeldSurfaces.size())
-        return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent surface" });
+        return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent surface" });
     if (Incoming.LoopSet.empty())
-        return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires at least one loop" });
+        return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires at least one loop" });
 
     bool OuterDeclared = false;
     for (const DeclaredFaceLoop& HeldFaceLoop : Incoming.LoopSet)
     {
         const DeclaredLoop* HeldLoop = ResolveLoop(HeldFaceLoop.TraversedLoop);
         if (HeldLoop == nullptr)
-            return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent loop" });
+            return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent loop" });
         if (HeldLoop->Standing == LoopStanding::Outer)
         {
             if (OuterDeclared)
-                return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face declares more than one outer loop" });
+                return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face declares more than one outer loop" });
             OuterDeclared = true;
         }
         if (HeldFaceLoop.TrimSet.size() != HeldLoop->Traversal.size())
-            return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face trim count does not match loop traversal" });
+            return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face trim count does not match loop traversal" });
         for (const DeclaredTrimUse& Trim : HeldFaceLoop.TrimSet)
             if (!Trim.TraversedCurve.Assigned() || Trim.TraversedCurve.IssuedIndex > HeldCurves.size())
-                return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent trim curve" });
+                return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face names an absent trim curve" });
     }
 
     if (!OuterDeclared)
-        return Outcome<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires one outer loop" });
+        return Deliver<FaceName>::Refuse({ RefusalReason::ContentUnsupported, "face requires one outer loop" });
 
     HeldFaces.push_back(Incoming);
-    return Outcome<FaceName>::Result({ static_cast<std::uint32_t>(HeldFaces.size()) });
+    return Deliver<FaceName>::Result({ static_cast<std::uint32_t>(HeldFaces.size()) });
 }
 
 bool SolidStructure::ResolveCoedgeVertices(CoedgeName Subject,

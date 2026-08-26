@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/GeometryRenderingExchange/Api/GeometryRenderingExchange.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/VisibilityIndex.h"
@@ -187,7 +187,7 @@ public:
     /// post  the program stands and the residency is claimable
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructVisibilityRaster(SpanSpace&        Spans,
+    Deliver<bool> ConstructVisibilityRaster(SpanSpace&        Spans,
                             ShaderCodec&      Modules,
                             DescriptorIndex&  Descriptors,
                             ProgramIndex&     Programs,
@@ -220,7 +220,7 @@ public:
     ///        extent a recorded transfer still names. `Release` below is what releases them.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Resolve(const PartitionStructure&      Registered,
+    Deliver<std::uint32_t> Resolve(const PartitionStructure&      Registered,
                                    const GeometryRenderingSnapshot& Rendering,
                                    std::uint32_t              RegistrationBase,
                                    const OcclusionScheduler*  Culling,
@@ -243,7 +243,7 @@ public:
     /// pre   🔴 the device is idle — every rotation reading the previous spans has completed
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Derive(std::uint32_t DisplayX, std::uint32_t DisplayY);
+    Deliver<bool> Derive(std::uint32_t DisplayX, std::uint32_t DisplayY);
 
     /// 🧩 Records the raster for one cycle slot — the construct, the program, and one draw per residency.
     /// in    Recorded      [-]  the open recording of this cycle slot
@@ -259,7 +259,7 @@ public:
     ///        the placements and the composition already accepts one — 🚧 the argument arrives with it.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Record(VkCommandBuffer        Recorded,
+    Deliver<bool> Record(VkCommandBuffer        Recorded,
                          std::uint32_t          SlotIndex,
                          const ViewProjection&  Viewing);
 
@@ -279,7 +279,7 @@ public:
     ///        read, so nothing further is registered here.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> RecordIndirect(VkCommandBuffer           Recorded,
+    Deliver<bool> RecordIndirect(VkCommandBuffer           Recorded,
                                  std::uint32_t             SlotIndex,
                                  const ViewProjection&     Viewing,
                                  const OcclusionScheduler& Culling,
@@ -299,11 +299,11 @@ private:
 
     /// 🧩 Opens the render construct, sets the extent, binds the program, and hands back the covering span.
     /// out   Result  [-]  refuses with whatever the span or the program resolution rejected
-    Outcome<ConstructedSpan> Open(VkCommandBuffer Recorded, ConstructedProgram& Constructed);
+    Deliver<ConstructedSpan> Open(VkCommandBuffer Recorded, ConstructedProgram& Constructed);
 
     /// 🧩 Writes one residency's uniform for one cycle slot.
     /// in    SurvivingResolved [-]  non-zero routes the corner through the surviving run
-    Outcome<bool> Project(const ResidentPartitioning& Current,
+    Deliver<bool> Project(const ResidentPartitioning& Current,
                           std::uint32_t               SlotIndex,
                           const ViewProjection&       Viewing,
                           const ConstructedSpan&      Covering,
@@ -314,7 +314,7 @@ private:
     /// in    Rendering        [-]  the immutable rendering packet for the same topology revision
     /// in    RegistrationBase [-]  the document-wide ordinal the partitions begin at
     /// out   Result           [-]  the grouped run; refuses when a source face or corner is inconsistent
-    Outcome<std::vector<UploadedTriangle>> ArrangeTriangles(
+    Deliver<std::vector<UploadedTriangle>> ArrangeTriangles(
         const PartitionStructure&       Registered,
         const GeometryRenderingSnapshot& Rendering,
         std::uint32_t                   RegistrationBase) const;
@@ -325,7 +325,7 @@ private:
     /// in    Intent         [-]  what the device is permitted to read the resident span as
     /// in    Recorded       [-]  the immediate recording the transfer is written into
     /// out   Result        [-]  the resident span's ordinal; refuses with whatever the claim rejected
-    Outcome<std::uint32_t> Stage(const void*      Incoming,
+    Deliver<std::uint32_t> Stage(const void*      Incoming,
                                  VkDeviceSize     IncomingBytes,
                                  SpanIntent       Intent,
                                  VkCommandBuffer  Recorded);

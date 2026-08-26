@@ -6,7 +6,7 @@
 
 namespace Slate
 {
-Outcome<MaterialPreviewTile> MaterialPreviewAtlas::Reserve(std::uint32_t MaterialIndex, std::uint32_t Revision,
+Deliver<MaterialPreviewTile> MaterialPreviewAtlas::Reserve(std::uint32_t MaterialIndex, std::uint32_t Revision,
                                                            std::uint64_t Fingerprint)
 {
     for (MaterialPreviewTile& Current : Tiles)
@@ -18,13 +18,13 @@ Outcome<MaterialPreviewTile> MaterialPreviewAtlas::Reserve(std::uint32_t Materia
             Current.Fingerprint = Fingerprint;
             Current.State = MaterialPreviewState::BakeOwed;
         }
-        return Outcome<MaterialPreviewTile>::Result(Current);
+        return Deliver<MaterialPreviewTile>::Result(Current);
     }
 
     const std::uint64_t Slot = Tiles.size();
     if (Slot > 0xFFFFFFFFu)
     {
-        return Outcome<MaterialPreviewTile>::Refuse(
+        return Deliver<MaterialPreviewTile>::Refuse(
             { RefusalReason::ExtentExhausted, "the material preview atlas tile ordinal cannot be represented" });
     }
 
@@ -37,19 +37,19 @@ Outcome<MaterialPreviewTile> MaterialPreviewAtlas::Reserve(std::uint32_t Materia
     Produced.State = MaterialPreviewState::BakeOwed;
     Produced.Active = true;
     Tiles.push_back(Produced);
-    return Outcome<MaterialPreviewTile>::Result(Produced);
+    return Deliver<MaterialPreviewTile>::Result(Produced);
 }
 
-Outcome<MaterialPreviewTile> MaterialPreviewAtlas::Resolve(std::uint32_t MaterialIndex) const
+Deliver<MaterialPreviewTile> MaterialPreviewAtlas::Resolve(std::uint32_t MaterialIndex) const
 {
     for (const MaterialPreviewTile& Current : Tiles)
-        if (Current.Active && Current.MaterialIndex == MaterialIndex) return Outcome<MaterialPreviewTile>::Result(Current);
+        if (Current.Active && Current.MaterialIndex == MaterialIndex) return Deliver<MaterialPreviewTile>::Result(Current);
 
-    return Outcome<MaterialPreviewTile>::Refuse(
+    return Deliver<MaterialPreviewTile>::Refuse(
         { RefusalReason::ContentUnsupported, "the material has no allocated preview atlas tile" });
 }
 
-Outcome<MaterialPreviewTile> MaterialPreviewAtlas::MarkBaked(std::uint32_t MaterialIndex,
+Deliver<MaterialPreviewTile> MaterialPreviewAtlas::MarkBaked(std::uint32_t MaterialIndex,
                                                               std::uint64_t Fingerprint)
 {
     for (MaterialPreviewTile& Current : Tiles)
@@ -57,16 +57,16 @@ Outcome<MaterialPreviewTile> MaterialPreviewAtlas::MarkBaked(std::uint32_t Mater
         if (!Current.Active || Current.MaterialIndex != MaterialIndex) continue;
         if (Current.Fingerprint != Fingerprint)
         {
-            return Outcome<MaterialPreviewTile>::Refuse(
+            return Deliver<MaterialPreviewTile>::Refuse(
                 { RefusalReason::IdentityStale, "the preview bake completed for an older material revision" });
         }
 
         Current.BakedFingerprint = Fingerprint;
         Current.State = MaterialPreviewState::Ready;
-        return Outcome<MaterialPreviewTile>::Result(Current);
+        return Deliver<MaterialPreviewTile>::Result(Current);
     }
 
-    return Outcome<MaterialPreviewTile>::Refuse(
+    return Deliver<MaterialPreviewTile>::Refuse(
         { RefusalReason::ContentUnsupported, "the material has no allocated preview atlas tile" });
 }
 

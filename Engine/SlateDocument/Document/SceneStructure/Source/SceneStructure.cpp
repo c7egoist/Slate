@@ -82,10 +82,10 @@ bool SceneStructure::RelabelOwed() const
 //                                               ADMISSION AND RETIREMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> SceneStructure::Accept(OwnerIdentity Incoming)
+Deliver<bool> SceneStructure::Accept(OwnerIdentity Incoming)
 {
     if (!Incoming.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity names no owner" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity names no owner" });
 
     const std::size_t Required = static_cast<std::size_t>(Incoming.SlotIndex) + 1u;
 
@@ -111,15 +111,15 @@ Outcome<bool> SceneStructure::Accept(OwnerIdentity Incoming)
     Link(SlotIndex, AbsentSlot, RootCount);
     ++AcceptedCount;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SceneStructure::Retire(OwnerIdentity Departing)
+Deliver<bool> SceneStructure::Retire(OwnerIdentity Departing)
 {
     const std::uint32_t SlotIndex = Resolved(Departing);
 
     if (SlotIndex == AbsentSlot)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves here" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves here" });
 
     // 🔴 `12` §12: enclosed owners are re-enclosed by the departing owner's enclosure, not retired with
     //    it. Deleting a group deletes the group, not the work inside it. Each is placed immediately after the
@@ -198,7 +198,7 @@ Outcome<bool> SceneStructure::Retire(OwnerIdentity Departing)
     Attachments[SlotIndex]     = AttachmentRecord{};
     --AcceptedCount;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -268,14 +268,14 @@ void SceneStructure::Link(std::uint32_t SlotIndex, std::uint32_t EnclosureSlot, 
     ++*Counting;
 }
 
-Outcome<bool> SceneStructure::Enclose(OwnerIdentity Subject,
+Deliver<bool> SceneStructure::Enclose(OwnerIdentity Subject,
                                       OwnerIdentity ProposedEnclosure,
                                       std::uint32_t    OrderWithinEnclosure)
 {
     const std::uint32_t SlotIndex = Resolved(Subject);
 
     if (SlotIndex == AbsentSlot)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the enclosed owner no longer resolves" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the enclosed owner no longer resolves" });
 
     std::uint32_t EnclosureSlot = AbsentSlot;
 
@@ -285,7 +285,7 @@ Outcome<bool> SceneStructure::Enclose(OwnerIdentity Subject,
 
         if (EnclosureSlot == AbsentSlot)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::IdentityStale, "the enclosing owner no longer resolves" });
         }
 
@@ -293,13 +293,13 @@ Outcome<bool> SceneStructure::Enclose(OwnerIdentity Subject,
         //    are the caller's own arguments, so it names them without this seam allocating a message.
         if (EnclosureCyclic(Subject, ProposedEnclosure))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::RelationCyclic, "the owner already encloses its proposed enclosure" });
         }
 
         if (Enclosures[EnclosureSlot].EnclosureDepth + 1u >= EnclosureDepthLimit)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ExtentExhausted, "the enclosure reached the declared depth ceiling" });
         }
     }
@@ -312,7 +312,7 @@ Outcome<bool> SceneStructure::Enclose(OwnerIdentity Subject,
     if (Enclosures[SlotIndex].EnclosedCount != 0u || !LabelBetween(SlotIndex))
         DeclareExhausted(EnclosureSlot);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -393,25 +393,25 @@ void SceneStructure::DeclareExhausted(std::uint32_t EnclosureSlot)
     ExhaustedEnclosures.push_back(EnclosureSlot);
 }
 
-Outcome<bool> SceneStructure::AssignLabels(std::uint32_t EnclosureSlot, IntervalLabel Available, std::uint32_t Depth)
+Deliver<bool> SceneStructure::AssignLabels(std::uint32_t EnclosureSlot, IntervalLabel Available, std::uint32_t Depth)
 {
     if (Depth >= EnclosureDepthLimit)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the enclosure exceeded the depth ceiling" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the enclosure exceeded the depth ceiling" });
 
     const std::uint32_t Population = EnclosureSlot == AbsentSlot ? RootCount
                                                                  : Enclosures[EnclosureSlot].EnclosedCount;
 
     if (Population == 0u)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     if (Available.LabelEnd < Available.LabelBegin)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the span holds no ordinal to divide" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the span holds no ordinal to divide" });
 
     const std::uint64_t SpanWidth = Available.LabelEnd - Available.LabelBegin + 1u;
     const std::uint64_t EachWidth = SpanWidth / Population;
 
     if (EachWidth < 2u)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the span cannot hold its ordering" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the span cannot hold its ordering" });
 
     std::uint32_t Walking  = EnclosureSlot == AbsentSlot ? RootFirstSlot : Enclosures[EnclosureSlot].FirstEnclosed;
     std::uint64_t Issuing  = Available.LabelBegin;
@@ -428,7 +428,7 @@ Outcome<bool> SceneStructure::AssignLabels(std::uint32_t EnclosureSlot, Interval
             Interior.LabelBegin = Enclosures[Walking].Label.LabelBegin + 1u;
             Interior.LabelEnd   = Enclosures[Walking].Label.LabelEnd   - 1u;
 
-            const Outcome<bool> Nested = AssignLabels(Walking, Interior, Depth + 1u);
+            const Deliver<bool> Nested = AssignLabels(Walking, Interior, Depth + 1u);
 
             if (!Nested.Resolved)
                 return Nested;
@@ -438,10 +438,10 @@ Outcome<bool> SceneStructure::AssignLabels(std::uint32_t EnclosureSlot, Interval
         Walking  = Enclosures[Walking].NextInOrder;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SceneStructure::RepairLabels()
+Deliver<bool> SceneStructure::RepairLabels()
 {
     // 📝 Repair covers the exhausted span and escalates outward only while the span above it also refuses. A
     //    whole-population relabel is the last resort here rather than the first, which is the entire reason
@@ -457,14 +457,14 @@ Outcome<bool> SceneStructure::RepairLabels()
                                       ? 0u
                                       : Enclosures[EnclosureSlot].EnclosureDepth + 1u;
 
-            const Outcome<bool> Assigned = AssignLabels(EnclosureSlot, EnclosureInterval(EnclosureSlot), Depth);
+            const Deliver<bool> Assigned = AssignLabels(EnclosureSlot, EnclosureInterval(EnclosureSlot), Depth);
 
             if (Assigned.Resolved)
                 break;
 
             if (EnclosureSlot == AbsentSlot)
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ExtentExhausted, "the root span cannot hold the enclosure ordering" });
             }
 
@@ -472,32 +472,32 @@ Outcome<bool> SceneStructure::RepairLabels()
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<IntervalLabel> SceneStructure::Label(OwnerIdentity Subject) const
+Deliver<IntervalLabel> SceneStructure::Label(OwnerIdentity Subject) const
 {
     const std::uint32_t SlotIndex = Resolved(Subject);
 
     if (SlotIndex == AbsentSlot)
     {
-        return Outcome<IntervalLabel>::Refuse(
+        return Deliver<IntervalLabel>::Refuse(
             { RefusalReason::IdentityStale, "the identity no longer resolves here" });
     }
 
-    return Outcome<IntervalLabel>::Result(Enclosures[SlotIndex].Label);
+    return Deliver<IntervalLabel>::Result(Enclosures[SlotIndex].Label);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                ATTACHMENT COMPOUNDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> SceneStructure::Attach(OwnerIdentity Subject, OwnerIdentity ProposedAttachment)
+Deliver<bool> SceneStructure::Attach(OwnerIdentity Subject, OwnerIdentity ProposedAttachment)
 {
     const std::uint32_t SlotIndex = Resolved(Subject);
 
     if (SlotIndex == AbsentSlot)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the following owner no longer resolves" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the following owner no longer resolves" });
 
     std::uint32_t AttachmentSlot = AbsentSlot;
 
@@ -507,13 +507,13 @@ Outcome<bool> SceneStructure::Attach(OwnerIdentity Subject, OwnerIdentity Propos
 
         if (AttachmentSlot == AbsentSlot)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::IdentityStale, "the proposed attachment no longer resolves" });
         }
 
         if (AttachmentCyclic(Subject, ProposedAttachment))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::RelationCyclic, "the owner is already followed by its proposed attachment" });
         }
     }
@@ -541,25 +541,25 @@ Outcome<bool> SceneStructure::Attach(OwnerIdentity Subject, OwnerIdentity Propos
         Attachments[AttachmentSlot].FirstAttached  = SlotIndex;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SceneStructure::AuthorTransform(OwnerIdentity Subject, const DecomposedTransform& Authored)
+Deliver<bool> SceneStructure::AuthorTransform(OwnerIdentity Subject, const DecomposedTransform& Authored)
 {
     const std::uint32_t SlotIndex = Resolved(Subject);
 
     if (SlotIndex == AbsentSlot)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves here" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the identity no longer resolves here" });
 
     AuthoredTransforms[SlotIndex] = Authored;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SceneStructure::CompoundFrom(std::uint32_t SlotIndex, std::uint32_t Depth)
+Deliver<bool> SceneStructure::CompoundFrom(std::uint32_t SlotIndex, std::uint32_t Depth)
 {
     if (Depth >= EnclosureDepthLimit)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the attachment chain exceeded the ceiling" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the attachment chain exceeded the ceiling" });
 
     for (std::uint32_t Following = Attachments[SlotIndex].FirstAttached;
          Following != AbsentSlot;
@@ -571,16 +571,16 @@ Outcome<bool> SceneStructure::CompoundFrom(std::uint32_t SlotIndex, std::uint32_
                                                        AuthoredTransforms[Following]);
         Attachments[Following].AttachmentDepth = Depth + 1u;
 
-        const Outcome<bool> Deeper = CompoundFrom(Following, Depth + 1u);
+        const Deliver<bool> Deeper = CompoundFrom(Following, Depth + 1u);
 
         if (!Deeper.Resolved)
             return Deeper;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SceneStructure::CompoundAttachments()
+Deliver<bool> SceneStructure::CompoundAttachments()
 {
     for (std::uint32_t SlotIndex = 0u; SlotIndex < SlotGenerations.size(); ++SlotIndex)
     {
@@ -595,26 +595,26 @@ Outcome<bool> SceneStructure::CompoundAttachments()
         CompoundedTransforms[SlotIndex]        = AuthoredTransforms[SlotIndex];
         Attachments[SlotIndex].AttachmentDepth = 0u;
 
-        const Outcome<bool> Compounded = CompoundFrom(SlotIndex, 0u);
+        const Deliver<bool> Compounded = CompoundFrom(SlotIndex, 0u);
 
         if (!Compounded.Resolved)
             return Compounded;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<DecomposedTransform> SceneStructure::CompoundedTransform(OwnerIdentity Subject) const
+Deliver<DecomposedTransform> SceneStructure::CompoundedTransform(OwnerIdentity Subject) const
 {
     const std::uint32_t SlotIndex = Resolved(Subject);
 
     if (SlotIndex == AbsentSlot)
     {
-        return Outcome<DecomposedTransform>::Refuse(
+        return Deliver<DecomposedTransform>::Refuse(
             { RefusalReason::IdentityStale, "the identity no longer resolves here" });
     }
 
-    return Outcome<DecomposedTransform>::Result(CompoundedTransforms[SlotIndex]);
+    return Deliver<DecomposedTransform>::Result(CompoundedTransforms[SlotIndex]);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

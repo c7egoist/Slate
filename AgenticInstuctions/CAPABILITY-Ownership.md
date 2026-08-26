@@ -48,7 +48,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Revisions and undo             | `SlateDocument/Document/RevisionSequence`                                |
 | Selection                      | `SlateDocument/Document/SelectionSequence`                               |
 | Exact predicates (both toolchains) | `Engine/Shared/*.slang.h`                                            |
-| Refusal and delivery contracts | `Engine/Foundation/DeliveryOutcome.h`                                    |
+| Refusal and delivery contracts | `Engine/Foundation/DeliveryGuarantee.h`                                    |
 
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
 far: `SlateScene` → `SlateWorld` (step 4) and `SlateGeometry` → `SlateShape` (step 5). Still to come:

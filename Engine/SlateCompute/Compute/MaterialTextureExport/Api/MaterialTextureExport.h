@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/MaterialImageSampling/Api/MaterialImageSampling.h"
 #include "SlateDocument/Format/MaterialExport/Api/MaterialExport.h"
 
@@ -37,13 +37,13 @@ struct MaterialTextureExportReport
 class MaterialTextureExport
 {
 public:
-    Outcome<FlattenedMaterialTexture> FlattenImage(const WorkspaceMaterialRecord& Material,
+    Deliver<FlattenedMaterialTexture> FlattenImage(const WorkspaceMaterialRecord& Material,
                                                    const MaterialExportPackage& Package,
                                                    const MaterialExportImageDeclaration& Image) const;
 
-    Outcome<bool> WriteImage(const FlattenedMaterialTexture& Texture) const;
+    Deliver<bool> WriteImage(const FlattenedMaterialTexture& Texture) const;
 
-    Outcome<MaterialTextureExportReport> WritePackage(const WorkspaceMaterialRecord& Material,
+    Deliver<MaterialTextureExportReport> WritePackage(const WorkspaceMaterialRecord& Material,
                                                       const MaterialExportPackage& Package) const;
 };
 

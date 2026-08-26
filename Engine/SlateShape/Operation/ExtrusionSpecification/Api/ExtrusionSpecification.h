@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Geometry/ProfileSpecification/Api/ProfileSpecification.h"
 #include "SlateShape/Topology/SolidStructure/Api/SolidStructure.h"
@@ -39,7 +39,7 @@ struct ExtrusionSpecification
 
 ExtrusionDisposition EvaluateExtrusion(const ExtrusionSpecification& Declared);
 
-Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourceProfile,
+Deliver<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourceProfile,
                                           const std::vector<CurveSpecification>& SourceCurves,
                                           const ExtrusionSpecification& Declared);
 

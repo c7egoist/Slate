@@ -46,21 +46,21 @@ void HashString(std::uint64_t& Hash, const std::string& Text)
     if (!Text.empty()) HashBytes(Hash, Text.data(), Text.size());
 }
 
-Outcome<std::vector<std::uint8_t>> ReadAll(const std::string& Path)
+Deliver<std::vector<std::uint8_t>> ReadAll(const std::string& Path)
 {
     std::ifstream Input(Path, std::ios::binary);
     if (!Input)
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::ContentUnsupported, "the imported image reference is absent" });
     Input.seekg(0, std::ios::end);
     const std::streamoff Count = Input.tellg();
     if (Count <= 0)
-        return Outcome<std::vector<std::uint8_t>>::Refuse(
+        return Deliver<std::vector<std::uint8_t>>::Refuse(
             { RefusalReason::ContentUnsupported, "the imported image reference is empty" });
     Input.seekg(0, std::ios::beg);
     std::vector<std::uint8_t> Bytes(static_cast<std::size_t>(Count));
     Input.read(reinterpret_cast<char*>(Bytes.data()), Count);
-    return Outcome<std::vector<std::uint8_t>>::Result(std::move(Bytes));
+    return Deliver<std::vector<std::uint8_t>>::Result(std::move(Bytes));
 }
 
 std::uint16_t Le16(const std::vector<std::uint8_t>& Bytes, std::size_t Offset)
@@ -92,11 +92,11 @@ void WritePixel(MaterialImageRaster& Raster,
     Raster.Texels[Base + 3u] = Alpha;
 }
 
-Outcome<MaterialImageRaster> DecodeBmp(const std::vector<std::uint8_t>& Bytes,
+Deliver<MaterialImageRaster> DecodeBmp(const std::vector<std::uint8_t>& Bytes,
                                        const WorkspaceMaterialImageReference& Reference)
 {
     if (Bytes.size() < 54u || Bytes[0] != 'B' || Bytes[1] != 'M')
-        return Outcome<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the bitmap header is unsupported" });
+        return Deliver<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the bitmap header is unsupported" });
 
     const std::uint32_t DataOffset = Le32(Bytes, 10u);
     const std::uint32_t Width = Le32(Bytes, 18u);
@@ -105,12 +105,12 @@ Outcome<MaterialImageRaster> DecodeBmp(const std::vector<std::uint8_t>& Bytes,
     const std::uint16_t Bits = Le16(Bytes, 28u);
     const std::uint32_t Compression = Le32(Bytes, 30u);
     if (Planes != 1u || Compression != 0u || Width == 0u || Height == 0u || (Bits != 24u && Bits != 32u))
-        return Outcome<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "only uncompressed 24/32-bit BMP material images are decoded" });
+        return Deliver<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "only uncompressed 24/32-bit BMP material images are decoded" });
 
     const std::uint32_t BytesPerPixel = Bits / 8u;
     const std::uint32_t RowStride = ((Width * BytesPerPixel + 3u) / 4u) * 4u;
     if (DataOffset + static_cast<std::size_t>(RowStride) * Height > Bytes.size())
-        return Outcome<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the bitmap pixel span is incomplete" });
+        return Deliver<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the bitmap pixel span is incomplete" });
 
     MaterialImageRaster Raster;
     Raster.OriginPath = Reference.OriginPath;
@@ -133,14 +133,14 @@ Outcome<MaterialImageRaster> DecodeBmp(const std::vector<std::uint8_t>& Bytes,
             WritePixel(Raster, X, Y, Red, Green, Blue, Alpha);
         }
     }
-    return Outcome<MaterialImageRaster>::Result(std::move(Raster));
+    return Deliver<MaterialImageRaster>::Result(std::move(Raster));
 }
 
-Outcome<MaterialImageRaster> DecodeTga(const std::vector<std::uint8_t>& Bytes,
+Deliver<MaterialImageRaster> DecodeTga(const std::vector<std::uint8_t>& Bytes,
                                        const WorkspaceMaterialImageReference& Reference)
 {
     if (Bytes.size() < 18u)
-        return Outcome<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the TGA header is incomplete" });
+        return Deliver<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the TGA header is incomplete" });
 
     const std::uint8_t IdLength = Bytes[0];
     const std::uint8_t ColourMap = Bytes[1];
@@ -152,14 +152,14 @@ Outcome<MaterialImageRaster> DecodeTga(const std::vector<std::uint8_t>& Bytes,
     if (ColourMap != 0u || Width == 0u || Height == 0u || (ImageType != 2u && ImageType != 3u) ||
         (Bits != 8u && Bits != 24u && Bits != 32u))
     {
-        return Outcome<MaterialImageRaster>::Refuse(
+        return Deliver<MaterialImageRaster>::Refuse(
             { RefusalReason::ContentUnsupported, "only uncompressed greyscale/RGB/RGBA TGA material images are decoded" });
     }
 
     const std::uint32_t BytesPerPixel = Bits / 8u;
     const std::size_t DataOffset = 18u + IdLength;
     if (DataOffset + static_cast<std::size_t>(Width) * Height * BytesPerPixel > Bytes.size())
-        return Outcome<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the TGA pixel span is incomplete" });
+        return Deliver<MaterialImageRaster>::Refuse({ RefusalReason::ContentUnsupported, "the TGA pixel span is incomplete" });
 
     MaterialImageRaster Raster;
     Raster.OriginPath = Reference.OriginPath;
@@ -190,7 +190,7 @@ Outcome<MaterialImageRaster> DecodeTga(const std::vector<std::uint8_t>& Bytes,
             }
         }
     }
-    return Outcome<MaterialImageRaster>::Result(std::move(Raster));
+    return Deliver<MaterialImageRaster>::Result(std::move(Raster));
 }
 
 double Address(double Coordinate, MaterialImageAddressing Addressing)
@@ -226,10 +226,10 @@ std::string TemporaryPath(const char* Stem, const char* Extension)
     return (Root / (std::string("slate_") + Stem + "_" + std::to_string(++Counter) + Extension)).string();
 }
 
-Outcome<MaterialImageRaster> DecodeExternal(const WorkspaceMaterialImageReference& Reference)
+Deliver<MaterialImageRaster> DecodeExternal(const WorkspaceMaterialImageReference& Reference)
 {
     if (Reference.Width == 0u || Reference.Height == 0u)
-        return Outcome<MaterialImageRaster>::Refuse(
+        return Deliver<MaterialImageRaster>::Refuse(
             { RefusalReason::ContentUnsupported, "the imported image reference has no declared extent for decoding" });
 
     const std::string Raw = TemporaryPath("material_decode", ".rgba");
@@ -239,17 +239,17 @@ Outcome<MaterialImageRaster> DecodeExternal(const WorkspaceMaterialImageReferenc
     if (std::system(Command.c_str()) != 0)
     {
         std::remove(Raw.c_str());
-        return Outcome<MaterialImageRaster>::Refuse(
+        return Deliver<MaterialImageRaster>::Refuse(
             { RefusalReason::ContentUnsupported, "the external image decoder rejected the referenced material image" });
     }
 
-    const Outcome<std::vector<std::uint8_t>> Bytes = ReadAll(Raw);
+    const Deliver<std::vector<std::uint8_t>> Bytes = ReadAll(Raw);
     std::remove(Raw.c_str());
-    if (!Bytes.Resolved) return Outcome<MaterialImageRaster>::Refuse(Bytes.Error);
+    if (!Bytes.Resolved) return Deliver<MaterialImageRaster>::Refuse(Bytes.Error);
 
     const std::size_t Expected = static_cast<std::size_t>(Reference.Width) * Reference.Height * 4u;
     if (Bytes.Resolve().size() < Expected)
-        return Outcome<MaterialImageRaster>::Refuse(
+        return Deliver<MaterialImageRaster>::Refuse(
             { RefusalReason::ContentUnsupported, "the external image decoder produced an incomplete RGBA span" });
 
     MaterialImageRaster Raster;
@@ -261,7 +261,7 @@ Outcome<MaterialImageRaster> DecodeExternal(const WorkspaceMaterialImageReferenc
     Raster.Texels.assign(Expected, 1.0f);
     for (std::size_t Index = 0u; Index < Expected; ++Index)
         Raster.Texels[Index] = static_cast<float>(Bytes.Resolve()[Index]) / 255.0f;
-    return Outcome<MaterialImageRaster>::Result(std::move(Raster));
+    return Deliver<MaterialImageRaster>::Result(std::move(Raster));
 }
 
 } // namespace
@@ -279,38 +279,38 @@ std::uint64_t FingerprintMaterialImageReference(const WorkspaceMaterialImageRefe
     return Hash;
 }
 
-Outcome<MaterialImageRaster> MaterialImageSampling::OpenReference(const WorkspaceMaterialImageReference& Reference) const
+Deliver<MaterialImageRaster> MaterialImageSampling::OpenReference(const WorkspaceMaterialImageReference& Reference) const
 {
-    const Outcome<std::vector<std::uint8_t>> Bytes = ReadAll(Reference.OriginPath);
-    if (!Bytes.Resolved) return Outcome<MaterialImageRaster>::Refuse(Bytes.Error);
+    const Deliver<std::vector<std::uint8_t>> Bytes = ReadAll(Reference.OriginPath);
+    if (!Bytes.Resolved) return Deliver<MaterialImageRaster>::Refuse(Bytes.Error);
 
     if (Bytes.Resolve().size() >= 2u && Bytes.Resolve()[0] == 'B' && Bytes.Resolve()[1] == 'M')
     {
-        const Outcome<MaterialImageRaster> Native = DecodeBmp(Bytes.Resolve(), Reference);
+        const Deliver<MaterialImageRaster> Native = DecodeBmp(Bytes.Resolve(), Reference);
         if (Native.Resolved) return Native;
     }
     if (Bytes.Resolve().size() >= 3u && Bytes.Resolve()[1] == 0u &&
         (Bytes.Resolve()[2] == 2u || Bytes.Resolve()[2] == 3u))
     {
-        const Outcome<MaterialImageRaster> Native = DecodeTga(Bytes.Resolve(), Reference);
+        const Deliver<MaterialImageRaster> Native = DecodeTga(Bytes.Resolve(), Reference);
         if (Native.Resolved) return Native;
     }
 
     return DecodeExternal(Reference);
 }
 
-Outcome<MaterialImageSample> MaterialImageSampling::SampleReference(const WorkspaceMaterialImageReference& Reference,
+Deliver<MaterialImageSample> MaterialImageSampling::SampleReference(const WorkspaceMaterialImageReference& Reference,
                                                                     ChannelSubject Channel,
                                                                     double CoordinateU,
                                                                     double CoordinateV,
                                                                     MaterialImageAddressing AddressU,
                                                                     MaterialImageAddressing AddressV) const
 {
-    const Outcome<MaterialImageRaster> Opened = OpenReference(Reference);
-    if (!Opened.Resolved) return Outcome<MaterialImageSample>::Refuse(Opened.Error);
+    const Deliver<MaterialImageRaster> Opened = OpenReference(Reference);
+    if (!Opened.Resolved) return Deliver<MaterialImageSample>::Refuse(Opened.Error);
     const MaterialImageRaster Raster = Opened.Resolve();
     if (Raster.Width == 0u || Raster.Height == 0u || Raster.Texels.empty())
-        return Outcome<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the imported image has no sampleable pixels" });
+        return Deliver<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the imported image has no sampleable pixels" });
 
     const double U = Address(CoordinateU, AddressU);
     const double V = Address(CoordinateV, AddressV);
@@ -325,22 +325,22 @@ Outcome<MaterialImageSample> MaterialImageSampling::SampleReference(const Worksp
     Sample.Alpha = Raster.Texels[Base + 3u];
     Sample.ReferenceFingerprint = FingerprintMaterialImageReference(Reference);
     Sample.ColourSample = Reference.ColourData;
-    return Outcome<MaterialImageSample>::Result(Sample);
+    return Deliver<MaterialImageSample>::Result(Sample);
 }
 
-Outcome<MaterialImageSample> MaterialImageSampling::SampleMaterialChannel(const WorkspaceMaterialRecord& Material,
+Deliver<MaterialImageSample> MaterialImageSampling::SampleMaterialChannel(const WorkspaceMaterialRecord& Material,
                                                                           const MaterialImageSampleRequest& Request) const
 {
     if (Request.Channel == ChannelSubject::ChannelCount)
-        return Outcome<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the closed channel count is not sampleable" });
+        return Deliver<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the closed channel count is not sampleable" });
 
     const ChannelSpecification& Channel = Material.Material.Channel(Request.Channel);
     if (!Channel.ChannelDeclared || Channel.Source != ChannelSource::Imported)
-        return Outcome<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the requested material channel is not imported imagery" });
+        return Deliver<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the requested material channel is not imported imagery" });
     if (Channel.SourceIndex >= Material.Images.size())
-        return Outcome<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the imported image source index is outside the material" });
+        return Deliver<MaterialImageSample>::Refuse({ RefusalReason::ContentUnsupported, "the imported image source index is outside the material" });
 
-    const Outcome<MaterialImageSample> Sampled = SampleReference(Material.Images[Channel.SourceIndex], Request.Channel,
+    const Deliver<MaterialImageSample> Sampled = SampleReference(Material.Images[Channel.SourceIndex], Request.Channel,
                                                                  Request.CoordinateU, Request.CoordinateV,
                                                                  Request.AddressU, Request.AddressV);
     if (!Sampled.Resolved) return Sampled;
@@ -348,7 +348,7 @@ Outcome<MaterialImageSample> MaterialImageSampling::SampleMaterialChannel(const 
     MaterialImageSample Produced = Sampled.Resolve();
     Produced.SourceIndex = Channel.SourceIndex;
     Produced.ColourSample = MeasureCarriesColour(Channel.Measured);
-    return Outcome<MaterialImageSample>::Result(Produced);
+    return Deliver<MaterialImageSample>::Result(Produced);
 }
 
 MaterialImageSamplingCapabilities MaterialImageSampling::Capabilities() const

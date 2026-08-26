@@ -62,17 +62,17 @@ LeafAppearance AppearanceFor(const ThemeProfile& Appearance, LeafSubject Subject
 //                                                       LEAF TARGET
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> LeafPanel::ConstructLeafPanel(RecordingSurface& IncomingSurface,
+Deliver<bool> LeafPanel::ConstructLeafPanel(RecordingSurface& IncomingSurface,
                                    const ThemeProfile& IncomingAppearance,
                                    LeafSubject IncomingSubject)
 {
     if (Surface != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a leaf panel construction stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a leaf panel construction stands" });
 
     Surface    = &IncomingSurface;
     Appearance = &IncomingAppearance;
     Subject    = IncomingSubject;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void LeafPanel::Record(const PlaneExtent& Extent)

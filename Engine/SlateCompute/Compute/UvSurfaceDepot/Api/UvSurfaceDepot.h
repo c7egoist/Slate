@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/ChartPartition/Api/ChartPartition.h"
 #include "SlateCompute/Compute/SurfaceDepot/Api/SurfaceDepot.h"
@@ -122,7 +122,7 @@ public:
     ///        reports no miss and no resolution and reads as a transfer that succeeded.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const TransferSpecification& Transferring_);
+    Deliver<bool> Declare(const TransferSpecification& Transferring_);
 
     /// 🧩 The content key one transferred result is held under — `24` §3's five fields, closed.
     /// in    Source        [-]  the dense origin; its seal revision is the first field
@@ -135,7 +135,7 @@ public:
     ///        something else, which presents as attributes subtly wrong everywhere rather than as a failure.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ContentKey> KeyOf(const TopologyStructure& Source,
+    Deliver<ContentKey> KeyOf(const TopologyStructure& Source,
                               const TopologyStructure& Working,
                               const ChartPartition&    Partitioning) const;
 
@@ -153,7 +153,7 @@ public:
     ///        the weaker guarantee for both.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<SourceCorrespondence> Correspond(DocumentPosition         WorkingPosition,
+    Deliver<SourceCorrespondence> Correspond(DocumentPosition         WorkingPosition,
                                              SurfaceDirection         WorkingOrientation,
                                              const TopologyStructure& Source) const;
 
@@ -187,7 +187,7 @@ public:
     ///        layer above it in `56`, and the two are addressed at their own levels rather than merged.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Accept(SurfaceDepot&     Depot,
+    Deliver<bool> Accept(SurfaceDepot&     Depot,
                         const ContentKey& Keyed,
                         std::uint64_t     ByteExtent,
                         std::uint64_t     RecordingIndex) const;

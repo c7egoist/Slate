@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Feature/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 #include "SlateFeature/Feature/WorkspaceRevisionSequence/Api/WorkspaceRevisionSequence.h"
 
@@ -21,7 +21,7 @@ struct WorkspacePropertyProjection
     std::vector<WorkspaceRevisionName> RevisionSet = {};
 };
 
-Outcome<WorkspacePropertyProjection> ProjectWorkspaceProperty(const WorkspaceRecordStructure& Records,
+Deliver<WorkspacePropertyProjection> ProjectWorkspaceProperty(const WorkspaceRecordStructure& Records,
                                                               const WorkspaceRevisionSequence& Revisions,
                                                               WorkspaceRecordName Subject);
 

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
 
 #include <string>
@@ -37,6 +37,6 @@ struct ImportedSceneMesh
 
 SceneMeshFormat ClassifySceneMeshFormat(const std::string& Path);
 bool SceneMeshFormatSupported(const std::string& Path);
-Outcome<ImportedSceneMesh> ImportSceneMeshFile(const std::string& Path);
+Deliver<ImportedSceneMesh> ImportSceneMeshFile(const std::string& Path);
 
 } // namespace Slate

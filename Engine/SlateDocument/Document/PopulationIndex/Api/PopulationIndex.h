@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <vector>
@@ -69,7 +69,7 @@ public:
     /// err   refuses with ExtentExhausted when the population reaches its declared ceiling
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<OwnerIdentity> Register();
+    Deliver<OwnerIdentity> Register();
 
     /// 🧩 Withdraws one owner and advances the slot's generation.
     /// in    Subject  [-]  the identity to withdraw
@@ -77,7 +77,7 @@ public:
     /// post  every reference carrying the prior generation resolves to absent
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Withdraw(OwnerIdentity Subject);
+    Deliver<bool> Withdraw(OwnerIdentity Subject);
 
     /// 🧩 Whether an identity still names the owner it was registered for.
     /// in    Subject  [-]  the identity to resolve

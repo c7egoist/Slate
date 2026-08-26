@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Shared/WorkspaceCadPacket.slang.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
@@ -40,7 +40,7 @@ public:
     WorkspaceCadPass& operator=(const WorkspaceCadPass&) = delete;
     ~WorkspaceCadPass();
 
-    Outcome<bool> ConstructWorkspaceCadPass(const VulkanExchange& Exchange,
+    Deliver<bool> ConstructWorkspaceCadPass(const VulkanExchange& Exchange,
                                             const DiagnosticExtension& Naming,
                                             ShaderCodec& Streams,
                                             VkFormat ColourFormat);

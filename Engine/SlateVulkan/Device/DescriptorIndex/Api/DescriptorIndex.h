@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -84,7 +84,7 @@ public:
     ///        bound it — so an unnamed set turns each of those reports into an address the reader must resolve.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructDescriptorIndex(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
+    Deliver<bool> ConstructDescriptorIndex(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
 
     /// 🧩 Declares one layout from its slots, returning the ordinal every later claim names it by.
     /// in    Declared  [-]  the slots, in any order; slot ordinals need not be contiguous
@@ -92,7 +92,7 @@ public:
     ///                      and with RelationCyclic once the declaration set has been fixed
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(const std::vector<DescriptorSlot>& Declared);
+    Deliver<std::uint32_t> Declare(const std::vector<DescriptorSlot>& Declared);
 
     /// 🧩 Closes the declaration and constructs the one descriptor extent every later claim is sliced from.
     /// in    ConcurrentSets [-]  how many sets the extent must admit, across every layout and every rotation
@@ -102,7 +102,7 @@ public:
     ///       that reallocates invalidates every set sliced from it, including the ones a rotation still reads.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Fix(std::uint32_t ConcurrentSets);
+    Deliver<bool> Fix(std::uint32_t ConcurrentSets);
 
     /// 🧩 Reservations one set per cycle slot against a declared layout, returning the claim's ordinal.
     /// in    LayoutIndex [-]  a layout this component declared
@@ -110,7 +110,7 @@ public:
     /// post  `RecordingSlotCount` sets stand and are addressed by the returned ordinal and a cycle slot
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Reserve(std::uint32_t LayoutIndex);
+    Deliver<std::uint32_t> Reserve(std::uint32_t LayoutIndex);
 
     /// 🧩 Writes the content of one claimed set for one cycle slot.
     /// in    ReservationIndex  [-]  a claim this component registered
@@ -121,7 +121,7 @@ public:
     /// pre   🔴 no recording that reads this set for this cycle slot is still executing
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(std::uint32_t                          ReservationIndex,
+    Deliver<bool> Amend(std::uint32_t                          ReservationIndex,
                         std::uint32_t                          SlotIndex,
                         const std::vector<DescriptorContent>&  Amended);
 
@@ -129,13 +129,13 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for an unclaimed ordinal or an excessive slot
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<VkDescriptorSet> Resolve(std::uint32_t ReservationIndex, std::uint32_t SlotIndex) const;
+    Deliver<VkDescriptorSet> Resolve(std::uint32_t ReservationIndex, std::uint32_t SlotIndex) const;
 
     /// 🧩 The layout one ordinal names, for the recording that constructs a program against it.
     /// out   Result  [-]  refuses with ContentUnsupported for an undeclared ordinal
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<VkDescriptorSetLayout> Layout(std::uint32_t LayoutIndex) const;
+    Deliver<VkDescriptorSetLayout> Layout(std::uint32_t LayoutIndex) const;
 
     /// 🧩 Destroys every set, every layout and the extent they were sliced from.
     /// pre   the device is idle

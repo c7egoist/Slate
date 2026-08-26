@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
 
@@ -36,6 +36,6 @@ struct ImportedMaterialImage
 MaterialImageFormat ClassifyMaterialImageFormat(const std::string& Path);
 bool MaterialImageFormatSupported(const std::string& Path);
 ChannelSubject SuggestMaterialImageChannel(const std::string& Path, bool& ColourData);
-Outcome<ImportedMaterialImage> ImportMaterialImageReference(const std::string& Path);
+Deliver<ImportedMaterialImage> ImportMaterialImageReference(const std::string& Path);
 
 } // namespace Slate

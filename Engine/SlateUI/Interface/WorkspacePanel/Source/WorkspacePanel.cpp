@@ -12,25 +12,25 @@ namespace Slate
 //                                                       CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> WorkspacePanel::ConstructWorkspacePanel(RecordingSurface& Recording, const ThemeProfile& Declared)
+Deliver<bool> WorkspacePanel::ConstructWorkspacePanel(RecordingSurface& Recording, const ThemeProfile& Declared)
 {
     if (Surface != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a construction already stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a construction already stands" });
 
     Surface    = &Recording;
     Appearance = &Declared;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       THE RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> WorkspacePanel::Record(const PlaneExtent& Extent, const char* Titled)
+Deliver<bool> WorkspacePanel::Record(const PlaneExtent& Extent, const char* Titled)
 {
     if (Surface == nullptr || Appearance == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no construction stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no construction stands" });
 
     const WorkspaceMetric& Measure = Appearance->WorkspaceMeasure;
     const WorkspaceColour&    Colour     = Appearance->Workspace;
@@ -55,7 +55,7 @@ Outcome<bool> WorkspacePanel::Record(const PlaneExtent& Extent, const char* Titl
                                     VacantTracking,
                                     true);
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     // 🔴 The whole panel is the sheet's OLED ground and NOTHING else. The strip band and the footer
@@ -82,7 +82,7 @@ Outcome<bool> WorkspacePanel::Record(const PlaneExtent& Extent, const char* Titl
     if (BodyExtent.MaximumY < BodyExtent.MinimumY)
         BodyExtent.MaximumY = BodyExtent.MinimumY;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

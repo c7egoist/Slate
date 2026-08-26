@@ -255,19 +255,19 @@ void AdaptWhite(double IncomingWhiteX, double IncomingWhiteY,
 //                                                   THE PROJECTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ColourSpecification> Project(ColourSpecification             Incoming,
+Deliver<ColourSpecification> Project(ColourSpecification             Incoming,
                                     const ColourSpaceSpecification& IncomingSpace,
                                     const ColourSpaceSpecification& Target)
 {
     if (!Incoming.ColourDeclared() || !IncomingSpace.SpaceDeclared() || !Target.SpaceDeclared())
     {
-        return Outcome<ColourSpecification>::Refuse(
+        return Deliver<ColourSpecification>::Refuse(
             { RefusalReason::ContentUnsupported, "a colour or a space was undeclared" });
     }
 
     if (Incoming.SpaceIdentity != IncomingSpace.SpaceIdentity)
     {
-        return Outcome<ColourSpecification>::Refuse(
+        return Deliver<ColourSpecification>::Refuse(
             { RefusalReason::ContentUnsupported, "the colour is not a coordinate in the supplied space" });
     }
 
@@ -275,7 +275,7 @@ Outcome<ColourSpecification> Project(ColourSpecification             Incoming,
     //    `36` §3's re-conversion rule is the same instinct: a conversion that does nothing must cost nothing and
     //    must not perturb what it was given.
     if (IncomingSpace.SpaceIdentity == Target.SpaceIdentity)
-        return Outcome<ColourSpecification>::Result(Incoming);
+        return Deliver<ColourSpecification>::Result(Incoming);
 
     const TristimulusProjection Forward = DeriveProjection(IncomingSpace);
     const TristimulusProjection TargetForward = DeriveProjection(Target);
@@ -284,7 +284,7 @@ Outcome<ColourSpecification> Project(ColourSpecification             Incoming,
 
     if (!Forward.Derived || !TargetForward.Derived || !Invert(TargetForward, TargetInverse))
     {
-        return Outcome<ColourSpecification>::Refuse(
+        return Deliver<ColourSpecification>::Refuse(
             { RefusalReason::ContentUnsupported, "a space declared degenerate primaries" });
     }
 
@@ -314,20 +314,20 @@ Outcome<ColourSpecification> Project(ColourSpecification             Incoming,
     Projected.BlueCoordinate  = Encode(Target, TargetBlue);
     Projected.SpaceIdentity   = Target.SpaceIdentity;
 
-    return Outcome<ColourSpecification>::Result(Projected);
+    return Deliver<ColourSpecification>::Result(Projected);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                 TRISTIMULUS TO A SPACE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ColourSpecification> ProjectTristimulus(double                          TristimulusX,
+Deliver<ColourSpecification> ProjectTristimulus(double                          TristimulusX,
                                                 double                          TristimulusY,
                                                 double                          TristimulusZ,
                                                 const ColourSpaceSpecification& Target)
 {
     if (!Target.SpaceDeclared())
-        return Outcome<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the space is undeclared" });
+        return Deliver<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the space is undeclared" });
 
     const TristimulusProjection TargetForward = DeriveProjection(Target);
 
@@ -335,7 +335,7 @@ Outcome<ColourSpecification> ProjectTristimulus(double                          
 
     if (!TargetForward.Derived || !Invert(TargetForward, TargetInverse))
     {
-        return Outcome<ColourSpecification>::Refuse(
+        return Deliver<ColourSpecification>::Refuse(
             { RefusalReason::ContentUnsupported, "the target space declared degenerate primaries" });
     }
 
@@ -351,24 +351,24 @@ Outcome<ColourSpecification> ProjectTristimulus(double                          
     Projected.BlueCoordinate  = Encode(Target, TargetBlue);
     Projected.SpaceIdentity   = Target.SpaceIdentity;
 
-    return Outcome<ColourSpecification>::Result(Projected);
+    return Deliver<ColourSpecification>::Result(Projected);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    TEMPERATURE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ColourSpecification> ProjectTemperature(double                          Temperature,
+Deliver<ColourSpecification> ProjectTemperature(double                          Temperature,
                                                 const ColourSpaceSpecification& Target)
 {
     if (Temperature < 1667.0 || Temperature > 25000.0)
     {
-        return Outcome<ColourSpecification>::Refuse(
+        return Deliver<ColourSpecification>::Refuse(
             { RefusalReason::ContentUnsupported, "the temperature lies outside the declared locus interval" });
     }
 
     if (!Target.SpaceDeclared())
-        return Outcome<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the space is undeclared" });
+        return Deliver<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the space is undeclared" });
 
     // 📐 Kim's cubic approximation of the Planckian locus, in two intervals. The locus itself has no closed
     //    form, so this is Bounded and declared as such rather than presented as exact.
@@ -410,7 +410,7 @@ Outcome<ColourSpecification> ProjectTemperature(double                          
     }
 
     if (LocusY == 0.0)
-        return Outcome<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the locus is degenerate" });
+        return Deliver<ColourSpecification>::Refuse({ RefusalReason::ContentUnsupported, "the locus is degenerate" });
 
     // 📝 Normalised to unit luminance. The illuminant's radiant intensity is `44` §2's separate declaration, so
     //    folding a magnitude in here would give one quantity two owners.

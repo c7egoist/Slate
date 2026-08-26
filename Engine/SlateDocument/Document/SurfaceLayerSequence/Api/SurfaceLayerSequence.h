@@ -7,7 +7,7 @@
 
 #include "Foundation/Combination.h"
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
@@ -177,7 +177,7 @@ public:
     /// post  the entry sits last, which is topmost
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<LayerIdentity> Append(const LayerSpecification& Declaring);
+    Deliver<LayerIdentity> Append(const LayerSpecification& Declaring);
 
     /// 🧩 Moves one entry to a declared sequence position.
     /// in    Subject   [-]  the entry
@@ -188,7 +188,7 @@ public:
     ///        nothing else, which is what makes reordering affordable in `RevisionSequence`.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Reorder(LayerIdentity Subject, std::uint32_t Position);
+    Deliver<std::uint32_t> Reorder(LayerIdentity Subject, std::uint32_t Position);
 
     /// 🧩 Presents or hides one entry.
     /// out   Result  [-]  refuses with IdentityStale; carries the prior standing as the inverse
@@ -196,34 +196,34 @@ public:
     ///        presented has been told the document does not hold what they see.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclarePresence(LayerIdentity Subject, bool PresenceEnabled);
+    Deliver<bool> DeclarePresence(LayerIdentity Subject, bool PresenceEnabled);
 
     /// 🧩 Renames one entry. The name is document data and supplies material/export labels.
-    Outcome<std::string> DeclareName(LayerIdentity Subject, const std::string& Name);
+    Deliver<std::string> DeclareName(LayerIdentity Subject, const std::string& Name);
 
     /// 🧩 Changes which material channels one entry writes.
     /// out   Result  [-]  previous channel mask, or IdentityStale when the row no longer resolves
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> DeclareChannelMask(LayerIdentity Subject, std::uint32_t ChannelMask);
+    Deliver<std::uint32_t> DeclareChannelMask(LayerIdentity Subject, std::uint32_t ChannelMask);
 
     /// 🧩 Changes one entry's content source without replacing its identity.
     /// out   Result  [-]  previous source, or IdentityStale when the row no longer resolves
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<LayerContentSource> DeclareSource(LayerIdentity Subject, LayerContentSource Source);
+    Deliver<LayerContentSource> DeclareSource(LayerIdentity Subject, LayerContentSource Source);
 
     /// 🧩 Changes the mask/coverage that gates one entry.
     /// out   Result  [-]  previous coverage declaration, or IdentityStale when the row no longer resolves
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<CoverageSpecification> DeclareCoverage(LayerIdentity Subject, const CoverageSpecification& Coverage);
+    Deliver<CoverageSpecification> DeclareCoverage(LayerIdentity Subject, const CoverageSpecification& Coverage);
 
     /// 🧩 Amends one entry's combination.
     /// out   Result  [-]  refuses with IdentityStale; carries the prior combination
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<CombineSpecification> DeclareCombination(LayerIdentity Subject, CombineSpecification Declaring);
+    Deliver<CombineSpecification> DeclareCombination(LayerIdentity Subject, CombineSpecification Declaring);
 
     /// 🧩 Removes one entry, retaining its description and never its resolved texels.
     /// out   Result  [-]  refuses with IdentityStale
@@ -233,7 +233,7 @@ public:
     ///        does not need it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<LayerSpecification> Withdraw(LayerIdentity Subject);
+    Deliver<LayerSpecification> Withdraw(LayerIdentity Subject);
 
     /// 🧩 Nests one sequence inside this one as a single entry.
     /// out   Result  [-]  the registered ordinal, into this surface's own nested sequences; refuses with
@@ -245,7 +245,7 @@ public:
     ///        different scale.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Nest();
+    Deliver<std::uint32_t> Nest();
 
     /// 🧩 Resamples every painted entry into a re-partitioned domain, on the tick.
     /// in    IncomingRevision  [-]  the partition revision `68` advanced to
@@ -264,7 +264,7 @@ public:
     ///        not a defect in it; what would be a defect is performing it without saying so.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Resample(std::uint64_t                                                       IncomingRevision,
+    Deliver<bool> Resample(std::uint64_t                                                       IncomingRevision,
                            const std::function<bool(double, double, double&, double&)>&        Remapping,
                            ReportSequence&                                                     Reporting,
                            TickPoint                                                           Sampled);
@@ -273,7 +273,7 @@ public:
     /// out   Result  [-]  refuses with IdentityStale
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const LayerSpecification*> Resolve(LayerIdentity Subject) const;
+    Deliver<const LayerSpecification*> Resolve(LayerIdentity Subject) const;
 
     /// 🧩 One entry's painted texels, for the one mechanism permitted to amend them.
     /// out   Result  [-]  refuses with IdentityStale when the entry no longer resolves, and with
@@ -286,7 +286,7 @@ public:
     ///        would then evict the artist's edit at the first memory pressure.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<PaintedContent*> AmendPainted(LayerIdentity Subject);
+    Deliver<PaintedContent*> AmendPainted(LayerIdentity Subject);
 
     /// 🧩 The entries, in sequence order — bottom first.
     /// cost  ✔️
@@ -297,19 +297,19 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported outside the nested count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const SurfaceLayerSequence*> Nested(std::uint32_t NestedIndex) const;
+    Deliver<const SurfaceLayerSequence*> Nested(std::uint32_t NestedIndex) const;
 
     /// 🧩 One nested sequence, for amending.
     /// out   Result  [-]  refuses with ContentUnsupported outside the nested count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<SurfaceLayerSequence*> AmendNested(std::uint32_t NestedIndex);
+    Deliver<SurfaceLayerSequence*> AmendNested(std::uint32_t NestedIndex);
 
     /// 🧩 Which sequence position one entry sits at.
     /// out   Result  [-]  refuses with IdentityStale
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> PositionOf(LayerIdentity Subject) const;
+    Deliver<std::uint32_t> PositionOf(LayerIdentity Subject) const;
 
     /// 🧩 The union of channels every presented entry writes — what `42`'s layered channels resolve against.
     /// cost  🚩
@@ -373,7 +373,7 @@ public:
     /// out   Result   [-]  refuses with IdentityStale when nothing in the whole nesting holds it
     /// cost  🚩
     /// tag   api, nonthrowing
-    static Outcome<const LayerSpecification*> Locate(const SurfaceLayerSequence& Sequence, LayerIdentity Subject);
+    static Deliver<const LayerSpecification*> Locate(const SurfaceLayerSequence& Sequence, LayerIdentity Subject);
 
     /// 🧩 How many entries the whole nesting holds.
     /// cost  🚩

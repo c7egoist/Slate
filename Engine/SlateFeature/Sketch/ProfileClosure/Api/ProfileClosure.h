@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <vector>
@@ -21,11 +21,11 @@ struct ClosureResult
     bool Closed = false;
 };
 
-Outcome<ClosureResult> CloseCurveChain(SketchStructure& Declared,
+Deliver<ClosureResult> CloseCurveChain(SketchStructure& Declared,
                                        const std::vector<SketchCurveName>& CurveSet);
-Outcome<ClosureResult> JoinCurveChain(SketchStructure& Declared,
+Deliver<ClosureResult> JoinCurveChain(SketchStructure& Declared,
                                       const std::vector<SketchCurveName>& CurveSet);
-Outcome<std::vector<SketchCurveName>> OpenProfileLoop(SketchStructure& Declared,
+Deliver<std::vector<SketchCurveName>> OpenProfileLoop(SketchStructure& Declared,
                                                       ProfileNameInFeature Subject,
                                                       std::uint32_t LoopIndex,
                                                       std::uint32_t BreakEdgeIndex);

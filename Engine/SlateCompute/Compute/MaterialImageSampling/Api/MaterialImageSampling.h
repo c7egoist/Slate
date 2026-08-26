@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
 
@@ -68,16 +68,16 @@ struct MaterialImageSamplingCapabilities
 class MaterialImageSampling
 {
 public:
-    Outcome<MaterialImageRaster> OpenReference(const WorkspaceMaterialImageReference& Reference) const;
+    Deliver<MaterialImageRaster> OpenReference(const WorkspaceMaterialImageReference& Reference) const;
 
-    Outcome<MaterialImageSample> SampleReference(const WorkspaceMaterialImageReference& Reference,
+    Deliver<MaterialImageSample> SampleReference(const WorkspaceMaterialImageReference& Reference,
                                                  ChannelSubject Channel,
                                                  double CoordinateU,
                                                  double CoordinateV,
                                                  MaterialImageAddressing AddressU = MaterialImageAddressing::Repeat,
                                                  MaterialImageAddressing AddressV = MaterialImageAddressing::Repeat) const;
 
-    Outcome<MaterialImageSample> SampleMaterialChannel(const WorkspaceMaterialRecord& Material,
+    Deliver<MaterialImageSample> SampleMaterialChannel(const WorkspaceMaterialRecord& Material,
                                                        const MaterialImageSampleRequest& Request) const;
 
     MaterialImageSamplingCapabilities Capabilities() const;

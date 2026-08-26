@@ -157,11 +157,15 @@ constexpr void Discard(const ContentDelivery<Content>& Delivered)
 }
 
 /// 🧩 Public spelling for content delivered or rejected across one fallible call.
-/// note  An alias permits `Outcome<Content>::Result(Produced)`: a class named Result cannot declare a static
+/// note  An alias permits `Deliver<Content>::Result(Produced)`: a class named Result cannot declare a static
 ///       function carrying its own name because C++ reserves that spelling for its constructor.
+/// note  🔴 Spelled `Deliver` and not `Deliver`. `Deliver` names what every call in the engine already
+///        returns, so it distinguished nothing; `Deliver` states the mechanism — content crosses, or a
+///        refusal naming why it did not. `SKILL-Naming`'s fallible-return vocabulary declares this the
+///        approved public spelling and `ContentDelivery` its declaration, never named outside this file.
 /// tag   guarantee, nonallocating, nonthrowing
 template <typename Content>
-using Outcome = ContentDelivery<Content>;
+using Deliver = ContentDelivery<Content>;
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  CONVERGENT RESULT

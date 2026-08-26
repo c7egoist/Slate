@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 
@@ -66,7 +66,7 @@ public:
     /// out   Result     [-]  refuses with ContentUnsupported when a construction already stands
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructWorkspacePanel(RecordingSurface& Recording, const ThemeProfile& Appearance);
+    Deliver<bool> ConstructWorkspacePanel(RecordingSurface& Recording, const ThemeProfile& Appearance);
 
     /// 🧩 Records one workspace panel — strip ground, body, footer, and the vacant run when it carries none.
     /// in    Extent      [px]  the whole panel, strip and footer included
@@ -77,7 +77,7 @@ public:
     ///        one line separating the workspace from the strip below it.
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Record(const PlaneExtent& Extent, const char* Titled);
+    Deliver<bool> Record(const PlaneExtent& Extent, const char* Titled);
 
     /// 🧩 The body extent the last `Record` left, for a caller drawing content inside the workspace.
     /// note  ⚠️ Valid only until the next `Record`. It is the strip and footer subtracted from the extent

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 
@@ -54,6 +54,6 @@ struct DeclaredMigration
 ///       not decide whether the result is fit to use.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<std::uint32_t> ResolveMigration(const StreamHeading& Heading);
+Deliver<std::uint32_t> ResolveMigration(const StreamHeading& Heading);
 
 }   // namespace Slate

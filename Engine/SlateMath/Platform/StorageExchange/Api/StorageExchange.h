@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -81,7 +81,7 @@ public:
     ///                     ExtentExhausted when this exchange already holds one
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Open(const std::string& Path);
+    Deliver<bool> Open(const std::string& Path);
 
     /// 🧩 Closes the held stream and discards every range not yet drained.
     /// cost  ✔️
@@ -96,7 +96,7 @@ public:
     ///        which is what lets a codec declare the next range while it decodes the one it has.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(RangeRequest Wanted);
+    Deliver<std::uint32_t> Declare(RangeRequest Wanted);
 
     /// 🧩 Delivers every range that has arrived since the last drain, in declaration order.
     /// out   Arrivals  [-]  ordered by declaration ordinal, never by which range the device answered first

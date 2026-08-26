@@ -79,7 +79,7 @@ TransmissionSpecification DeclaredTransmission(const ResolvedChannelSet& Resolve
 //                                                    THE RECORDINGS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> TransmissionSequence::ContributeCollection(RenderSchedule& Schedule) const
+Deliver<bool> TransmissionSequence::ContributeCollection(RenderSchedule& Schedule) const
 {
     DeclaredRecording Declared;
     Declared.Identity = CollectionRecordingIdentity;
@@ -101,7 +101,7 @@ Outcome<bool> TransmissionSequence::ContributeCollection(RenderSchedule& Schedul
     return Schedule.Contribute(Declared);
 }
 
-Outcome<bool> TransmissionSequence::ContributeResolution(RenderSchedule& Schedule) const
+Deliver<bool> TransmissionSequence::ContributeResolution(RenderSchedule& Schedule) const
 {
     DeclaredRecording Declared;
     Declared.Identity = ResolutionRecordingIdentity;

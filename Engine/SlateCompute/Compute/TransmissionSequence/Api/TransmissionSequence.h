@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "Shared/TransmissionProjection.slang.h"
@@ -167,13 +167,13 @@ public:
     ///        untouched.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ContributeCollection(RenderSchedule& Schedule) const;
+    Deliver<bool> ContributeCollection(RenderSchedule& Schedule) const;
 
     /// 🧩 Contributes ⑤·ii — the resolution that amends `RadianceSurface` back to front.
     /// out   Result  [-]  refuses with whatever the schedule rejected
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ContributeResolution(RenderSchedule& Schedule) const;
+    Deliver<bool> ContributeResolution(RenderSchedule& Schedule) const;
 
     /// 🧩 Inserts one fragment into one pixel's column, in depth order.
     /// in    Column        [-]  the column, amended in place

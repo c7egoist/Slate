@@ -35,7 +35,7 @@ int main()
 
     for (const ExpressionCase& Current : Cases)
     {
-        const Slate::Outcome<double> Resolved = Slate::ResolveMagnitudeExpression(Current.Run);
+        const Slate::Deliver<double> Resolved = Slate::ResolveMagnitudeExpression(Current.Run);
 
         if (Resolved.Resolved != Current.Accepted ||
             (Resolved.Resolved && std::fabs(Resolved.Resolve() - Current.Expected) > 1.0e-9))

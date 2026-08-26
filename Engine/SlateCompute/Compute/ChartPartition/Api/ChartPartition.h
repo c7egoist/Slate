@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/DomainSpace/Api/DomainSpace.h"
 #include "SlateCompute/Compute/SeamSpecification/Api/SeamSpecification.h"
@@ -120,7 +120,7 @@ struct DerivedPartition
 ///        `68` §7 puts this on `34`'s `Background` class; called on the tick it would stall a stroke.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<DerivedPartition> Derive(const TopologyStructure&      Imported,
+Deliver<DerivedPartition> Derive(const TopologyStructure&      Imported,
                                  const TopologyConditioning&   Conditioned,
                                  const SeamSpecification&      Seams,
                                  const PartitionSpecification& Declaring,
@@ -150,7 +150,7 @@ public:
     /// post  the revision advanced; every artefact keyed on the prior one is discoverably stale
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Adopt(const DerivedPartition& Incoming);
+    Deliver<bool> Adopt(const DerivedPartition& Incoming);
 
     /// 🧩 The standing partition.
     /// pre   PartitionCurrent holds
@@ -163,7 +163,7 @@ public:
     ///                     while no partition stands
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<DomainCoordinate> Coordinate(std::uint32_t CornerIndex) const;
+    Deliver<DomainCoordinate> Coordinate(std::uint32_t CornerIndex) const;
 
     /// 🧩 Whether a partition stands at all.
     /// cost  ✔️

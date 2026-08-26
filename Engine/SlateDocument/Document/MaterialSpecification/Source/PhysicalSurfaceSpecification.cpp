@@ -30,7 +30,7 @@ ColourSpecification Colour(const MaterialSpecification& Material, ChannelSubject
 }
 }
 
-Outcome<CompiledPhysicalSurface> PhysicalSurfaceExchange::Compile(const MaterialSpecification& Material,
+Deliver<CompiledPhysicalSurface> PhysicalSurfaceExchange::Compile(const MaterialSpecification& Material,
                                                                    const PhysicalSurfaceDeclaration& Declaration) const
 {
     if (Declaration.Closure > SurfaceClosureSelection::Matcap ||
@@ -38,7 +38,7 @@ Outcome<CompiledPhysicalSurface> PhysicalSurfaceExchange::Compile(const Material
         Declaration.Interface > InterfaceParameterization::DirectF0 ||
         (Declaration.Features & ~((1u << 6u) - 1u)) != 0u)
     {
-        return Outcome<CompiledPhysicalSurface>::Refuse(
+        return Deliver<CompiledPhysicalSurface>::Refuse(
             { RefusalReason::ContentUnsupported, "the physical surface declaration contains an unsupported selection" });
     }
 
@@ -55,7 +55,7 @@ Outcome<CompiledPhysicalSurface> PhysicalSurfaceExchange::Compile(const Material
         Produced.Roughness > 1.0 || Produced.Opacity < 0.0 || Produced.Opacity > 1.0 ||
         Produced.Transmission < 0.0 || Produced.Transmission > 1.0 || Produced.RefractionRatio <= 1.0)
     {
-        return Outcome<CompiledPhysicalSurface>::Refuse(
+        return Deliver<CompiledPhysicalSurface>::Refuse(
             { RefusalReason::ContentUnsupported, "a compiled physical material constant is outside its declared range" });
     }
 
@@ -77,7 +77,7 @@ Outcome<CompiledPhysicalSurface> PhysicalSurfaceExchange::Compile(const Material
     if ((Declaration.Features & static_cast<std::uint32_t>(PhysicalFeature::Coat)) != 0u)
         Produced.ActiveChannelMask |= Bit(ChannelSubject::ClearCoat) | Bit(ChannelSubject::ClearCoatRoughness);
 
-    return Outcome<CompiledPhysicalSurface>::Result(Produced);
+    return Deliver<CompiledPhysicalSurface>::Result(Produced);
 }
 
 } // namespace Slate

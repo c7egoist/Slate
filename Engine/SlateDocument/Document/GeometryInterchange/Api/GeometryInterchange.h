@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/Identity.h"
 #include "SlateDocument/Document/AssetInterchange/Api/AssetInterchange.h"
 #include "SlateDocument/Document/TopologyConditioning/Api/TopologyConditioning.h"
@@ -44,11 +44,11 @@ struct GeometryAssetView
 class GeometryInterchange
 {
 public:
-    Outcome<GeometryIdentity> AcceptDecoded(const DecodedTopology& Decoded,
+    Deliver<GeometryIdentity> AcceptDecoded(const DecodedTopology& Decoded,
                                             const std::string& Name,
                                             IntakeIndex& Intake);
-    Outcome<GeometryAssetView> Resolve(GeometryIdentity Subject) const;
-    Outcome<bool> Retire(GeometryIdentity Subject);
+    Deliver<GeometryAssetView> Resolve(GeometryIdentity Subject) const;
+    Deliver<bool> Retire(GeometryIdentity Subject);
     std::uint32_t DeclaredCount() const { return OccupiedCount; }
     const AssetInterchange& AssetTransfer() const { return Transfer; }
     void Reclaim();

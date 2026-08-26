@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/ControlPanel/Api/ControlPanel.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
@@ -37,7 +37,7 @@ public:
     ParametricWorkspacePanel& operator=(const ParametricWorkspacePanel&) = delete;
     ~ParametricWorkspacePanel()                                     = default;
 
-    Outcome<bool> ConstructParametricWorkspacePanel(ControlIndex& IncomingInteraction,
+    Deliver<bool> ConstructParametricWorkspacePanel(ControlIndex& IncomingInteraction,
                                                     MotionIntegrator& Integrator,
                                                     RecordingSurface& Surface,
                                                     const ThemeProfile& Resolved);

@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <vector>
@@ -57,13 +57,13 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted at the beginning of the sequence
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Retreat();
+    Deliver<bool> Retreat();
 
     /// 🧩 Traverses one selection forwards.
     /// out   Result  [-]  refuses with ExtentExhausted at the end of the sequence
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Advance();
+    Deliver<bool> Advance();
 
     /// 🧩 Restores the selection that stood at a declared document revision.
     /// in    RevisionIndex  [-]  the document revision a scrub has arrived at
@@ -72,7 +72,7 @@ public:
     ///        holds within the session where the scrub happens, which is all `12` §11 requires of it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> RestoreAt(std::uint64_t RevisionIndex);
+    Deliver<bool> RestoreAt(std::uint64_t RevisionIndex);
 
     /// 🧩 The selection standing now.
     /// cost  ✔️

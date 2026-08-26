@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/AssetInterchange/Api/AssetInterchange.h"
 #include "SlateDocument/Format/GeometryCodec/Api/GeometryCodec.h"
 
@@ -35,7 +35,7 @@ public:
     GeometryFormatCapability Capability(const std::string& OriginPath) const;
 
     /// Decodes one complete stream faithfully. OBJ is the first delivered adapter; glTF/GLB follows.
-    Outcome<DecodedTopology> Decode(const std::vector<std::uint8_t>& Stream,
+    Deliver<DecodedTopology> Decode(const std::vector<std::uint8_t>& Stream,
                                     const std::string& OriginPath) const;
 };
 

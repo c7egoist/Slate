@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 
 #include <cstdint>
@@ -113,13 +113,13 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted when the capacity is full
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> RegisterSpring(const MotionScale& Motion, double Applied);
+    Deliver<std::uint32_t> RegisterSpring(const MotionScale& Motion, double Applied);
 
     /// 🧩 Registers an eased traverse and delivers its ordinal.
     /// out   Result  [-]  refuses with ExtentExhausted when the capacity is full
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> RegisterEased(double Applied);
+    Deliver<std::uint32_t> RegisterEased(double Applied);
 
     /// 🧩 The registered spring at one ordinal, for the caller to read and re-target.
     /// pre   the ordinal was delivered by RegisterSpring

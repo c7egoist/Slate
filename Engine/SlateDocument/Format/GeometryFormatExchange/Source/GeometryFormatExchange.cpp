@@ -24,13 +24,13 @@ GeometryFormatCapability GeometryFormatExchange::Capability(const std::string& O
     return Reported;
 }
 
-Outcome<DecodedTopology> GeometryFormatExchange::Decode(const std::vector<std::uint8_t>& Stream,
+Deliver<DecodedTopology> GeometryFormatExchange::Decode(const std::vector<std::uint8_t>& Stream,
                                                         const std::string& OriginPath) const
 {
     const GeometryFormatCapability Supported = Capability(OriginPath);
     if (!Supported.ImportSupported)
     {
-        return Outcome<DecodedTopology>::Refuse(
+        return Deliver<DecodedTopology>::Refuse(
             { RefusalReason::ContentUnsupported, "no geometry import codec accepts this format" });
     }
     return Translate(Stream, OriginPath);

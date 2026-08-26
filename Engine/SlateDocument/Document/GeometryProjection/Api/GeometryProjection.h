@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/TopologyStructure/Api/TopologyStructure.h"
 #include "SlateShape/Discrete/TessellationSpecification/Api/TessellationSpecification.h"
 #include "SlateShape/Topology/SolidStructure/Api/SolidStructure.h"
@@ -14,7 +14,7 @@
 namespace Slate
 {
 
-Outcome<bool> ProjectSolid(const SolidStructure& Exact,
+Deliver<bool> ProjectSolid(const SolidStructure& Exact,
                            const TessellationSpecification& Requested,
                            TopologyStructure& Projected);
 

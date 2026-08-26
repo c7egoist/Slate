@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/ImageSpace/Api/ImageSpace.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
 
@@ -92,7 +92,7 @@ public:
     ///        was never claimed, and the recording site meets it as a null view rather than as this refusal.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Reserve(ImageSpace&    Images,
+    Deliver<bool> Reserve(ImageSpace&    Images,
                         std::uint32_t  DisplayWidth,
                         std::uint32_t  DisplayHeight,
                         VkFormat       DisplayFormat);
@@ -107,19 +107,19 @@ public:
     ///        extent and reads as a shifted image nobody attributes to the resize.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Reclaim(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight);
+    Deliver<bool> Reclaim(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight);
 
     /// 🧩 The image one declared target was claimed as.
     /// out   Result  [-]  refuses with ContentUnsupported when the target is unclaimed
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ImageReservation> Resolve(SharedTarget Target) const;
+    Deliver<ImageReservation> Resolve(SharedTarget Target) const;
 
     /// 🧩 The image ordinal one target was claimed as, for the transition `ImageSpace` records.
     /// out   Result  [-]  refuses with ContentUnsupported when the target is unclaimed
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> IndexOf(SharedTarget Target) const;
+    Deliver<std::uint32_t> IndexOf(SharedTarget Target) const;
 
     /// 🧩 Releases every claimed target and forgets the display extent they were claimed against.
     /// pre   the device is idle
@@ -131,7 +131,7 @@ private:
 
     /// 🧩 The shape one target is claimed at, derived from its relation and the standing display extent.
     /// out   Result  [-]  refuses with ContentUnsupported for an extent of zero or above the ceiling
-    Outcome<ImageShape> ShapeOf(SharedTarget Target) const;
+    Deliver<ImageShape> ShapeOf(SharedTarget Target) const;
 
     ImageSpace*    ImageEdge      = nullptr;                // [-] - borrowed; never owned
     std::uint32_t  ReservedFor[static_cast<std::size_t>(SharedTarget::TargetCount)] = {};
@@ -198,7 +198,7 @@ public:
     ///                     contribution produces a target another recording already produces
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(const DeclaredRecording& Incoming);
+    Deliver<bool> Contribute(const DeclaredRecording& Incoming);
 
     /// 🧩 Fixes the ordering. Derived from the declared reads and writes, never hand-written.
     /// out   Result  [-]  refuses when a target is read by a recording ordered before its producer, or
@@ -206,7 +206,7 @@ public:
     /// post  the ordering is immutable until the next bring-up
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Fix();
+    Deliver<bool> Fix();
 
     /// 🧩 The recordings, in the order Fix derived.
     /// pre   Fix delivered

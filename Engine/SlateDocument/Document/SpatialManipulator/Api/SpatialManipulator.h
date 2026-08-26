@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/CameraProjection/Api/CameraProjection.h"
 #include "SlateDocument/Document/PointerIntersection/Api/PointerIntersection.h"
@@ -185,7 +185,7 @@ public:
     ///        because `46` has no scale to edit, and a caller deciding that would be a second place the rule lives.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Layout(DocumentPosition          Origin,
+    Deliver<bool> Layout(DocumentPosition          Origin,
                          RotationQuaternion        Orientation,
                          const CameraProjection&   Camera,
                          ManipulatedSubject        Addressing);
@@ -207,7 +207,7 @@ public:
     ///        the cone — which is the smaller target and therefore the one that was aimed at.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Grasp(const CameraProjection& Camera,
+    Deliver<std::uint32_t> Grasp(const CameraProjection& Camera,
                                  double                  PointerX,
                                  double                  PointerY,
                                  std::uint32_t           DisplayX,
@@ -217,7 +217,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported outside the laid-out count and for an undeclared grip
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const ManipulationGrip*> Resolve(std::uint32_t GripIndex) const;
+    Deliver<const ManipulationGrip*> Resolve(std::uint32_t GripIndex) const;
 
     /// 🧩 Every laid-out grip, for whoever records them.
     /// note  📝 Recorded in `08` §3 ⑪ — the depth-free overlay recording `80` already declares, at
@@ -311,7 +311,7 @@ public:
     ///        camera that is re-read each sample is a plane that moves whenever the artist orbits mid-drag.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Open(const ManipulationGrip&   Grasped,
+    Deliver<bool> Open(const ManipulationGrip&   Grasped,
                        const ManipulationLayout& Laid,
                        const CameraProjection&   Camera,
                        double                    PointerX,
@@ -333,7 +333,7 @@ public:
     ///        increment over a long gesture — which reads as the snapping having been switched off.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(double        PointerX,
+    Deliver<bool> Amend(double        PointerX,
                         double        PointerY,
                         std::uint32_t DisplayX,
                         std::uint32_t DisplayY,
@@ -343,14 +343,14 @@ public:
     /// out   Result  [-]  refuses with HostDenied when no drag is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<ManipulationAmendment> Abandon();
+    Deliver<ManipulationAmendment> Abandon();
 
     /// 🧩 Ends the drag, returning the amendment the caller commits as **one** transaction.
     /// out   Result  [-]  refuses with HostDenied when no drag is open
     /// post  🔴 exactly one transaction enters `RevisionSequence`, sealed by the caller — `78` §2 and §5
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<ManipulationAmendment> Seal();
+    Deliver<ManipulationAmendment> Seal();
 
     /// 🧩 The amendment as the drag stands, for the workspace to present while it is open.
     /// cost  ✔️

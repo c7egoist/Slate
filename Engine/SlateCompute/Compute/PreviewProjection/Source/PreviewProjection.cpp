@@ -30,32 +30,32 @@ constexpr std::uint32_t FinestLevel = 0u;       // [-] - the finest reduction le
 //                                                     WHAT IT READS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PreviewProjection::ConstructPreviewProjection(const PreviewSources& Supplied)
+Deliver<bool> PreviewProjection::ConstructPreviewProjection(const PreviewSources& Supplied)
 {
     // 🔴 `82` §5: previews resolve through `70`'s host path and through nothing else. An absent resolver is not
     //    a preview that degrades to something simpler — it is a preview that would have to invent a second
     //    implementation, which is the disagreement `00` §11's Tier B gate exists to catch.
     if (Supplied.Resolution == nullptr)
     {
-        return Outcome<bool>::Refuse({RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({RefusalReason::ContentUnsupported,
                                       "a preview has no resolver; `70` is the only path `82` §5 permits"});
     }
 
     Resolution      = Supplied.Resolution;
     SourcesDeclared = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE BRUSH PREVIEW
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PreviewProjection::OpenImpression(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed)
+Deliver<bool> PreviewProjection::OpenImpression(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed)
 {
     if (ImpressionOpen)
     {
-        return Outcome<bool>::Refuse({RefusalReason::HostDenied,
+        return Deliver<bool>::Refuse({RefusalReason::HostDenied,
                                       "a brush preview already stands; close it before opening another"});
     }
 
@@ -65,7 +65,7 @@ Outcome<bool> PreviewProjection::OpenImpression(const StrokeDeclaration& Declari
     StrokeDeclaration Speculating = Declaring;
     Speculating.Speculative       = true;
 
-    const Outcome<bool> Opened = Previewing.Open(Speculating, Brushed);
+    const Deliver<bool> Opened = Previewing.Open(Speculating, Brushed);
     if (!Opened.Resolved)
     {
         return Opened;
@@ -73,14 +73,14 @@ Outcome<bool> PreviewProjection::OpenImpression(const StrokeDeclaration& Declari
 
     ImpressionOpen = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> PreviewProjection::AmendImpression(const StrokeArrival& Incoming)
+Deliver<bool> PreviewProjection::AmendImpression(const StrokeArrival& Incoming)
 {
     if (!ImpressionOpen)
     {
-        return Outcome<bool>::Refuse({RefusalReason::HostDenied,
+        return Deliver<bool>::Refuse({RefusalReason::HostDenied,
                                       "no brush preview stands; Open before amending"});
     }
 
@@ -88,7 +88,7 @@ Outcome<bool> PreviewProjection::AmendImpression(const StrokeArrival& Incoming)
     //    impression at the cursor rather than the trail of every position the cursor has passed through. A
     //    committed stroke accumulates because the trail is the stroke; a preview accumulating would answer a
     //    question about a stroke the artist has not made.
-    const Outcome<bool> Reclaimed = Previewing.ReclaimSpeculative();
+    const Deliver<bool> Reclaimed = Previewing.ReclaimSpeculative();
     if (!Reclaimed.Resolved)
     {
         return Reclaimed;
@@ -97,13 +97,13 @@ Outcome<bool> PreviewProjection::AmendImpression(const StrokeArrival& Incoming)
     return Previewing.Amend(Incoming);
 }
 
-Outcome<ResolvedRun> PreviewProjection::ResolveImpression(SurfaceTileSpace& Residency,
+Deliver<ResolvedRun> PreviewProjection::ResolveImpression(SurfaceTileSpace& Residency,
                                                           RequestQueue&     Requesting,
                                                           std::uint64_t     RecordingIndex)
 {
     if (!ImpressionOpen)
     {
-        return Outcome<ResolvedRun>::Refuse({RefusalReason::HostDenied,
+        return Deliver<ResolvedRun>::Refuse({RefusalReason::HostDenied,
                                              "no brush preview stands; Open before resolving"});
     }
 
@@ -134,7 +134,7 @@ bool PreviewProjection::ImpressionCurrent() const
 //                                                   THE CONTENT PREVIEW
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> PreviewProjection::ProjectContentAt(const SurfaceLayerSequence&           Content,
+Deliver<ResolvedSample> PreviewProjection::ProjectContentAt(const SurfaceLayerSequence&           Content,
                                                             const std::vector<ChannelPlacement>&  Placements,
                                                             double                                PositionX,
                                                             double                                PositionY,
@@ -143,13 +143,13 @@ Outcome<ResolvedSample> PreviewProjection::ProjectContentAt(const SurfaceLayerSe
 {
     if (!SourcesDeclared)
     {
-        return Outcome<ResolvedSample>::Refuse({RefusalReason::HostDenied,
+        return Deliver<ResolvedSample>::Refuse({RefusalReason::HostDenied,
                                                 "no resolver was declared; Construct before previewing content"});
     }
 
     if (Level >= ReductionLevelCount)
     {
-        return Outcome<ResolvedSample>::Refuse({RefusalReason::ContentUnsupported,
+        return Deliver<ResolvedSample>::Refuse({RefusalReason::ContentUnsupported,
                                                 "the level lies outside `20`'s reduction levels"});
     }
 
@@ -168,7 +168,7 @@ Outcome<ResolvedSample> PreviewProjection::ProjectContentAt(const SurfaceLayerSe
 //                                                  THE PLACEMENT PREVIEW
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> PreviewProjection::ProjectPlacementAt(const SurfaceLayerSequence&           Content,
+Deliver<ResolvedSample> PreviewProjection::ProjectPlacementAt(const SurfaceLayerSequence&           Content,
                                                               const std::vector<ChannelPlacement>&  Placements,
                                                               double                                PositionX,
                                                               double                                PositionY,
@@ -187,11 +187,11 @@ Outcome<ResolvedSample> PreviewProjection::ProjectPlacementAt(const SurfaceLayer
 //                                                  THE PARAMETER PREVIEW
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PreviewProjection::AmendParameter(std::uint64_t RecordingIndex)
+Deliver<bool> PreviewProjection::AmendParameter(std::uint64_t RecordingIndex)
 {
     if (!CurrentExtent.ExtentHeld)
     {
-        return Outcome<bool>::Refuse({RefusalReason::HostDenied,
+        return Deliver<bool>::Refuse({RefusalReason::HostDenied,
                                       "no extent stands; declare one before amending a dragged parameter"});
     }
 
@@ -201,7 +201,7 @@ Outcome<bool> PreviewProjection::AmendParameter(std::uint64_t RecordingIndex)
     ++AmendedCount;
     CurrentExtent.ResolvedAt = RecordingIndex;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 std::uint32_t PreviewProjection::AmendmentCount() const
@@ -213,20 +213,20 @@ std::uint32_t PreviewProjection::AmendmentCount() const
 //                                                   THE STANDING EXTENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> PreviewProjection::DeclareExtent(SpeculativeSubject Previewed,
+Deliver<bool> PreviewProjection::DeclareExtent(SpeculativeSubject Previewed,
                                                std::uint32_t      SurfaceIndex,
                                                std::uint32_t      RequestedLevel,
                                                std::uint64_t      RecordingIndex)
 {
     if (Previewed == SpeculativeSubject::SubjectCount)
     {
-        return Outcome<bool>::Refuse({RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({RefusalReason::ContentUnsupported,
                                       "the closed count is not one of `82` §2's four consumers"});
     }
 
     if (RequestedLevel >= ReductionLevelCount)
     {
-        return Outcome<bool>::Refuse({RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({RefusalReason::ContentUnsupported,
                                       "the requested level lies outside `20`'s reduction levels"});
     }
 
@@ -242,7 +242,7 @@ Outcome<bool> PreviewProjection::DeclareExtent(SpeculativeSubject Previewed,
 
     AmendedCount = 0u;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const SpeculativeExtent& PreviewProjection::Current() const

@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Combination.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateCompute/Compute/SurfaceTileSpace/Api/SurfaceTileSpace.h"
 
@@ -69,13 +69,13 @@ public:
     ///        refuses rather than growing so that a defect there is a refusal instead of an allocation storm.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Reserve(std::uint32_t CellIndex);
+    Deliver<std::uint32_t> Reserve(std::uint32_t CellIndex);
 
     /// 🧩 The tile backing one cell, if one is claimed.
     /// out   Result  [-]  refuses with ExtentExhausted when the cell is untouched
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Located(std::uint32_t CellIndex) const;
+    Deliver<std::uint32_t> Located(std::uint32_t CellIndex) const;
 
     /// 🧩 Accumulates one impression's coverage at one texel of one claimed tile.
     /// in    TileIndex  [-]  as `Reserve` delivered it

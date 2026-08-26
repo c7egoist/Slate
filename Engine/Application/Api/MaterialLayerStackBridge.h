@@ -140,7 +140,7 @@ inline MaterialLayerStackBridgeReport RebuildMaterialLayersFromTextureStack(
 {
     MaterialLayerStackBridgeReport Report;
     Layers = SurfaceLayerSequence{};
-    const Outcome<LayerIdentity> Base = Exchange.InitialiseDielectric(Material, Layers);
+    const Deliver<LayerIdentity> Base = Exchange.InitialiseDielectric(Material, Layers);
     if (Base.Resolved) Report.BaseLayer = Base.Resolve();
 
     for (std::uint32_t RowIndex = 0u; RowIndex < Stack.Count && RowIndex < TextureLayerLimit; ++RowIndex)
@@ -156,7 +156,7 @@ inline MaterialLayerStackBridgeReport RebuildMaterialLayersFromTextureStack(
         Layer.PresenceEnabled = Row.Opacity > 0u;
         Layer.Coverage = TextureRowCoverage(Context, RowIndex, Row, Layer.ChannelMask);
 
-        const Outcome<LayerIdentity> Added = Layers.Append(Layer);
+        const Deliver<LayerIdentity> Added = Layers.Append(Layer);
         if (!Added.Resolved) continue;
 
         ++Report.MirroredLayerCount;

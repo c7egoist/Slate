@@ -42,7 +42,7 @@ def main() -> int:
         require(needle in editor, f"EditorHost missing static storage move {needle!r}")
     require("_dupenv_s(&Home" in editor, "EditorHost must avoid MSVC getenv warning on Windows")
     require("std::strncpy" not in editor, "EditorHost must avoid MSVC strncpy warning")
-    require("ResizedGeometryOffering" in editor and "ResizedGeometryOutcome" in editor,
+    require("ResizedGeometryOffering" in editor and "ResizedGeometryDelivery" in editor,
             "EditorHost resize path should not shadow geometry construction locals")
     require("ConsumeSharedCodexActivation" in editor, "EditorHost activation must use the shared codex activation helper")
 

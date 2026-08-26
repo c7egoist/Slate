@@ -209,7 +209,7 @@ const char* MaterialExportChannelText(ChannelSubject Channel)
     }
 }
 
-Outcome<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(
+Deliver<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(
     MaterialExportTarget Target,
     MaterialExportImageFormat Format,
     MaterialExportBitDepth BitDepth,
@@ -218,7 +218,7 @@ Outcome<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(
     if (Target >= MaterialExportTarget::TargetCount || Format >= MaterialExportImageFormat::FormatCount ||
         BitDepth >= MaterialExportBitDepth::DepthCount)
     {
-        return Outcome<std::vector<MaterialExportImageDeclaration>>::Refuse(
+        return Deliver<std::vector<MaterialExportImageDeclaration>>::Refuse(
             { RefusalReason::ContentUnsupported, "the material export preset declaration is unsupported" });
     }
 
@@ -263,23 +263,23 @@ Outcome<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(
                            Lane(MaterialExportLane::Red, ChannelSubject::Emission),
                            Lane(MaterialExportLane::Green, ChannelSubject::Emission),
                            Lane(MaterialExportLane::Blue, ChannelSubject::Emission)));
-    return Outcome<std::vector<MaterialExportImageDeclaration>>::Result(std::move(Images));
+    return Deliver<std::vector<MaterialExportImageDeclaration>>::Result(std::move(Images));
 }
 
-Outcome<MaterialExportPackage> BuildMaterialExportPackage(const WorkspaceMaterialRecord& Material,
+Deliver<MaterialExportPackage> BuildMaterialExportPackage(const WorkspaceMaterialRecord& Material,
                                                           const MaterialExportOptions& Options)
 {
     if (Options.Target >= MaterialExportTarget::TargetCount || Options.Format >= MaterialExportImageFormat::FormatCount ||
         Options.BitDepth >= MaterialExportBitDepth::DepthCount || Options.Resolution == 0u ||
         Options.OutputName.empty() || Options.OutputDirectory.empty())
     {
-        return Outcome<MaterialExportPackage>::Refuse(
+        return Deliver<MaterialExportPackage>::Refuse(
             { RefusalReason::ContentUnsupported, "the material export options are incomplete" });
     }
 
-    const Outcome<std::vector<MaterialExportImageDeclaration>> Preset =
+    const Deliver<std::vector<MaterialExportImageDeclaration>> Preset =
         MaterialExportPreset(Options.Target, Options.Format, Options.BitDepth, Options.NormalConvention);
-    if (!Preset.Resolved) return Outcome<MaterialExportPackage>::Refuse(Preset.Error);
+    if (!Preset.Resolved) return Deliver<MaterialExportPackage>::Refuse(Preset.Error);
 
     MaterialExportPackage Package;
     Package.MaterialReference = Material.Reference;
@@ -299,16 +299,16 @@ Outcome<MaterialExportPackage> BuildMaterialExportPackage(const WorkspaceMateria
     }
 
     if (Package.Images.empty())
-        return Outcome<MaterialExportPackage>::Refuse(
+        return Deliver<MaterialExportPackage>::Refuse(
             { RefusalReason::ContentUnsupported, "the material export preset produced no consumed channels" });
 
-    return Outcome<MaterialExportPackage>::Result(std::move(Package));
+    return Deliver<MaterialExportPackage>::Result(std::move(Package));
 }
 
-Outcome<std::string> EncodeMaterialExportManifest(const MaterialExportPackage& Package)
+Deliver<std::string> EncodeMaterialExportManifest(const MaterialExportPackage& Package)
 {
     if (Package.Images.empty())
-        return Outcome<std::string>::Refuse({ RefusalReason::ContentUnsupported, "the material export package has no images" });
+        return Deliver<std::string>::Refuse({ RefusalReason::ContentUnsupported, "the material export package has no images" });
 
     char Fingerprint[32] = {};
     std::snprintf(Fingerprint, sizeof(Fingerprint), "%016llx",
@@ -343,7 +343,7 @@ Outcome<std::string> EncodeMaterialExportManifest(const MaterialExportPackage& P
     }
     Out += "  ]\n";
     Out += "}\n";
-    return Outcome<std::string>::Result(std::move(Out));
+    return Deliver<std::string>::Result(std::move(Out));
 }
 
 } // namespace Slate

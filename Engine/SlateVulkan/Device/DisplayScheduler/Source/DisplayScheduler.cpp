@@ -12,14 +12,14 @@ namespace Slate
 //                                                     THE SCORING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<VkSurfaceFormatKHR> DisplayScheduler::ScoreFormat(VkSurfaceKHR Surface) const
+Deliver<VkSurfaceFormatKHR> DisplayScheduler::ScoreFormat(VkSurfaceKHR Surface) const
 {
     std::uint32_t DeclaredCount = 0u;
     vkGetPhysicalDeviceSurfaceFormatsKHR(DeviceEdge->ScoredDevice(), Surface, &DeclaredCount, nullptr);
 
     if (DeclaredCount == 0u)
     {
-        return Outcome<VkSurfaceFormatKHR>::Refuse(
+        return Deliver<VkSurfaceFormatKHR>::Refuse(
             { RefusalReason::CapabilityAbsent, "the surface declares no format" });
     }
 
@@ -33,12 +33,12 @@ Outcome<VkSurfaceFormatKHR> DisplayScheduler::ScoreFormat(VkSurfaceKHR Surface) 
     for (const VkSurfaceFormatKHR& Candidate : Declared)
     {
         if (Candidate.format == VK_FORMAT_B8G8R8A8_UNORM || Candidate.format == VK_FORMAT_R8G8B8A8_UNORM)
-            return Outcome<VkSurfaceFormatKHR>::Result(Candidate);
+            return Deliver<VkSurfaceFormatKHR>::Result(Candidate);
     }
 
     // 📝 A surface declaring only sRGB-encoded formats is served rather than rejected. `66` reads the format it
     //    is claimed at, so the double encoding is a reported quality departure and not an absent image.
-    return Outcome<VkSurfaceFormatKHR>::Result(Declared[0]);
+    return Deliver<VkSurfaceFormatKHR>::Result(Declared[0]);
 }
 
 VkPresentModeKHR DisplayScheduler::ScorePacing(VkSurfaceKHR Surface, LatencyIntent Intent) const
@@ -77,7 +77,7 @@ VkPresentModeKHR DisplayScheduler::ScorePacing(VkSurfaceKHR Surface, LatencyInte
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> DisplayScheduler::ConstructDisplayScheduler(const VulkanExchange&       Exchange,
+Deliver<bool> DisplayScheduler::ConstructDisplayScheduler(const VulkanExchange&       Exchange,
                                           const DiagnosticExtension&  Naming,
                                           VkSurfaceKHR                Surface,
                                           std::uint32_t               DisplayWidth,
@@ -85,17 +85,17 @@ Outcome<bool> DisplayScheduler::ConstructDisplayScheduler(const VulkanExchange& 
                                           LatencyIntent               Intent)
 {
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE || Surface == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active, or no surface" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active, or no surface" });
 
     DeviceEdge     = &Exchange;
     NamingEdge     = &Naming;
     DisplaySurface = Surface;
     DeclaredIntent = Intent;
 
-    const Outcome<VkSurfaceFormatKHR> Scored = ScoreFormat(Surface);
+    const Deliver<VkSurfaceFormatKHR> Scored = ScoreFormat(Surface);
 
     if (!Scored.Resolved)
-        return Outcome<bool>::Refuse(Scored.Error);
+        return Deliver<bool>::Refuse(Scored.Error);
 
     SurfaceCarries  = Scored.Resolve().format;
     SurfaceEncoding = Scored.Resolve().colorSpace;
@@ -107,10 +107,10 @@ Outcome<bool> DisplayScheduler::ConstructDisplayScheduler(const VulkanExchange& 
     return Establish();
 }
 
-Outcome<bool> DisplayScheduler::Reclaim(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight)
+Deliver<bool> DisplayScheduler::Reclaim(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight)
 {
     if (DeviceEdge == nullptr || DisplaySurface == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no chain was ever established" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no chain was ever established" });
 
     // 📝 🔴 The format is **retained** rather than re-scored. Every display-relative target was claimed at it,
     //    and a re-scored format that came back different would leave `TargetSpace` holding targets claimed at
@@ -122,21 +122,21 @@ Outcome<bool> DisplayScheduler::Reclaim(std::uint32_t DisplayWidth, std::uint32_
     return Establish();
 }
 
-Outcome<bool> DisplayScheduler::Establish()
+Deliver<bool> DisplayScheduler::Establish()
 {
     if (ChainWidth == 0u || ChainHeight == 0u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "a zero extent was asked for; a minimised window reports one" });
     }
 
     if (ChainWidth > DisplayExtentLimit || ChainHeight > DisplayExtentLimit)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the extent exceeds DisplayExtentLimit" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the extent exceeds DisplayExtentLimit" });
 
     VkSurfaceCapabilitiesKHR Accepted = {};
 
     if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(DeviceEdge->ScoredDevice(), DisplaySurface, &Accepted) != VK_SUCCESS)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "the surface declares no capability" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "the surface declares no capability" });
 
     // 📝 The extent is clamped into what the surface accepts rather than rejected against it. A window manager
     //    that reports an extent the surface will not carry is one Slate meets on a tiling desktop, and the image
@@ -157,7 +157,7 @@ Outcome<bool> DisplayScheduler::Establish()
 
     if (EstablishedWidth == 0u || EstablishedHeight == 0u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the surface accepts no extent; the window carries none" });
     }
 
@@ -199,7 +199,7 @@ Outcome<bool> DisplayScheduler::Establish()
 
     if (vkCreateSwapchainKHR(DeviceEdge->ActiveDevice(), &ChainDeclaration, nullptr, &Established) != VK_SUCCESS)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the presentation chain" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the presentation chain" });
     }
 
     // 📝 The retiring chain and its views are destroyed only once the new one stands. Destroying them first
@@ -229,7 +229,7 @@ Outcome<bool> DisplayScheduler::Establish()
     {
         vkDestroySwapchainKHR(DeviceEdge->ActiveDevice(), DisplayChain, nullptr);
         DisplayChain = VK_NULL_HANDLE;
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the chain holds fewer images than requested" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the chain holds fewer images than requested" });
     }
 
     MinimumChainImages = RequestedCount;
@@ -255,7 +255,7 @@ Outcome<bool> DisplayScheduler::Establish()
             // 🔴 Rejected in full. A chain half-viewed is one where `08` §3 ⑬ presents an image whose view the
             //    recording met as a null handle, and the vendor reports that at the draw rather than here.
             Return();
-            return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected a chain image view" });
+            return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected a chain image view" });
         }
 
         // 📝 🔴 `06` §7's gate reaches the view, which Slate constructs. Named by the chain and the image both,
@@ -280,21 +280,21 @@ Outcome<bool> DisplayScheduler::Establish()
     LastArrival      = {};
     ArrivalInterval  = 0.0;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE ARRIVAL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<AcquiredImage> DisplayScheduler::Await(const CycleSlot& Current, const TickSequence& Timeline)
+Deliver<AcquiredImage> DisplayScheduler::Await(const CycleSlot& Current, const TickSequence& Timeline)
 {
     if (DeviceEdge == nullptr || DisplayChain == VK_NULL_HANDLE)
-        return Outcome<AcquiredImage>::Refuse({ RefusalReason::CapabilityAbsent, "no chain is established" });
+        return Deliver<AcquiredImage>::Refuse({ RefusalReason::CapabilityAbsent, "no chain is established" });
 
     if (TakenIndex != AbsentDisplayImage)
     {
-        return Outcome<AcquiredImage>::Refuse(
+        return Deliver<AcquiredImage>::Refuse(
             { RefusalReason::RelationCyclic, "an image is already taken and has not been presented" });
     }
 
@@ -322,7 +322,7 @@ Outcome<AcquiredImage> DisplayScheduler::Await(const CycleSlot& Current, const T
     {
         AcquiredImage Outgrown;
         Outgrown.Reclaimed = true;
-        return Outcome<AcquiredImage>::Result(Outgrown);
+        return Deliver<AcquiredImage>::Result(Outgrown);
     }
 
     // 🔴 `06` §7: the loss is reported upward and the chain is left standing. Re-establishing it here would
@@ -330,19 +330,19 @@ Outcome<AcquiredImage> DisplayScheduler::Await(const CycleSlot& Current, const T
     //    reclaims both in an order this component cannot know.
     if (Reached == VK_ERROR_DEVICE_LOST)
     {
-        return Outcome<AcquiredImage>::Refuse(
+        return Deliver<AcquiredImage>::Refuse(
             { RefusalReason::DeviceLost, "the device was lost awaiting a display image" });
     }
 
     if (Reached != VK_SUCCESS && Reached != VK_SUBOPTIMAL_KHR)
     {
-        return Outcome<AcquiredImage>::Refuse(
+        return Deliver<AcquiredImage>::Refuse(
             { RefusalReason::HostDenied, "the display neither delivered an image nor reported the chain outgrown" });
     }
 
     if (Sampled >= static_cast<std::uint32_t>(ChainViews.size()))
     {
-        return Outcome<AcquiredImage>::Refuse(
+        return Deliver<AcquiredImage>::Refuse(
             { RefusalReason::ContentUnsupported, "the display named an image the chain does not hold" });
     }
 
@@ -364,20 +364,20 @@ Outcome<AcquiredImage> DisplayScheduler::Await(const CycleSlot& Current, const T
     Delivered.PacedInterval = ArrivalInterval;
     Delivered.Reclaimed     = (Reached == VK_SUBOPTIMAL_KHR);
 
-    return Outcome<AcquiredImage>::Result(Delivered);
+    return Deliver<AcquiredImage>::Result(Delivered);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE SURRENDER
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> DisplayScheduler::Present(const CycleSlot& Current, std::uint32_t ImageIndex)
+Deliver<bool> DisplayScheduler::Present(const CycleSlot& Current, std::uint32_t ImageIndex)
 {
     if (DeviceEdge == nullptr || DisplayChain == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no chain is established" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no chain is established" });
 
     if (ImageIndex == AbsentDisplayImage || ImageIndex != TakenIndex)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "that image was not the one taken" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "that image was not the one taken" });
 
     VkPresentInfoKHR ReturnDeclaration = {};
     ReturnDeclaration.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -406,17 +406,17 @@ Outcome<bool> DisplayScheduler::Present(const CycleSlot& Current, std::uint32_t 
     //    a resize was then rebuilt only by the next tick's extent test, one tick late, and a chain that
     //    reported outgrown without the window extent moving was never rebuilt at all.
     if (PresentResult == VK_SUCCESS || PresentResult == VK_SUBOPTIMAL_KHR)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     // 🔴 Current, but the chain no longer matches. Delivered `false` so the caller re-establishes rather
     //    than treating the rotation as lost.
     if (PresentResult == VK_ERROR_OUT_OF_DATE_KHR)
-        return Outcome<bool>::Result(false);
+        return Deliver<bool>::Result(false);
 
     if (PresentResult == VK_ERROR_DEVICE_LOST)
-        return Outcome<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost presenting an image" });
+        return Deliver<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost presenting an image" });
 
-    return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the display rejected the image" });
+    return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the display rejected the image" });
 }
 
 //------------------------------------------------------------------------------------------------------------------------

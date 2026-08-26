@@ -20,10 +20,10 @@ constexpr std::size_t ChannelSpan   = static_cast<std::size_t>(ChannelSubject::C
 
 }   // namespace
 
-Outcome<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) const
+Deliver<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) const
 {
     if (Images.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the emission produces no image" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the emission produces no image" });
 
     // 🔴 A channel emitted into two components anywhere in the specification is two answers to one question, and
     //    the consumer reads whichever image it loaded second. Tracked across the whole emission rather than per
@@ -33,7 +33,7 @@ Outcome<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) co
     for (const EmittedImage& Held : Images)
     {
         if (Held.ExtentTexels == 0u)
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no extent" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no extent" });
 
         bool AnyOccupied = false;
 
@@ -47,10 +47,10 @@ Outcome<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) co
             const std::size_t ChannelIndex = static_cast<std::size_t>(Held.Occupying[Slot]);
 
             if (ChannelIndex >= ChannelSpan)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such channel" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such channel" });
 
             if (ChannelEmitted[ChannelIndex])
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a channel is emitted twice" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a channel is emitted twice" });
 
             ChannelEmitted[ChannelIndex] = true;
 
@@ -63,7 +63,7 @@ Outcome<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) co
                  MaterialIndex < Materials.DeclaredCount() && !ColourCarried;
                  ++MaterialIndex)
             {
-                const Outcome<const MaterialSpecification*> Resolved = Materials.Resolve(MaterialIndex);
+                const Deliver<const MaterialSpecification*> Resolved = Materials.Resolve(MaterialIndex);
 
                 if (!Resolved.Resolved)
                     continue;
@@ -73,16 +73,16 @@ Outcome<bool> EmissionSpecification::Validate(const MaterialIndex& Materials) co
 
             if (ColourCarried && Held.SpaceIdentity == 0u)
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "a colour-carrying channel in an image declaring no space" });
             }
         }
 
         if (!AnyOccupied)
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image with no occupied component" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image with no occupied component" });
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -149,30 +149,30 @@ std::string ResolveName(const std::string& Pattern,
 //                                                    TOPOLOGY INTAKE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
+Deliver<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
                                                TopologyStructure&     Into,
                                                IntakeIndex&           Recorded)
 {
     // 🔴 `50` §3: positions and face indexing are rejected when absent. There is no default for either — a
     //    topology with no positions is not a topology at a smaller scale, it is not a topology.
     if (Decoded.Positions.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source declared no position" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source declared no position" });
 
     if (Decoded.Faces.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source declared no face indexing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source declared no face indexing" });
 
     // 📝 🔴 Validated in full before anything is registered. `50` §8: a partially failed intake registers nothing,
     //    because half a topology registered as an owner is an owner the artist will paint on and export.
     for (const std::vector<std::uint32_t>& Face : Decoded.Faces)
     {
         if (Face.size() < 3u)
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a run of fewer than three corners" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a run of fewer than three corners" });
 
         for (const std::uint32_t VertexIndex : Face)
         {
             if (VertexIndex >= Decoded.Positions.size())
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "a corner addresses a position the source did not declare" });
             }
         }
@@ -184,16 +184,16 @@ Outcome<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
         CornerSpan += static_cast<std::uint32_t>(Face.size());
 
     if (!Decoded.CornerCoordinates.empty() && Decoded.CornerCoordinates.size() != CornerSpan)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "one coordinate per corner is required" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "one coordinate per corner is required" });
 
     if (!Decoded.Perpendiculars.empty() && Decoded.Perpendiculars.size() != Decoded.Positions.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "one perpendicular per vertex is required" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "one perpendicular per vertex is required" });
 
     if (!Decoded.TangentBases.empty() && Decoded.TangentBases.size() != Decoded.Positions.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "one basis per vertex is required" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "one basis per vertex is required" });
 
     if (!Decoded.MaterialRegistration.empty() && Decoded.MaterialRegistration.size() != Decoded.Faces.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "one enrollment per face is required" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "one enrollment per face is required" });
 
     // 🔴 Unit scale applied **once**, here, at 64-bit and before anything narrows. Carried as a per-owner
     //    multiplier instead, `02` §3.2's rebasing would still be correct and the geometry would still not line up.
@@ -211,14 +211,14 @@ Outcome<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
         }
     }
 
-    const Outcome<bool> PositionsDeclared = Into.DeclarePositions(Scaled);
+    const Deliver<bool> PositionsDeclared = Into.DeclarePositions(Scaled);
 
     if (!PositionsDeclared.Resolved)
         return PositionsDeclared;
 
     for (const std::vector<std::uint32_t>& Face : Decoded.Faces)
     {
-        const Outcome<bool> Registered = Into.DeclareFace(Face);
+        const Deliver<bool> Registered = Into.DeclareFace(Face);
 
         if (!Registered.Resolved)
             return Registered;
@@ -236,7 +236,7 @@ Outcome<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
     if (!Decoded.MaterialRegistration.empty())
         Discard(Into.DeclareMaterialRegistration(Decoded.MaterialRegistration));
 
-    const Outcome<bool> Sealed = Into.Seal();
+    const Deliver<bool> Sealed = Into.Seal();
 
     if (!Sealed.Resolved)
         return Sealed;
@@ -262,23 +262,23 @@ Outcome<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
 
     ++TopologyCount;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     IMAGE INTAKE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> AssetInterchange::IntakeImage(const DecodedImage& Decoded, IntakeIndex& Recorded)
+Deliver<bool> AssetInterchange::IntakeImage(const DecodedImage& Decoded, IntakeIndex& Recorded)
 {
     if (Decoded.Width == 0u || Decoded.Height == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no extent" });
 
     if (Decoded.ComponentCount == 0u || Decoded.BitDepth == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no component" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an image of no component" });
 
     if (Decoded.Original.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the original was not retained" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the original was not retained" });
 
     IntakeRecord Recording;
     Recording.OriginPath = Decoded.OriginPath;
@@ -302,24 +302,24 @@ Outcome<bool> AssetInterchange::IntakeImage(const DecodedImage& Decoded, IntakeI
 
     ++ImageCount;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE EMISSION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> AssetInterchange::DeclareEmission(const EmissionSpecification& Declaring,
+Deliver<bool> AssetInterchange::DeclareEmission(const EmissionSpecification& Declaring,
                                                 const MaterialIndex&         Materials)
 {
-    const Outcome<bool> Validated = Declaring.Validate(Materials);
+    const Deliver<bool> Validated = Declaring.Validate(Materials);
 
     if (!Validated.Resolved)
         return Validated;
 
     Declared = Declaring;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const EmissionSpecification&     AssetInterchange::Emission() const    { return Declared;         }

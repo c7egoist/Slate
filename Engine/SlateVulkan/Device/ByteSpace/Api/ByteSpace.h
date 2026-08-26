@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
 
@@ -104,7 +104,7 @@ public:
     ///        takes on its own, which is every extent after the first of each residency.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ReserveByteSpace(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
+    Deliver<bool> ReserveByteSpace(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
 
     /// 🧩 Slices one span of the requested residency, taking a further extent when none can satisfy it.
     /// in    RequestedBytes  [B]  how far the span must run
@@ -117,7 +117,7 @@ public:
     ///       cannot use and cannot release, and the release path is the one nobody exercises.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<ByteReservation> Reserve(VkDeviceSize    RequestedBytes,
+    Deliver<ByteReservation> Reserve(VkDeviceSize    RequestedBytes,
                              VkDeviceSize    ByteAlignment,
                              ExtentResidency Residency,
                              ReservationCondition   Condition);
@@ -168,11 +168,11 @@ private:
 
     /// 🧩 Scores what the device declares for the one entry that satisfies a residency.
     /// out   Result  [-]  refuses with CapabilityAbsent when nothing declared carries the properties
-    Outcome<std::uint32_t> ClassifyResidency(ExtentResidency Residency) const;
+    Deliver<std::uint32_t> ClassifyResidency(ExtentResidency Residency) const;
 
     /// 🧩 Takes one further vendor allocation, at least as large as the span that could not be satisfied.
     /// out   Result  [-]  refuses with ExtentExhausted when the vendor declines the allocation
-    Outcome<std::uint32_t> ConstructExtent(ExtentResidency Residency, VkDeviceSize MinimumBytes);
+    Deliver<std::uint32_t> ConstructExtent(ExtentResidency Residency, VkDeviceSize MinimumBytes);
 
     const VulkanExchange*             DeviceEdge      = nullptr;   // [-] - borrowed; never owned
     const DiagnosticExtension*        NamingEdge      = nullptr;   // [-] - borrowed; never owned

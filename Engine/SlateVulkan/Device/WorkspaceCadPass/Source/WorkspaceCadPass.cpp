@@ -61,18 +61,18 @@ WorkspaceCadPass::~WorkspaceCadPass()
     Reclaim();
 }
 
-Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& Exchange,
+Deliver<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& Exchange,
                                                           const DiagnosticExtension& Naming,
                                                           ShaderCodec& Streams,
                                                           VkFormat ColourFormat)
 {
     if (DeviceEdge != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "a CAD pass construction already stands" });
 
     const VkDevice Active = Exchange.ActiveDevice();
     if (Active == VK_NULL_HANDLE || Exchange.GraphicsQueue() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     NamingEdge = &Naming;
@@ -81,34 +81,34 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     FillBytes = FillCapacity * static_cast<std::uint32_t>(sizeof(FillRecord));
     MarkerBytes = MarkerCapacity * static_cast<std::uint32_t>(sizeof(MarkerRecord));
 
-    const Outcome<std::uint32_t> VertexModule = Streams.Resolve("SlateVulkan", "WorkspaceCadVertex");
+    const Deliver<std::uint32_t> VertexModule = Streams.Resolve("SlateVulkan", "WorkspaceCadVertex");
     if (!VertexModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexModule.Error);
+        return Deliver<bool>::Refuse(VertexModule.Error);
     }
 
-    const Outcome<std::uint32_t> FragmentModule = Streams.Resolve("SlateVulkan", "WorkspaceCadFragment");
+    const Deliver<std::uint32_t> FragmentModule = Streams.Resolve("SlateVulkan", "WorkspaceCadFragment");
     if (!FragmentModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentModule.Error);
+        return Deliver<bool>::Refuse(FragmentModule.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> VertexRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> VertexRead =
         Streams.Stage(VertexModule.Resolve(), VK_SHADER_STAGE_VERTEX_BIT, {});
     if (!VertexRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexRead.Error);
+        return Deliver<bool>::Refuse(VertexRead.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> FragmentRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> FragmentRead =
         Streams.Stage(FragmentModule.Resolve(), VK_SHADER_STAGE_FRAGMENT_BIT, {});
     if (!FragmentRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentRead.Error);
+        return Deliver<bool>::Refuse(FragmentRead.Error);
     }
 
     VkDescriptorSetLayoutBinding Bindings[3] = {};
@@ -128,7 +128,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     if (vkCreateDescriptorSetLayout(Active, &LayoutDeclaration, nullptr, &CadLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD layout was rejected" });
     }
 
     VkDescriptorPoolSize PoolSize = {};
@@ -144,7 +144,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     if (vkCreateDescriptorPool(Active, &PoolDeclaration, nullptr, &CadPool) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD pool was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD pool was rejected" });
     }
 
     VkDescriptorSetAllocateInfo SetDeclaration = {};
@@ -156,7 +156,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     if (vkAllocateDescriptorSets(Active, &SetDeclaration, &CadSet) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD set was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD set was rejected" });
     }
 
     VkBufferCreateInfo BufferDeclaration = {};
@@ -168,7 +168,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     if (vkCreateBuffer(Active, &BufferDeclaration, nullptr, &VertexBuffer) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD extent was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD extent was rejected" });
     }
 
     VkMemoryRequirements MemoryRequirements = {};
@@ -199,14 +199,14 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
         vkBindBufferMemory(Active, VertexBuffer, VertexMemory, 0u) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD memory was rejected" });
     }
 
     if (vkMapMemory(Active, VertexMemory, 0u, VK_WHOLE_SIZE, 0u,
                     reinterpret_cast<void**>(&MappedSlot)) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the CAD extent would not map" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the CAD extent would not map" });
     }
 
     VkDescriptorBufferInfo Segments = { VertexBuffer, 0u, SegmentBytes };
@@ -241,7 +241,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
     if (vkCreatePipelineLayout(Active, &PipelineLayoutDeclaration, nullptr, &CadPipelineLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD program layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD program layout was rejected" });
     }
 
     VkPipelineRenderingCreateInfo Rendering = {};
@@ -315,7 +315,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
                                   &CadPipeline) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD program was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the CAD program was rejected" });
     }
 
     Discard(Naming.Declare(VK_OBJECT_TYPE_PIPELINE,
@@ -325,7 +325,7 @@ Outcome<bool> WorkspaceCadPass::ConstructWorkspaceCadPass(const VulkanExchange& 
                            reinterpret_cast<std::uint64_t>(VertexBuffer),
                            "WorkspaceCadPass.Geometry"));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void WorkspaceCadPass::Upload(const WorkspaceCadPacket& Packet)

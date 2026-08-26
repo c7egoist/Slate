@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "Shared/AccumulationProjection.slang.h"
@@ -99,7 +99,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for a non-positive depth bound or a ceiling of nothing
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const RejectionSpecification& Declaring);
+    Deliver<bool> Declare(const RejectionSpecification& Declaring);
 
     /// 🧩 Contributes `08` §3 ⑦'s recording.
     /// out   Result  [-]  refuses with whatever the schedule rejected
@@ -107,7 +107,7 @@ public:
     ///        the schedule cannot express as a dependency and does not need to: `06`'s rotation orders the two.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 The sub-pixel offset one rotation carries, from `02` §6's sequence.
     /// in    RecordingIndex  [-]  the rotation, counted from bring-up

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
 
 #include <string>
@@ -33,7 +33,7 @@ struct ActivatedWorkspaceScene
 class WorkspaceSceneActivation
 {
 public:
-    Outcome<ActivatedWorkspaceScene> Open(const std::string& CodexPath,
+    Deliver<ActivatedWorkspaceScene> Open(const std::string& CodexPath,
                                           const std::string& EngineContentPath) const;
 };
 

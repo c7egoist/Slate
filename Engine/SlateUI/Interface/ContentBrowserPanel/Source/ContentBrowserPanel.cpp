@@ -171,40 +171,40 @@ void ContentBrowserPanel::Reapply(const ThemeProfile& Resolved)
     Colour = Resolved.ContentBrowser;
 }
 
-Outcome<bool> ContentBrowserPanel::ConstructContentBrowserPanel(ControlIndex& IncomingInteraction, RecordingSurface& Recording,
+Deliver<bool> ContentBrowserPanel::ConstructContentBrowserPanel(ControlIndex& IncomingInteraction, RecordingSurface& Recording,
                                                                const ThemeProfile& Appearance)
 {
     if (Interaction != nullptr)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the content browser panel is already constructed" });
     }
 
-    const Outcome<bool> SharedOutcome = SharedControls.ConstructComponents(IncomingInteraction, Recording, Appearance);
-    if (!SharedOutcome.Resolved)
-        return SharedOutcome;
+    const Deliver<bool> SharedDelivery = SharedControls.ConstructComponents(IncomingInteraction, Recording, Appearance);
+    if (!SharedDelivery.Resolved)
+        return SharedDelivery;
 
     Interaction = &IncomingInteraction;
     Surface     = &Recording;
 
     // 🔴 Every identity claimed here and none inside a tick. A refusal partway through retires the whole
     //    construction rather than leaving half a panel registered against a index it cannot fill.
-    const auto Reserve = [&](ControlIdentity* Written, std::uint32_t Count) -> Outcome<bool>
+    const auto Reserve = [&](ControlIdentity* Written, std::uint32_t Count) -> Deliver<bool>
     {
         for (std::uint32_t Index = 0u; Index < Count; ++Index)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
 
             if (!Registered.Resolved)
             {
                 Reset();
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
             }
 
             Written[Index] = Registered.Resolve();
         }
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     };
 
     if (const auto Verdict = Reserve(SourceRows, SourceLimit); !Verdict.Resolved)
@@ -216,7 +216,7 @@ Outcome<bool> ContentBrowserPanel::ConstructContentBrowserPanel(ControlIndex& In
     if (const auto Verdict = Reserve(ChromeCells, ChromeLimit); !Verdict.Resolved)
         return Verdict;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ContentBrowserPanel::Advance(const PointerCondition& Incoming, double Elapsed)
@@ -429,7 +429,7 @@ void ContentBrowserPanel::RecordScrollbar(const PlaneExtent& Extent, ControlIden
 
     if (Holding && Travel > 0.0f)
     {
-        const Outcome<float> Previous = Interaction->InitialReading(Target);
+        const Deliver<float> Previous = Interaction->InitialReading(Target);
 
         if (Previous.Resolved)
         {

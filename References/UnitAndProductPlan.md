@@ -31,7 +31,7 @@ What is actually in there is two different things:
 
 | Today               | Is                                                              | Better name  |
 |---------------------|-------------------------------------------------------------------|--------------|
-| `Engine/Foundation/`| 7 headers of contracts — `DeliveryOutcome`, `NumericTolerance`, `PrecisionGuarantee`, `Identity` | `Contract/`  |
+| `Engine/Foundation/`| 7 headers of contracts — `DeliveryGuarantee`, `NumericTolerance`, `PrecisionGuarantee`, `Identity` | `Contract/`  |
 | `Engine/Shared/`    | 18 `.slang.h` predicates compiled by **both** toolchains          | `Shared/`    |
 
 🔴 Neither is a link unit — no `Module.toml`, no archive. They are reached by every unit through the engine

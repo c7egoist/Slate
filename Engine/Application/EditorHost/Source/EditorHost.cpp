@@ -16,7 +16,7 @@
 //    viewport LEAF.
 
 #define SLATE_EDITOR_HOST 1
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "Application/Api/SharedCadDrawingController.h"
 #include "Application/Api/MaterialLayerStackBridge.h"
@@ -766,14 +766,14 @@ int main(int ArgumentCount, char** ArgumentValues)
     }
 
     // One shader stream index feeds both the dynamic atmosphere compute pass and the overlay pass.
-    const Outcome<bool> CodecOutcome =
+    const Deliver<bool> CodecDelivery =
         OverlayCodec.AttachShaderStreams(Lifetime.DeviceExchange(), ShaderStreamDirectory());
 
-    if (CodecOutcome.Resolved)
+    if (CodecDelivery.Resolved)
     {
-        const Outcome<bool> AtmosphereOutcome = AtmosphereSurface.ConstructAtmosphereSurface(
+        const Deliver<bool> AtmosphereDelivery = AtmosphereSurface.ConstructAtmosphereSurface(
             Lifetime.DeviceExchange(), Lifetime.DiagnosticsExtension(), OverlayCodec);
-        if (AtmosphereOutcome.Resolved)
+        if (AtmosphereDelivery.Resolved)
         {
             SkyTextureIdentity = Viewport.Surface().RegisterSampledImage(
                 AtmosphereSurface.Sampler(), AtmosphereSurface.View());
@@ -782,8 +782,8 @@ int main(int ArgumentCount, char** ArgumentValues)
         else
         {
             std::printf("%s \u2014 the GPU atmosphere presentation was rejected (reason %u: %s)\n", HostName,
-                        static_cast<unsigned>(AtmosphereOutcome.Error.DeclaredReason),
-                        AtmosphereOutcome.Error.Detail);
+                        static_cast<unsigned>(AtmosphereDelivery.Error.DeclaredReason),
+                        AtmosphereDelivery.Error.Detail);
         }
     }
 
@@ -791,28 +791,28 @@ int main(int ArgumentCount, char** ArgumentValues)
     // functional, but a packaged editor uses the compute sky and GPU overlay paths.
 
 
-    if (!CodecOutcome.Resolved)
+    if (!CodecDelivery.Resolved)
     {
         std::printf("%s \u2014 the overlay shader streams were not found (reason %u: %s); "
                     "drawing the grid and axes through the interface fallback\n",
                     HostName,
-                    static_cast<unsigned>(CodecOutcome.Error.DeclaredReason),
-                    CodecOutcome.Error.Detail);
+                    static_cast<unsigned>(CodecDelivery.Error.DeclaredReason),
+                    CodecDelivery.Error.Detail);
     }
     else
     {
-        const Outcome<bool> PassOutcome = Overlay.ConstructWorkspaceOverlayPass(Lifetime.DeviceExchange(),
+        const Deliver<bool> PassDelivery = Overlay.ConstructWorkspaceOverlayPass(Lifetime.DeviceExchange(),
                                                             Lifetime.DiagnosticsExtension(),
                                                             OverlayCodec,
                                                             Lifetime.Offering().ColourTargetFormat);
 
-        if (!PassOutcome.Resolved)
+        if (!PassDelivery.Resolved)
         {
             std::printf("%s \u2014 the overlay pass was rejected (reason %u: %s); "
                         "drawing the grid and axes through the interface fallback\n",
                         HostName,
-                        static_cast<unsigned>(PassOutcome.Error.DeclaredReason),
-                        PassOutcome.Error.Detail);
+                        static_cast<unsigned>(PassDelivery.Error.DeclaredReason),
+                        PassDelivery.Error.Detail);
         }
         else
         {
@@ -826,13 +826,13 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    geometry. Keeping the estate separate makes device recovery and display-sized target reclamation testable
     //    without inventing a placeholder surface.
     const DeviceOffering GeometryOffering = Lifetime.Offering();
-    const Outcome<bool> GeometryOutcome = GeometryDevice.ConstructGeometryDeviceExchange(
+    const Deliver<bool> GeometryDelivery = GeometryDevice.ConstructGeometryDeviceExchange(
         Lifetime.DeviceExchange(), Lifetime.DiagnosticsExtension(), ShaderStreamDirectory().c_str(),
         InitialWidth, InitialHeight, GeometryOffering.ColourTargetFormat);
-    if (!GeometryOutcome.Resolved)
+    if (!GeometryDelivery.Resolved)
     {
         std::printf("%s \u2014 the geometry device estate was rejected (reason %u: %s)\n", HostName,
-                    static_cast<unsigned>(GeometryOutcome.Error.DeclaredReason), GeometryOutcome.Error.Detail);
+                    static_cast<unsigned>(GeometryDelivery.Error.DeclaredReason), GeometryDelivery.Error.Detail);
     }
     if (!ImportedVisibility.ConstructVisibilityIndex(InitialWidth, InitialHeight).Resolved)
     {
@@ -842,11 +842,11 @@ int main(int ArgumentCount, char** ArgumentValues)
     // 🔴 The browser carries its OWN index, as every panel here does, so its registration cannot exhaust the
     //    Control Centre's. Read — an registration refusal is silent at the call site and a browser that was
     //    rejected records nothing at all, which reads as a drawer that opens onto blank ground.
-    const Outcome<bool> BrowserOutcome = ContentBrowser.ConstructContentBrowserPanel(BrowserInteraction, Viewport.Surface(), Viewport.Appearance());
-    if (!BrowserOutcome.Resolved)
+    const Deliver<bool> BrowserDelivery = ContentBrowser.ConstructContentBrowserPanel(BrowserInteraction, Viewport.Surface(), Viewport.Appearance());
+    if (!BrowserDelivery.Resolved)
     {
         std::printf("%s \u2014 the content browser was rejected (reason %u: %s)\n", HostName,
-                    static_cast<unsigned>(BrowserOutcome.Error.DeclaredReason), BrowserOutcome.Error.Detail);
+                    static_cast<unsigned>(BrowserDelivery.Error.DeclaredReason), BrowserDelivery.Error.Detail);
         return 1;
     }
 
@@ -860,7 +860,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    thing that distinguishes the two hosts, and it is the reason there are two: the editor carries
     //    every subject and cannot presume which the artist wants, so it presents a blank one and lets them
     //    say. A host that guessed would open a canvas for someone who came to sketch.
-    const Outcome<std::uint32_t> DefaultWorkspace = Workspaces.Register(DefaultSubject);
+    const Deliver<std::uint32_t> DefaultWorkspace = Workspaces.Register(DefaultSubject);
     if (!DefaultWorkspace.Resolved)
     {
         std::printf("%s \u2014 the default workspace could not be opened\n", HostName);
@@ -939,13 +939,13 @@ int main(int ArgumentCount, char** ArgumentValues)
             }
 
             const DeviceOffering ResizedGeometryOffering = Lifetime.Offering();
-            const Outcome<bool> ResizedGeometryOutcome = GeometryDevice.ConstructGeometryDeviceExchange(
+            const Deliver<bool> ResizedGeometryDelivery = GeometryDevice.ConstructGeometryDeviceExchange(
                 Lifetime.DeviceExchange(), Lifetime.DiagnosticsExtension(), ShaderStreamDirectory().c_str(),
                 Pass.Width, Pass.Height, ResizedGeometryOffering.ColourTargetFormat);
-            if (!ResizedGeometryOutcome.Resolved)
+            if (!ResizedGeometryDelivery.Resolved)
             {
                 std::printf("%s \u2014 the geometry device estate could not be rebuilt (reason %u: %s)\n", HostName,
-                            static_cast<unsigned>(ResizedGeometryOutcome.Error.DeclaredReason), ResizedGeometryOutcome.Error.Detail);
+                            static_cast<unsigned>(ResizedGeometryDelivery.Error.DeclaredReason), ResizedGeometryDelivery.Error.Detail);
             }
 
             // 📝 The display recovery this rebuild also raised is consumed here. The reconstruction above
@@ -1290,7 +1290,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 SceneDirectory.RecordOutliner(LeafBody, SceneApplied, PresentedEntities, PresentedEntityCount);
                                 if (SceneApplied.TransferDemand == SceneTransferDemand::Import)
                                 {
-                                    const Outcome<GeometryAssetView> Imported = GeometryTransfer.Import(
+                                    const Deliver<GeometryAssetView> Imported = GeometryTransfer.Import(
                                         SceneApplied.TransferLocation, SceneApplied.TransferName,
                                         ImportedGeometry, ImportedIntake);
                                     if (!Imported.Resolved)
@@ -1300,15 +1300,15 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     }
                                     else
                                     {
-                                        const Outcome<OwnerIdentity> Owner = ImportedOwners.Register();
+                                        const Deliver<OwnerIdentity> Owner = ImportedOwners.Register();
                                         const std::uint32_t Base = ImportedVisibility.DeclaredPartitionCount();
-                                        const Outcome<std::uint32_t> Registered = Owner.Resolved
+                                        const Deliver<std::uint32_t> Registered = Owner.Resolved
                                             ? ImportedVisibility.Register(Owner.Resolve(), *Imported.Resolve().Topology,
                                                                          *Imported.Resolve().Conditioning, ImportedPartitions)
-                                            : Outcome<std::uint32_t>::Refuse(Owner.Error);
-                                        const Outcome<GeometryRenderingIdentity> Rendered = Registered.Resolved
+                                            : Deliver<std::uint32_t>::Refuse(Owner.Error);
+                                        const Deliver<GeometryRenderingIdentity> Rendered = Registered.Resolved
                                             ? ImportedRendering.Synchronise(Imported.Resolve())
-                                            : Outcome<GeometryRenderingIdentity>::Refuse(Registered.Error);
+                                            : Deliver<GeometryRenderingIdentity>::Refuse(Registered.Error);
                                         if (!Rendered.Resolved)
                                         {
                                             std::printf("%s — imported topology could not prepare visibility (reason %u: %s)\n",
@@ -1357,7 +1357,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         ? MaterialExportNormalConvention::DirectX : MaterialExportNormalConvention::OpenGl;
                                     ExportOptions.Resolution = 128u << std::min(TexturePaintApplied.ExportResolution, 7u);
                                     ExportOptions.Dilation = TexturePaintApplied.ExportDilation;
-                                    const Outcome<MaterialExportPackage> ExportPackage =
+                                    const Deliver<MaterialExportPackage> ExportPackage =
                                         BuildMaterialExportPackage(ExportMaterial, ExportOptions);
                                     if (ExportPackage.Resolved)
                                         Discard(MaterialTextureExport().WritePackage(ExportMaterial, ExportPackage.Resolve()));
@@ -1416,7 +1416,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    recorded until then. Applying it against the main space instead is what put a new
                 //    workspace in the wrong window.
                 RegisterIntoNode = AskingNode;
-                const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
+                const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
                     PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
             }
@@ -1426,7 +1426,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             //    on that ground registers one, which is the way out of a state that otherwise has none.
             if (OpenCount == 0u && Viewport.Seam().VacantPressed(Whole))
             {
-                const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
+                const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
                     PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
             }
@@ -1784,13 +1784,13 @@ int main(int ArgumentCount, char** ArgumentValues)
             // faithful decode, document intake, Earcut rendering-packet construction, and partition registration.
             if (GeometryAdmissionPending && GeometryDevice.Standing())
             {
-                const Outcome<const PartitionStructure*> Partitioned =
+                const Deliver<const PartitionStructure*> Partitioned =
                     ImportedVisibility.Registered(PendingVisibilityRegistration);
-                const Outcome<const GeometryRenderingSnapshot*> Rendering =
+                const Deliver<const GeometryRenderingSnapshot*> Rendering =
                     ImportedRendering.Resolve(PendingRendering);
                 if (Partitioned.Resolved && Rendering.Resolved)
                 {
-                    const Outcome<std::uint32_t> Admitted = GeometryDevice.Admit(
+                    const Deliver<std::uint32_t> Admitted = GeometryDevice.Admit(
                         *Partitioned.Resolve(), *Rendering.Resolve(), PendingRegistrationBase, Pass.Recording);
                     if (Admitted.Resolved)
                         GeometryAdmissionPending = false;

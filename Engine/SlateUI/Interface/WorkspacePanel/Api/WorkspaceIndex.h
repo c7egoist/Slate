@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/WorkspacePanel/Api/WorkspacePanel.h"
 
 #include <cstdint>
@@ -59,20 +59,20 @@ public:
     /// post  the registered workspace is active; its title is composed and will not be composed again
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> Register(WorkspaceSubject Subject);
+    Deliver<std::uint32_t> Register(WorkspaceSubject Subject);
 
     /// 🧩 Closes the workspace at one ordinal, preserving the order of the rest.
     /// out   Result  [-]  refuses with IdentityStale when the ordinal names no workspace
     /// note  ⚠️ The active ordinal moves to the preceding workspace, or to none when the last one closed.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Withdraw(std::uint32_t Index);
+    Deliver<bool> Withdraw(std::uint32_t Index);
 
     /// 🧩 Makes the workspace at one ordinal the active one.
     /// out   Result  [-]  refuses with IdentityStale when the ordinal names no workspace
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Present(std::uint32_t Index);
+    Deliver<bool> Present(std::uint32_t Index);
 
     /// 🧩 How many workspaces stand open.
     /// cost  ✔️
@@ -105,7 +105,7 @@ public:
     /// out   Result  [-]  refuses with IdentityStale when the ordinal names no workspace
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<WorkspaceEntry> Current(std::uint32_t Index) const;
+    Deliver<WorkspaceEntry> Current(std::uint32_t Index) const;
 
     /// 🧩 Which workspace is active, as an ordinal into the open set.
     /// out   Index  [-]  AbsentWorkspace when none is open

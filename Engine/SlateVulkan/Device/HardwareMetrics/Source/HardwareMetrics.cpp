@@ -14,10 +14,10 @@ namespace Slate
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> HardwareMetrics::InspectHardware(const VulkanExchange& Exchange)
+Deliver<bool> HardwareMetrics::InspectHardware(const VulkanExchange& Exchange)
 {
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
 
@@ -35,7 +35,7 @@ Outcome<bool> HardwareMetrics::InspectHardware(const VulkanExchange& Exchange)
     if (!Exchange.Capability().TimestampQueryAvailable || TimestampToDuration <= 0.0)
     {
         CapabilityHeld = false;
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     VkQueryPoolCreateInfo ExtentDeclaration = {};
@@ -46,12 +46,12 @@ Outcome<bool> HardwareMetrics::InspectHardware(const VulkanExchange& Exchange)
     if (vkCreateQueryPool(Exchange.ActiveDevice(), &ExtentDeclaration, nullptr, &TimestampExtent) != VK_SUCCESS)
     {
         TimestampExtent = VK_NULL_HANDLE;
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the timestamp extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the timestamp extent" });
     }
 
     CapabilityHeld = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -63,14 +63,14 @@ std::uint32_t HardwareMetrics::TimestampIndexOf(std::uint32_t SlotIndex, std::ui
     return SlotIndex * TimestampsPerSlot + SpanIndex * 2u;
 }
 
-Outcome<std::uint32_t> HardwareMetrics::Declare(const char* SpanName)
+Deliver<std::uint32_t> HardwareMetrics::Declare(const char* SpanName)
 {
     if (SpanName == nullptr || SpanName[0] == '\0')
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a span was declared with no name" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a span was declared with no name" });
 
     if (static_cast<std::uint32_t>(DeclaredSpans.size()) >= SpanLimit)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ExtentExhausted, "more spans were declared than the extent was sized against" });
     }
 
@@ -81,7 +81,7 @@ Outcome<std::uint32_t> HardwareMetrics::Declare(const char* SpanName)
     {
         if (std::strcmp(Current.Declared, SpanName) == 0)
         {
-            return Outcome<std::uint32_t>::Refuse(
+            return Deliver<std::uint32_t>::Refuse(
                 { RefusalReason::ContentUnsupported, "that span name is already declared" });
         }
     }
@@ -92,20 +92,20 @@ Outcome<std::uint32_t> HardwareMetrics::Declare(const char* SpanName)
 
     DeclaredSpans.push_back(Incoming);
 
-    return Outcome<std::uint32_t>::Result(static_cast<std::uint32_t>(DeclaredSpans.size()) - 1u);
+    return Deliver<std::uint32_t>::Result(static_cast<std::uint32_t>(DeclaredSpans.size()) - 1u);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> HardwareMetrics::Clear(VkCommandBuffer Recorded, std::uint32_t SlotIndex)
+Deliver<bool> HardwareMetrics::Clear(VkCommandBuffer Recorded, std::uint32_t SlotIndex)
 {
     if (!CapabilityHeld)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     if (SlotIndex >= static_cast<std::uint32_t>(RecordedSlots.size()) || Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot, or no recording" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot, or no recording" });
 
     // 🔴 The whole slot is cleared, including the spans this rotation will not record. An uncleared timestamp
     //    reads as whatever the previous rotation left there, and a stale duration attributed to this rotation is
@@ -115,23 +115,23 @@ Outcome<bool> HardwareMetrics::Clear(VkCommandBuffer Recorded, std::uint32_t Slo
     RecordedSlots[SlotIndex] = RecordedSlot{};
     CurrentNesting         = 0u;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> HardwareMetrics::Open(VkCommandBuffer Recorded, std::uint32_t SlotIndex, std::uint32_t SpanIndex)
+Deliver<bool> HardwareMetrics::Open(VkCommandBuffer Recorded, std::uint32_t SlotIndex, std::uint32_t SpanIndex)
 {
     if (!CapabilityHeld)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     if (SlotIndex >= static_cast<std::uint32_t>(RecordedSlots.size()) ||
         SpanIndex  >= static_cast<std::uint32_t>(DeclaredSpans.size()) ||
         Recorded == VK_NULL_HANDLE)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such span, slot, or recording" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such span, slot, or recording" });
     }
 
     if (RecordedSlots[SlotIndex].SpanOpened[SpanIndex])
-        return Outcome<bool>::Refuse({ RefusalReason::RelationCyclic, "that span is already open in this rotation" });
+        return Deliver<bool>::Refuse({ RefusalReason::RelationCyclic, "that span is already open in this rotation" });
 
     // 📝 The nesting depth is what stood open **around** this span when it opened, so the outermost span reads
     //    zero. `06` §1's "duration and depth": ⑤·i and ⑤·ii each nest inside whatever span wraps ⑤, and that is
@@ -149,32 +149,32 @@ Outcome<bool> HardwareMetrics::Open(VkCommandBuffer Recorded, std::uint32_t Slot
                         TimestampExtent,
                         TimestampIndexOf(SlotIndex, SpanIndex));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> HardwareMetrics::Close(VkCommandBuffer Recorded, std::uint32_t SlotIndex, std::uint32_t SpanIndex)
+Deliver<bool> HardwareMetrics::Close(VkCommandBuffer Recorded, std::uint32_t SlotIndex, std::uint32_t SpanIndex)
 {
     if (!CapabilityHeld)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     if (SlotIndex >= static_cast<std::uint32_t>(RecordedSlots.size()) ||
         SpanIndex  >= static_cast<std::uint32_t>(DeclaredSpans.size()) ||
         Recorded == VK_NULL_HANDLE)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such span, slot, or recording" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such span, slot, or recording" });
     }
 
     if (!RecordedSlots[SlotIndex].SpanOpened[SpanIndex])
-        return Outcome<bool>::Refuse({ RefusalReason::RelationCyclic, "that span was not opened in this rotation" });
+        return Deliver<bool>::Refuse({ RefusalReason::RelationCyclic, "that span was not opened in this rotation" });
 
     if (RecordedSlots[SlotIndex].SpanClosed[SpanIndex])
-        return Outcome<bool>::Refuse({ RefusalReason::RelationCyclic, "that span is already closed" });
+        return Deliver<bool>::Refuse({ RefusalReason::RelationCyclic, "that span is already closed" });
 
     // 🔴 Closed in the reverse order it was opened. A span closed while one opened inside it still stands has
     //    crossed the nesting, and the depth each of them reports then belongs to neither.
     if (CurrentNesting == 0u || DeclaredSpans[SpanIndex].NestingDepth != CurrentNesting - 1u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::RelationCyclic, "a span was closed while a span opened inside it still stands" });
     }
 
@@ -186,23 +186,23 @@ Outcome<bool> HardwareMetrics::Close(VkCommandBuffer Recorded, std::uint32_t Slo
                         TimestampExtent,
                         TimestampIndexOf(SlotIndex, SpanIndex) + 1u);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE READBACK
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> HardwareMetrics::Resolve(std::uint32_t SlotIndex, std::uint64_t CompletedCount)
+Deliver<bool> HardwareMetrics::Resolve(std::uint32_t SlotIndex, std::uint64_t CompletedCount)
 {
     if (!CapabilityHeld)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     if (SlotIndex >= static_cast<std::uint32_t>(RecordedSlots.size()))
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot" });
 
     if (DeclaredSpans.empty())
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     std::uint64_t Readings[TimestampsPerSlot] = {};
 
@@ -222,10 +222,10 @@ Outcome<bool> HardwareMetrics::Resolve(std::uint32_t SlotIndex, std::uint64_t Co
     // 🔴 `06` §7: reported upward rather than absorbed. A measurement is the one caller with a reason to treat a
     //    lost device as merely unavailable data, and doing so would discard the report the recovery is waiting on.
     if (ReadBack == VK_ERROR_DEVICE_LOST)
-        return Outcome<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost reading back timestamps" });
+        return Deliver<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost reading back timestamps" });
 
     if (ReadBack != VK_SUCCESS)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the device rejected the timestamp readback" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the device rejected the timestamp readback" });
 
     const RecordedSlot& Recorded = RecordedSlots[SlotIndex];
 
@@ -263,19 +263,19 @@ Outcome<bool> HardwareMetrics::Resolve(std::uint32_t SlotIndex, std::uint64_t Co
         Resolved.Available    = true;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE READINGS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<MeasuredSpan> HardwareMetrics::Current(std::uint32_t SpanIndex) const
+Deliver<MeasuredSpan> HardwareMetrics::Current(std::uint32_t SpanIndex) const
 {
     if (SpanIndex >= static_cast<std::uint32_t>(DeclaredSpans.size()))
-        return Outcome<MeasuredSpan>::Refuse({ RefusalReason::ContentUnsupported, "that span was never declared" });
+        return Deliver<MeasuredSpan>::Refuse({ RefusalReason::ContentUnsupported, "that span was never declared" });
 
-    return Outcome<MeasuredSpan>::Result(DeclaredSpans[SpanIndex].LastReading);
+    return Deliver<MeasuredSpan>::Result(DeclaredSpans[SpanIndex].LastReading);
 }
 
 void HardwareMetrics::Report(MeasureIndex& Sampled, TickPoint Arrival) const

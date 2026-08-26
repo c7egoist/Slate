@@ -39,7 +39,7 @@ void WorkQueue::Accept(std::uint32_t RecordIndex)
     ++PendingHeld;
 }
 
-Outcome<std::uint32_t> WorkQueue::Reserve()
+Deliver<std::uint32_t> WorkQueue::Reserve()
 {
     while (ReservationIndex < PendingOrder.size())
     {
@@ -59,13 +59,13 @@ Outcome<std::uint32_t> WorkQueue::Reserve()
             ReservationIndex = 0u;
         }
 
-        return Outcome<std::uint32_t>::Result(Reserved);
+        return Deliver<std::uint32_t>::Result(Reserved);
     }
 
     PendingOrder.clear();
     ReservationIndex = 0u;
 
-    return Outcome<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "nothing is pending at this priority" });
+    return Deliver<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "nothing is pending at this priority" });
 }
 
 void WorkQueue::Withdraw(std::uint32_t RecordIndex)
@@ -98,7 +98,7 @@ std::uint32_t WorkQueue::PendingCount() const
 //    header forward-declares it, so the constructor must be compiled where the definition is visible.
 WorkSequence::WorkSequence() = default;
 
-Outcome<bool> WorkSequence::ConstructWorkerSequence(std::uint32_t       RequestedWorkers,
+Deliver<bool> WorkSequence::ConstructWorkerSequence(std::uint32_t       RequestedWorkers,
                                       const TickSequence& HostTimeline,
                                       ReportSequence&     ReportingInto)
 {
@@ -106,7 +106,7 @@ Outcome<bool> WorkSequence::ConstructWorkerSequence(std::uint32_t       Requeste
         std::lock_guard<std::mutex> Holding(WorkGuard);
 
         if (SpannedWorkers != 0u)
-            return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the workers are already constructed" });
+            return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the workers are already constructed" });
 
         std::uint32_t Constructing = RequestedWorkers;
 
@@ -117,7 +117,7 @@ Outcome<bool> WorkSequence::ConstructWorkerSequence(std::uint32_t       Requeste
             //    same one the worker count was fixed from.
             PlatformInterchange HostTranslation;
 
-            const Outcome<bool> Reported = HostTranslation.Resolve();
+            const Deliver<bool> Reported = HostTranslation.Resolve();
 
             Constructing = Reported.Resolved ? HostTranslation.Report().ResolvingCount : 2u;
 
@@ -137,7 +137,7 @@ Outcome<bool> WorkSequence::ConstructWorkerSequence(std::uint32_t       Requeste
     for (std::uint32_t WorkerIndex = 0u; WorkerIndex < SpannedWorkers; ++WorkerIndex)
         Workers.emplace_back(&WorkSequence::Serve, this, WorkerIndex);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 WorkSequence::~WorkSequence()
@@ -177,7 +177,7 @@ std::uint32_t WorkSequence::Reserve(std::uint32_t WorkerIndex)
         if (InteractiveOnly && Priority != static_cast<std::size_t>(WorkPriority::Interactive))
             break;
 
-        const Outcome<std::uint32_t> Reserved = PendingByPriority[Priority].Reserve();
+        const Deliver<std::uint32_t> Reserved = PendingByPriority[Priority].Reserve();
 
         if (Reserved.Resolved)
             return Reserved.Resolve();
@@ -217,7 +217,7 @@ void WorkSequence::Serve(std::uint32_t WorkerIndex)
         //    so nothing it touches is guarded by anything here.
         Holding.unlock();
 
-        Outcome<bool> Resolved = Outcome<bool>::Refuse(
+        Deliver<bool> Resolved = Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "the declared resolution produced no result" });
 
         if (Serving.Declared.Resolve)
@@ -238,21 +238,21 @@ void WorkSequence::Serve(std::uint32_t WorkerIndex)
 //                                                    DECLARATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<WorkIdentity> WorkSequence::Declare(const WorkDeclaration& Incoming)
+Deliver<WorkIdentity> WorkSequence::Declare(const WorkDeclaration& Incoming)
 {
     if (!Incoming.Resolve)
     {
-        return Outcome<WorkIdentity>::Refuse(
+        return Deliver<WorkIdentity>::Refuse(
             { RefusalReason::ContentUnsupported, "the declaration carries no resolution to run" });
     }
 
     if (static_cast<std::size_t>(Incoming.Priority) >= PrioritySpan)
-        return Outcome<WorkIdentity>::Refuse({ RefusalReason::ContentUnsupported, "no such priority" });
+        return Deliver<WorkIdentity>::Refuse({ RefusalReason::ContentUnsupported, "no such priority" });
 
     std::lock_guard<std::mutex> Holding(WorkGuard);
 
     if (SpannedWorkers == 0u || TeardownDeclared)
-        return Outcome<WorkIdentity>::Refuse({ RefusalReason::HostDenied, "no worker stands to resolve it" });
+        return Deliver<WorkIdentity>::Refuse({ RefusalReason::HostDenied, "no worker stands to resolve it" });
 
     std::uint32_t RecordIndex = AbsentWork;
 
@@ -288,7 +288,7 @@ Outcome<WorkIdentity> WorkSequence::Declare(const WorkDeclaration& Incoming)
 
     ArrivalDeclared.notify_all();
 
-    return Outcome<WorkIdentity>::Result(Registered);
+    return Deliver<WorkIdentity>::Result(Registered);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -308,14 +308,14 @@ std::uint32_t WorkSequence::Resolved(WorkIdentity Subject) const
     return Subject.SlotIndex;
 }
 
-Outcome<bool> WorkSequence::Cancel(WorkIdentity Subject, bool SupersessionPosed)
+Deliver<bool> WorkSequence::Cancel(WorkIdentity Subject, bool SupersessionPosed)
 {
     std::lock_guard<std::mutex> Holding(WorkGuard);
 
     const std::uint32_t RecordIndex = Resolved(Subject);
 
     if (RecordIndex == AbsentWork)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the declaration has already completed" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the declaration has already completed" });
 
     WorkRecord& Cancelling = *Records[RecordIndex];
 
@@ -325,21 +325,21 @@ Outcome<bool> WorkSequence::Cancel(WorkIdentity Subject, bool SupersessionPosed)
     // 🔴 A declaration a worker already holds is **not** sealed here. `34` §5: cancellation is not abandonment —
     //    the resolution runs to its next declared point and releases what it holds, and Seal concludes it then.
     if (Cancelling.ResolutionOpen)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     PendingByPriority[static_cast<std::size_t>(Cancelling.Declared.Priority)].Withdraw(RecordIndex);
 
-    Seal(RecordIndex, Outcome<bool>::Refuse({ RefusalReason::HostDenied, "cancelled before it was claimed" }));
+    Seal(RecordIndex, Deliver<bool>::Refuse({ RefusalReason::HostDenied, "cancelled before it was claimed" }));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkSequence::Withdraw(WorkIdentity Subject)
+Deliver<bool> WorkSequence::Withdraw(WorkIdentity Subject)
 {
     return Cancel(Subject, false);
 }
 
-Outcome<bool> WorkSequence::Supersede(WorkIdentity Subject)
+Deliver<bool> WorkSequence::Supersede(WorkIdentity Subject)
 {
     return Cancel(Subject, true);
 }
@@ -348,7 +348,7 @@ Outcome<bool> WorkSequence::Supersede(WorkIdentity Subject)
 //                                                     CONCLUSION
 //------------------------------------------------------------------------------------------------------------------------
 
-void WorkSequence::Seal(std::uint32_t RecordIndex, const Outcome<bool>& Resolved_)
+void WorkSequence::Seal(std::uint32_t RecordIndex, const Deliver<bool>& Resolved_)
 {
     WorkRecord& Sealing = *Records[RecordIndex];
 
@@ -430,19 +430,19 @@ const std::vector<WorkCompletion>& WorkSequence::Drain()
 //                                                     WHAT IS READ
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<double> WorkSequence::Progress(WorkIdentity Subject) const
+Deliver<double> WorkSequence::Progress(WorkIdentity Subject) const
 {
     std::lock_guard<std::mutex> Holding(WorkGuard);
 
     const std::uint32_t RecordIndex = Resolved(Subject);
 
     if (RecordIndex == AbsentWork)
-        return Outcome<double>::Refuse({ RefusalReason::IdentityStale, "the declaration has already completed" });
+        return Deliver<double>::Refuse({ RefusalReason::IdentityStale, "the declaration has already completed" });
 
-    return Outcome<double>::Result(Records[RecordIndex]->Progressed.Fraction());
+    return Deliver<double>::Result(Records[RecordIndex]->Progressed.Fraction());
 }
 
-Outcome<std::uint64_t> WorkSequence::ProgressCount(WorkIdentity Subject) const
+Deliver<std::uint64_t> WorkSequence::ProgressCount(WorkIdentity Subject) const
 {
     std::lock_guard<std::mutex> Holding(WorkGuard);
 
@@ -450,11 +450,11 @@ Outcome<std::uint64_t> WorkSequence::ProgressCount(WorkIdentity Subject) const
 
     if (RecordIndex == AbsentWork)
     {
-        return Outcome<std::uint64_t>::Refuse(
+        return Deliver<std::uint64_t>::Refuse(
             { RefusalReason::IdentityStale, "the declaration has already completed" });
     }
 
-    return Outcome<std::uint64_t>::Result(Records[RecordIndex]->Progressed.ResolvedCount());
+    return Deliver<std::uint64_t>::Result(Records[RecordIndex]->Progressed.ResolvedCount());
 }
 
 std::uint32_t WorkSequence::WorkerCount() const
@@ -526,7 +526,7 @@ void WorkSequence::Reclaim()
         PendingByPriority[static_cast<std::size_t>(Records[RecordIndex]->Declared.Priority)]
             .Withdraw(RecordIndex);
 
-        Seal(RecordIndex, Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the sequence was reclaimed" }));
+        Seal(RecordIndex, Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the sequence was reclaimed" }));
     }
 
     SpannedWorkers      = 0u;

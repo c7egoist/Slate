@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/ImpressionSequence/Api/ImpressionSequence.h"
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialProcessingExchange.h"
 #include "SlateDocument/Document/BrushSpecification/Api/BrushSpecification.h"
@@ -51,11 +51,11 @@ class MaterialPaintExchange
 {
 public:
     /// 🧩 Creates a document-owned painted layer with a full authored texel span and stable layer identity.
-    Outcome<LayerIdentity> CreatePaintedLayer(SurfaceLayerSequence& Layers,
+    Deliver<LayerIdentity> CreatePaintedLayer(SurfaceLayerSequence& Layers,
                                               const MaterialPaintLayerDeclaration& Declaring) const;
 
     /// 🧩 Builds the stroke declaration for a painted material layer without reading UI state.
-    Outcome<StrokeDeclaration> DeclareStroke(const SurfaceLayerSequence& Layers,
+    Deliver<StrokeDeclaration> DeclareStroke(const SurfaceLayerSequence& Layers,
                                              LayerIdentity Subject,
                                              const BrushSpecification& Brush,
                                              std::uint32_t WorkingExtent,
@@ -64,7 +64,7 @@ public:
                                              bool Speculative = false) const;
 
     /// 🧩 Commits an already-resolved stroke and reports precise tile/channel dirtiness.
-    Outcome<MaterialPaintCommitReport> CommitResolvedStroke(ImpressionSequence& Stroke,
+    Deliver<MaterialPaintCommitReport> CommitResolvedStroke(ImpressionSequence& Stroke,
                                                             MaterialSpecification& Material,
                                                             SurfaceLayerSequence& Layers,
                                                             RevisionSequence& Revisions,

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <cstdint>
@@ -22,12 +22,12 @@ enum class DimensionDisposition : std::uint32_t
 };
 
 DimensionDisposition EvaluateDimensions(const SketchStructure& Declared);
-Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
+Deliver<double> ResolveDimensionValue(const SketchStructure& Declared,
                                       DimensionName Subject);
-Outcome<bool> ResolveDimensionConflict(const SketchStructure& Declared,
+Deliver<bool> ResolveDimensionConflict(const SketchStructure& Declared,
                                        DimensionName Subject);
-Outcome<bool> ApplyDimensions(SketchStructure& Declared);
-Outcome<bool> ApplyDimension(SketchStructure& Declared,
+Deliver<bool> ApplyDimensions(SketchStructure& Declared);
+Deliver<bool> ApplyDimension(SketchStructure& Declared,
                              DimensionName Subject);
 
 } // namespace Slate

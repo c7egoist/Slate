@@ -84,10 +84,10 @@ bool IntervalRegistered(const std::vector<RegisteredInterval>& Runs, std::uint32
 //                                                      ENROLMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RegistrationIndex::Register(OwnerIdentity Subject, SubsetSubject RegisteredSubset)
+Deliver<bool> RegistrationIndex::Register(OwnerIdentity Subject, SubsetSubject RegisteredSubset)
 {
     if (!Subject.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity registers in nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity registers in nothing" });
 
     // 🔴 Decided before anything is written. A rejected registration leaves no partial state, which is what
     //    lets the caller abandon its transaction rather than repair it.
@@ -97,7 +97,7 @@ Outcome<bool> RegistrationIndex::Register(OwnerIdentity Subject, SubsetSubject R
 
         if (SubsetsExclusive(RegisteredSubset, Current) && Registered(Subject, Current))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "a mutually exclusive subset already holds the owner" });
         }
     }
@@ -109,24 +109,24 @@ Outcome<bool> RegistrationIndex::Register(OwnerIdentity Subject, SubsetSubject R
     if (RegisterInterval(Runs, Subject.SlotIndex))
         ++SubsetCounts[static_cast<std::size_t>(RegisteredSubset)];
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      WITHDRAWAL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> RegistrationIndex::Unenrol(OwnerIdentity Subject, SubsetSubject RegisteredSubset)
+Deliver<bool> RegistrationIndex::Unenrol(OwnerIdentity Subject, SubsetSubject RegisteredSubset)
 {
     if (!Subject.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity registers in nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity registers in nothing" });
 
     std::vector<RegisteredInterval>& Runs        = SubsetIntervals[static_cast<std::size_t>(RegisteredSubset)];
     const std::uint32_t            SlotIndex = Subject.SlotIndex;
     const std::size_t              Located     = LocateInterval(Runs, SlotIndex);
 
     if (Located >= Runs.size() || Runs[Located].FirstIndex > SlotIndex)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the owner was not registered here" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the owner was not registered here" });
 
     const RegisteredInterval Held = Runs[Located];
 
@@ -157,7 +157,7 @@ Outcome<bool> RegistrationIndex::Unenrol(OwnerIdentity Subject, SubsetSubject Re
 
     --SubsetCounts[static_cast<std::size_t>(RegisteredSubset)];
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void RegistrationIndex::UnenrolEverywhere(OwnerIdentity Subject)

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 namespace Slate
@@ -27,7 +27,7 @@ CornerDisposition EvaluateProfileCorner(const SketchStructure& Declared,
                                         double Radius,
                                         bool Chamfer);
 
-Outcome<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
+Deliver<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
                                                  ProfileNameInFeature Subject,
                                                  std::uint32_t LoopIndex,
                                                  std::uint32_t CornerIndex,

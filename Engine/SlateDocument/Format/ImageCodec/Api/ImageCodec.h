@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/AssetInterchange/Api/AssetInterchange.h"
 
@@ -74,7 +74,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
 ///        Radiance stream arrives as single-precision, because narrowing here is a precision loss nobody can
 ///        afterwards attribute to anything.
 /// tag   api, nonthrowing
-Outcome<DecodedImage> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
+Deliver<DecodedImage> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
                          PrecisionGuarantee::Exact);

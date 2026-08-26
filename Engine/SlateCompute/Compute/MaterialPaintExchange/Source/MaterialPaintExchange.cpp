@@ -31,16 +31,16 @@ std::uint32_t SpanFor(const BrushChannelValue& Channel)
 
 } // namespace
 
-Outcome<LayerIdentity> MaterialPaintExchange::CreatePaintedLayer(
+Deliver<LayerIdentity> MaterialPaintExchange::CreatePaintedLayer(
     SurfaceLayerSequence& Layers,
     const MaterialPaintLayerDeclaration& Declaring) const
 {
     if (Declaring.ChannelMask == 0u)
-        return Outcome<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer writes no channel" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer writes no channel" });
     if (Declaring.WorkingExtent == 0u || Declaring.WorkingExtent > MaximumWorkingEdge)
-        return Outcome<LayerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the painted layer extent is unsupported" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the painted layer extent is unsupported" });
     if (Declaring.ComponentCount == 0u)
-        return Outcome<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer has no components" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer has no components" });
 
     LayerSpecification Layer;
     Layer.Name = Declaring.Name.empty() ? "Paint Layer" : Declaring.Name;
@@ -56,7 +56,7 @@ Outcome<LayerIdentity> MaterialPaintExchange::CreatePaintedLayer(
     return Layers.Append(Layer);
 }
 
-Outcome<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLayerSequence& Layers,
+Deliver<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLayerSequence& Layers,
                                                                 LayerIdentity Subject,
                                                                 const BrushSpecification& Brush,
                                                                 std::uint32_t WorkingExtent,
@@ -64,12 +64,12 @@ Outcome<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLay
                                                                 std::uint32_t StrokeSeed,
                                                                 bool Speculative) const
 {
-    const Outcome<const LayerSpecification*> Layer = Layers.Resolve(Subject);
-    if (!Layer.Resolved) return Outcome<StrokeDeclaration>::Refuse(Layer.Error);
+    const Deliver<const LayerSpecification*> Layer = Layers.Resolve(Subject);
+    if (!Layer.Resolved) return Deliver<StrokeDeclaration>::Refuse(Layer.Error);
     if (Layer.Resolve()->Source != LayerContentSource::PaintedImpressions)
-        return Outcome<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke target is not a painted layer" });
+        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke target is not a painted layer" });
     if (Layer.Resolve()->Painted.ExtentTexels != WorkingExtent || Layer.Resolve()->Painted.ComponentCount != ComponentCount)
-        return Outcome<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke declaration does not match the painted layer extent" });
+        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke declaration does not match the painted layer extent" });
 
     StrokeDeclaration Declared;
     Declared.Subject = Subject;
@@ -82,11 +82,11 @@ Outcome<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLay
     for (const BrushChannelValue& Channel : Brush.Channels())
     {
         if ((Layer.Resolve()->ChannelMask & ChannelBit(Channel.Channel)) == 0u)
-            return Outcome<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes a channel the layer does not own" });
+            return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes a channel the layer does not own" });
 
         const std::uint32_t Span = SpanFor(Channel);
         if (Cursor + Span > ComponentCount)
-            return Outcome<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush channels do not fit the painted layer packing" });
+            return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush channels do not fit the painted layer packing" });
 
         ChannelPlacement Placement;
         Placement.Channel = Channel.Channel;
@@ -97,9 +97,9 @@ Outcome<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLay
     }
 
     if (Declared.Placements.empty())
-        return Outcome<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes no channel" });
+        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes no channel" });
 
-    return Outcome<StrokeDeclaration>::Result(Declared);
+    return Deliver<StrokeDeclaration>::Result(Declared);
 }
 
 std::vector<MaterialPaintDirtyTile> MaterialPaintExchange::DirtyTilesOf(const SealedStroke& Stroke,
@@ -109,7 +109,7 @@ std::vector<MaterialPaintDirtyTile> MaterialPaintExchange::DirtyTilesOf(const Se
     Tiles.reserve(Stroke.TouchedCells.size());
     for (const std::uint32_t CellIndex : Stroke.TouchedCells)
     {
-        const Outcome<CellAddress> Addressed = AddressOf(CellIndex);
+        const Deliver<CellAddress> Addressed = AddressOf(CellIndex);
         if (!Addressed.Resolved) continue;
         MaterialPaintDirtyTile Tile;
         Tile.CellIndex = CellIndex;
@@ -123,7 +123,7 @@ std::vector<MaterialPaintDirtyTile> MaterialPaintExchange::DirtyTilesOf(const Se
     return Tiles;
 }
 
-Outcome<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
+Deliver<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
     ImpressionSequence& Stroke,
     MaterialSpecification& Material,
     SurfaceLayerSequence& Layers,
@@ -133,10 +133,10 @@ Outcome<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
     const MaterialProcessingSnapshot* Previous) const
 {
     if (!Stroke.StrokeOpen())
-        return Outcome<MaterialPaintCommitReport>::Refuse({ RefusalReason::HostDenied, "no material paint stroke is open" });
+        return Deliver<MaterialPaintCommitReport>::Refuse({ RefusalReason::HostDenied, "no material paint stroke is open" });
 
-    const Outcome<SealedStroke> Sealed = Stroke.Seal(Layers, Revisions, Residency, SealedAt);
-    if (!Sealed.Resolved) return Outcome<MaterialPaintCommitReport>::Refuse(Sealed.Error);
+    const Deliver<SealedStroke> Sealed = Stroke.Seal(Layers, Revisions, Residency, SealedAt);
+    if (!Sealed.Resolved) return Deliver<MaterialPaintCommitReport>::Refuse(Sealed.Error);
 
     MaterialPaintCommitReport Report;
     Report.Stroke = Sealed.Resolve();
@@ -160,7 +160,7 @@ Outcome<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
         Report.Dirty.LayersChanged = true;
     }
 
-    return Outcome<MaterialPaintCommitReport>::Result(Report);
+    return Deliver<MaterialPaintCommitReport>::Result(Report);
 }
 
 } // namespace Slate

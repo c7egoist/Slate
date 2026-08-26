@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/DepthReduction.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/PartitionClassifier.h"
@@ -173,7 +173,7 @@ public:
     /// post  both programs stand; no chain is derived and no residency is claimable
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructOcclusionScheduler(SpanSpace&        Spans,
+    Deliver<bool> ConstructOcclusionScheduler(SpanSpace&        Spans,
                             ImageSpace&       Images,
                             const TargetSpace& Reserved,
                             ShaderCodec&      Modules,
@@ -192,7 +192,7 @@ public:
     ///        against arbitrary depth. `ChainReduced` below is what distinguishes them.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Derive(std::uint32_t DisplayX, std::uint32_t DisplayY);
+    Deliver<bool> Derive(std::uint32_t DisplayX, std::uint32_t DisplayY);
 
     /// 🧩 Reservations the culling spans for one resident partitioning.
     /// in    TriangleLimit  [-]  triangles the residency's fan carries; the surviving run is sized to it
@@ -206,7 +206,7 @@ public:
     ///        would do it to a set the previous rotation's dispatch is still reading.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Resolve(std::uint32_t TriangleLimit, std::uint32_t PartitionCount);
+    Deliver<std::uint32_t> Resolve(std::uint32_t TriangleLimit, std::uint32_t PartitionCount);
 
     /// 🧩 Writes one rotation's classification into a residency's span and clears its indirect record.
     /// in    CullingIndex  [-]  an ordinal this component registered
@@ -223,7 +223,7 @@ public:
     ///        run at the partition count and lets the entry point's dispatch extent be that same count.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(std::uint32_t                             CullingIndex,
+    Deliver<bool> Amend(std::uint32_t                             CullingIndex,
                         std::uint32_t                             SlotIndex,
                         const std::vector<ClassifiedPartition>&   Classified);
 
@@ -243,7 +243,7 @@ public:
     ///        from the wrong one.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Reduce(VkCommandBuffer Recorded, std::uint32_t SlotIndex);
+    Deliver<bool> Reduce(VkCommandBuffer Recorded, std::uint32_t SlotIndex);
 
     /// 🧩 Records ① or ③ — one dispatch per residency, testing its partitions and compacting the survivors.
     /// in    Recorded      [-]  the open recording of this cycle slot
@@ -258,7 +258,7 @@ public:
     ///        invocation — which draws a prefix of the survivors and reads as geometry culled at random.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Cull(VkCommandBuffer Recorded, std::uint32_t SlotIndex, CullingPhase Phase);
+    Deliver<bool> Cull(VkCommandBuffer Recorded, std::uint32_t SlotIndex, CullingPhase Phase);
 
     /// 🧩 The record and the surviving run one residency's draw is registered from.
     /// in    CullingIndex  [-]  an ordinal this component registered
@@ -268,7 +268,7 @@ public:
     ///                            unclaimed ordinal or an excessive cycle slot
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<VkBuffer> RecordOf(std::uint32_t CullingIndex,
+    Deliver<VkBuffer> RecordOf(std::uint32_t CullingIndex,
                                std::uint32_t SlotIndex,
                                CullingPhase  Phase) const;
 
@@ -276,7 +276,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for an unclaimed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<VkBuffer> SurvivingOf(std::uint32_t CullingIndex,
+    Deliver<VkBuffer> SurvivingOf(std::uint32_t CullingIndex,
                                   std::uint32_t SlotIndex,
                                   CullingPhase  Phase) const;
 
@@ -309,7 +309,7 @@ private:
     /// in    SlotIndex  [-]  below `RecordingSlotCount`
     /// in    LevelIndex  [-]  the level being written; nought reads the depth target
     /// out   Result       [-]  refuses with whatever the write or the resolution rejected
-    Outcome<bool> ReduceLevel(VkCommandBuffer  Recorded,
+    Deliver<bool> ReduceLevel(VkCommandBuffer  Recorded,
                               std::uint32_t    SlotIndex,
                               std::uint32_t    LevelIndex);
 

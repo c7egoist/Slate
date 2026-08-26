@@ -12,49 +12,49 @@ namespace Slate
 //                                                        CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ControlIndex::AttachMotion(MotionIntegrator& Incoming)
+Deliver<bool> ControlIndex::AttachMotion(MotionIntegrator& Incoming)
 {
     if (Motion != nullptr)
     {
-        return Outcome<bool>::Refuse(Refusal{ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse(Refusal{ RefusalReason::ContentUnsupported,
                                                    "ControlIndex is already constructed" });
     }
 
     Motion = &Incoming;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<ControlIdentity> ControlIndex::Register()
+Deliver<ControlIdentity> ControlIndex::Register()
 {
     if (Motion == nullptr)
     {
-        return Outcome<ControlIdentity>::Refuse(Refusal{ RefusalReason::CapabilityAbsent,
+        return Deliver<ControlIdentity>::Refuse(Refusal{ RefusalReason::CapabilityAbsent,
                                                           "ControlIndex was not constructed" });
     }
 
     if (RegisteredControlCount >= ControlCapacity)
     {
-        return Outcome<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
+        return Deliver<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
                                                           "ControlIndex holds no further control slot" });
     }
 
     // 📝 🔴 Both fades are registered before the slot is claimed. Target first and refusing second would leave
     //    a slot registered against an interpolant that does not exist, and every later read of it would return
     //    the ordinal zero — which is another control's fade.
-    const Outcome<std::uint32_t> HoverRegistered = Motion->RegisterEased(0.0);
+    const Deliver<std::uint32_t> HoverRegistered = Motion->RegisterEased(0.0);
 
     if (!HoverRegistered.Resolved)
     {
-        return Outcome<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
+        return Deliver<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
                                                           "the integrator rejected a hover fade" });
     }
 
-    const Outcome<std::uint32_t> TakeRegistered = Motion->RegisterEased(0.0);
+    const Deliver<std::uint32_t> TakeRegistered = Motion->RegisterEased(0.0);
 
     if (!TakeRegistered.Resolved)
     {
-        return Outcome<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
+        return Deliver<ControlIdentity>::Refuse(Refusal{ RefusalReason::ExtentExhausted,
                                                           "the integrator rejected a take fade" });
     }
 
@@ -69,7 +69,7 @@ Outcome<ControlIdentity> ControlIndex::Register()
     Poses[Target].TakeIndex  = TakeRegistered.Resolve();
     Poses[Target].Registered     = true;
 
-    return Outcome<ControlIdentity>::Result(ControlIdentity{ Target, Generations[Target] });
+    return Deliver<ControlIdentity>::Result(ControlIdentity{ Target, Generations[Target] });
 }
 
 std::uint32_t ControlIndex::ResolveIndex(ControlIdentity Target) const
@@ -175,15 +175,15 @@ bool ControlIndex::RecordInitial(ControlIdentity Target, float Coordinate)
     return true;
 }
 
-Outcome<float> ControlIndex::InitialReading(ControlIdentity Target) const
+Deliver<float> ControlIndex::InitialReading(ControlIdentity Target) const
 {
     if (!Holding(Target) || !InitialRecorded)
     {
-        return Outcome<float>::Refuse(Refusal{ RefusalReason::IdentityStale,
+        return Deliver<float>::Refuse(Refusal{ RefusalReason::IdentityStale,
                                                        "this control holds no grab to depart from" });
     }
 
-    return Outcome<float>::Result(GrabbedInitial);
+    return Deliver<float>::Result(GrabbedInitial);
 }
 
 float ControlIndex::OriginX() const

@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Shared/ContainmentClassifier.slang.h"
 #include "SlateMath/Numeric/TransformProjection/Api/TransformProjection.h"
@@ -130,7 +130,7 @@ public:
     /// post  the owner sits last in the root ordering and is its own attachment root
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Accept(OwnerIdentity Incoming);
+    Deliver<bool> Accept(OwnerIdentity Incoming);
 
     /// 🧩 Withdraws one owner from both relations, re-enclosing what it enclosed.
     /// in    Departing  [-]  the identity being retired
@@ -141,7 +141,7 @@ public:
     ///       inside it. The caller seals the whole cascade as one transaction.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Retire(OwnerIdentity Departing);
+    Deliver<bool> Retire(OwnerIdentity Departing);
 
     /// 🧩 Places one owner in an enclosure at a declared position in its ordering.
     /// in    Subject               [-]  the owner being placed
@@ -153,7 +153,7 @@ public:
     ///       on the caller so that `86` can name them without this seam allocating a message.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Enclose(OwnerIdentity Subject,
+    Deliver<bool> Enclose(OwnerIdentity Subject,
                           OwnerIdentity ProposedEnclosure,
                           std::uint32_t    OrderWithinEnclosure);
 
@@ -165,7 +165,7 @@ public:
     ///       relations exist rather than one.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Attach(OwnerIdentity Subject, OwnerIdentity ProposedAttachment);
+    Deliver<bool> Attach(OwnerIdentity Subject, OwnerIdentity ProposedAttachment);
 
     /// 🧩 Records the transform the artist authored for one owner.
     /// in    Subject   [-]  the owner
@@ -173,7 +173,7 @@ public:
     /// out   Result   [-]  refuses with IdentityStale
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> AuthorTransform(OwnerIdentity Subject, const DecomposedTransform& Authored);
+    Deliver<bool> AuthorTransform(OwnerIdentity Subject, const DecomposedTransform& Authored);
 
     /// 🧩 Compounds every owner's transform downward from its attachment root — tick step ③.
     /// out   Result  [-]  refuses with ExtentExhausted when a chain exceeds the declared depth ceiling
@@ -182,7 +182,7 @@ public:
     ///       derived from them, which `12` §4 makes an ordering rather than a preference.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> CompoundAttachments();
+    Deliver<bool> CompoundAttachments();
 
     /// 🧩 Repairs interval labels across every span whose gap was exhausted — tick step ④.
     /// out   Result  [-]  refuses with ExtentExhausted when the root span itself cannot hold the ordering
@@ -191,14 +191,14 @@ public:
     ///       refuses. A whole-population relabel is the last resort, never the first.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> RepairLabels();
+    Deliver<bool> RepairLabels();
 
     /// 🧩 One owner's interval label, for the containment predicate above.
     /// in    Subject  [-]  the owner
     /// out   Result  [-]  refuses with IdentityStale
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<IntervalLabel> Label(OwnerIdentity Subject) const;
+    Deliver<IntervalLabel> Label(OwnerIdentity Subject) const;
 
     /// 🧩 One owner's transform with its whole attachment path compounded into it.
     /// in    Subject  [-]  the owner
@@ -206,7 +206,7 @@ public:
     /// pre   CompoundAttachments delivered within this tick
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<DecomposedTransform> CompoundedTransform(OwnerIdentity Subject) const;
+    Deliver<DecomposedTransform> CompoundedTransform(OwnerIdentity Subject) const;
 
     /// 🧩 Whether enclosing Subject in ProposedEnclosure would close a cycle.
     /// in    Subject            [-]  the owner being placed
@@ -278,9 +278,9 @@ private:
     void          Link(std::uint32_t SlotIndex, std::uint32_t EnclosureSlot, std::uint32_t OrderWithinEnclosure);
     IntervalLabel EnclosureInterval(std::uint32_t EnclosureSlot) const;
     bool          LabelBetween(std::uint32_t SlotIndex);
-    Outcome<bool> AssignLabels(std::uint32_t EnclosureSlot, IntervalLabel Available, std::uint32_t Depth);
+    Deliver<bool> AssignLabels(std::uint32_t EnclosureSlot, IntervalLabel Available, std::uint32_t Depth);
     void          DeclareExhausted(std::uint32_t EnclosureSlot);
-    Outcome<bool> CompoundFrom(std::uint32_t SlotIndex, std::uint32_t Depth);
+    Deliver<bool> CompoundFrom(std::uint32_t SlotIndex, std::uint32_t Depth);
 
     std::vector<EnclosureRecord>      Enclosures;                 // [-] - indexed by slot ordinal
     std::vector<AttachmentRecord>     Attachments;                // [-] - indexed by slot ordinal

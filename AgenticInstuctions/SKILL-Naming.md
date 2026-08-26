@@ -131,7 +131,7 @@ These spellings are distinct mechanisms and never interchangeable generic return
 
 | Spelling              | Standing | Mechanism |
 |-----------------------|----------|-----------|
-| `Deliver<Content>`    | Approved | One fallible call either delivers `Content` or carries a `Refusal`. This is the public spelling; `ContentDelivery<Content>` is its contract-local declaration and is never named outside `DeliveryContract.h`. |
+| `Deliver<Content>`    | Approved | One fallible call either delivers `Content` or carries a `Refusal`. This is the public spelling; `ContentDelivery<Content>` is its declaration and is never named outside `DeliveryGuarantee.h`. |
 | `Response<Content>`   | Reserved | Content answering a previously declared request. It is not a general function return. |
 | `Status<Content>`     | Reserved | A diagnostic reading observed at one declared instant. Its diagnostic subject must be stated before introduction. |
 | `Expected<Content>`   | Reserved | Resource content anticipated from an asynchronous acquisition. Its pending, arrived and refused conditions must be specified before introduction. |
@@ -157,7 +157,17 @@ Banned structural words — Table, Map, Block, Digest, Model, Handle, Store, Bri
 Fabric, Cache, Evaluator, Evaluate, Journal, Resolver, Mesh, Pool, Registry, Catalog, Repository,
 Directory, Vault, Arena, Inventory, Ledger, Plan, Filter, Grid, Array, Dispatcher, Memory, Buffer,
 Pipeline, Flow, Composite, Compose, Composition, Allocation, Shell, Tier, Nesting, Stratum, Mip,
-Messenger, Probe, Blend, History, Bake, Stamp.
+Messenger, Probe, Blend, History, Bake, Stamp, Contract, Deliver.
+
+⚠️ `Contract` and `Deliver` are banned for the same reason as `Handle` and `Store`: each names a
+programming-language concept rather than a mechanism. A contract is what every declaration in this engine
+already is, so the word distinguishes nothing; an outcome is what every call already returns. State what
+crosses instead — a `Guarantee` is declared, and a `Deliver<Content>` either delivers or refuses.
+
+| Retired      | Replacement            | Mechanism the replacement states                          |
+|--------------|------------------------|------------------------------------------------------------|
+| `…Contract`  | `…Guarantee`           | What the declaration promises, in the caller's terms       |
+| `Deliver<T>` | `Deliver<T>`           | Content delivered across one fallible call, or a refusal   |
 
 Banned addendum words — Cadence, Binding, Submission, Footprint, Region, Tree, Vacancy, Ordinates.
 

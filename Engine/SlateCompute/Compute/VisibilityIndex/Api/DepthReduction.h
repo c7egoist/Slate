@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
@@ -70,13 +70,13 @@ public:
     /// post  the chain runs from the display extent down to a single texel
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructDepthReduction(std::uint32_t DisplayX, std::uint32_t DisplayY);
+    Deliver<bool> ConstructDepthReduction(std::uint32_t DisplayX, std::uint32_t DisplayY);
 
     /// 🧩 One level's extent.
     /// out   Result  [-]  refuses with ContentUnsupported outside the derived level count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ReductionLevel> Level(std::uint32_t LevelIndex) const;
+    Deliver<ReductionLevel> Level(std::uint32_t LevelIndex) const;
 
     /// 🧩 The coarsest level at which one projected extent is covered by a two-by-two reading.
     /// in    ProjectedX   [px]  the extent the partition projects to, conservative outward
@@ -89,7 +89,7 @@ public:
     ///        projects to nothing is sub-pixel and `16` §3 routes it to the compute path; it is not an error.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> LevelOfExtent(std::uint32_t ProjectedX, std::uint32_t ProjectedY) const;
+    Deliver<std::uint32_t> LevelOfExtent(std::uint32_t ProjectedX, std::uint32_t ProjectedY) const;
 
     /// 🧩 Texels the whole chain spans — what `06` claims for it.
     /// cost  ✔️

@@ -12,13 +12,13 @@ namespace Slate
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> TileSpace::ReserveTileSpace(std::uint32_t SlotLimit_, std::uint32_t BytesPerTexel)
+Deliver<bool> TileSpace::ReserveTileSpace(std::uint32_t SlotLimit_, std::uint32_t BytesPerTexel)
 {
     if (SlotLimit_ == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a index of no slot backs nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a index of no slot backs nothing" });
 
     if (BytesPerTexel == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a texel of no width stores nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a texel of no width stores nothing" });
 
     Limit = SlotLimit_;
 
@@ -43,18 +43,18 @@ Outcome<bool> TileSpace::ReserveTileSpace(std::uint32_t SlotLimit_, std::uint32_
     HeldSlots     = 0u;
     QuarantinedSlots = 0u;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    CLAIM AND RELEASE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> TileSpace::Reserve()
+Deliver<std::uint32_t> TileSpace::Reserve()
 {
     if (FreeIndexs.empty())
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ExtentExhausted, "every slot is claimed or quarantined" });
     }
 
@@ -64,16 +64,16 @@ Outcome<std::uint32_t> TileSpace::Reserve()
     Conditions[Held] = SlotCondition::Held;
     ++HeldSlots;
 
-    return Outcome<std::uint32_t>::Result(Held);
+    return Deliver<std::uint32_t>::Result(Held);
 }
 
-Outcome<bool> TileSpace::Release(std::uint32_t SlotIndex, std::uint64_t RecordingIndex)
+Deliver<bool> TileSpace::Release(std::uint32_t SlotIndex, std::uint64_t RecordingIndex)
 {
     if (SlotIndex >= Limit)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such slot" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such slot" });
 
     if (Conditions[SlotIndex] != SlotCondition::Held)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not claimed" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not claimed" });
 
     Conditions[SlotIndex]   = SlotCondition::Quarantined;
     ReleasedAt[SlotIndex] = RecordingIndex;
@@ -81,7 +81,7 @@ Outcome<bool> TileSpace::Release(std::uint32_t SlotIndex, std::uint64_t Recordin
     --HeldSlots;
     ++QuarantinedSlots;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 std::uint32_t TileSpace::Reclaim(std::uint64_t RecordingIndex)
@@ -119,12 +119,12 @@ std::uint32_t TileSpace::Reclaim(std::uint64_t RecordingIndex)
 //                                                     WHAT IS READ
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint64_t> TileSpace::ByteOffsetOf(std::uint32_t SlotIndex) const
+Deliver<std::uint64_t> TileSpace::ByteOffsetOf(std::uint32_t SlotIndex) const
 {
     if (SlotIndex >= Limit)
-        return Outcome<std::uint64_t>::Refuse({ RefusalReason::ContentUnsupported, "no such slot" });
+        return Deliver<std::uint64_t>::Refuse({ RefusalReason::ContentUnsupported, "no such slot" });
 
-    return Outcome<std::uint64_t>::Result(static_cast<std::uint64_t>(SlotIndex) * TileBytes);
+    return Deliver<std::uint64_t>::Result(static_cast<std::uint64_t>(SlotIndex) * TileBytes);
 }
 
 std::uint64_t TileSpace::StoredBytesPerTile() const { return TileBytes; }

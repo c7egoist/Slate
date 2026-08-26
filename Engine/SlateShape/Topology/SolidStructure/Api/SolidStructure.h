@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Geometry/SurfaceSpecification/Api/SurfaceSpecification.h"
 
@@ -107,13 +107,13 @@ public:
     VertexName DeclareVertex(const SpatialPoint& Position);
     CurveNameInSolid DeclareCurve(const CurveSpecification& Declared);
     SurfaceNameInSolid DeclareSurface(const SurfaceSpecification& Declared);
-    Outcome<EdgeName> DeclareEdge(VertexName StartVertex,
+    Deliver<EdgeName> DeclareEdge(VertexName StartVertex,
                                   VertexName EndVertex,
                                   CurveNameInSolid SupportingCurve);
-    Outcome<CoedgeName> DeclareCoedge(EdgeName TraversedEdge,
+    Deliver<CoedgeName> DeclareCoedge(EdgeName TraversedEdge,
                                       EdgeOrientation Orientation);
-    Outcome<LoopName> DeclareLoop(const DeclaredLoop& Incoming);
-    Outcome<FaceName> DeclareFace(const DeclaredFace& Incoming);
+    Deliver<LoopName> DeclareLoop(const DeclaredLoop& Incoming);
+    Deliver<FaceName> DeclareFace(const DeclaredFace& Incoming);
 
     SolidView Resolve() const
     {

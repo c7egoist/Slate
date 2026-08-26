@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/IntakeIndex/Api/IntakeIndex.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
@@ -124,7 +124,7 @@ struct EmissionSpecification
     ///        it loaded second. Rejected here rather than discovered by whoever ships the asset.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Validate(const MaterialIndex& Materials) const;
+    Deliver<bool> Validate(const MaterialIndex& Materials) const;
 };
 
 /// 🧩 Resolves an emission's declared naming pattern.
@@ -177,7 +177,7 @@ public:
     ///        is missed — by which time the artist has already built on it.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> IntakeTopology(const DecodedTopology& Decoded, TopologyStructure& Into, IntakeIndex& Recorded);
+    Deliver<bool> IntakeTopology(const DecodedTopology& Decoded, TopologyStructure& Into, IntakeIndex& Recorded);
 
     /// 🧩 Records one decoded image's declared space, or the assumption made in its absence.
     /// in    Decoded   [-]  the decoded image, its original retained
@@ -189,7 +189,7 @@ public:
     ///        temptation lives, because a file called `_normal` looks like a helpful signal.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> IntakeImage(const DecodedImage& Decoded, IntakeIndex& Recorded);
+    Deliver<bool> IntakeImage(const DecodedImage& Decoded, IntakeIndex& Recorded);
 
     /// 🧩 Whether an emission may be started against the current document.
     /// in    Declaring  [-]  the emission specification
@@ -199,7 +199,7 @@ public:
     ///        wrong arrangement and the doubled channel are caught — before the artist has waited for an export.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareEmission(const EmissionSpecification& Declaring, const MaterialIndex& Materials);
+    Deliver<bool> DeclareEmission(const EmissionSpecification& Declaring, const MaterialIndex& Materials);
 
     /// 🧩 The declared emission, for whoever presents it.
     /// cost  ✔️

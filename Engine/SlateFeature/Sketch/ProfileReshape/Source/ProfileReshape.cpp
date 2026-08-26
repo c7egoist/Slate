@@ -412,7 +412,7 @@ namespace
     }
 }
 
-Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
+Deliver<SketchCurveName> TrimCurve(SketchStructure& Declared,
                                    SketchCurveName Subject,
                                    const SpatialPoint& Position,
                                    bool KeepStart)
@@ -421,12 +421,12 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
     SpatialPoint StartPoint = {};
     SpatialPoint EndPoint = {};
     if (!ResolveCurveEndpoints(Declared, Subject, Geometry, StartPoint, EndPoint) || Geometry == nullptr)
-        return Outcome<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "trim could not resolve the curve" });
+        return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "trim could not resolve the curve" });
 
     switch (Geometry->Subject())
     {
         case CurveSubject::Line:
-            return Outcome<SketchCurveName>::Result(KeepStart ? Declared.DeclareLine(StartPoint, Position)
+            return Deliver<SketchCurveName>::Result(KeepStart ? Declared.DeclareLine(StartPoint, Position)
                                                               : Declared.DeclareLine(Position, EndPoint));
 
         case CurveSubject::CircularArc:
@@ -441,12 +441,12 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
                 Sweep = -Sweep;
             if (KeepStart)
             {
-                return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+                return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                     CurveSpecification::DeclareCircularArc({ Arc.Centre, Arc.Normal, Arc.StartDirection, Arc.ThroughPoint, false, Arc.Radius, Sweep }, Geometry->Interval())));
             }
             const SpatialDirection EndDirection = Normalize(RotateAroundAxis(StartDirection, Arc.Normal, Arc.SweepRadians));
             const double EndSweep = Arc.SweepRadians - Sweep;
-            return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+            return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                 CurveSpecification::DeclareCircularArc({ Arc.Centre, Arc.Normal, TrimDirection, Arc.ThroughPoint, false, Arc.Radius, EndSweep }, Geometry->Interval())));
         }
 
@@ -463,10 +463,10 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
             if (!KeepStart)
             {
                 const double Remaining = 6.283185307179586 - Sweep;
-                return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+                return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                     CurveSpecification::DeclareCircularArc({ Circle.Centre, Circle.Normal, TrimDirection, {}, false, Circle.Radius, Remaining }, { 0.0, 1.0 })));
             }
-            return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+            return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                 CurveSpecification::DeclareCircularArc({ Circle.Centre, Circle.Normal, Circle.StartDirection, {}, false, Circle.Radius, Sweep }, { 0.0, 1.0 })));
         }
 
@@ -480,10 +480,10 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
                                             Dot(Offset, MajorDirection) / Arc.MajorRadius);
             if (KeepStart)
             {
-                return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+                return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                     CurveSpecification::DeclareEllipticalArc({ Arc.Centre, Arc.Normal, Arc.MajorDirection, Arc.MajorRadius, Arc.MinorRadius, Arc.StartRadians, Phase - Arc.StartRadians }, Geometry->Interval())));
             }
-            return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+            return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                 CurveSpecification::DeclareEllipticalArc({ Arc.Centre, Arc.Normal, Arc.MajorDirection, Arc.MajorRadius, Arc.MinorRadius, Phase, Arc.StartRadians + Arc.SweepRadians - Phase }, Geometry->Interval())));
         }
 
@@ -497,7 +497,7 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
                                             Dot(Offset, MajorDirection) / Ellipse.MajorRadius);
             const double Sweep = KeepStart ? Phase : (6.283185307179586 - Phase);
             const double StartRadians = KeepStart ? 0.0 : Phase;
-            return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(
+            return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                 CurveSpecification::DeclareEllipticalArc({ Ellipse.Centre, Ellipse.Normal, Ellipse.MajorDirection, Ellipse.MajorRadius, Ellipse.MinorRadius, StartRadians, Sweep }, { 0.0, 1.0 })));
         }
 
@@ -508,38 +508,38 @@ Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
         {
             CurveCutPosition Cut = {};
             if (!ResolveCurveCutPosition(*Geometry, Position, Cut))
-                return Outcome<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve could not be parameterised for trim" });
+                return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve could not be parameterised for trim" });
             const double Minimum = Geometry->Interval().Minimum;
             const double Maximum = Geometry->Interval().Maximum;
             const double Split = Minimum + (Maximum - Minimum) * Cut.Parameter;
             const CurveSpecification Trimmed = KeepStart
                 ? TrimPolynomialCurve(*Geometry, Minimum, Split)
                 : TrimPolynomialCurve(*Geometry, Split, Maximum);
-            return Outcome<SketchCurveName>::Result(Declared.DeclareCurve(Trimmed));
+            return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(Trimmed));
         }
 
         case CurveSubject::SubjectCount:
-            return Outcome<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve cannot be trimmed" });
+            return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve cannot be trimmed" });
     }
 
-    return Outcome<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve cannot be trimmed" });
+    return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, "the curve cannot be trimmed" });
 }
 
-Outcome<std::vector<SketchCurveName>> CutCurve(SketchStructure& Declared,
+Deliver<std::vector<SketchCurveName>> CutCurve(SketchStructure& Declared,
                                                SketchCurveName Subject,
                                                const SpatialPoint& Position)
 {
     std::vector<SketchCurveName> Result;
-    const Outcome<SketchCurveName> First = TrimCurve(Declared, Subject, Position, true);
-    const Outcome<SketchCurveName> Second = TrimCurve(Declared, Subject, Position, false);
+    const Deliver<SketchCurveName> First = TrimCurve(Declared, Subject, Position, true);
+    const Deliver<SketchCurveName> Second = TrimCurve(Declared, Subject, Position, false);
     if (!First || !Second)
-        return Outcome<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "the curve could not be cut" });
+        return Deliver<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "the curve could not be cut" });
     Result.push_back(First.Resolve());
     Result.push_back(Second.Resolve());
-    return Outcome<std::vector<SketchCurveName>>::Result(Result);
+    return Deliver<std::vector<SketchCurveName>>::Result(Result);
 }
 
-Outcome<bool> CutProfile(SketchStructure& Declared,
+Deliver<bool> CutProfile(SketchStructure& Declared,
                          ProfileNameInFeature Subject,
                          std::uint32_t LoopIndex,
                          std::uint32_t EdgeIndex,
@@ -548,17 +548,17 @@ Outcome<bool> CutProfile(SketchStructure& Declared,
 {
     Produced.clear();
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Profiles().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
     const ProfileSpecification& Profile = Declared.Profiles()[Subject.IssuedIndex - 1u];
     if (LoopIndex >= Profile.HeldLoops().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such loop is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such loop is declared" });
     const ProfileLoop& Loop = Profile.HeldLoops()[LoopIndex];
     if (EdgeIndex >= Loop.Traversal.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such edge is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such edge is declared" });
 
-    const Outcome<std::vector<SketchCurveName>> Split = CutCurve(Declared, { Loop.Traversal[EdgeIndex].TraversedCurve.IssuedIndex }, Position);
+    const Deliver<std::vector<SketchCurveName>> Split = CutCurve(Declared, { Loop.Traversal[EdgeIndex].TraversedCurve.IssuedIndex }, Position);
     if (!Split)
-        return Outcome<bool>::Refuse(Split.Error);
+        return Deliver<bool>::Refuse(Split.Error);
     Produced = Split.Resolve();
 
     for (std::size_t UseIndex = 1u; UseIndex < Loop.Traversal.size(); ++UseIndex)
@@ -567,7 +567,7 @@ Outcome<bool> CutProfile(SketchStructure& Declared,
         Produced.push_back({ Loop.Traversal[CurrentIndex].TraversedCurve.IssuedIndex });
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 ReshapeDisposition EvaluateProfileInset(const SketchStructure& Declared,
@@ -593,12 +593,12 @@ ReshapeDisposition EvaluateProfileInset(const SketchStructure& Declared,
     return ReshapeDisposition::Produced;
 }
 
-Outcome<ProfileNameInFeature> ApplyProfileInset(SketchStructure& Declared,
+Deliver<ProfileNameInFeature> ApplyProfileInset(SketchStructure& Declared,
                                                 ProfileNameInFeature Subject,
                                                 double Distance)
 {
     if (EvaluateProfileInset(Declared, Subject, Distance) != ReshapeDisposition::Produced)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested inset is unsupported" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the requested inset is unsupported" });
 
     const ProfileSpecification& Source = Declared.Profiles()[Subject.IssuedIndex - 1u];
     std::vector<SpatialPoint> Points;
@@ -635,7 +635,7 @@ Outcome<ProfileNameInFeature> ApplyProfileInset(SketchStructure& Declared,
     }
     InsetProfile.DeclareLoop(Loop);
 
-    return Outcome<ProfileNameInFeature>::Result(Declared.DeclareProfile(InsetProfile));
+    return Deliver<ProfileNameInFeature>::Result(Declared.DeclareProfile(InsetProfile));
 }
 
 } // namespace Slate

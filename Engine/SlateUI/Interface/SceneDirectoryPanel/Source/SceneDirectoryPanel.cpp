@@ -296,14 +296,14 @@ const char* EntityText(EntitySubject Subject)
 //                                                       CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& IncomingInteraction,
+Deliver<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& IncomingInteraction,
                                              MotionIntegrator& Integrator,
                                              RecordingSurface& IncomingSurface,
                                              const ThemeProfile& Resolved)
 {
     if (Interaction != nullptr)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the scene directory panel is already constructed" });
     }
 
@@ -315,14 +315,14 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
     if (!Controls.ConstructControlPanel(IncomingInteraction, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the shared inspector controls were rejected" });
     }
 
     if (!EnvironmentControls.ConstructComponents(IncomingInteraction, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the environment slider controls were rejected" });
     }
 
@@ -331,7 +331,7 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
     if (!Facets.ConstructFacetPanel(Integrator, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the scene directory filter was rejected" });
     }
 
@@ -374,9 +374,9 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
 
     for (ControlIdentity* Identity : Every)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
 
         *Identity = Registered.Resolve();
     }
@@ -385,39 +385,39 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
     {
         for (ControlIdentity& Identity : Card)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
             if (!Registered.Resolved)
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
             Identity = Registered.Resolve();
         }
     }
 
     for (ControlIdentity& Identity : BookmarkNames)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
         Identity = Registered.Resolve();
     }
 
     // 📐 The leaf's page travel. Registered here, never mid-tick.
-    if (const Outcome<bool> Pages = OutlinePages.ConstructSlidingPages(Integrator, 0u);
+    if (const Deliver<bool> Pages = OutlinePages.ConstructSlidingPages(Integrator, 0u);
         !Pages.Resolved)
         return Pages;
 
     {
-        const Outcome<std::uint32_t> Eased = Integrator.RegisterEased(1.0);
+        const Deliver<std::uint32_t> Eased = Integrator.RegisterEased(1.0);
         if (!Eased.Resolved)
-            return Outcome<bool>::Refuse(Eased.Error);
+            return Deliver<bool>::Refuse(Eased.Error);
         TransferMotion = Eased.Resolve();
     }
 
     for (std::uint32_t Index = 0u; Index < 2u; ++Index)
     {
-        const Outcome<std::uint32_t> Eased = Integrator.RegisterEased(1.0);
+        const Deliver<std::uint32_t> Eased = Integrator.RegisterEased(1.0);
 
         if (!Eased.Resolved)
-            return Outcome<bool>::Refuse(Eased.Error);
+            return Deliver<bool>::Refuse(Eased.Error);
 
         InspectorMotion[Index] = Eased.Resolve();
     }
@@ -432,9 +432,9 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
 
         for (ControlIdentity* Identity : Rows)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
             if (!Registered.Resolved)
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
 
             *Identity = Registered.Resolve();
         }
@@ -442,7 +442,7 @@ Outcome<bool> SceneDirectoryPanel::ConstructSceneDirectoryPanel(ControlIndex& In
 
     Reapply(Resolved);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void SceneDirectoryPanel::Advance(const PointerCondition& Contact, double Elapsed,

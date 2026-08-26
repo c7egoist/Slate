@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/DrawerSpace/Api/DrawerSpace.h"
@@ -198,7 +198,7 @@ public:
     /// err   a refusal leaves nothing registered; the panel records nothing until Construct is delivered
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructContentBrowserPanel(ControlIndex& IncomingInteraction, RecordingSurface& Recording,
+    Deliver<bool> ConstructContentBrowserPanel(ControlIndex& IncomingInteraction, RecordingSurface& Recording,
                                                const ThemeProfile& Appearance);
 
     /// 🧩 Samples the tick's pointer before anything is recorded against it.

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
 #include <cstdint>
@@ -150,7 +150,7 @@ public:
     ///        budget being half what it was declared to be.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<const PageQueue*> Drain(RequestQueue& Requesting, std::uint64_t RecordingIndex);
+    Deliver<const PageQueue*> Drain(RequestQueue& Requesting, std::uint64_t RecordingIndex);
 
     /// 🧩 The rotation last drained; zero before anything has been.
     /// cost  ✔️

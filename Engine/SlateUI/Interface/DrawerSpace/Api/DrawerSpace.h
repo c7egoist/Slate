@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/GestureSequence/Api/GestureSequence.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 #include "SlateUI/Interface/MotionIntegrator/Api/MotionIntegrator.h"
@@ -100,7 +100,7 @@ public:
     /// post  both drawers stand Closed and settled; nothing moves until a contact arrives
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructDrawerSpace(MotionIntegrator&              Motion,
+    Deliver<bool> ConstructDrawerSpace(MotionIntegrator&              Motion,
                             const ThemeProfile& Appearance,
                             const DrawerDeclaration&       North,
                             const DrawerDeclaration&       South,

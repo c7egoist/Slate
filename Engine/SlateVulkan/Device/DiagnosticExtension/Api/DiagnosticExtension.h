@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Numeric/ReportSequence/Api/ReportSequence.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -56,7 +56,7 @@ public:
     ///        loader does not carry it — and a link-time reference makes the whole executable unloadable there.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> AttachDiagnostics(const VulkanExchange& Exchange, ReportSequence& Register, const TickSequence& Timeline);
+    Deliver<bool> AttachDiagnostics(const VulkanExchange& Exchange, ReportSequence& Register, const TickSequence& Timeline);
 
     /// 🧩 Names one vendor object, so the driver's text names the object rather than an address.
     /// in    Subject       [-]  which vendor structure the handle names, as the vendor spells it
@@ -79,7 +79,7 @@ public:
     ///        component hold a mutable reference to a capability it only reads.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(VkObjectType Subject, std::uint64_t VendorHandle, const char* DeclaredName) const;
+    Deliver<bool> Declare(VkObjectType Subject, std::uint64_t VendorHandle, const char* DeclaredName) const;
 
     /// 🧩 Names one vendor object by a static prefix and the ordinal its owning component holds it at.
     /// in    Subject        [-]  which vendor structure the handle names, as the vendor spells it
@@ -96,7 +96,7 @@ public:
     ///        retained here.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(VkObjectType   Subject,
+    Deliver<bool> Declare(VkObjectType   Subject,
                           std::uint64_t  VendorHandle,
                           const char*    DeclaredPrefix,
                           std::uint32_t  Index) const;

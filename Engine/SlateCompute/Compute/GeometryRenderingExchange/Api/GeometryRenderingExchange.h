@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/Identity.h"
 #include "SlateDocument/Document/GeometryInterchange/Api/GeometryInterchange.h"
 
@@ -54,9 +54,9 @@ struct GeometryRenderingSnapshot
 class GeometryRenderingExchange
 {
 public:
-    Outcome<GeometryRenderingIdentity> Synchronise(const GeometryAssetView& Geometry);
-    Outcome<const GeometryRenderingSnapshot*> Resolve(GeometryRenderingIdentity Subject) const;
-    Outcome<bool> Retire(GeometryRenderingIdentity Subject);
+    Deliver<GeometryRenderingIdentity> Synchronise(const GeometryAssetView& Geometry);
+    Deliver<const GeometryRenderingSnapshot*> Resolve(GeometryRenderingIdentity Subject) const;
+    Deliver<bool> Retire(GeometryRenderingIdentity Subject);
     void Reclaim();
     std::uint32_t DeclaredCount() const { return OccupiedCount; }
 

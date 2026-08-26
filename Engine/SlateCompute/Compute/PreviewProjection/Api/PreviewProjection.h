@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/AnalyticProjection/Api/AnalyticProjection.h"
 #include "SlateCompute/Compute/ImpressionSequence/Api/ImpressionSequence.h"
@@ -162,7 +162,7 @@ public:
     /// out   Result   [-]  refuses with ContentUnsupported for an absent resolver
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructPreviewProjection(const PreviewSources& Supplied);
+    Deliver<bool> ConstructPreviewProjection(const PreviewSources& Supplied);
 
     //--------------------------------------------------------------------------------------------------------------------
     //                                                  THE BRUSH PREVIEW
@@ -182,7 +182,7 @@ public:
     ///        `22`'s Seal rather than from the component whose whole subject is that it never commits.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> OpenImpression(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed);
+    Deliver<bool> OpenImpression(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed);
 
     /// 🧩 Moves the previewed impression to where the cursor now stands.
     /// in    Incoming  [-]  the pointer sample and the domain position `74` resolved it to
@@ -193,7 +193,7 @@ public:
     ///        about a stroke the artist has not made.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> AmendImpression(const StrokeArrival& Incoming);
+    Deliver<bool> AmendImpression(const StrokeArrival& Incoming);
 
     /// 🧩 Resolves the previewed impression against whatever residency accepts, demanding nothing it may pin.
     /// in    Residency        [-]  the surface's cells and tiles
@@ -203,7 +203,7 @@ public:
     /// post  🔴 nothing was pinned; `DeclareUncommitted` was not called and cannot have been
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ResolvedRun> ResolveImpression(SurfaceTileSpace& Residency,
+    Deliver<ResolvedRun> ResolveImpression(SurfaceTileSpace& Residency,
                                            RequestQueue&     Requesting,
                                            std::uint64_t     RecordingIndex);
 
@@ -244,7 +244,7 @@ public:
     ///        mean two different things depending on who was asking.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ResolvedSample> ProjectContentAt(const SurfaceLayerSequence&           Content,
+    Deliver<ResolvedSample> ProjectContentAt(const SurfaceLayerSequence&           Content,
                                              const std::vector<ChannelPlacement>&  Placements,
                                              double                                PositionX,
                                              double                                PositionY,
@@ -272,7 +272,7 @@ public:
     ///        the other three.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ResolvedSample> ProjectPlacementAt(const SurfaceLayerSequence&           Content,
+    Deliver<ResolvedSample> ProjectPlacementAt(const SurfaceLayerSequence&           Content,
                                                const std::vector<ChannelPlacement>&  Placements,
                                                double                                PositionX,
                                                double                                PositionY,
@@ -292,7 +292,7 @@ public:
     ///        other reason — it is not a revision and nothing keys on it.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> AmendParameter(std::uint64_t RecordingIndex);
+    Deliver<bool> AmendParameter(std::uint64_t RecordingIndex);
 
     /// 🧩 How many re-resolutions the standing parameter drag has asked for.
     /// cost  ✔️
@@ -311,7 +311,7 @@ public:
     /// out   Result          [-]  refuses with ContentUnsupported for the closed count and outside the level count
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> DeclareExtent(SpeculativeSubject Previewed,
+    Deliver<bool> DeclareExtent(SpeculativeSubject Previewed,
                                 std::uint32_t      SurfaceIndex,
                                 std::uint32_t      RequestedLevel,
                                 std::uint64_t      RecordingIndex);

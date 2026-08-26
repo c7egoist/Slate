@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 
@@ -84,7 +84,7 @@ public:
     /// out   Result  [-]  refuses for a stale or divided ordinal, or when two slots are unavailable
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Divide(std::uint32_t LeafIndex,
+    Deliver<bool> Divide(std::uint32_t LeafIndex,
                          PanelDivisionAxis Axis,
                          PanelDivisionSide VacantSide);
 
@@ -92,24 +92,24 @@ public:
     /// out   Result  [-]  refuses for a stale ordinal and for the sole root leaf
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Withdraw(std::uint32_t LeafIndex);
+    Deliver<bool> Withdraw(std::uint32_t LeafIndex);
 
     /// 🧩 Changes what one leaf presents.
     /// out   Result  [-]  refuses for a stale or divided ordinal and an unsupported subject
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Assign(std::uint32_t LeafIndex, PanelSubject Subject);
+    Deliver<bool> Assign(std::uint32_t LeafIndex, PanelSubject Subject);
 
     /// 🧩 Changes one division's least-side fraction, clamped to the reference's five-percent limits.
     /// out   Result  [-]  refuses for a stale leaf ordinal
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Proportion(std::uint32_t DivisionIndex, float MinimumFraction);
+    Deliver<bool> Proportion(std::uint32_t DivisionIndex, float MinimumFraction);
 
     /// 🧩 Reads one occupied record; an unoccupied ordinal refuses as stale.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<PanelRecord> Current(std::uint32_t Index) const;
+    Deliver<PanelRecord> Current(std::uint32_t Index) const;
 
     /// 🧩 Whether the partition contains more than its sole root leaf.
     /// cost  ✔️

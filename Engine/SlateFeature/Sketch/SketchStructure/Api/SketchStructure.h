@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Geometry/ProfileSpecification/Api/ProfileSpecification.h"
 #include "SlateFeature/Sketch/ConstraintSpecification/Api/ConstraintSpecification.h"
@@ -51,15 +51,15 @@ public:
     SketchCurveName DeclareRationalSpline(const RationalSplineCurve& Declared);
     SketchCurveName DeclareHermite(const HermiteCurve& Declared);
 
-    Outcome<bool> DeclarePolyline(const std::vector<SpatialPoint>& Positions,
+    Deliver<bool> DeclarePolyline(const std::vector<SpatialPoint>& Positions,
                                   std::vector<SketchCurveName>& DeclaredCurves);
-    Outcome<ProfileNameInFeature> DeclareCircleProfile(const CircleCurve& Declared);
-    Outcome<ProfileNameInFeature> DeclareEllipseProfile(const EllipseCurve& Declared);
-    Outcome<ProfileNameInFeature> DeclareOvalProfile(const EllipseCurve& Declared);
-    Outcome<ProfileNameInFeature> DeclareRegularPolygon(const SpatialPoint& Centre,
+    Deliver<ProfileNameInFeature> DeclareCircleProfile(const CircleCurve& Declared);
+    Deliver<ProfileNameInFeature> DeclareEllipseProfile(const EllipseCurve& Declared);
+    Deliver<ProfileNameInFeature> DeclareOvalProfile(const EllipseCurve& Declared);
+    Deliver<ProfileNameInFeature> DeclareRegularPolygon(const SpatialPoint& Centre,
                                                         double Radius,
                                                         std::uint32_t SideCount);
-    Outcome<ProfileNameInFeature> DeclareSlot(const SpatialPoint& StartPoint,
+    Deliver<ProfileNameInFeature> DeclareSlot(const SpatialPoint& StartPoint,
                                               const SpatialPoint& EndPoint,
                                               double Radius);
 

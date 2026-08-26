@@ -43,7 +43,7 @@ constexpr VkDeviceSize IndirectRecordBytes = sizeof(VkDrawIndirectCommand);   //
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionScheduler::ConstructOcclusionScheduler(SpanSpace&         Spans,
+Deliver<bool> OcclusionScheduler::ConstructOcclusionScheduler(SpanSpace&         Spans,
                                             ImageSpace&        Images,
                                             const TargetSpace& Reserved,
                                             ShaderCodec&       Modules,
@@ -84,10 +84,10 @@ Outcome<bool> OcclusionScheduler::ConstructOcclusionScheduler(SpanSpace&        
     Reducing.push_back(DepthRead);
     Reducing.push_back(ChainWritten);
 
-    const Outcome<std::uint32_t> ReductionDeclared = DescriptorEdge->Declare(Reducing);
+    const Deliver<std::uint32_t> ReductionDeclared = DescriptorEdge->Declare(Reducing);
 
     if (!ReductionDeclared.Resolved)
-        return Outcome<bool>::Refuse(ReductionDeclared.Error);
+        return Deliver<bool>::Refuse(ReductionDeclared.Error);
 
     ReductionLayout = ReductionDeclared.Resolve();
 
@@ -106,22 +106,22 @@ Outcome<bool> OcclusionScheduler::ConstructOcclusionScheduler(SpanSpace&        
         Culling.push_back(Declaring);
     }
 
-    const Outcome<std::uint32_t> OcclusionDeclared = DescriptorEdge->Declare(Culling);
+    const Deliver<std::uint32_t> OcclusionDeclared = DescriptorEdge->Declare(Culling);
 
     if (!OcclusionDeclared.Resolved)
-        return Outcome<bool>::Refuse(OcclusionDeclared.Error);
+        return Deliver<bool>::Refuse(OcclusionDeclared.Error);
 
     OcclusionLayout = OcclusionDeclared.Resolve();
 
-    const Outcome<std::uint32_t> ReductionStream = ModuleEdge->Resolve("SlateCompute", "DepthReduction");
+    const Deliver<std::uint32_t> ReductionStream = ModuleEdge->Resolve("SlateCompute", "DepthReduction");
 
     if (!ReductionStream.Resolved)
-        return Outcome<bool>::Refuse(ReductionStream.Error);
+        return Deliver<bool>::Refuse(ReductionStream.Error);
 
-    const Outcome<std::uint32_t> OcclusionStream = ModuleEdge->Resolve("SlateCompute", "OcclusionCulling");
+    const Deliver<std::uint32_t> OcclusionStream = ModuleEdge->Resolve("SlateCompute", "OcclusionCulling");
 
     if (!OcclusionStream.Resolved)
-        return Outcome<bool>::Refuse(OcclusionStream.Error);
+        return Deliver<bool>::Refuse(OcclusionStream.Error);
 
     ReductionModule  = ReductionStream.Resolve();
     OcclusionModule  = OcclusionStream.Resolve();
@@ -130,24 +130,24 @@ Outcome<bool> OcclusionScheduler::ConstructOcclusionScheduler(SpanSpace&        
     Reducer.ModuleIndex  = ReductionModule;
     Reducer.LayoutIndexs = { ReductionLayout };
 
-    const Outcome<std::uint32_t> ReducerProgram = ProgramEdge->DeclareCompute(Reducer);
+    const Deliver<std::uint32_t> ReducerProgram = ProgramEdge->DeclareCompute(Reducer);
 
     if (!ReducerProgram.Resolved)
-        return Outcome<bool>::Refuse(ReducerProgram.Error);
+        return Deliver<bool>::Refuse(ReducerProgram.Error);
 
     ComputeDeclaration Culler;
     Culler.ModuleIndex  = OcclusionModule;
     Culler.LayoutIndexs = { OcclusionLayout };
 
-    const Outcome<std::uint32_t> CullerProgram = ProgramEdge->DeclareCompute(Culler);
+    const Deliver<std::uint32_t> CullerProgram = ProgramEdge->DeclareCompute(Culler);
 
     if (!CullerProgram.Resolved)
-        return Outcome<bool>::Refuse(CullerProgram.Error);
+        return Deliver<bool>::Refuse(CullerProgram.Error);
 
     ReductionProgram = ReducerProgram.Resolve();
     OcclusionProgram = CullerProgram.Resolve();
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -174,12 +174,12 @@ void OcclusionScheduler::Order(VkCommandBuffer      Recorded,
 //                                                      THE CHAIN
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t DisplayY)
+Deliver<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t DisplayY)
 {
     if (SpanEdge == nullptr || DescriptorEdge == nullptr || TargetEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
-    const Outcome<bool> Derived = Chain.ConstructDepthReduction(DisplayX, DisplayY);
+    const Deliver<bool> Derived = Chain.ConstructDepthReduction(DisplayX, DisplayY);
 
     if (!Derived.Resolved)
         return Derived;
@@ -218,10 +218,10 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
     ChainShape.Intent    = SpanIntent::StorageRead;
     ChainShape.Residency = ExtentResidency::DeviceLocal;
 
-    const Outcome<SpanReservation> ChainReserved = SpanEdge->Reserve(ChainShape);
+    const Deliver<SpanReservation> ChainReserved = SpanEdge->Reserve(ChainShape);
 
     if (!ChainReserved.Resolved)
-        return Outcome<bool>::Refuse(ChainReserved.Error);
+        return Deliver<bool>::Refuse(ChainReserved.Error);
 
     ChainSpan = ChainReserved.Resolve().SpanIndex;
 
@@ -233,10 +233,10 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
 
     for (std::uint32_t LevelIndex = 0u; LevelIndex < Levels; ++LevelIndex)
     {
-        const Outcome<ReductionLevel> Held = Chain.Level(LevelIndex);
+        const Deliver<ReductionLevel> Held = Chain.Level(LevelIndex);
 
         if (!Held.Resolved)
-            return Outcome<bool>::Refuse(Held.Error);
+            return Deliver<bool>::Refuse(Held.Error);
 
         LevelOffsets[LevelIndex * IndexsPerLevel]        = Accumulated;
         LevelOffsets[LevelIndex * IndexsPerLevel + 1u]   = Held.Resolve().Width;
@@ -252,20 +252,20 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
     ExtentShape.Intent    = SpanIntent::StorageRead;
     ExtentShape.Residency = ExtentResidency::HostWritable;
 
-    const Outcome<SpanReservation> ExtentReserved = SpanEdge->Reserve(ExtentShape);
+    const Deliver<SpanReservation> ExtentReserved = SpanEdge->Reserve(ExtentShape);
 
     if (!ExtentReserved.Resolved)
-        return Outcome<bool>::Refuse(ExtentReserved.Error);
+        return Deliver<bool>::Refuse(ExtentReserved.Error);
 
     LevelExtentSpan = ExtentReserved.Resolve().SpanIndex;
 
-    const Outcome<bool> ExtentWritten = SpanEdge->Amend(LevelExtentSpan,
+    const Deliver<bool> ExtentWritten = SpanEdge->Amend(LevelExtentSpan,
                                                         LevelOffsets.data(),
                                                         ExtentShape.SpanBytes,
                                                         0u);
 
     if (!ExtentWritten.Resolved)
-        return Outcome<bool>::Refuse(ExtentWritten.Error);
+        return Deliver<bool>::Refuse(ExtentWritten.Error);
 
     // 📝 One uniform span per level per cycle slot. The record differs per level and the recording slot count is what keeps the
     //    slot being written from being the slot the device is reading, so both factors are real.
@@ -278,10 +278,10 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
         RecordShape.Intent    = SpanIntent::UniformRead;
         RecordShape.Residency = ExtentResidency::HostWritable;
 
-        const Outcome<SpanReservation> RecordReserved = SpanEdge->Reserve(RecordShape);
+        const Deliver<SpanReservation> RecordReserved = SpanEdge->Reserve(RecordShape);
 
         if (!RecordReserved.Resolved)
-            return Outcome<bool>::Refuse(RecordReserved.Error);
+            return Deliver<bool>::Refuse(RecordReserved.Error);
 
         ReductionSpans[Index] = RecordReserved.Resolve().SpanIndex;
     }
@@ -290,25 +290,25 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
     {
         for (std::uint32_t LevelIndex = 0u; LevelIndex < ReductionLevelLimit; ++LevelIndex)
         {
-            const Outcome<std::uint32_t> Reserved = DescriptorEdge->Reserve(ReductionLayout);
+            const Deliver<std::uint32_t> Reserved = DescriptorEdge->Reserve(ReductionLayout);
 
             if (!Reserved.Resolved)
-                return Outcome<bool>::Refuse(Reserved.Error);
+                return Deliver<bool>::Refuse(Reserved.Error);
 
             ReductionReservations.push_back(Reserved.Resolve());
         }
     }
 
-    const Outcome<ImageReservation> DepthCurrent = TargetEdge->Resolve(SharedTarget::DepthSurface);
+    const Deliver<ImageReservation> DepthCurrent = TargetEdge->Resolve(SharedTarget::DepthSurface);
 
     if (!DepthCurrent.Resolved)
-        return Outcome<bool>::Refuse(DepthCurrent.Error);
+        return Deliver<bool>::Refuse(DepthCurrent.Error);
 
-    const Outcome<SpanReservation> ChainCurrent  = SpanEdge->Current(ChainSpan);
-    const Outcome<SpanReservation> ExtentCurrent = SpanEdge->Current(LevelExtentSpan);
+    const Deliver<SpanReservation> ChainCurrent  = SpanEdge->Current(ChainSpan);
+    const Deliver<SpanReservation> ExtentCurrent = SpanEdge->Current(LevelExtentSpan);
 
     if (!ChainCurrent.Resolved || !ExtentCurrent.Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
 
     for (std::uint32_t LevelIndex = 0u; LevelIndex < Levels; ++LevelIndex)
     {
@@ -316,10 +316,10 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
         {
             const std::size_t SpanIndex = static_cast<std::size_t>(LevelIndex) * RecordingSlotCount + SlotIndex;
 
-            const Outcome<SpanReservation> RecordCurrent = SpanEdge->Current(ReductionSpans[SpanIndex]);
+            const Deliver<SpanReservation> RecordCurrent = SpanEdge->Current(ReductionSpans[SpanIndex]);
 
             if (!RecordCurrent.Resolved)
-                return Outcome<bool>::Refuse(RecordCurrent.Error);
+                return Deliver<bool>::Refuse(RecordCurrent.Error);
 
             DescriptorContent Recording;
             Recording.SlotIndex = 0u;
@@ -338,10 +338,10 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
 
             const std::vector<DescriptorContent> Amending = { Recording, Depth, Chained_ };
 
-            const Outcome<bool> Amended = DescriptorEdge->Amend(ReductionReservations[LevelIndex], SlotIndex, Amending);
+            const Deliver<bool> Amended = DescriptorEdge->Amend(ReductionReservations[LevelIndex], SlotIndex, Amending);
 
             if (!Amended.Resolved)
-                return Outcome<bool>::Refuse(Amended.Error);
+                return Deliver<bool>::Refuse(Amended.Error);
         }
     }
 
@@ -365,16 +365,16 @@ Outcome<bool> OcclusionScheduler::Derive(std::uint32_t DisplayX, std::uint32_t D
 
                 const std::vector<DescriptorContent> Amending = { Chained_, Extents };
 
-                const Outcome<bool> Amended =
+                const Deliver<bool> Amended =
                     DescriptorEdge->Amend(Current.ReservationIndexs[SlotIdx], SlotIndex, Amending);
 
                 if (!Amended.Resolved)
-                    return Outcome<bool>::Refuse(Amended.Error);
+                    return Deliver<bool>::Refuse(Amended.Error);
             }
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -419,17 +419,17 @@ void OcclusionScheduler::Abandon(CulledResidency& Abandoned)
     Abandoned = CulledResidency{};
 }
 
-Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, std::uint32_t PartitionCount)
+Deliver<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, std::uint32_t PartitionCount)
 {
     if (SpanEdge == nullptr || DescriptorEdge == nullptr)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (ChainSpan == AbsentSpan || LevelExtentSpan == AbsentSpan)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
 
     if (TriangleLimit == 0u || PartitionCount == 0u)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ContentUnsupported, "a residency carrying no partition and no triangle" });
     }
 
@@ -437,12 +437,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
     Incoming.TriangleLimit = TriangleLimit;
     Incoming.PartitionCount  = PartitionCount;
 
-    const Outcome<SpanReservation> ChainCurrent  = SpanEdge->Current(ChainSpan);
-    const Outcome<SpanReservation> ExtentCurrent = SpanEdge->Current(LevelExtentSpan);
+    const Deliver<SpanReservation> ChainCurrent  = SpanEdge->Current(ChainSpan);
+    const Deliver<SpanReservation> ExtentCurrent = SpanEdge->Current(LevelExtentSpan);
 
     if (!ChainCurrent.Resolved || !ExtentCurrent.Resolved)
     {
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
     }
 
     // 1. Per-slot spans: ClassifiedSpans, OcclusionSpans, VerdictSpans, AmendedFor
@@ -453,12 +453,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
         ClassifiedShape.Intent    = SpanIntent::StorageRead;
         ClassifiedShape.Residency = ExtentResidency::HostWritable;
 
-        const Outcome<SpanReservation> Classified = SpanEdge->Reserve(ClassifiedShape);
+        const Deliver<SpanReservation> Classified = SpanEdge->Reserve(ClassifiedShape);
 
         if (!Classified.Resolved)
         {
             Abandon(Incoming);
-            return Outcome<std::uint32_t>::Refuse(Classified.Error);
+            return Deliver<std::uint32_t>::Refuse(Classified.Error);
         }
 
         Incoming.ClassifiedSpans.push_back(Classified.Resolve().SpanIndex);
@@ -468,12 +468,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
         UniformShape.Intent    = SpanIntent::UniformRead;
         UniformShape.Residency = ExtentResidency::HostWritable;
 
-        const Outcome<SpanReservation> Uniform = SpanEdge->Reserve(UniformShape);
+        const Deliver<SpanReservation> Uniform = SpanEdge->Reserve(UniformShape);
 
         if (!Uniform.Resolved)
         {
             Abandon(Incoming);
-            return Outcome<std::uint32_t>::Refuse(Uniform.Error);
+            return Deliver<std::uint32_t>::Refuse(Uniform.Error);
         }
 
         Incoming.OcclusionSpans.push_back(Uniform.Resolve().SpanIndex);
@@ -483,12 +483,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
         VerdictShape.Intent    = SpanIntent::StorageRead;
         VerdictShape.Residency = ExtentResidency::DeviceLocal;
 
-        const Outcome<SpanReservation> Verdict = SpanEdge->Reserve(VerdictShape);
+        const Deliver<SpanReservation> Verdict = SpanEdge->Reserve(VerdictShape);
 
         if (!Verdict.Resolved)
         {
             Abandon(Incoming);
-            return Outcome<std::uint32_t>::Refuse(Verdict.Error);
+            return Deliver<std::uint32_t>::Refuse(Verdict.Error);
         }
 
         Incoming.VerdictSpans.push_back(Verdict.Resolve().SpanIndex);
@@ -505,12 +505,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
             SurvivingShape.Intent    = SpanIntent::StorageRead;
             SurvivingShape.Residency = ExtentResidency::DeviceLocal;
 
-            const Outcome<SpanReservation> Surviving = SpanEdge->Reserve(SurvivingShape);
+            const Deliver<SpanReservation> Surviving = SpanEdge->Reserve(SurvivingShape);
 
             if (!Surviving.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(Surviving.Error);
+                return Deliver<std::uint32_t>::Refuse(Surviving.Error);
             }
 
             Incoming.SurvivingSpans.push_back(Surviving.Resolve().SpanIndex);
@@ -520,22 +520,22 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
             RecordShape.Intent    = SpanIntent::IndirectRecord;
             RecordShape.Residency = ExtentResidency::HostWritable;
 
-            const Outcome<SpanReservation> Record = SpanEdge->Reserve(RecordShape);
+            const Deliver<SpanReservation> Record = SpanEdge->Reserve(RecordShape);
 
             if (!Record.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(Record.Error);
+                return Deliver<std::uint32_t>::Refuse(Record.Error);
             }
 
             Incoming.RecordSpans.push_back(Record.Resolve().SpanIndex);
 
-            const Outcome<std::uint32_t> Reserved = DescriptorEdge->Reserve(OcclusionLayout);
+            const Deliver<std::uint32_t> Reserved = DescriptorEdge->Reserve(OcclusionLayout);
 
             if (!Reserved.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(Reserved.Error);
+                return Deliver<std::uint32_t>::Refuse(Reserved.Error);
             }
 
             Incoming.ReservationIndexs.push_back(Reserved.Resolve());
@@ -550,17 +550,17 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
         {
             const std::uint32_t SlotIdx = PhaseSlot(Phase, SlotIndex);
 
-            const Outcome<SpanReservation> Uniform    = SpanEdge->Current(Incoming.OcclusionSpans[SlotIndex]);
-            const Outcome<SpanReservation> Classified = SpanEdge->Current(Incoming.ClassifiedSpans[SlotIndex]);
-            const Outcome<SpanReservation> Verdict    = SpanEdge->Current(Incoming.VerdictSpans[SlotIndex]);
-            const Outcome<SpanReservation> Surviving  = SpanEdge->Current(Incoming.SurvivingSpans[SlotIdx]);
-            const Outcome<SpanReservation> Record     = SpanEdge->Current(Incoming.RecordSpans[SlotIdx]);
+            const Deliver<SpanReservation> Uniform    = SpanEdge->Current(Incoming.OcclusionSpans[SlotIndex]);
+            const Deliver<SpanReservation> Classified = SpanEdge->Current(Incoming.ClassifiedSpans[SlotIndex]);
+            const Deliver<SpanReservation> Verdict    = SpanEdge->Current(Incoming.VerdictSpans[SlotIndex]);
+            const Deliver<SpanReservation> Surviving  = SpanEdge->Current(Incoming.SurvivingSpans[SlotIdx]);
+            const Deliver<SpanReservation> Record     = SpanEdge->Current(Incoming.RecordSpans[SlotIdx]);
 
             if (!Uniform.Resolved || !Classified.Resolved || !Verdict.Resolved ||
                 !Surviving.Resolved || !Record.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
+                return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "a claimed span no longer stands" });
             }
 
             std::vector<DescriptorContent> Amending;
@@ -608,12 +608,12 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
             Amending.push_back(Drawn);
             Amending.push_back(Verdicts_);
 
-            const Outcome<bool> Amended = DescriptorEdge->Amend(Incoming.ReservationIndexs[SlotIdx], SlotIndex, Amending);
+            const Deliver<bool> Amended = DescriptorEdge->Amend(Incoming.ReservationIndexs[SlotIdx], SlotIndex, Amending);
 
             if (!Amended.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(Amended.Error);
+                return Deliver<std::uint32_t>::Refuse(Amended.Error);
             }
         }
     }
@@ -622,41 +622,41 @@ Outcome<std::uint32_t> OcclusionScheduler::Resolve(std::uint32_t TriangleLimit, 
 
     Culled.push_back(Incoming);
 
-    return Outcome<std::uint32_t>::Result(CullingIndex);
+    return Deliver<std::uint32_t>::Result(CullingIndex);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  THE CLASSIFICATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionScheduler::Amend(std::uint32_t                           CullingIndex,
+Deliver<bool> OcclusionScheduler::Amend(std::uint32_t                           CullingIndex,
                                         std::uint32_t                           SlotIndex,
                                         const std::vector<ClassifiedPartition>& Classified)
 {
     if (SpanEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (CullingIndex >= static_cast<std::uint32_t>(Culled.size()))
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
 
     if (SlotIndex >= RecordingSlotCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
 
     CulledResidency& Current = Culled[CullingIndex];
 
     if (static_cast<std::uint32_t>(Classified.size()) != Current.PartitionCount)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the classification disagrees with the declared partition count" });
     }
 
-    const Outcome<bool> Written = SpanEdge->Amend(Current.ClassifiedSpans[SlotIndex],
+    const Deliver<bool> Written = SpanEdge->Amend(Current.ClassifiedSpans[SlotIndex],
                                                   Classified.data(),
                                                   static_cast<VkDeviceSize>(Classified.size() * sizeof(ClassifiedPartition)),
                                                   0u);
 
     if (!Written.Resolved)
-        return Outcome<bool>::Refuse(Written.Error);
+        return Deliver<bool>::Refuse(Written.Error);
 
     VkDrawIndirectCommand Cleared = {};
     Cleared.vertexCount   = 0u;
@@ -669,32 +669,32 @@ Outcome<bool> OcclusionScheduler::Amend(std::uint32_t                           
         const CullingPhase Phase = static_cast<CullingPhase>(PhaseIdx);
         const std::uint32_t SlotIdx = PhaseSlot(Phase, SlotIndex);
 
-        const Outcome<bool> Recorded = SpanEdge->Amend(Current.RecordSpans[SlotIdx],
+        const Deliver<bool> Recorded = SpanEdge->Amend(Current.RecordSpans[SlotIdx],
                                                        &Cleared,
                                                        IndirectRecordBytes,
                                                        0u);
 
         if (!Recorded.Resolved)
-            return Outcome<bool>::Refuse(Recorded.Error);
+            return Deliver<bool>::Refuse(Recorded.Error);
     }
 
     Current.AmendedFor[SlotIndex] = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE REDUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionScheduler::ReduceLevel(VkCommandBuffer Recorded,
+Deliver<bool> OcclusionScheduler::ReduceLevel(VkCommandBuffer Recorded,
                                               std::uint32_t   SlotIndex,
                                               std::uint32_t   LevelIndex)
 {
-    const Outcome<ReductionLevel> Written = Chain.Level(LevelIndex);
+    const Deliver<ReductionLevel> Written = Chain.Level(LevelIndex);
 
     if (!Written.Resolved)
-        return Outcome<bool>::Refuse(Written.Error);
+        return Deliver<bool>::Refuse(Written.Error);
 
     UploadedReduction Reducing;
     Reducing.WrittenLevel  = LevelIndex;
@@ -711,10 +711,10 @@ Outcome<bool> OcclusionScheduler::ReduceLevel(VkCommandBuffer Recorded,
     }
     else
     {
-        const Outcome<ReductionLevel> Source = Chain.Level(LevelIndex - 1u);
+        const Deliver<ReductionLevel> Source = Chain.Level(LevelIndex - 1u);
 
         if (!Source.Resolved)
-            return Outcome<bool>::Refuse(Source.Error);
+            return Deliver<bool>::Refuse(Source.Error);
 
         Reducing.SourceOffset     = LevelOffsets[(LevelIndex - 1u) * IndexsPerLevel];
         Reducing.SourceX      = Source.Resolve().Width;
@@ -724,24 +724,24 @@ Outcome<bool> OcclusionScheduler::ReduceLevel(VkCommandBuffer Recorded,
 
     const std::size_t SpanIndex = static_cast<std::size_t>(LevelIndex) * RecordingSlotCount + SlotIndex;
 
-    const Outcome<bool> Amended = SpanEdge->Amend(ReductionSpans[SpanIndex],
+    const Deliver<bool> Amended = SpanEdge->Amend(ReductionSpans[SpanIndex],
                                                   &Reducing,
                                                   static_cast<VkDeviceSize>(sizeof(Reducing)),
                                                   0u);
 
     if (!Amended.Resolved)
-        return Outcome<bool>::Refuse(Amended.Error);
+        return Deliver<bool>::Refuse(Amended.Error);
 
-    const Outcome<ConstructedProgram> Program = ProgramEdge->Resolve(ReductionProgram);
+    const Deliver<ConstructedProgram> Program = ProgramEdge->Resolve(ReductionProgram);
 
     if (!Program.Resolved)
-        return Outcome<bool>::Refuse(Program.Error);
+        return Deliver<bool>::Refuse(Program.Error);
 
-    const Outcome<VkDescriptorSet> Reaching =
+    const Deliver<VkDescriptorSet> Reaching =
         DescriptorEdge->Resolve(ReductionReservations[LevelIndex], SlotIndex);
 
     if (!Reaching.Resolved)
-        return Outcome<bool>::Refuse(Reaching.Error);
+        return Deliver<bool>::Refuse(Reaching.Error);
 
     const ConstructedProgram& Constructed = Program.Resolve();
     const VkDescriptorSet     Reached     = Reaching.Resolve();
@@ -754,33 +754,33 @@ Outcome<bool> OcclusionScheduler::ReduceLevel(VkCommandBuffer Recorded,
 
     vkCmdDispatch(Recorded, GroupsX, GroupsY, 1u);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> OcclusionScheduler::Reduce(VkCommandBuffer Recorded, std::uint32_t SlotIndex)
+Deliver<bool> OcclusionScheduler::Reduce(VkCommandBuffer Recorded, std::uint32_t SlotIndex)
 {
     if (SpanEdge == nullptr || ProgramEdge == nullptr || ImageEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (SlotIndex >= RecordingSlotCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
 
     if (ChainSpan == AbsentSpan || ReductionReservations.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
 
-    const Outcome<std::uint32_t> DepthIndex = TargetEdge->IndexOf(SharedTarget::DepthSurface);
+    const Deliver<std::uint32_t> DepthIndex = TargetEdge->IndexOf(SharedTarget::DepthSurface);
 
     if (!DepthIndex.Resolved)
-        return Outcome<bool>::Refuse(DepthIndex.Error);
+        return Deliver<bool>::Refuse(DepthIndex.Error);
 
-    const Outcome<bool> Transitioned =
+    const Deliver<bool> Transitioned =
         ImageEdge->Transition(Recorded, DepthIndex.Resolve(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     if (!Transitioned.Resolved)
-        return Outcome<bool>::Refuse(Transitioned.Error);
+        return Deliver<bool>::Refuse(Transitioned.Error);
 
     const std::uint32_t Levels = Chain.LevelCount();
 
@@ -789,7 +789,7 @@ Outcome<bool> OcclusionScheduler::Reduce(VkCommandBuffer Recorded, std::uint32_t
         if (LevelIndex != 0u)
             Order(Recorded, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 
-        const Outcome<bool> Written = ReduceLevel(Recorded, SlotIndex, LevelIndex);
+        const Deliver<bool> Written = ReduceLevel(Recorded, SlotIndex, LevelIndex);
 
         if (!Written.Resolved)
             return Written;
@@ -800,40 +800,40 @@ Outcome<bool> OcclusionScheduler::Reduce(VkCommandBuffer Recorded, std::uint32_t
     ReducedFor[SlotIndex] = true;
     ChainEverReduced         = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       THE CULL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionScheduler::Cull(VkCommandBuffer Recorded, std::uint32_t SlotIndex, CullingPhase Phase)
+Deliver<bool> OcclusionScheduler::Cull(VkCommandBuffer Recorded, std::uint32_t SlotIndex, CullingPhase Phase)
 {
     if (SpanEdge == nullptr || ProgramEdge == nullptr || DescriptorEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (SlotIndex >= RecordingSlotCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
 
     if (Phase == CullingPhase::PhaseCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such culling phase" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such culling phase" });
 
     if (ChainSpan == AbsentSpan)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no chain is derived" });
 
     if (Phase == CullingPhase::AgainstCurrent && !ReducedFor[SlotIndex])
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "Reduce has not been recorded for this cycle slot" });
     }
 
-    const Outcome<ConstructedProgram> Program = ProgramEdge->Resolve(OcclusionProgram);
+    const Deliver<ConstructedProgram> Program = ProgramEdge->Resolve(OcclusionProgram);
 
     if (!Program.Resolved)
-        return Outcome<bool>::Refuse(Program.Error);
+        return Deliver<bool>::Refuse(Program.Error);
 
     const ConstructedProgram& Constructed = Program.Resolve();
 
@@ -846,7 +846,7 @@ Outcome<bool> OcclusionScheduler::Cull(VkCommandBuffer Recorded, std::uint32_t S
 
         if (Phase == CullingPhase::AgainstPrevious && !Current.AmendedFor[SlotIndex])
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "Amend has not written this cycle slot since the last cull" });
         }
 
@@ -859,21 +859,21 @@ Outcome<bool> OcclusionScheduler::Cull(VkCommandBuffer Recorded, std::uint32_t S
 
         Testing.LevelCount = (Phase == CullingPhase::AgainstPrevious && !ChainEverReduced) ? 0u : Chain.LevelCount();
 
-        const Outcome<bool> Written = SpanEdge->Amend(Current.OcclusionSpans[SlotIndex],
+        const Deliver<bool> Written = SpanEdge->Amend(Current.OcclusionSpans[SlotIndex],
                                                       &Testing,
                                                       static_cast<VkDeviceSize>(sizeof(Testing)),
                                                       0u);
 
         if (!Written.Resolved)
-            return Outcome<bool>::Refuse(Written.Error);
+            return Deliver<bool>::Refuse(Written.Error);
 
         const std::uint32_t SlotIdx = PhaseSlot(Phase, SlotIndex);
 
-        const Outcome<VkDescriptorSet> Reaching =
+        const Deliver<VkDescriptorSet> Reaching =
             DescriptorEdge->Resolve(Current.ReservationIndexs[SlotIdx], SlotIndex);
 
         if (!Reaching.Resolved)
-            return Outcome<bool>::Refuse(Reaching.Error);
+            return Deliver<bool>::Refuse(Reaching.Error);
 
         const VkDescriptorSet Reached = Reaching.Resolve();
 
@@ -900,49 +900,49 @@ Outcome<bool> OcclusionScheduler::Cull(VkCommandBuffer Recorded, std::uint32_t S
         ReducedFor[SlotIndex] = false;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      THE READS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<VkBuffer> OcclusionScheduler::RecordOf(std::uint32_t CullingIndex,
+Deliver<VkBuffer> OcclusionScheduler::RecordOf(std::uint32_t CullingIndex,
                                                std::uint32_t SlotIndex,
                                                CullingPhase  Phase) const
 {
     if (SpanEdge == nullptr || CullingIndex >= static_cast<std::uint32_t>(Culled.size()))
-        return Outcome<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
+        return Deliver<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
 
     if (SlotIndex >= RecordingSlotCount || Phase == CullingPhase::PhaseCount)
-        return Outcome<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot or phase is outside range" });
+        return Deliver<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot or phase is outside range" });
 
     const std::uint32_t SlotIdx = PhaseSlot(Phase, SlotIndex);
-    const Outcome<SpanReservation> Current = SpanEdge->Current(Culled[CullingIndex].RecordSpans[SlotIdx]);
+    const Deliver<SpanReservation> Current = SpanEdge->Current(Culled[CullingIndex].RecordSpans[SlotIdx]);
 
     if (!Current.Resolved)
-        return Outcome<VkBuffer>::Refuse(Current.Error);
+        return Deliver<VkBuffer>::Refuse(Current.Error);
 
-    return Outcome<VkBuffer>::Result(Current.Resolve().Extent);
+    return Deliver<VkBuffer>::Result(Current.Resolve().Extent);
 }
 
-Outcome<VkBuffer> OcclusionScheduler::SurvivingOf(std::uint32_t CullingIndex,
+Deliver<VkBuffer> OcclusionScheduler::SurvivingOf(std::uint32_t CullingIndex,
                                                   std::uint32_t SlotIndex,
                                                   CullingPhase  Phase) const
 {
     if (SpanEdge == nullptr || CullingIndex >= static_cast<std::uint32_t>(Culled.size()))
-        return Outcome<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
+        return Deliver<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "no residency stands at that ordinal" });
 
     if (SlotIndex >= RecordingSlotCount || Phase == CullingPhase::PhaseCount)
-        return Outcome<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot or phase is outside range" });
+        return Deliver<VkBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot or phase is outside range" });
 
     const std::uint32_t SlotIdx = PhaseSlot(Phase, SlotIndex);
-    const Outcome<SpanReservation> Current = SpanEdge->Current(Culled[CullingIndex].SurvivingSpans[SlotIdx]);
+    const Deliver<SpanReservation> Current = SpanEdge->Current(Culled[CullingIndex].SurvivingSpans[SlotIdx]);
 
     if (!Current.Resolved)
-        return Outcome<VkBuffer>::Refuse(Current.Error);
+        return Deliver<VkBuffer>::Refuse(Current.Error);
 
-    return Outcome<VkBuffer>::Result(Current.Resolve().Extent);
+    return Deliver<VkBuffer>::Result(Current.Resolve().Extent);
 }
 
 std::uint32_t OcclusionScheduler::CulledCount() const   { return static_cast<std::uint32_t>(Culled.size()); }

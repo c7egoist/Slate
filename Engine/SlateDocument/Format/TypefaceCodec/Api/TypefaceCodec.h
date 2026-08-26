@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/VectorInterchange/Api/VectorInterchange.h"
 
@@ -69,7 +69,7 @@ struct DecodedTypeface
 /// note  ⚠️ An empty glyph — a space, most often — decodes to a glyph carrying no path and is retained. Dropping
 ///        it would renumber every ordinal after it, and the glyph sequence `52` §3 stores indexes those ordinals.
 /// tag   api, nonthrowing
-Outcome<DecodedTypeface> Translate(const std::vector<std::uint8_t>& Stream, std::uint32_t GlyphLimit);
+Deliver<DecodedTypeface> Translate(const std::vector<std::uint8_t>& Stream, std::uint32_t GlyphLimit);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
                          PrecisionGuarantee::Exact);
@@ -83,7 +83,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
 ///        glyph sequence once and that sequence is what is stored; resolving at every use would mean replacing a
 ///        typeface silently reshapes text the artist has already positioned.
 /// tag   api, nonthrowing
-Outcome<std::uint32_t> ResolveCodepoint(const std::vector<std::uint8_t>& Stream, std::uint32_t Codepoint);
+Deliver<std::uint32_t> ResolveCodepoint(const std::vector<std::uint8_t>& Stream, std::uint32_t Codepoint);
 
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact,
                          PrecisionGuarantee::Exact);

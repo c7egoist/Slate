@@ -169,7 +169,7 @@ namespace
         return Mirrored;
     }
 
-    Outcome<PatternResult> DuplicateCurveSet(SketchStructure& Declared,
+    Deliver<PatternResult> DuplicateCurveSet(SketchStructure& Declared,
                                              const std::vector<SketchCurveName>& CurveSet,
                                              const SpatialDirection& Offset)
     {
@@ -177,13 +177,13 @@ namespace
         for (SketchCurveName Subject : CurveSet)
         {
             if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Curves().size())
-                return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one duplicated curve is absent" });
+                return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one duplicated curve is absent" });
             Result.CurveSet.push_back(Declared.DeclareCurve(OffsetCurve(Declared.Curves()[Subject.IssuedIndex - 1u].Geometry, Offset)));
         }
-        return Outcome<PatternResult>::Result(Result);
+        return Deliver<PatternResult>::Result(Result);
     }
 
-    Outcome<PatternResult> DuplicateProfileSet(SketchStructure& Declared,
+    Deliver<PatternResult> DuplicateProfileSet(SketchStructure& Declared,
                                                const std::vector<ProfileNameInFeature>& ProfileSet,
                                                const SpatialDirection& Offset)
     {
@@ -191,7 +191,7 @@ namespace
         for (ProfileNameInFeature Subject : ProfileSet)
         {
             if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Profiles().size())
-                return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one duplicated profile is absent" });
+                return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one duplicated profile is absent" });
             const ProfileSpecification& Source = Declared.Profiles()[Subject.IssuedIndex - 1u];
             ProfileSpecification Copy;
             Copy.DeclarePlane({ Added(Source.HeldPlane().Origin, Offset), Source.HeldPlane().Normal, Source.HeldPlane().AlongDirection });
@@ -202,7 +202,7 @@ namespace
                 for (const ProfileCurveUse& Use : Loop.Traversal)
                 {
                     if (!Use.TraversedCurve.Assigned() || Use.TraversedCurve.IssuedIndex > Declared.Curves().size())
-                        return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one profile traversal curve is absent" });
+                        return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one profile traversal curve is absent" });
                     const CurveSpecification Shifted = OffsetCurve(Declared.Curves()[Use.TraversedCurve.IssuedIndex - 1u].Geometry, Offset);
                     const SketchCurveName Curve = Declared.DeclareCurve(Shifted);
                     CopyLoop.Traversal.push_back({ { Curve.IssuedIndex }, Use.SameSense });
@@ -211,25 +211,25 @@ namespace
             }
             Result.ProfileSet.push_back(Declared.DeclareProfile(Copy));
         }
-        return Outcome<PatternResult>::Result(Result);
+        return Deliver<PatternResult>::Result(Result);
     }
 }
 
-Outcome<PatternResult> DuplicateCurves(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateCurves(SketchStructure& Declared,
                                        const std::vector<SketchCurveName>& CurveSet,
                                        const SpatialDirection& Offset)
 {
     return DuplicateCurveSet(Declared, CurveSet, Offset);
 }
 
-Outcome<PatternResult> DuplicateProfiles(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateProfiles(SketchStructure& Declared,
                                          const std::vector<ProfileNameInFeature>& ProfileSet,
                                          const SpatialDirection& Offset)
 {
     return DuplicateProfileSet(Declared, ProfileSet, Offset);
 }
 
-Outcome<PatternResult> DuplicateBetween(SketchStructure& Declared,
+Deliver<PatternResult> DuplicateBetween(SketchStructure& Declared,
                                         const std::vector<SketchCurveName>& CurveSet,
                                         const SpatialPoint& StartPoint,
                                         const SpatialPoint& EndPoint)
@@ -237,7 +237,7 @@ Outcome<PatternResult> DuplicateBetween(SketchStructure& Declared,
     return DuplicateCurveSet(Declared, CurveSet, Difference(StartPoint, EndPoint));
 }
 
-Outcome<PatternResult> MirrorCurves(SketchStructure& Declared,
+Deliver<PatternResult> MirrorCurves(SketchStructure& Declared,
                                     const std::vector<SketchCurveName>& CurveSet,
                                     const SpatialPoint& AxisStart,
                                     const SpatialPoint& AxisEnd)
@@ -246,13 +246,13 @@ Outcome<PatternResult> MirrorCurves(SketchStructure& Declared,
     for (SketchCurveName Subject : CurveSet)
     {
         if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Curves().size())
-            return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one mirrored curve is absent" });
+            return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one mirrored curve is absent" });
         Result.CurveSet.push_back(Declared.DeclareCurve(MirrorCurve(Declared.Curves()[Subject.IssuedIndex - 1u].Geometry, AxisStart, AxisEnd)));
     }
-    return Outcome<PatternResult>::Result(Result);
+    return Deliver<PatternResult>::Result(Result);
 }
 
-Outcome<PatternResult> MirrorProfiles(SketchStructure& Declared,
+Deliver<PatternResult> MirrorProfiles(SketchStructure& Declared,
                                       const std::vector<ProfileNameInFeature>& ProfileSet,
                                       const SpatialPoint& AxisStart,
                                       const SpatialPoint& AxisEnd)
@@ -261,7 +261,7 @@ Outcome<PatternResult> MirrorProfiles(SketchStructure& Declared,
     for (ProfileNameInFeature Subject : ProfileSet)
     {
         if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Profiles().size())
-            return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one mirrored profile is absent" });
+            return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one mirrored profile is absent" });
         const ProfileSpecification& Source = Declared.Profiles()[Subject.IssuedIndex - 1u];
         ProfileSpecification Copy;
         Copy.DeclarePlane(Source.HeldPlane());
@@ -272,7 +272,7 @@ Outcome<PatternResult> MirrorProfiles(SketchStructure& Declared,
             for (const ProfileCurveUse& Use : Loop.Traversal)
             {
                 if (!Use.TraversedCurve.Assigned() || Use.TraversedCurve.IssuedIndex > Declared.Curves().size())
-                    return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one profile traversal curve is absent" });
+                    return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one profile traversal curve is absent" });
                 const CurveSpecification Reflected = MirrorCurve(Declared.Curves()[Use.TraversedCurve.IssuedIndex - 1u].Geometry, AxisStart, AxisEnd);
                 const SketchCurveName Curve = Declared.DeclareCurve(Reflected);
                 CopyLoop.Traversal.push_back({ { Curve.IssuedIndex }, Use.SameSense });
@@ -281,29 +281,29 @@ Outcome<PatternResult> MirrorProfiles(SketchStructure& Declared,
         }
         Result.ProfileSet.push_back(Declared.DeclareProfile(Copy));
     }
-    return Outcome<PatternResult>::Result(Result);
+    return Deliver<PatternResult>::Result(Result);
 }
 
-Outcome<PatternResult> DeclareLinearPattern(SketchStructure& Declared,
+Deliver<PatternResult> DeclareLinearPattern(SketchStructure& Declared,
                                             const std::vector<SketchCurveName>& CurveSet,
                                             const SpatialDirection& Step,
                                             std::uint32_t Count)
 {
     if (Count < 2u)
-        return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "a linear repeat requires at least two copies" });
+        return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "a linear repeat requires at least two copies" });
 
     PatternResult Result;
     for (std::uint32_t CopyIndex = 1u; CopyIndex < Count; ++CopyIndex)
     {
-        const Outcome<PatternResult> Produced = DuplicateCurveSet(Declared, CurveSet, Scaled(Step, static_cast<double>(CopyIndex)));
+        const Deliver<PatternResult> Produced = DuplicateCurveSet(Declared, CurveSet, Scaled(Step, static_cast<double>(CopyIndex)));
         if (!Produced)
             return Produced;
         Result.CurveSet.insert(Result.CurveSet.end(), Produced.Resolve().CurveSet.begin(), Produced.Resolve().CurveSet.end());
     }
-    return Outcome<PatternResult>::Result(Result);
+    return Deliver<PatternResult>::Result(Result);
 }
 
-Outcome<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
+Deliver<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
                                             const std::vector<SketchCurveName>& CurveSet,
                                             const SpatialPoint& Centre,
                                             const SpatialDirection& Axis,
@@ -311,7 +311,7 @@ Outcome<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
                                             std::uint32_t Count)
 {
     if (Count < 2u)
-        return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "a radial repeat requires at least two copies" });
+        return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "a radial repeat requires at least two copies" });
 
     PatternResult Result;
     const double StepRadians = SweepRadians / static_cast<double>(Count - 1u);
@@ -321,7 +321,7 @@ Outcome<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
         for (SketchCurveName Subject : CurveSet)
         {
             if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Curves().size())
-                return Outcome<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one repeated curve is absent" });
+                return Deliver<PatternResult>::Refuse({ RefusalReason::ContentUnsupported, "one repeated curve is absent" });
             CurveSpecification Rotated = Declared.Curves()[Subject.IssuedIndex - 1u].Geometry;
             auto RotatePoint = [&](SpatialPoint& Position)
             {
@@ -369,7 +369,7 @@ Outcome<PatternResult> DeclareRadialPattern(SketchStructure& Declared,
         }
     }
 
-    return Outcome<PatternResult>::Result(Result);
+    return Deliver<PatternResult>::Result(Result);
 }
 
 } // namespace Slate

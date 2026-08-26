@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/ByteSpace/Api/ByteSpace.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -100,7 +100,7 @@ public:
     ///        storage span the engine holds, and the driver's text would then name a set rather than a span.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructSpanSpace(const VulkanExchange&      Exchange,
+    Deliver<bool> ConstructSpanSpace(const VulkanExchange&      Exchange,
                             ByteSpace&                 BackingSpace,
                             const DiagnosticExtension& Naming);
 
@@ -113,7 +113,7 @@ public:
     ///        allocation nothing holds a reference to, reclaimed only at device teardown.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<SpanReservation> Reserve(const SpanShape& Declared);
+    Deliver<SpanReservation> Reserve(const SpanShape& Declared);
 
     /// 🧩 Writes host-supplied bytes into one host-writable span.
     /// in    SpanIndex    [-]  a claim this component registered
@@ -126,7 +126,7 @@ public:
     ///        extent as coherent precisely so that a caller cannot forget the flush at one of its write sites.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(std::uint32_t  SpanIndex,
+    Deliver<bool> Amend(std::uint32_t  SpanIndex,
                         const void*    Incoming,
                         VkDeviceSize   IncomingBytes,
                         VkDeviceSize   ByteOffset);
@@ -143,7 +143,7 @@ public:
     ///        moment its scheduling reaches it, which is a partitioning that is correct on one driver.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Transfer(VkCommandBuffer  Recorded,
+    Deliver<bool> Transfer(VkCommandBuffer  Recorded,
                            std::uint32_t    SourceIndex,
                            std::uint32_t    TargetIndex,
                            VkDeviceSize     TransferBytes);
@@ -153,7 +153,7 @@ public:
     /// out   Result      [-]  refuses with ContentUnsupported for an unclaimed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<SpanReservation> Current(std::uint32_t SpanIndex) const;
+    Deliver<SpanReservation> Current(std::uint32_t SpanIndex) const;
 
     /// 🧩 Destroys one span and returns its bytes.
     /// in    SpanIndex  [-]  a claim this component registered; an unclaimed ordinal is a no-op

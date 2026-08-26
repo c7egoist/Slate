@@ -66,7 +66,7 @@ ProjectedTransform ComposeVisibilityTransform(const ViewProjection&     Viewing,
 //                                                      CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> VisibilityRaster::ConstructVisibilityRaster(SpanSpace&        Spans,
+Deliver<bool> VisibilityRaster::ConstructVisibilityRaster(SpanSpace&        Spans,
                                           ShaderCodec&      Modules,
                                           DescriptorIndex&  Descriptors,
                                           ProgramIndex&     Programs,
@@ -115,25 +115,25 @@ Outcome<bool> VisibilityRaster::ConstructVisibilityRaster(SpanSpace&        Span
     Declared.push_back(Triangles);
     Declared.push_back(Surviving);
 
-    const Outcome<std::uint32_t> Layout = DescriptorEdge->Declare(Declared);
+    const Deliver<std::uint32_t> Layout = DescriptorEdge->Declare(Declared);
 
     if (!Layout.Resolved)
-        return Outcome<bool>::Refuse(Layout.Error);
+        return Deliver<bool>::Refuse(Layout.Error);
 
     LayoutIndex = Layout.Resolve();
 
     // 📝 The stems are the source file names without their extension, which is what the build lowers each
     //    `[shader(...)]` translation to. Each carries exactly one entry point, so each is named `main` and
     //    `ShaderCodec::Stage`'s declaration of that spelling holds.
-    const Outcome<std::uint32_t> Corner = ModuleEdge->Resolve("SlateCompute", "VisibilityCorner");
+    const Deliver<std::uint32_t> Corner = ModuleEdge->Resolve("SlateCompute", "VisibilityCorner");
 
     if (!Corner.Resolved)
-        return Outcome<bool>::Refuse(Corner.Error);
+        return Deliver<bool>::Refuse(Corner.Error);
 
-    const Outcome<std::uint32_t> Surface = ModuleEdge->Resolve("SlateCompute", "VisibilitySurface");
+    const Deliver<std::uint32_t> Surface = ModuleEdge->Resolve("SlateCompute", "VisibilitySurface");
 
     if (!Surface.Resolved)
-        return Outcome<bool>::Refuse(Surface.Error);
+        return Deliver<bool>::Refuse(Surface.Error);
 
     CornerModule  = Corner.Resolve();
     SurfaceModule = Surface.Resolve();
@@ -145,17 +145,17 @@ Outcome<bool> VisibilityRaster::ConstructVisibilityRaster(SpanSpace&        Span
     Declaring.ColourTargets = { SharedTarget::VisibilityIndex, SharedTarget::OccupancySurface };
     Declaring.DepthTarget   = static_cast<std::uint32_t>(SharedTarget::DepthSurface);
 
-    const Outcome<std::uint32_t> Construct_ = AttachmentEdge->Declare(Declaring);
+    const Deliver<std::uint32_t> Construct_ = AttachmentEdge->Declare(Declaring);
 
     if (!Construct_.Resolved)
-        return Outcome<bool>::Refuse(Construct_.Error);
+        return Deliver<bool>::Refuse(Construct_.Error);
 
     ConstructIndex = Construct_.Resolve();
 
-    const Outcome<VkRenderPass> Current = AttachmentEdge->ConstructOf(ConstructIndex);
+    const Deliver<VkRenderPass> Current = AttachmentEdge->ConstructOf(ConstructIndex);
 
     if (!Current.Resolved)
-        return Outcome<bool>::Refuse(Current.Error);
+        return Deliver<bool>::Refuse(Current.Error);
 
     // 🔴 `MotionSurface` is the fourth target `16` §4.2 declares and it is not among these two. 🚧 It is the
     //    difference between this projection and the previous rotation's, and no previous projection crosses the
@@ -172,21 +172,21 @@ Outcome<bool> VisibilityRaster::ConstructVisibilityRaster(SpanSpace&        Span
     Programmed.Depth.DepthWritten    = true;
     Programmed.Depth.DepthComparison = VK_COMPARE_OP_GREATER;
 
-    const Outcome<std::uint32_t> Program = ProgramEdge->DeclareGraphics(Programmed);
+    const Deliver<std::uint32_t> Program = ProgramEdge->DeclareGraphics(Programmed);
 
     if (!Program.Resolved)
-        return Outcome<bool>::Refuse(Program.Error);
+        return Deliver<bool>::Refuse(Program.Error);
 
     ProgramSlotIndex = Program.Resolve();
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                   THE TRIANGLE ARRANGEMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
+Deliver<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
     const PartitionStructure&        Registered,
     const GeometryRenderingSnapshot& Rendering,
     std::uint32_t                    RegistrationBase) const
@@ -195,7 +195,7 @@ Outcome<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
 
     const DerivedPartitioning& Current = Registered.Current();
     if (Rendering.Vertices.empty() || Rendering.Triangles.empty())
-        return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                            "the rendering packet carries no drawable triangles" });
 
     std::uint32_t GreatestFace = 0u;
@@ -212,12 +212,12 @@ Outcome<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
         {
             const std::size_t Ordered = static_cast<std::size_t>(Partitioned.FirstFace) + Spanned;
             if (Ordered >= Current.OrderedFaces.size())
-                return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+                return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                                    "a partition spans past the derived ordering" });
 
             const std::uint32_t Face = Current.OrderedFaces[Ordered];
             if (Face >= PartitionOfFace.size())
-                return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+                return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                                    "the ordering names an unavailable source face" });
             PartitionOfFace[Face] = PartitionIndex;
         }
@@ -229,14 +229,14 @@ Outcome<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
         if (Source.SourceFace >= PartitionOfFace.size() ||
             PartitionOfFace[Source.SourceFace] == AbsentPartition)
         {
-            return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                                "an Earcut triangle names a face outside the partitioning" });
         }
         if (Source.Corners[0] >= Rendering.Vertices.size() ||
             Source.Corners[1] >= Rendering.Vertices.size() ||
             Source.Corners[2] >= Rendering.Vertices.size())
         {
-            return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                                "an Earcut triangle names an unavailable rendering corner" });
         }
 
@@ -260,20 +260,20 @@ Outcome<std::vector<UploadedTriangle>> VisibilityRaster::ArrangeTriangles(
         const Arranged& PartitionTriangles = ByPartition[PartitionIndex];
         if (PartitionTriangles.size() != Current.Partitions[PartitionIndex].TriangleCount)
         {
-            return Outcome<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<Arranged>::Refuse({ RefusalReason::ContentUnsupported,
                                                "Earcut output disagrees with the partition triangle count" });
         }
         Drawn.insert(Drawn.end(), PartitionTriangles.begin(), PartitionTriangles.end());
     }
 
-    return Outcome<Arranged>::Result(std::move(Drawn));
+    return Deliver<Arranged>::Result(std::move(Drawn));
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      THE STAGING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> VisibilityRaster::Stage(const void*      Incoming,
+Deliver<std::uint32_t> VisibilityRaster::Stage(const void*      Incoming,
                                                VkDeviceSize     IncomingBytes,
                                                SpanIntent       Intent,
                                                VkCommandBuffer  Recorded)
@@ -283,10 +283,10 @@ Outcome<std::uint32_t> VisibilityRaster::Stage(const void*      Incoming,
     Staging.Intent    = SpanIntent::TransferSource;
     Staging.Residency = ExtentResidency::HostWritable;
 
-    const Outcome<SpanReservation> Staged = SpanEdge->Reserve(Staging);
+    const Deliver<SpanReservation> Staged = SpanEdge->Reserve(Staging);
 
     if (!Staged.Resolved)
-        return Outcome<std::uint32_t>::Refuse(Staged.Error);
+        return Deliver<std::uint32_t>::Refuse(Staged.Error);
 
     const std::uint32_t StagedIndex = Staged.Resolve().SpanIndex;
 
@@ -294,32 +294,32 @@ Outcome<std::uint32_t> VisibilityRaster::Stage(const void*      Incoming,
     //    span recorded nowhere is one nothing returns until the device is torn down.
     StagedSpans.push_back(StagedIndex);
 
-    const Outcome<bool> Written = SpanEdge->Amend(StagedIndex, Incoming, IncomingBytes, 0u);
+    const Deliver<bool> Written = SpanEdge->Amend(StagedIndex, Incoming, IncomingBytes, 0u);
 
     if (!Written.Resolved)
-        return Outcome<std::uint32_t>::Refuse(Written.Error);
+        return Deliver<std::uint32_t>::Refuse(Written.Error);
 
     SpanShape Occupying;
     Occupying.SpanBytes = IncomingBytes;
     Occupying.Intent    = Intent;
     Occupying.Residency = ExtentResidency::DeviceLocal;
 
-    const Outcome<SpanReservation> Reserved = SpanEdge->Reserve(Occupying);
+    const Deliver<SpanReservation> Reserved = SpanEdge->Reserve(Occupying);
 
     if (!Reserved.Resolved)
-        return Outcome<std::uint32_t>::Refuse(Reserved.Error);
+        return Deliver<std::uint32_t>::Refuse(Reserved.Error);
 
     const std::uint32_t ResidentIndex = Reserved.Resolve().SpanIndex;
 
-    const Outcome<bool> Carried = SpanEdge->Transfer(Recorded, StagedIndex, ResidentIndex, IncomingBytes);
+    const Deliver<bool> Carried = SpanEdge->Transfer(Recorded, StagedIndex, ResidentIndex, IncomingBytes);
 
     if (!Carried.Resolved)
     {
         SpanEdge->Release(ResidentIndex);
-        return Outcome<std::uint32_t>::Refuse(Carried.Error);
+        return Deliver<std::uint32_t>::Refuse(Carried.Error);
     }
 
-    return Outcome<std::uint32_t>::Result(ResidentIndex);
+    return Deliver<std::uint32_t>::Result(ResidentIndex);
 }
 
 void VisibilityRaster::Abandon(ResidentPartitioning& Abandoned)
@@ -346,7 +346,7 @@ void VisibilityRaster::Abandon(ResidentPartitioning& Abandoned)
 //                                                     THE RESIDENCY
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&        Registered,
+Deliver<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&        Registered,
                                                  const GeometryRenderingSnapshot& Rendering,
                                                  std::uint32_t              RegistrationBase,
                                                  const OcclusionScheduler*  Culling,
@@ -354,27 +354,27 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
                                                  VkCommandBuffer            Recorded)
 {
     if (SpanEdge == nullptr || DescriptorEdge == nullptr)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (!Registered.PartitioningCurrent())
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no partitioning stands" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no partitioning stands" });
 
     // 🔴 The two must describe one revision. A partitioning derived from an earlier seal can group source-face
     //    ordinals differently from this Earcut packet even though neither side renumbers the author's faces.
     if (Registered.DescribedRevision() != Rendering.TopologyRevision)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::IdentityStale, "the partitioning describes another revision of the topology" });
     }
 
-    const Outcome<std::vector<UploadedTriangle>> Arranged =
+    const Deliver<std::vector<UploadedTriangle>> Arranged =
         ArrangeTriangles(Registered, Rendering, RegistrationBase);
 
     if (!Arranged.Resolved)
-        return Outcome<std::uint32_t>::Refuse(Arranged.Error);
+        return Deliver<std::uint32_t>::Refuse(Arranged.Error);
 
     const std::vector<UploadedTriangle>& Drawn = Arranged.Resolve();
 
@@ -401,18 +401,18 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
     Incoming.PartitionCount = Registered.PartitionCount();
     Incoming.CullingIndex = Culling != nullptr ? CullingIndex : AbsentSpan;
 
-    const Outcome<std::uint32_t> Positions =
+    const Deliver<std::uint32_t> Positions =
         Stage(Narrowed.data(),
               static_cast<VkDeviceSize>(Narrowed.size() * sizeof(UploadedPosition)),
               SpanIntent::StorageRead,
               Recorded);
 
     if (!Positions.Resolved)
-        return Outcome<std::uint32_t>::Refuse(Positions.Error);
+        return Deliver<std::uint32_t>::Refuse(Positions.Error);
 
     Incoming.PositionSpan = Positions.Resolve();
 
-    const Outcome<std::uint32_t> Triangles =
+    const Deliver<std::uint32_t> Triangles =
         Stage(Drawn.data(),
               static_cast<VkDeviceSize>(Drawn.size() * sizeof(UploadedTriangle)),
               SpanIntent::StorageRead,
@@ -421,7 +421,7 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
     if (!Triangles.Resolved)
     {
         Abandon(Incoming);
-        return Outcome<std::uint32_t>::Refuse(Triangles.Error);
+        return Deliver<std::uint32_t>::Refuse(Triangles.Error);
     }
 
     Incoming.TriangleSpan = Triangles.Resolve();
@@ -436,12 +436,12 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
         Uniform.Intent    = SpanIntent::UniformRead;
         Uniform.Residency = ExtentResidency::HostWritable;
 
-        const Outcome<SpanReservation> Reserved = SpanEdge->Reserve(Uniform);
+        const Deliver<SpanReservation> Reserved = SpanEdge->Reserve(Uniform);
 
         if (!Reserved.Resolved)
         {
             Abandon(Incoming);
-            return Outcome<std::uint32_t>::Refuse(Reserved.Error);
+            return Deliver<std::uint32_t>::Refuse(Reserved.Error);
         }
 
         Incoming.UniformSpans.push_back(Reserved.Resolve().SpanIndex);
@@ -454,12 +454,12 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
         if (ReservationIndex != DirectReservationIndex && Incoming.CullingIndex == AbsentSpan)
             break;
 
-        const Outcome<std::uint32_t> Reservation = DescriptorEdge->Reserve(LayoutIndex);
+        const Deliver<std::uint32_t> Reservation = DescriptorEdge->Reserve(LayoutIndex);
 
         if (!Reservation.Resolved)
         {
             Abandon(Incoming);
-            return Outcome<std::uint32_t>::Refuse(Reservation.Error);
+            return Deliver<std::uint32_t>::Refuse(Reservation.Error);
         }
 
         Incoming.ReservationIndexs.push_back(Reservation.Resolve());
@@ -472,14 +472,14 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
     {
         for (std::uint32_t SlotIndex = 0u; SlotIndex < RecordingSlotCount; ++SlotIndex)
         {
-            const Outcome<SpanReservation> Uniform  = SpanEdge->Current(Incoming.UniformSpans[SlotIndex]);
-            const Outcome<SpanReservation> Position = SpanEdge->Current(Incoming.PositionSpan);
-            const Outcome<SpanReservation> Triangle = SpanEdge->Current(Incoming.TriangleSpan);
+            const Deliver<SpanReservation> Uniform  = SpanEdge->Current(Incoming.UniformSpans[SlotIndex]);
+            const Deliver<SpanReservation> Position = SpanEdge->Current(Incoming.PositionSpan);
+            const Deliver<SpanReservation> Triangle = SpanEdge->Current(Incoming.TriangleSpan);
 
             if (!Uniform.Resolved || !Position.Resolved || !Triangle.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(
+                return Deliver<std::uint32_t>::Refuse(
                     { RefusalReason::ContentUnsupported, "a span the set names no longer stands" });
             }
 
@@ -492,13 +492,13 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
             {
                 const CullingPhase Phase = static_cast<CullingPhase>(ReservationIndex - 1u);
 
-                const Outcome<VkBuffer> Compacted =
+                const Deliver<VkBuffer> Compacted =
                     Culling->SurvivingOf(Incoming.CullingIndex, SlotIndex, Phase);
 
                 if (!Compacted.Resolved)
                 {
                     Abandon(Incoming);
-                    return Outcome<std::uint32_t>::Refuse(Compacted.Error);
+                    return Deliver<std::uint32_t>::Refuse(Compacted.Error);
                 }
 
                 SurvivingExtent = Compacted.Resolve();
@@ -528,13 +528,13 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
             const std::vector<DescriptorContent> Amending =
                 { Projecting, Positions_, Triangles_, Surviving_ };
 
-            const Outcome<bool> Amended =
+            const Deliver<bool> Amended =
                 DescriptorEdge->Amend(Incoming.ReservationIndexs[ReservationIndex], SlotIndex, Amending);
 
             if (!Amended.Resolved)
             {
                 Abandon(Incoming);
-                return Outcome<std::uint32_t>::Refuse(Amended.Error);
+                return Deliver<std::uint32_t>::Refuse(Amended.Error);
             }
         }
     }
@@ -543,7 +543,7 @@ Outcome<std::uint32_t> VisibilityRaster::Resolve(const PartitionStructure&      
 
     Resident.push_back(Incoming);
 
-    return Outcome<std::uint32_t>::Result(ResidencyIndex);
+    return Deliver<std::uint32_t>::Result(ResidencyIndex);
 }
 
 void VisibilityRaster::Release()
@@ -561,10 +561,10 @@ void VisibilityRaster::Release()
 //                                                     THE DERIVATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> VisibilityRaster::Derive(std::uint32_t DisplayX, std::uint32_t DisplayY)
+Deliver<bool> VisibilityRaster::Derive(std::uint32_t DisplayX, std::uint32_t DisplayY)
 {
     if (AttachmentEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     return AttachmentEdge->Derive(DisplayX, DisplayY);
 }
@@ -573,17 +573,17 @@ Outcome<bool> VisibilityRaster::Derive(std::uint32_t DisplayX, std::uint32_t Dis
 //                                                     THE RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ConstructedSpan> VisibilityRaster::Open(VkCommandBuffer Recorded, ConstructedProgram& Constructed)
+Deliver<ConstructedSpan> VisibilityRaster::Open(VkCommandBuffer Recorded, ConstructedProgram& Constructed)
 {
-    const Outcome<ConstructedSpan> Spanned = AttachmentEdge->Resolve(ConstructIndex);
+    const Deliver<ConstructedSpan> Spanned = AttachmentEdge->Resolve(ConstructIndex);
 
     if (!Spanned.Resolved)
         return Spanned;
 
-    const Outcome<ConstructedProgram> Program = ProgramEdge->Resolve(ProgramSlotIndex);
+    const Deliver<ConstructedProgram> Program = ProgramEdge->Resolve(ProgramSlotIndex);
 
     if (!Program.Resolved)
-        return Outcome<ConstructedSpan>::Refuse(Program.Error);
+        return Deliver<ConstructedSpan>::Refuse(Program.Error);
 
     const ConstructedSpan& Covering = Spanned.Resolve();
 
@@ -636,10 +636,10 @@ Outcome<ConstructedSpan> VisibilityRaster::Open(VkCommandBuffer Recorded, Constr
 
     vkCmdBindPipeline(Recorded, Constructed.RecordedAs, Constructed.Constructed);
 
-    return Outcome<ConstructedSpan>::Result(Covering);
+    return Deliver<ConstructedSpan>::Result(Covering);
 }
 
-Outcome<bool> VisibilityRaster::Project(const ResidentPartitioning& Current,
+Deliver<bool> VisibilityRaster::Project(const ResidentPartitioning& Current,
                                         std::uint32_t               SlotIndex,
                                         const ViewProjection&       Viewing,
                                         const ConstructedSpan&      Covering,
@@ -667,25 +667,25 @@ Outcome<bool> VisibilityRaster::Project(const ResidentPartitioning& Current,
                            0u);
 }
 
-Outcome<bool> VisibilityRaster::Record(VkCommandBuffer        Recorded,
+Deliver<bool> VisibilityRaster::Record(VkCommandBuffer        Recorded,
                                        std::uint32_t          SlotIndex,
                                        const ViewProjection&  Viewing)
 {
     if (SpanEdge == nullptr || ProgramEdge == nullptr || AttachmentEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (SlotIndex >= RecordingSlotCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
 
     ConstructedProgram Constructed;
 
-    const Outcome<ConstructedSpan> Opened = Open(Recorded, Constructed);
+    const Deliver<ConstructedSpan> Opened = Open(Recorded, Constructed);
 
     if (!Opened.Resolved)
-        return Outcome<bool>::Refuse(Opened.Error);
+        return Deliver<bool>::Refuse(Opened.Error);
 
     const ConstructedSpan& Covering = Opened.Resolve();
 
@@ -694,21 +694,21 @@ Outcome<bool> VisibilityRaster::Record(VkCommandBuffer        Recorded,
         if (Current.TriangleCount == 0u)
             continue;
 
-        const Outcome<bool> Written = Project(Current, SlotIndex, Viewing, Covering, false);
+        const Deliver<bool> Written = Project(Current, SlotIndex, Viewing, Covering, false);
 
         if (!Written.Resolved)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(Written.Error);
+            return Deliver<bool>::Refuse(Written.Error);
         }
 
-        const Outcome<VkDescriptorSet> Reaching =
+        const Deliver<VkDescriptorSet> Reaching =
             DescriptorEdge->Resolve(Current.ReservationIndexs[DirectReservationIndex], SlotIndex);
 
         if (!Reaching.Resolved)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(Reaching.Error);
+            return Deliver<bool>::Refuse(Reaching.Error);
         }
 
         const VkDescriptorSet Reached = Reaching.Resolve();
@@ -724,34 +724,34 @@ Outcome<bool> VisibilityRaster::Record(VkCommandBuffer        Recorded,
 
     vkCmdEndRenderPass(Recorded);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  THE INDIRECT RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> VisibilityRaster::RecordIndirect(VkCommandBuffer           Recorded,
+Deliver<bool> VisibilityRaster::RecordIndirect(VkCommandBuffer           Recorded,
                                                std::uint32_t             SlotIndex,
                                                const ViewProjection&     Viewing,
                                                const OcclusionScheduler& Culling,
                                                CullingPhase              Phase)
 {
     if (SpanEdge == nullptr || ProgramEdge == nullptr || AttachmentEdge == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "nothing was constructed" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording was supplied" });
 
     if (SlotIndex >= RecordingSlotCount || Phase == CullingPhase::PhaseCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot or phase" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such cycle slot or phase" });
 
     ConstructedProgram Constructed;
 
-    const Outcome<ConstructedSpan> Opened = Open(Recorded, Constructed);
+    const Deliver<ConstructedSpan> Opened = Open(Recorded, Constructed);
 
     if (!Opened.Resolved)
-        return Outcome<bool>::Refuse(Opened.Error);
+        return Deliver<bool>::Refuse(Opened.Error);
 
     const ConstructedSpan& Covering       = Opened.Resolve();
     const std::uint32_t    ReservationIndex   = 1u + static_cast<std::uint32_t>(Phase);
@@ -767,34 +767,34 @@ Outcome<bool> VisibilityRaster::RecordIndirect(VkCommandBuffer           Recorde
         if (Current.CullingIndex == AbsentSpan || Current.ReservationIndexs.size() <= ReservationIndex)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the residency declared no culling ordinal" });
         }
 
-        const Outcome<bool> Written = Project(Current, SlotIndex, Viewing, Covering, true);
+        const Deliver<bool> Written = Project(Current, SlotIndex, Viewing, Covering, true);
 
         if (!Written.Resolved)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(Written.Error);
+            return Deliver<bool>::Refuse(Written.Error);
         }
 
-        const Outcome<VkBuffer> Recording =
+        const Deliver<VkBuffer> Recording =
             Culling.RecordOf(Current.CullingIndex, SlotIndex, Phase);
 
         if (!Recording.Resolved)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(Recording.Error);
+            return Deliver<bool>::Refuse(Recording.Error);
         }
 
-        const Outcome<VkDescriptorSet> Reaching =
+        const Deliver<VkDescriptorSet> Reaching =
             DescriptorEdge->Resolve(Current.ReservationIndexs[ReservationIndex], SlotIndex);
 
         if (!Reaching.Resolved)
         {
             vkCmdEndRenderPass(Recorded);
-            return Outcome<bool>::Refuse(Reaching.Error);
+            return Deliver<bool>::Refuse(Reaching.Error);
         }
 
         const VkDescriptorSet Reached = Reaching.Resolve();
@@ -810,7 +810,7 @@ Outcome<bool> VisibilityRaster::RecordIndirect(VkCommandBuffer           Recorde
 
     vkCmdEndRenderPass(Recorded);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

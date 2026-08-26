@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Shared/OverlayGeometry.slang.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
@@ -61,7 +61,7 @@ public:
     ///                         ContentUnsupported when the device declines any object
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructWorkspaceOverlayPass(const VulkanExchange&      Exchange,
+    Deliver<bool> ConstructWorkspaceOverlayPass(const VulkanExchange&      Exchange,
                             const DiagnosticExtension& Naming,
                             ShaderCodec&               Streams,
                             VkFormat                   ColourFormat);

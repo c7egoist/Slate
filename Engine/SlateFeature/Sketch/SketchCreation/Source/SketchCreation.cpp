@@ -127,13 +127,13 @@ bool CreationReady(const SketchCreationContext& Context)
     }
 }
 
-Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
+Deliver<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
                                                    SketchCreationContext& Context)
 {
     if (!Context.Engaged)
-        return Outcome<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "no sketch creation stands" });
+        return Deliver<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "no sketch creation stands" });
     if (!CreationReady(Context))
-        return Outcome<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "the standing primitive has too few anchors" });
+        return Deliver<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "the standing primitive has too few anchors" });
 
     SketchCreationResult Result = {};
 
@@ -162,9 +162,9 @@ Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
             }
             else
             {
-                const Outcome<bool> DeclaredPolyline = Declared.DeclarePolyline(Context.Anchors, Result.CurveSet);
+                const Deliver<bool> DeclaredPolyline = Declared.DeclarePolyline(Context.Anchors, Result.CurveSet);
                 if (!DeclaredPolyline)
-                    return Outcome<SketchCreationResult>::Refuse(DeclaredPolyline.Error);
+                    return Deliver<SketchCreationResult>::Refuse(DeclaredPolyline.Error);
             }
             break;
         }
@@ -175,30 +175,30 @@ Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
 
         case SketchCreationSubject::Circle:
         {
-            const Outcome<ProfileNameInFeature> Profile = Declared.DeclareCircleProfile(
+            const Deliver<ProfileNameInFeature> Profile = Declared.DeclareCircleProfile(
                 ResolveCircle(Declared.HeldPlane(), Context.Anchors[0], Context.Anchors[1]));
             if (!Profile)
-                return Outcome<SketchCreationResult>::Refuse(Profile.Error);
+                return Deliver<SketchCreationResult>::Refuse(Profile.Error);
             Result.Profile = Profile.Resolve();
             break;
         }
 
         case SketchCreationSubject::Ellipse:
         {
-            const Outcome<ProfileNameInFeature> Profile = Declared.DeclareEllipseProfile(
+            const Deliver<ProfileNameInFeature> Profile = Declared.DeclareEllipseProfile(
                 ResolveEllipse(Declared.HeldPlane(), Context.Anchors[0], Context.Anchors[1], Context.Anchors[2]));
             if (!Profile)
-                return Outcome<SketchCreationResult>::Refuse(Profile.Error);
+                return Deliver<SketchCreationResult>::Refuse(Profile.Error);
             Result.Profile = Profile.Resolve();
             break;
         }
 
         case SketchCreationSubject::Oval:
         {
-            const Outcome<ProfileNameInFeature> Profile = Declared.DeclareOvalProfile(
+            const Deliver<ProfileNameInFeature> Profile = Declared.DeclareOvalProfile(
                 ResolveEllipse(Declared.HeldPlane(), Context.Anchors[0], Context.Anchors[1], Context.Anchors[2]));
             if (!Profile)
-                return Outcome<SketchCreationResult>::Refuse(Profile.Error);
+                return Deliver<SketchCreationResult>::Refuse(Profile.Error);
             Result.Profile = Profile.Resolve();
             break;
         }
@@ -207,10 +207,10 @@ Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
         {
             const SpatialDirection RadiusDirection = Difference(Context.Anchors[0], Context.Anchors[1]);
             const double Radius = std::sqrt(LengthSquared(RadiusDirection));
-            const Outcome<ProfileNameInFeature> Profile = Declared.DeclareRegularPolygon(Context.Anchors[0], Radius,
+            const Deliver<ProfileNameInFeature> Profile = Declared.DeclareRegularPolygon(Context.Anchors[0], Radius,
                                                                                          Context.Requested.PolygonSideCount);
             if (!Profile)
-                return Outcome<SketchCreationResult>::Refuse(Profile.Error);
+                return Deliver<SketchCreationResult>::Refuse(Profile.Error);
             Result.Profile = Profile.Resolve();
             break;
         }
@@ -219,9 +219,9 @@ Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
         {
             const SpatialDirection RadiusDirection = Difference(Context.Anchors[0], Context.Anchors[2]);
             const double Radius = std::sqrt(LengthSquared(RadiusDirection));
-            const Outcome<ProfileNameInFeature> Profile = Declared.DeclareSlot(Context.Anchors[0], Context.Anchors[1], Radius);
+            const Deliver<ProfileNameInFeature> Profile = Declared.DeclareSlot(Context.Anchors[0], Context.Anchors[1], Radius);
             if (!Profile)
-                return Outcome<SketchCreationResult>::Refuse(Profile.Error);
+                return Deliver<SketchCreationResult>::Refuse(Profile.Error);
             Result.Profile = Profile.Resolve();
             break;
         }
@@ -261,12 +261,12 @@ Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
         }
 
         case SketchCreationSubject::SubjectCount:
-            return Outcome<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "no such primitive subject" });
+            return Deliver<SketchCreationResult>::Refuse({ RefusalReason::ContentUnsupported, "no such primitive subject" });
     }
 
     Result.Produced = true;
     Context = {};
-    return Outcome<SketchCreationResult>::Result(Result);
+    return Deliver<SketchCreationResult>::Result(Result);
 }
 
 } // namespace Slate

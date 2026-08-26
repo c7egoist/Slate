@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Numeric/ColourProjection/Api/ColourProjection.h"
 #include "SlateMath/Numeric/CurveSolver/Api/CurveSolver.h"
 
@@ -104,7 +104,7 @@ public:
     /// out   Result     [-]  refuses with ContentUnsupported when no path was declared
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareFromFile(const OutlineSpecification& Incoming, const std::string& OriginPath);
+    Deliver<bool> DeclareFromFile(const OutlineSpecification& Incoming, const std::string& OriginPath);
 
     /// 🧩 Declares a decoded outline incoming as supplied source text.
     /// in    Incoming    [-]  the decoded specification
@@ -112,7 +112,7 @@ public:
     /// out   Result     [-]  refuses with ContentUnsupported when no path was declared
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareFromText(const OutlineSpecification& Incoming, const std::string& SourceText);
+    Deliver<bool> DeclareFromText(const OutlineSpecification& Incoming, const std::string& SourceText);
 
     /// 🧩 Records one rejected construct, to be reported through `86`.
     /// cost  🚩
@@ -196,7 +196,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported when a glyph of that identity is already declared
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareGlyph(const GlyphSpecification& Declaring);
+    Deliver<bool> DeclareGlyph(const GlyphSpecification& Declaring);
 
     /// 🧩 Declares one pair adjustment between two adjacent glyphs.
     /// cost  🚩
@@ -207,7 +207,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported when the typeface declares no such glyph
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<const GlyphSpecification*> ResolveGlyph(std::uint32_t GlyphIdentity) const;
+    Deliver<const GlyphSpecification*> ResolveGlyph(std::uint32_t GlyphIdentity) const;
 
     /// 🧩 The pair adjustment between two adjacent glyphs; zero where none is declared.
     /// cost  🚩

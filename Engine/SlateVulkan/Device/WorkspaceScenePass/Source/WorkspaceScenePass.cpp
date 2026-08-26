@@ -57,17 +57,17 @@ WorkspaceScenePass::~WorkspaceScenePass()
     Reclaim();
 }
 
-Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchange& Exchange,
+Deliver<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchange& Exchange,
                                                               const DiagnosticExtension& Naming,
                                                               ShaderCodec& Streams,
                                                               VkFormat ColourFormat)
 {
     if (DeviceEdge != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a scene pass construction already stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a scene pass construction already stands" });
 
     const VkDevice Active = Exchange.ActiveDevice();
     if (Active == VK_NULL_HANDLE || Exchange.GraphicsQueue() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     NamingEdge = &Naming;
@@ -76,34 +76,34 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     TriangleBytes = TriangleCapacity * static_cast<std::uint32_t>(sizeof(SceneTriangleRecord));
     MaterialBytes = MaterialCapacity * static_cast<std::uint32_t>(sizeof(SceneMaterialRecord));
 
-    const Outcome<std::uint32_t> VertexModule = Streams.Resolve("SlateVulkan", "WorkspaceSceneVertex");
+    const Deliver<std::uint32_t> VertexModule = Streams.Resolve("SlateVulkan", "WorkspaceSceneVertex");
     if (!VertexModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexModule.Error);
+        return Deliver<bool>::Refuse(VertexModule.Error);
     }
 
-    const Outcome<std::uint32_t> FragmentModule = Streams.Resolve("SlateVulkan", "WorkspaceSceneFragment");
+    const Deliver<std::uint32_t> FragmentModule = Streams.Resolve("SlateVulkan", "WorkspaceSceneFragment");
     if (!FragmentModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentModule.Error);
+        return Deliver<bool>::Refuse(FragmentModule.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> VertexRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> VertexRead =
         Streams.Stage(VertexModule.Resolve(), VK_SHADER_STAGE_VERTEX_BIT, {});
     if (!VertexRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexRead.Error);
+        return Deliver<bool>::Refuse(VertexRead.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> FragmentRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> FragmentRead =
         Streams.Stage(FragmentModule.Resolve(), VK_SHADER_STAGE_FRAGMENT_BIT, {});
     if (!FragmentRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentRead.Error);
+        return Deliver<bool>::Refuse(FragmentRead.Error);
     }
 
     VkDescriptorSetLayoutBinding Bindings[2] = {};
@@ -123,7 +123,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     if (vkCreateDescriptorSetLayout(Active, &LayoutDeclaration, nullptr, &SceneLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene layout was rejected" });
     }
 
     VkDescriptorPoolSize PoolSize = {};
@@ -139,7 +139,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     if (vkCreateDescriptorPool(Active, &PoolDeclaration, nullptr, &ScenePool) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene pool was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene pool was rejected" });
     }
 
     VkDescriptorSetAllocateInfo SetDeclaration = {};
@@ -151,7 +151,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     if (vkAllocateDescriptorSets(Active, &SetDeclaration, &SceneSet) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene set was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene set was rejected" });
     }
 
     VkBufferCreateInfo BufferDeclaration = {};
@@ -163,7 +163,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     if (vkCreateBuffer(Active, &BufferDeclaration, nullptr, &SceneBuffer) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene extent was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene extent was rejected" });
     }
 
     VkMemoryRequirements MemoryRequirements = {};
@@ -194,14 +194,14 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
         vkBindBufferMemory(Active, SceneBuffer, SceneMemory, 0u) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene memory was rejected" });
     }
 
     if (vkMapMemory(Active, SceneMemory, 0u, VK_WHOLE_SIZE, 0u,
                     reinterpret_cast<void**>(&MappedSlot)) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the scene extent would not map" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the scene extent would not map" });
     }
 
     VkDescriptorBufferInfo Triangles = { SceneBuffer, 0u, TriangleBytes };
@@ -235,7 +235,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
     if (vkCreatePipelineLayout(Active, &PipelineLayoutDeclaration, nullptr, &ScenePipelineLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene program layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene program layout was rejected" });
     }
 
     VkPipelineRenderingCreateInfo Rendering = {};
@@ -309,7 +309,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
                                   &ScenePipeline) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene program was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the scene program was rejected" });
     }
 
     Discard(Naming.Declare(VK_OBJECT_TYPE_PIPELINE,
@@ -319,7 +319,7 @@ Outcome<bool> WorkspaceScenePass::ConstructWorkspaceScenePass(const VulkanExchan
                            reinterpret_cast<std::uint64_t>(SceneBuffer),
                            "WorkspaceScenePass.GeometryAndMaterials"));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void WorkspaceScenePass::Upload(const WorkspaceSceneTriangle* Triangles, std::uint32_t TriangleCount)

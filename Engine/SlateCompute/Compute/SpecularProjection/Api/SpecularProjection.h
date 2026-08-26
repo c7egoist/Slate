@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Shared/ReflectionProjection.slang.h"
 #include "SlateCompute/Compute/TransmissionSequence/Api/TransmissionSequence.h"
@@ -92,7 +92,7 @@ public:
     ///        a third would declare the extent in two places that could disagree.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const ReflectionSpecification& Declaring);
+    Deliver<bool> Declare(const ReflectionSpecification& Declaring);
 
     /// 🧩 Contributes `08` §3 ⑥'s recording.
     /// out   Result  [-]  refuses with whatever the schedule rejected
@@ -101,7 +101,7 @@ public:
     ///        all — a target carrying the trace result instead would leave nothing to subtract.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 The extent the trace is resolved at, from one display extent.
     /// out   Result  [-]  refuses with ContentUnsupported for a display extent of nothing
@@ -109,7 +109,7 @@ public:
     ///        Rounding down leaves the display's last column with no coarse texel above it.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Resolve(std::uint32_t  DisplayX,
+    Deliver<bool> Resolve(std::uint32_t  DisplayX,
                           std::uint32_t  DisplayY,
                           std::uint32_t& ResolvedX,
                           std::uint32_t& ResolvedY) const;

@@ -214,13 +214,13 @@ double RotationDegrees(double Previous, double TravelX, double DegreesPerPixel)
 //                                                        CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ComponentSpecification::ConstructComponents(ControlIndex&              IncomingInteraction,
+Deliver<bool> ComponentSpecification::ConstructComponents(ControlIndex&              IncomingInteraction,
                                       RecordingSurface&              IncomingSurface,
                                       const ThemeProfile& IncomingAppearance)
 {
     if (Interaction != nullptr)
     {
-        return Outcome<bool>::Refuse(Refusal{ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse(Refusal{ RefusalReason::ContentUnsupported,
                                               "ComponentSpecification is already constructed" });
     }
 
@@ -228,7 +228,7 @@ Outcome<bool> ComponentSpecification::ConstructComponents(ControlIndex&         
     Surface    = &IncomingSurface;
     Appearance = &IncomingAppearance;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ComponentSpecification::Advance(const PointerCondition& Incoming, double Elapsed)
@@ -899,7 +899,7 @@ EditableTextVerdict ComponentSpecification::EditableText(ControlIdentity Target,
         }
         else if (Declared.ExpressionInput)
         {
-            const Outcome<double> Resolved = ResolveMagnitudeExpression(EditingRun);
+            const Deliver<double> Resolved = ResolveMagnitudeExpression(EditingRun);
 
             if (!Resolved.Resolved)
             {
@@ -1071,7 +1071,7 @@ ControlVerdict ComponentSpecification::MagnitudeRow(ControlIdentity Target, cons
         }
         else if (Text.AcceptPressed)
         {
-            const Outcome<double> Resolved = ResolveMagnitudeExpression(EditingRun);
+            const Deliver<double> Resolved = ResolveMagnitudeExpression(EditingRun);
 
             if (!Resolved.Resolved)
             {
@@ -1308,7 +1308,7 @@ ControlVerdict ComponentSpecification::VectorRow(ControlIdentity Target, const P
         }
         else if (Text.AcceptPressed)
         {
-            const Outcome<double> Resolved = ResolveMagnitudeExpression(EditingRun);
+            const Deliver<double> Resolved = ResolveMagnitudeExpression(EditingRun);
 
             if (!Resolved.Resolved)
             {
@@ -1354,7 +1354,7 @@ ControlVerdict ComponentSpecification::VectorRow(ControlIdentity Target, const P
     //    there is no round figure at either end to fail to return to.
     if (Interaction->Holding(Target) && AxisSpan > 0.0f)
     {
-        const Outcome<float> Recorded = Interaction->InitialReading(Target);
+        const Deliver<float> Recorded = Interaction->InitialReading(Target);
         const std::int32_t   Held = Recorded.Resolved
                                   ? static_cast<std::int32_t>(Recorded.Resolve() + 0.5f) : -1;
         if (Held >= 0 && Held < 3)
@@ -1472,7 +1472,7 @@ ControlVerdict ComponentSpecification::RotationRuler(ControlIdentity Target, con
 
     if (Interaction->Holding(Target) && Interaction->HeldPart(Target) == ControlPart::Strip)
     {
-        const Outcome<float> Previous = Interaction->InitialReading(Target);
+        const Deliver<float> Previous = Interaction->InitialReading(Target);
 
         if (Previous.Resolved)
         {

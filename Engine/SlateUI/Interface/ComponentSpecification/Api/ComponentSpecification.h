@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
@@ -196,7 +196,7 @@ public:
     /// out   Result     [-]  refuses with ContentUnsupported when a construction already stands
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructComponents(ControlIndex&              IncomingInteraction,
+    Deliver<bool> ConstructComponents(ControlIndex&              IncomingInteraction,
                             RecordingSurface&              Surface,
                             const ThemeProfile& Appearance);
 
@@ -466,7 +466,7 @@ private:
 /// out   Reading  [-]  the finite arithmetic result, or ContentUnsupported for malformed/non-finite input
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<double> ResolveMagnitudeExpression(const char* Expression);
+Deliver<double> ResolveMagnitudeExpression(const char* Expression);
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                   THE TWO PROJECTIONS

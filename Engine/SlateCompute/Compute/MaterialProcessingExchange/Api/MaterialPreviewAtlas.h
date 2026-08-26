@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <vector>
@@ -40,12 +40,12 @@ public:
     static constexpr std::uint32_t TilesPerAxis = 16u;
     static constexpr std::uint32_t TilesPerAtlas = TilesPerAxis * TilesPerAxis;
 
-    Outcome<MaterialPreviewTile> Reserve(std::uint32_t MaterialIndex, std::uint32_t Revision,
+    Deliver<MaterialPreviewTile> Reserve(std::uint32_t MaterialIndex, std::uint32_t Revision,
                                          std::uint64_t Fingerprint);
-    Outcome<MaterialPreviewTile> Resolve(std::uint32_t MaterialIndex) const;
+    Deliver<MaterialPreviewTile> Resolve(std::uint32_t MaterialIndex) const;
 
     /// Marks a tile ready only for the exact material revision a bake consumed.
-    Outcome<MaterialPreviewTile> MarkBaked(std::uint32_t MaterialIndex, std::uint64_t Fingerprint);
+    Deliver<MaterialPreviewTile> MarkBaked(std::uint32_t MaterialIndex, std::uint64_t Fingerprint);
     void Retire(std::uint32_t MaterialIndex);
     std::uint32_t DeclaredCount() const;
 

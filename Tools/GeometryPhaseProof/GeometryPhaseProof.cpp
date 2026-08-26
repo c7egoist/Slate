@@ -49,7 +49,7 @@ int main()
     Passed &= Require(!Capability.ExportSupported && !Capability.MaterialDefinitionsRetained,
                       "unsupported export and unavailable external material definitions are reported truthfully");
 
-    const Outcome<DecodedTopology> Decoded = Formats.Decode(Bytes, "quad.obj");
+    const Deliver<DecodedTopology> Decoded = Formats.Decode(Bytes, "quad.obj");
     Passed &= Require(Decoded.Resolved && Decoded.Resolve().Faces.size() == 2u &&
                       Decoded.Resolve().Faces[0].size() == 4u,
                       "the format exchange retains imported quads rather than triangulating them");
@@ -69,11 +69,11 @@ int main()
 
     GeometryInterchange Geometry;
     IntakeIndex Intake;
-    const Outcome<GeometryIdentity> Registered = Geometry.AcceptDecoded(Decoded.Resolve(), "Imported Quad", Intake);
+    const Deliver<GeometryIdentity> Registered = Geometry.AcceptDecoded(Decoded.Resolve(), "Imported Quad", Intake);
     Passed &= Require(Registered.Resolved && Geometry.DeclaredCount() == 1u,
                       "GeometryInterchange atomically registers and conditions one geometry asset");
     if (!Registered.Resolved) return 1;
-    const Outcome<GeometryAssetView> View = Geometry.Resolve(Registered.Resolve());
+    const Deliver<GeometryAssetView> View = Geometry.Resolve(Registered.Resolve());
     Passed &= Require(View.Resolved && View.Resolve().Topology->FaceCornerCount(0u) == 4u &&
                       View.Resolve().Conditioning->ConditionedRevision() == View.Resolve().Topology->Revision(),
                       "authoritative polygons and derived companions share one revision");
@@ -83,10 +83,10 @@ int main()
                       "GeometryInterchange owns source records for later export and diagnostics");
 
     GeometryRenderingExchange Rendering;
-    const Outcome<GeometryRenderingIdentity> Rendered = Rendering.Synchronise(View.Resolve());
-    const Outcome<const GeometryRenderingSnapshot*> Packet =
+    const Deliver<GeometryRenderingIdentity> Rendered = Rendering.Synchronise(View.Resolve());
+    const Deliver<const GeometryRenderingSnapshot*> Packet =
         Rendered.Resolved ? Rendering.Resolve(Rendered.Resolve())
-                           : Outcome<const GeometryRenderingSnapshot*>::Refuse(Rendered.Error);
+                           : Deliver<const GeometryRenderingSnapshot*>::Refuse(Rendered.Error);
     Passed &= Require(Packet.Resolved && Packet.Resolve()->Triangles.size() == 4u &&
                       Packet.Resolve()->SourceWire.size() == 4u &&
                       Packet.Resolve()->TriangulatedWire.size() == 5u &&
@@ -104,14 +104,14 @@ int main()
     const GeometryIdentity RetiredIdentity = Registered.Resolve();
     Passed &= Require(Geometry.Retire(RetiredIdentity).Resolved && !Geometry.Resolve(RetiredIdentity).Resolved,
                       "retirement invalidates stale geometry identities");
-    const Outcome<GeometryIdentity> Reused = Geometry.AcceptDecoded(Decoded.Resolve(), "Reused Slot", Intake);
+    const Deliver<GeometryIdentity> Reused = Geometry.AcceptDecoded(Decoded.Resolve(), "Reused Slot", Intake);
     Passed &= Require(Reused.Resolved && Reused.Resolve().SlotIndex == RetiredIdentity.SlotIndex &&
                       Reused.Resolve().SlotGeneration != RetiredIdentity.SlotGeneration &&
                       !Geometry.Resolve(RetiredIdentity).Resolved,
                       "slot reuse advances its generation without reviving retired identities");
     if (!Reused.Resolved) return 1;
     Geometry.Reclaim();
-    const Outcome<GeometryIdentity> AfterReclaim =
+    const Deliver<GeometryIdentity> AfterReclaim =
         Geometry.AcceptDecoded(Decoded.Resolve(), "After Reclaim", Intake);
     Passed &= Require(AfterReclaim.Resolved && !Geometry.Resolve(Reused.Resolve()).Resolved,
                       "whole-interchange reclamation cannot revive an earlier identity");
@@ -119,11 +119,11 @@ int main()
     MaterialSpecification Material;
     SurfaceLayerSequence Layers;
     MaterialProcessingExchange Processing;
-    const Outcome<LayerIdentity> Base = Processing.InitialiseDielectric(Material, Layers);
+    const Deliver<LayerIdentity> Base = Processing.InitialiseDielectric(Material, Layers);
     Passed &= Require(Base.Resolved && Layers.EntryCount() == 1u,
                       "every new material receives one base material layer");
     if (!Base.Resolved) return 1;
-    const Outcome<const LayerSpecification*> BaseLayer = Layers.Resolve(Base.Resolve());
+    const Deliver<const LayerSpecification*> BaseLayer = Layers.Resolve(Base.Resolve());
     Passed &= Require(BaseLayer.Resolved && BaseLayer.Resolve()->Name == "Base Material" &&
                       BaseLayer.Resolve()->Mandatory,
                       "the base layer is named, editable, and mandatory");

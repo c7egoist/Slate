@@ -21,7 +21,7 @@ constexpr double SunAngularRadius = 0.00465;   // [rad] - the sun's apparent rad
 
 } // namespace
 
-Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
+Deliver<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
                                const EnvironmentConfiguration& Environment,
                                const SkyCamera& Camera,
                                std::uint32_t Width,
@@ -29,7 +29,7 @@ Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
                                std::vector<std::uint8_t>& Pixels)
 {
     if (Width == 0u || Height == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a sky image of zero extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a sky image of zero extent" });
 
     // 🔴 The medium is Earth's, declared once per generation — cheap and idempotent: the integrator
     //    rebuilds only what changed. The artist's turbidity and density scale the sky's own terms, and
@@ -45,7 +45,7 @@ Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
     Earth.MieAsymmetry        = std::clamp(Environment.MieAsymmetry, -0.95, 0.95);
 
     if (!Atmosphere.DeclareMedium(Earth).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky medium was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky medium was rejected" });
 
     const double SunElevation = std::clamp(Environment.SunElevation, -90.0, 90.0) * HalfTurn / 180.0;
     const double SunAzimuth   = Environment.SunAzimuth * HalfTurn / 180.0;
@@ -55,12 +55,12 @@ Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
     const double SunDirectionZ = SunCosine * std::cos(SunAzimuth);
 
     if (!Atmosphere.DeclareSun(SunDirectionX, SunDirectionY, SunDirectionZ).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky sun direction was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky sun direction was rejected" });
 
     // 📝 A ground-level camera. The reference camera stands on the surface; the atmosphere's own
     //    thickness and the sky-view surface are both built around the same start radius.
     if (!Atmosphere.DeclareCameraAltitude(1.0).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky camera altitude was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky camera altitude was rejected" });
 
     // 📝 `02` §5's Gauss–Legendre rule, derived on the recurrence — the same rule the ConsoleHost's
     //    atmosphere verification derives before it rebuilds.
@@ -68,10 +68,10 @@ Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
     const std::uint32_t Quality = std::min(Environment.AtmosphereQuality, 3u);
     const std::uint32_t QuadratureOrders[4] = { 8u, 16u, 32u, 48u };
     if (!Rule.Derive(QuadratureOrders[Quality]).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky rule would not derive" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky rule would not derive" });
 
     if (!Atmosphere.Rebuild(DeclaredWorkingSpace(), Rule).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky surfaces would not rebuild" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sky surfaces would not rebuild" });
 
     // 📝 The camera is carried for the viewport's crop; the dome itself is direction-indexed and
     //    camera-independent.
@@ -251,7 +251,7 @@ Outcome<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 } // namespace Slate

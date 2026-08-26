@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/SceneStructure/Api/SceneStructure.h"
 
 #include <cstdint>
@@ -74,14 +74,14 @@ public:
     /// out   Result         [-]  refuses with ExtentExhausted past the last counted row
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> RowAtVisible(std::uint32_t VisibleIndex) const;
+    Deliver<std::uint32_t> RowAtVisible(std::uint32_t VisibleIndex) const;
 
     /// 🧩 What visible position a row sits at — the second scroll question.
     /// in    RowIndex  [-]  the row
     /// out   Result     [-]  refuses with ExtentExhausted for an uncounted or out-of-span row
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> VisibleOfRow(std::uint32_t RowIndex) const;
+    Deliver<std::uint32_t> VisibleOfRow(std::uint32_t RowIndex) const;
 
     /// 🧩 How many rows are counted in total.
     /// cost  ✔️
@@ -114,7 +114,7 @@ public:
     /// post  row order is fully determined by the enclosure relation and its ordering — invariant 9
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Linearize(const SceneStructure& Relations);
+    Deliver<bool> Linearize(const SceneStructure& Relations);
 
     /// 🧩 Declares one owner's enclosed rows counted or uncounted, and re-derives the counts below it.
     /// in    Subject           [-]  the enclosing owner
@@ -126,7 +126,7 @@ public:
     ///        enclosure would reopen on the following tick without the artist touching it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareExpansion(OwnerIdentity Subject, bool ExpansionEnabled);
+    Deliver<bool> DeclareExpansion(OwnerIdentity Subject, bool ExpansionEnabled);
 
     /// 🧩 Declares which owners a standing narrowing retains, or withdraws the narrowing entirely.
     /// in    Retained           [-]  the owners a narrowing confirmed, read only while one is declared
@@ -138,7 +138,7 @@ public:
     /// note  A narrowed row leaves the count and stays in the sequence, exactly as a collapsed one does.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareNarrowing(const std::vector<OwnerIdentity>& Retained, bool NarrowingDeclared);
+    Deliver<bool> DeclareNarrowing(const std::vector<OwnerIdentity>& Retained, bool NarrowingDeclared);
 
     /// 🧩 The rows, in linearised order, including the uncounted ones.
     /// cost  ✔️
@@ -155,7 +155,7 @@ public:
     /// out   Result  [-]  refuses with IdentityStale when the owner holds no row
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> RowOf(OwnerIdentity Subject) const;
+    Deliver<std::uint32_t> RowOf(OwnerIdentity Subject) const;
 
     /// 🧩 Whether a narrowing stands over the rows.
     /// cost  ✔️

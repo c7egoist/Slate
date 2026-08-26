@@ -213,10 +213,10 @@ void EasedInterpolant::Place(double Coordinate)
 //                                                      THE ENROLMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> MotionIntegrator::RegisterSpring(const MotionScale& Motion, double Applied)
+Deliver<std::uint32_t> MotionIntegrator::RegisterSpring(const MotionScale& Motion, double Applied)
 {
     if (SpringCount >= SpringCapacity)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no spring slot remains" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no spring slot remains" });
 
     SpringInterpolant& Registered = Springs[SpringCount];
 
@@ -225,20 +225,20 @@ Outcome<std::uint32_t> MotionIntegrator::RegisterSpring(const MotionScale& Motio
     Registered.Damping    = Motion.DrawerDamping;
     Registered.Place(Applied);
 
-    return Outcome<std::uint32_t>::Result(SpringCount++);
+    return Deliver<std::uint32_t>::Result(SpringCount++);
 }
 
-Outcome<std::uint32_t> MotionIntegrator::RegisterEased(double Applied)
+Deliver<std::uint32_t> MotionIntegrator::RegisterEased(double Applied)
 {
     if (EaseCount >= EaseCapacity)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no eased slot remains" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no eased slot remains" });
 
     EasedInterpolant& Registered = Eases[EaseCount];
 
     Registered = {};
     Registered.Place(Applied);
 
-    return Outcome<std::uint32_t>::Result(EaseCount++);
+    return Deliver<std::uint32_t>::Result(EaseCount++);
 }
 
 SpringInterpolant& MotionIntegrator::Spring(std::uint32_t Index)

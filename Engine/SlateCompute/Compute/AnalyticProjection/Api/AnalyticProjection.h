@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Combination.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/SurfaceTileSpace/Api/SurfaceTileSpace.h"
 #include "SlateDocument/Document/DecalProjection/Api/DecalProjection.h"
@@ -131,7 +131,7 @@ public:
     /// out   Result   [-]  delivers unconditionally; an absent library refuses only where a layer names it
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructAnalyticProjection(const AnalyticSources& Supplied);
+    Deliver<bool> ConstructAnalyticProjection(const AnalyticSources& Supplied);
 
     /// 🧩 The content revision one sequence currently stands at.
     /// in    Content  [-]  the surface's layer sequence
@@ -165,7 +165,7 @@ public:
     ///        a promotion calls; this one is for a single position and says so.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ResolvedSample> ResolveAt(const SurfaceLayerSequence&           Content,
+    Deliver<ResolvedSample> ResolveAt(const SurfaceLayerSequence&           Content,
                                       const std::vector<ChannelPlacement>&  Placements,
                                       double                                PositionX,
                                       double                                PositionY,
@@ -188,7 +188,7 @@ public:
     ///        not vary across it.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ResolvedTile> ResolveTile(const SurfaceLayerSequence&           Content,
+    Deliver<ResolvedTile> ResolveTile(const SurfaceLayerSequence&           Content,
                                       const std::vector<ChannelPlacement>&  Placements,
                                       CellAddress                           Addressed,
                                       std::uint32_t                         ComponentCount) const;
@@ -203,29 +203,29 @@ public:
 
 private:
 
-    Outcome<ResolvedSample> ResolveEntryAt(const LayerSpecification&  Held,
+    Deliver<ResolvedSample> ResolveEntryAt(const LayerSpecification&  Held,
                                            double                     PositionX,
                                            double                     PositionY,
                                            double                     Tolerance,
                                            std::uint32_t              ComponentCount) const;
 
-    Outcome<ResolvedSample> ResolveOutlineAt(std::uint32_t  SourceIndex,
+    Deliver<ResolvedSample> ResolveOutlineAt(std::uint32_t  SourceIndex,
                                              double         SourceX,
                                              double         SourceY,
                                              double         Tolerance) const;
 
-    Outcome<ResolvedSample> ResolveTextAt(std::uint32_t  SourceIndex,
+    Deliver<ResolvedSample> ResolveTextAt(std::uint32_t  SourceIndex,
                                           double         SourceX,
                                           double         SourceY,
                                           double         Tolerance) const;
 
-    Outcome<ResolvedSample> ResolveTilingAt(std::uint32_t  TilingIndex,
+    Deliver<ResolvedSample> ResolveTilingAt(std::uint32_t  TilingIndex,
                                             double         SourceX,
                                             double         SourceY,
                                             double         Tolerance,
                                             std::uint32_t  NestingDepth) const;
 
-    Outcome<ResolvedSample> ResolvePlacedAt(std::uint32_t  PlacementIndex,
+    Deliver<ResolvedSample> ResolvePlacedAt(std::uint32_t  PlacementIndex,
                                             double         PositionX,
                                             double         PositionY,
                                             double         Tolerance) const;

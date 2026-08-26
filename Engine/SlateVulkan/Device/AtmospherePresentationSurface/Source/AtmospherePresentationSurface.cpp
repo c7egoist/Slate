@@ -26,14 +26,14 @@ std::uint32_t FindMemory(const VulkanExchange& Exchange, std::uint32_t Allowed, 
 
 AtmospherePresentationSurface::~AtmospherePresentationSurface() { Reclaim(); }
 
-Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const VulkanExchange& Exchange,
+Deliver<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const VulkanExchange& Exchange,
                                                                          const DiagnosticExtension& Naming,
                                                                          ShaderCodec& Streams)
 {
     if (DeviceEdge != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a dynamic sky already stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a dynamic sky already stands" });
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     const VkDevice Device = Exchange.ActiveDevice();
@@ -44,7 +44,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if ((Format.optimalTilingFeatures & Needed) != Needed)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the device declines a sampled writable HDR sky" });
     }
 
@@ -63,7 +63,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateImage(Device, &Image, nullptr, &ImageSlot) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky image was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky image was rejected" });
     }
 
     VkMemoryRequirements Requirements = {};
@@ -73,7 +73,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (MemoryIndex == 0xFFFFFFFFu)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "no device-local sky memory exists" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "no device-local sky memory exists" });
     }
 
     VkMemoryAllocateInfo Allocation = {};
@@ -84,7 +84,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
         vkBindImageMemory(Device, ImageSlot, ImageMemory, 0u) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky memory was rejected" });
     }
 
     VkImageViewCreateInfo View = {};
@@ -98,7 +98,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateImageView(Device, &View, nullptr, &ImageViewSlot) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky view was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky view was rejected" });
     }
 
     VkSamplerCreateInfo Sampler = {};
@@ -113,7 +113,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateSampler(Device, &Sampler, nullptr, &SamplerSlot) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky sampler was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky sampler was rejected" });
     }
 
     VkDescriptorSetLayoutBinding Binding = {};
@@ -128,7 +128,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateDescriptorSetLayout(Device, &Layout, nullptr, &SkyLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky layout was rejected" });
     }
 
     VkDescriptorPoolSize PoolSize = { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1u };
@@ -140,7 +140,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateDescriptorPool(Device, &Pool, nullptr, &SkyPool) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky descriptor pool was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky descriptor pool was rejected" });
     }
 
     VkDescriptorSetAllocateInfo Set = {};
@@ -151,7 +151,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkAllocateDescriptorSets(Device, &Set, &SkySet) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky descriptor was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky descriptor was rejected" });
     }
 
     VkDescriptorImageInfo ImageInfo = {};
@@ -166,18 +166,18 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     Write.pImageInfo = &ImageInfo;
     vkUpdateDescriptorSets(Device, 1u, &Write, 0u, nullptr);
 
-    const Outcome<std::uint32_t> Module = Streams.Resolve("SlateVulkan", "DynamicSkySurface");
+    const Deliver<std::uint32_t> Module = Streams.Resolve("SlateVulkan", "DynamicSkySurface");
     if (!Module.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(Module.Error);
+        return Deliver<bool>::Refuse(Module.Error);
     }
-    const Outcome<VkPipelineShaderStageCreateInfo> Stage =
+    const Deliver<VkPipelineShaderStageCreateInfo> Stage =
         Streams.Stage(Module.Resolve(), VK_SHADER_STAGE_COMPUTE_BIT, {});
     if (!Stage.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(Stage.Error);
+        return Deliver<bool>::Refuse(Stage.Error);
     }
 
     VkPushConstantRange Push = {};
@@ -192,7 +192,7 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreatePipelineLayout(Device, &PipelineLayout, nullptr, &SkyPipelineLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky pipeline layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the dynamic sky pipeline layout was rejected" });
     }
 
     VkComputePipelineCreateInfo Pipeline = {};
@@ -202,23 +202,23 @@ Outcome<bool> AtmospherePresentationSurface::ConstructAtmosphereSurface(const Vu
     if (vkCreateComputePipelines(Device, VK_NULL_HANDLE, 1u, &Pipeline, nullptr, &SkyPipeline) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the dynamic sky compute pipeline was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the dynamic sky compute pipeline was rejected" });
     }
 
     static_cast<void>(Naming.Declare(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<std::uint64_t>(ImageSlot),
                                      "DynamicSkySurface"));
     static_cast<void>(Naming.Declare(VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<std::uint64_t>(SkyPipeline),
                                      "DynamicSkySurface.Compute"));
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> AtmospherePresentationSurface::Record(VkCommandBuffer Command,
+Deliver<bool> AtmospherePresentationSurface::Record(VkCommandBuffer Command,
                                          const DynamicSkyParameters& Parameters, bool Dirty)
 {
     if (!Standing() || Command == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "the dynamic sky does not stand" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "the dynamic sky does not stand" });
     if (!Dirty)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     VkImageMemoryBarrier Before = {};
     Before.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -254,7 +254,7 @@ Outcome<bool> AtmospherePresentationSurface::Record(VkCommandBuffer Command,
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0u,
                          0u, nullptr, 0u, nullptr, 1u, &After);
     CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void AtmospherePresentationSurface::Reclaim()

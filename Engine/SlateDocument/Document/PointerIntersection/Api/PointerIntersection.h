@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/CameraProjection/Api/CameraProjection.h"
 #include "SlateDocument/Document/DecalProjection/Api/DecalProjection.h"
@@ -57,7 +57,7 @@ struct ProjectedRay
 ///        at where the artist was looking before they moved.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<ProjectedRay> ProjectPointerRay(const CameraProjection& Camera,
+Deliver<ProjectedRay> ProjectPointerRay(const CameraProjection& Camera,
                                         double                  PointerX,
                                         double                  PointerY,
                                         std::uint32_t           DisplayX,
@@ -140,19 +140,19 @@ public:
     ///        correct almost everywhere.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Accept(const AcceptedSurface& Incoming);
+    Deliver<bool> Accept(const AcceptedSurface& Incoming);
 
     /// 🧩 Withdraws one owner's surface sources.
     /// out   Result  [-]  refuses with IdentityStale when the owner is not accepted
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Withdraw(OwnerIdentity Subject);
+    Deliver<bool> Withdraw(OwnerIdentity Subject);
 
     /// 🧩 One accepted owner's sources.
     /// out   Result  [-]  refuses with IdentityStale when the owner is not accepted
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const AcceptedSurface*> Current(OwnerIdentity Subject) const;
+    Deliver<const AcceptedSurface*> Current(OwnerIdentity Subject) const;
 
     /// 🧩 Resolves one ray to the whole tuple.
     /// in    Projected     [-]  the ray, from `ProjectPointerRay`

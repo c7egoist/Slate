@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -55,14 +55,14 @@ public:
     ///        operation and `86` would otherwise report the artist's own empty clipboard as an OS failure.
     /// cost  🚩
     /// tag   api, nonthrowing
-    static Outcome<std::string> ReadText();
+    static Deliver<std::string> ReadText();
 
     /// 🧩 Hands text to the host clipboard, replacing whatever it carried.
     /// in    Supplied  [-]  UTF-8; an empty supply clears the clipboard rather than refusing
     /// out   Result   [-]  refuses with HostDenied when the host declines
     /// cost  🚩
     /// tag   api, nonthrowing
-    static Outcome<bool> WriteText(const std::string& Supplied);
+    static Deliver<bool> WriteText(const std::string& Supplied);
 
     /// 🧩 Reads the host clipboard's imagery.
     /// out   Result  [-]  refuses with CapabilityAbsent when the clipboard carries no imagery, with
@@ -73,7 +73,7 @@ public:
     ///        that ignored the sign delivers half of all clipboard imagery vertically mirrored.
     /// cost  🔴
     /// tag   api, nonthrowing
-    static Outcome<ClipboardImage> ReadImage();
+    static Deliver<ClipboardImage> ReadImage();
 
     /// 🧩 Hands imagery to the host clipboard, replacing whatever it carried.
     /// in    Supplied  [-]  row order, top-down, RGBA, unpremultiplied
@@ -81,7 +81,7 @@ public:
     ///                      with HostDenied when the host declines
     /// cost  🔴
     /// tag   api, nonthrowing
-    static Outcome<bool> WriteImage(const ClipboardImage& Supplied);
+    static Deliver<bool> WriteImage(const ClipboardImage& Supplied);
 
     /// 🧩 Whether the host clipboard currently carries text this translation can read.
     /// out   TextCarried  [-]  false while the host declines to be asked at all

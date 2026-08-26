@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h"
 
 #include <cstdint>
@@ -142,7 +142,7 @@ public:
     ///        content genuinely has no evaluation to bound, and refusing it would force a fictitious number.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareBudget(const PromotionBudget& Declaring);
+    Deliver<bool> DeclareBudget(const PromotionBudget& Declaring);
 
     /// 🧩 Declares which ordering eviction follows.
     /// cost  ✔️
@@ -157,7 +157,7 @@ public:
     ///        exists to prevent.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> OpenRecording(std::uint64_t RecordingIndex);
+    Deliver<bool> OpenRecording(std::uint64_t RecordingIndex);
 
     /// 🧩 Whether a cost fits what remains of this rotation.
     /// cost  ✔️
@@ -169,7 +169,7 @@ public:
     /// post  a rejected charge spends nothing
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Charge(const PromotionCost& Costing);
+    Deliver<bool> Charge(const PromotionCost& Costing);
 
     /// 🧩 Records that one promotion was deferred — `86` §5's measure row for `20` §2.2.
     /// note  🔴 A measure and **not** a report. `86` §5: deferral against budget is ordinary operation, and a

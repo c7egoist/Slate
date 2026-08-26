@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <cstdint>
@@ -23,14 +23,14 @@ enum class ReshapeDisposition : std::uint32_t
     Produced = 3u
 };
 
-Outcome<SketchCurveName> TrimCurve(SketchStructure& Declared,
+Deliver<SketchCurveName> TrimCurve(SketchStructure& Declared,
                                    SketchCurveName Subject,
                                    const SpatialPoint& Position,
                                    bool KeepStart);
-Outcome<std::vector<SketchCurveName>> CutCurve(SketchStructure& Declared,
+Deliver<std::vector<SketchCurveName>> CutCurve(SketchStructure& Declared,
                                                SketchCurveName Subject,
                                                const SpatialPoint& Position);
-Outcome<bool> CutProfile(SketchStructure& Declared,
+Deliver<bool> CutProfile(SketchStructure& Declared,
                          ProfileNameInFeature Subject,
                          std::uint32_t LoopIndex,
                          std::uint32_t EdgeIndex,
@@ -40,7 +40,7 @@ Outcome<bool> CutProfile(SketchStructure& Declared,
 ReshapeDisposition EvaluateProfileInset(const SketchStructure& Declared,
                                         ProfileNameInFeature Subject,
                                         double Distance);
-Outcome<ProfileNameInFeature> ApplyProfileInset(SketchStructure& Declared,
+Deliver<ProfileNameInFeature> ApplyProfileInset(SketchStructure& Declared,
                                                 ProfileNameInFeature Subject,
                                                 double Distance);
 

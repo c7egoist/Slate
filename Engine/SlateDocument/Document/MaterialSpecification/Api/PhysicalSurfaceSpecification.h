@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 
 #include <cstdint>
@@ -65,7 +65,7 @@ struct CompiledPhysicalSurface
 class PhysicalSurfaceExchange
 {
 public:
-    Outcome<CompiledPhysicalSurface> Compile(const MaterialSpecification& Material,
+    Deliver<CompiledPhysicalSurface> Compile(const MaterialSpecification& Material,
                                              const PhysicalSurfaceDeclaration& Declaration) const;
 };
 

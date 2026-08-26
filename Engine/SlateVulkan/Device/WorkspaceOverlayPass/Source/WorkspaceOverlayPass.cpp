@@ -67,19 +67,19 @@ WorkspaceOverlayPass::~WorkspaceOverlayPass()
     Reclaim();
 }
 
-Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanExchange&      Exchange,
+Deliver<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanExchange&      Exchange,
                                      const DiagnosticExtension& Naming,
                                      ShaderCodec&               Streams,
                                      VkFormat                   ColourFormat)
 {
     if (DeviceEdge != nullptr)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "an overlay pass construction already stands" });
 
     const VkDevice Active = Exchange.ActiveDevice();
 
     if (Active == VK_NULL_HANDLE || Exchange.GraphicsQueue() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     NamingEdge = &Naming;
@@ -91,40 +91,40 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     // ① The two stages, resolved through the shader codec's own SPIR-V reading. A stream the build
     //    never lowered (the sandbox) refuses here, and the pass simply does not stand — the host
     //    reports it and runs without the overlay.
-    const Outcome<std::uint32_t> VertexModule =
+    const Deliver<std::uint32_t> VertexModule =
         Streams.Resolve("SlateVulkan", "WorkspaceOverlayVertex");
 
     if (!VertexModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexModule.Error);
+        return Deliver<bool>::Refuse(VertexModule.Error);
     }
 
-    const Outcome<std::uint32_t> FragmentModule =
+    const Deliver<std::uint32_t> FragmentModule =
         Streams.Resolve("SlateVulkan", "WorkspaceOverlayFragment");
 
     if (!FragmentModule.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentModule.Error);
+        return Deliver<bool>::Refuse(FragmentModule.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> VertexRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> VertexRead =
         Streams.Stage(VertexModule.Resolve(), VK_SHADER_STAGE_VERTEX_BIT, {});
 
     if (!VertexRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(VertexRead.Error);
+        return Deliver<bool>::Refuse(VertexRead.Error);
     }
 
-    const Outcome<VkPipelineShaderStageCreateInfo> FragmentRead =
+    const Deliver<VkPipelineShaderStageCreateInfo> FragmentRead =
         Streams.Stage(FragmentModule.Resolve(), VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
     if (!FragmentRead.Resolved)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(FragmentRead.Error);
+        return Deliver<bool>::Refuse(FragmentRead.Error);
     }
 
     // ② The descriptor set layout: the three record regions, read by the vertex stage as structured
@@ -148,7 +148,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (vkCreateDescriptorSetLayout(Active, &LayoutDeclaration, nullptr, &OverlayLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay layout was rejected" });
     }
 
     VkDescriptorPoolSize PoolSize = {};
@@ -164,7 +164,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (vkCreateDescriptorPool(Active, &PoolDeclaration, nullptr, &OverlayPool) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay pool was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay pool was rejected" });
     }
 
     VkDescriptorSetAllocateInfo SetDeclaration = {};
@@ -176,7 +176,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (vkAllocateDescriptorSets(Active, &SetDeclaration, &OverlaySet) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay set was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay set was rejected" });
     }
 
     // ③ The one vertex buffer, host-visible and coherent, mapped once — the upload is a memcpy.
@@ -189,7 +189,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (vkCreateBuffer(Active, &BufferDeclaration, nullptr, &VertexBuffer) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay extent was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay extent was rejected" });
     }
 
     VkMemoryRequirements MemoryRequirements = {};
@@ -220,7 +220,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
         vkBindBufferMemory(Active, VertexBuffer, VertexMemory, 0u) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay memory was rejected" });
     }
 
     const VkResult Mapped =
@@ -230,7 +230,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (Mapped != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the overlay extent would not map" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the overlay extent would not map" });
     }
 
     // ④ The set writes the three regions of the one buffer.
@@ -278,7 +278,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (vkCreatePipelineLayout(Active, &LayoutDeclaration2, nullptr, &OverlayPipelineLayout) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay program layout was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay program layout was rejected" });
     }
 
     // ⑥ The program — dynamic rendering, so the colour attachment rides the pipeline-rendering info
@@ -368,7 +368,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
     if (Constructed != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay program was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the overlay program was rejected" });
     }
 
     if (Naming.Declare(VK_OBJECT_TYPE_PIPELINE, reinterpret_cast<std::uint64_t>(OverlayPipeline),
@@ -379,7 +379,7 @@ Outcome<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
         // 📝 Every object named; nothing else to do with the outcome.
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void WorkspaceOverlayPass::Upload(const OverlayGeometry& Overlay)

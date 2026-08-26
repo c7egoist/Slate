@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
@@ -34,7 +34,7 @@ enum class NoticeDecision : std::uint32_t
 class NoticeDialog
 {
 public:
-    Outcome<bool> ConstructNoticeDialog(MotionIntegrator& Motion, RecordingSurface& Surface);
+    Deliver<bool> ConstructNoticeDialog(MotionIntegrator& Motion, RecordingSurface& Surface);
     void Advance(const PointerCondition& Pointer, double ElapsedMilliseconds);
     void Open(NoticeTone Role, const char* Title, const char* Message,
               const char* AcceptCaption = "Confirm", const char* DismissCaption = "Cancel");

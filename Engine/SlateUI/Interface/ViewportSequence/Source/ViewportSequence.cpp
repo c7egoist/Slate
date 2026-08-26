@@ -14,11 +14,11 @@ namespace Slate
 //                                                      CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ViewportSequence::ConstructViewportSequence(const InterfaceAttachment& Incoming,
+Deliver<bool> ViewportSequence::ConstructViewportSequence(const InterfaceAttachment& Incoming,
                                           const DrawerDeclaration&   North,
                                           const DrawerDeclaration&   South)
 {
-    const Outcome<bool> InterfaceBuilt = Interface.AttachInterface(Incoming);
+    const Deliver<bool> InterfaceBuilt = Interface.AttachInterface(Incoming);
     if (!InterfaceBuilt.Resolved)
         return InterfaceBuilt;
 
@@ -27,22 +27,22 @@ Outcome<bool> ViewportSequence::ConstructViewportSequence(const InterfaceAttachm
     Resolved      = ResolveTinted(1.0, InterfaceScale, 0.0f, Chosen);
     RestateTypography(Resolved);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                        THE TICK
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ViewportSequence::Advance(double ElapsedMilliseconds)
+Deliver<bool> ViewportSequence::Advance(double ElapsedMilliseconds)
 {
     // ① Open the ImGui frame.
-    const Outcome<bool> TickOpened = Interface.Advance();
+    const Deliver<bool> TickOpened = Interface.Advance();
     if (!TickOpened.Resolved)
         return TickOpened;
 
     // ② Adopt the surface — reads pointer and display from ImGui IO.
-    const Outcome<bool> SurfaceAdopted = SurfaceOwned.Adopt();
+    const Deliver<bool> SurfaceAdopted = SurfaceOwned.Adopt();
     if (!SurfaceAdopted.Resolved)
     {
         // 📝 Retired although the adopt rejected and there is nothing to retire. `Retire` is idempotent, and
@@ -61,7 +61,7 @@ Outcome<bool> ViewportSequence::Advance(double ElapsedMilliseconds)
     // ④ Construct the drawers on the first tick, when the display extent is known.
     if (!DrawersConstructed)
     {
-        const Outcome<bool> DrawersBuilt =
+        const Deliver<bool> DrawersBuilt =
             DrawersOwned.ConstructDrawerSpace(Motion, Resolved, NorthDeclared, SouthDeclared, Display);
 
         if (!DrawersBuilt.Resolved)
@@ -123,7 +123,7 @@ Outcome<bool> ViewportSequence::Advance(double ElapsedMilliseconds)
     Motion.Advance(ElapsedMilliseconds > 0.0 ? ElapsedMilliseconds : Display.Elapsed);
 
     PanelsOpen = false;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 InterfaceExchange& ViewportSequence::Seam()
@@ -156,7 +156,7 @@ void ViewportSequence::DrawerPanels()
     PanelsOpen = true;
 }
 
-Outcome<bool> ViewportSequence::SealPanels()
+Deliver<bool> ViewportSequence::SealPanels()
 {
     PanelsOpen = false;
 
@@ -168,7 +168,7 @@ Outcome<bool> ViewportSequence::SealPanels()
     return Interface.Seal();
 }
 
-Outcome<bool> ViewportSequence::Abandon()
+Deliver<bool> ViewportSequence::Abandon()
 {
     PanelsOpen = false;
 
@@ -179,12 +179,12 @@ Outcome<bool> ViewportSequence::Abandon()
     return Interface.Abandon();
 }
 
-Outcome<bool> ViewportSequence::Renegotiate(std::uint32_t MinimumImageCount, std::uint32_t ImageCount)
+Deliver<bool> ViewportSequence::Renegotiate(std::uint32_t MinimumImageCount, std::uint32_t ImageCount)
 {
     return Interface.Renegotiate(MinimumImageCount, ImageCount);
 }
 
-Outcome<bool> ViewportSequence::Record(VkCommandBuffer CommandRecording)
+Deliver<bool> ViewportSequence::Record(VkCommandBuffer CommandRecording)
 {
     return Interface.Record(CommandRecording);
 }

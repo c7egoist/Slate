@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Numeric/ReportSequence/Api/ReportSequence.h"
 
 #include <cstdint>
@@ -110,19 +110,19 @@ public:
     ///        Accepting it would put a permanent unknown into the document with nothing able to settle it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(const DeclaredReference& Incoming);
+    Deliver<std::uint32_t> Declare(const DeclaredReference& Incoming);
 
     /// 🧩 Declares one reference embedded or referenced, per the document's own answer.
     /// out   Result  [-]  refuses with ExtentExhausted outside the declared count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareRetention(std::uint32_t ReferenceIndex, ReferenceRetention Declaring);
+    Deliver<bool> DeclareRetention(std::uint32_t ReferenceIndex, ReferenceRetention Declaring);
 
     /// 🧩 Declares one reference found, with the extent it spans.
     /// out   Result  [-]  refuses with ExtentExhausted outside the declared count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareResolved(std::uint32_t ReferenceIndex, std::uint64_t SpannedBytes);
+    Deliver<bool> DeclareResolved(std::uint32_t ReferenceIndex, std::uint64_t SpannedBytes);
 
     /// 🧩 Declares one reference missing — registered, reported, and never replaced.
     /// out   Result  [-]  refuses with ExtentExhausted outside the declared count
@@ -131,7 +131,7 @@ public:
     ///        to go and find, and clearing it turns a recoverable absence into a permanent one.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareAbsent(std::uint32_t ReferenceIndex);
+    Deliver<bool> DeclareAbsent(std::uint32_t ReferenceIndex);
 
     /// 🧩 Appends every unreported absence to the register — `48` §5 and `86` §4.
     /// in    Reporting  [-]  where the absence rows land
@@ -153,7 +153,7 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted when nothing declares that path
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<DeclaredReference> Resolve(const std::string& OriginPath) const;
+    Deliver<DeclaredReference> Resolve(const std::string& OriginPath) const;
 
     /// 🧩 Declares whether this document embeds its typeface outlines or refers to them.
     /// note  ⚠️ `00` §12 leaves the licensing question open and `48` §5 does not close it. What is fixed here is

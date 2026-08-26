@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <vector>
@@ -29,6 +29,6 @@ struct SketchAnalysis
     bool Solvable = true;
 };
 
-Outcome<SketchAnalysis> AnalyseSketch(const SketchStructure& Declared);
+Deliver<SketchAnalysis> AnalyseSketch(const SketchStructure& Declared);
 
 } // namespace Slate

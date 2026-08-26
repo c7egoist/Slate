@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/VisibilityRaster.h"
 #include "SlateVulkan/Device/AttachmentIndex/Api/AttachmentIndex.h"
 #include "SlateVulkan/Device/ByteSpace/Api/ByteSpace.h"
@@ -44,7 +44,7 @@ public:
     /// in    DisplayHeight   [px]  target height
     /// in    DisplayFormat   [-]  the current presentation format
     /// out   Result          [-]  refuses at the first rejected device claim and reclaims prior claims
-    Outcome<bool> ConstructGeometryDeviceExchange(const VulkanExchange&      Exchange,
+    Deliver<bool> ConstructGeometryDeviceExchange(const VulkanExchange&      Exchange,
                                                   const DiagnosticExtension& Naming,
                                                   const char*                 ShaderLocation,
                                                   std::uint32_t               DisplayWidth,
@@ -53,7 +53,7 @@ public:
 
     /// 🧩 Re-derives display-relative targets after the host re-established its display chain.
     /// pre   the device is idle; HostLifecycle has completed the recovery before this call
-    Outcome<bool> ReclaimDisplay(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight);
+    Deliver<bool> ReclaimDisplay(std::uint32_t DisplayWidth, std::uint32_t DisplayHeight);
 
     /// 🧩 Makes one partitioned, authoritative Earcut packet device-resident through the supplied recording.
     /// in    Partitioned      [-]  source-face partitioning for the packet's topology revision
@@ -61,7 +61,7 @@ public:
     /// in    RegistrationBase [-]  document-wide first partition ordinal
     /// in    Recorded         [-]  open recording that later surrenders the staging transfer
     /// out   Result           [-]  the resident geometry ordinal
-    Outcome<std::uint32_t> Admit(const PartitionStructure&        Partitioned,
+    Deliver<std::uint32_t> Admit(const PartitionStructure&        Partitioned,
                                  const GeometryRenderingSnapshot& Rendering,
                                  std::uint32_t                     RegistrationBase,
                                  VkCommandBuffer                   Recorded);
@@ -74,16 +74,16 @@ public:
     /// in    SlotIndex [-]  the completion-gated recording slot this command belongs to
     /// in    Viewing   [-]  the current reversed-depth camera projection
     /// out   Result    [-]  refuses until at least one authoritative geometry residency stands
-    Outcome<bool> Record(VkCommandBuffer Recorded, std::uint32_t SlotIndex, const ViewProjection& Viewing);
+    Deliver<bool> Record(VkCommandBuffer Recorded, std::uint32_t SlotIndex, const ViewProjection& Viewing);
 
     /// 🧩 Resolves visibility into transparent black or an initial fixed-white dielectric radiance.
     /// in    Recorded  [-]  the open pre-display command recording
     /// in    SlotIndex [-]  the completion-gated recording slot this command belongs to
     /// out   Result    [-]  refuses before the device estate or its resolve program stands
-    Outcome<bool> ResolveFixedWhite(VkCommandBuffer Recorded, std::uint32_t SlotIndex);
+    Deliver<bool> ResolveFixedWhite(VkCommandBuffer Recorded, std::uint32_t SlotIndex);
 
     /// 🧩 The transparent fixed-white radiance target after ResolveFixedWhite has written it.
-    Outcome<ImageReservation> Radiance() const;
+    Deliver<ImageReservation> Radiance() const;
 
     /// 🧩 The linear sampler through which the interface samples the resolved radiance target.
     VkSampler RadianceSampler() const;

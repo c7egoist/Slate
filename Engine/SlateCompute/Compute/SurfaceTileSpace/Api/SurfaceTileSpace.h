@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateCompute/Compute/PromotionScheduler/Api/PromotionScheduler.h"
@@ -92,13 +92,13 @@ struct CellAddress
 /// out   Result  [-]  refuses with ContentUnsupported outside the level or its cell span
 /// cost  ✔️
 /// tag   api, nonthrowing
-Outcome<std::uint32_t> IndexOf(CellAddress Addressed);
+Deliver<std::uint32_t> IndexOf(CellAddress Addressed);
 
 /// 🧩 The address one ordinal names.
 /// out   Result  [-]  refuses with ContentUnsupported outside the span
 /// cost  ✔️
 /// tag   api, nonthrowing
-Outcome<CellAddress> AddressOf(std::uint32_t CellIndex);
+Deliver<CellAddress> AddressOf(std::uint32_t CellIndex);
 
 /// 🧩 The cell one domain position falls in, at a declared level.
 /// in    PositionX   [-]  the domain's first axis, in the unit square
@@ -109,7 +109,7 @@ Outcome<CellAddress> AddressOf(std::uint32_t CellIndex);
 ///        and the edge cell is the right answer for it.
 /// cost  ✔️
 /// tag   api, nonthrowing
-Outcome<std::uint32_t> IndexAt(std::uint32_t Level, double PositionX, double PositionY);
+Deliver<std::uint32_t> IndexAt(std::uint32_t Level, double PositionX, double PositionY);
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     ONE CELL
@@ -151,13 +151,13 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported outside the span
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const CellRecord*> Held(std::uint32_t CellIndex) const;
+    Deliver<const CellRecord*> Held(std::uint32_t CellIndex) const;
 
     /// 🧩 One record, for amending.
     /// out   Result  [-]  refuses with ContentUnsupported outside the span
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<CellRecord*> Amend(std::uint32_t CellIndex);
+    Deliver<CellRecord*> Amend(std::uint32_t CellIndex);
 
     /// 🧩 Every record, in ordinal order.
     /// cost  ✔️
@@ -234,7 +234,7 @@ public:
     ///        is the only place that failure can still be attributed to its cause.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructSurfaceTiles(std::uint32_t SurfaceIndex, std::uint32_t BytesPerTexel, std::uint32_t SlotLimit);
+    Deliver<bool> ConstructSurfaceTiles(std::uint32_t SurfaceIndex, std::uint32_t BytesPerTexel, std::uint32_t SlotLimit);
 
     /// 🧩 Resolves a domain position at a declared level, demanding what is not resident.
     /// in    Level            [-]  the level wanted; zero is finest
@@ -250,7 +250,7 @@ public:
     ///        waited for a promotion would make every camera cut a hitch.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<SampledCell> Sample(std::uint32_t Level,
+    Deliver<SampledCell> Sample(std::uint32_t Level,
                                 double        PositionX,
                                 double        PositionY,
                                 std::uint64_t RecordingIndex,
@@ -263,7 +263,7 @@ public:
     ///        only what is guaranteed and demands nothing at all.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<SampledCell> SampleGuaranteed(double PositionX, double PositionY) const;
+    Deliver<SampledCell> SampleGuaranteed(double PositionX, double PositionY) const;
 
     /// 🧩 Declares whether one cell holds paint no transaction has sealed.
     /// out   Result  [-]  refuses with ContentUnsupported outside the span, and with HostDenied when a
@@ -276,7 +276,7 @@ public:
     ///        there being exactly one door and `82` not walking through it.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareUncommitted(std::uint32_t CellIndex, bool UncommittedDeclared);
+    Deliver<bool> DeclareUncommitted(std::uint32_t CellIndex, bool UncommittedDeclared);
 
     /// 🧩 Considers one demanded cell for promotion, against the rotation's budget.
     /// in    CellIndex      [-]  the cell
@@ -296,7 +296,7 @@ public:
     ///        §2.2: deferral is normal operation, and `86` §5 keeps it a measure rather than a report.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<PromotionVerdict> Promote(std::uint32_t       CellIndex,
+    Deliver<PromotionVerdict> Promote(std::uint32_t       CellIndex,
                                           const PromotionCost& Costing,
                                           std::uint64_t        ContentRevision,
                                           PromotionScheduler&  Scheduling,
@@ -310,13 +310,13 @@ public:
     ///        finding a seam in a painted result.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareApronWritten(std::uint32_t CellIndex);
+    Deliver<bool> DeclareApronWritten(std::uint32_t CellIndex);
 
     /// 🧩 Evicts one resident cell, releasing its slot into quarantine.
     /// out   Result  [-]  refuses with ContentUnsupported for a permanent, uncommitted or absent cell
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Evict(std::uint32_t CellIndex, std::uint64_t RecordingIndex);
+    Deliver<bool> Evict(std::uint32_t CellIndex, std::uint64_t RecordingIndex);
 
     /// 🧩 Reclaims quarantined slots whose release is older than the recording slot count.
     /// out   Reclaimed  [-]  how many slots became free
@@ -351,7 +351,7 @@ public:
 
 private:
 
-    Outcome<std::uint32_t> ReserveOrEvict(PromotionScheduler& Scheduling, std::uint64_t RecordingIndex);
+    Deliver<std::uint32_t> ReserveOrEvict(PromotionScheduler& Scheduling, std::uint64_t RecordingIndex);
 
     CellSpace      Cells_;                       // [-] - one record per cell of every level
     TileSpace      Tiles_;                       // [-] - the slot index behind them

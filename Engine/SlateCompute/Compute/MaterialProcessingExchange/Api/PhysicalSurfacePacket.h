@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/PhysicalSurfaceSpecification.h"
 
 #include <cstdint>
@@ -39,6 +39,6 @@ static_assert(sizeof(PhysicalSurfacePacket) % 16u == 0u,
               "physical surface constants must remain sixteen-byte aligned for uniform-buffer upload");
 
 /// 🧩 Packs a validated physical closure for a render-time uniform or storage binding.
-Outcome<PhysicalSurfacePacket> BindPhysicalSurface(const CompiledPhysicalSurface& Compiled);
+Deliver<PhysicalSurfacePacket> BindPhysicalSurface(const CompiledPhysicalSurface& Compiled);
 
 } // namespace Slate

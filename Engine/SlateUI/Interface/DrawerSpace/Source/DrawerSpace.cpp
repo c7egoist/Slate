@@ -48,30 +48,30 @@ PlaneExtent Reach(const PlaneExtent& Exact)
 //                                                      CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> DrawerSpace::ConstructDrawerSpace(MotionIntegrator&              Integrator,
+Deliver<bool> DrawerSpace::ConstructDrawerSpace(MotionIntegrator&              Integrator,
                                      const ThemeProfile& Resolved,
                                      const DrawerDeclaration&       North,
                                      const DrawerDeclaration&       South,
                                      const DisplayCondition&        Sampled)
 {
     if (Sampled.Width <= 0.0f || Sampled.Height <= 0.0f)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the display extent is not positive" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the display extent is not positive" });
 
     if (Motion != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the arrangement already stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the arrangement already stands" });
 
     // 📝 🔴 All four registrations are attempted before any ordinal is retained. An integrator that declines
     //    the third delivers slot zero for it, and the south tongue would then drive the north drawer's
     //    across coordinate — a defect with no operand and no error.
-    const Outcome<std::uint32_t> NorthY = Integrator.RegisterSpring(Resolved.Motion, 0.0);
-    const Outcome<std::uint32_t> NorthTongue = Integrator.RegisterSpring(Resolved.Motion, 0.0);
-    const Outcome<std::uint32_t> SouthY = Integrator.RegisterSpring(Resolved.Motion, 0.0);
-    const Outcome<std::uint32_t> SouthTongue = Integrator.RegisterSpring(Resolved.Motion, 0.0);
+    const Deliver<std::uint32_t> NorthY = Integrator.RegisterSpring(Resolved.Motion, 0.0);
+    const Deliver<std::uint32_t> NorthTongue = Integrator.RegisterSpring(Resolved.Motion, 0.0);
+    const Deliver<std::uint32_t> SouthY = Integrator.RegisterSpring(Resolved.Motion, 0.0);
+    const Deliver<std::uint32_t> SouthTongue = Integrator.RegisterSpring(Resolved.Motion, 0.0);
 
     if (!NorthY.Resolved || !NorthTongue.Resolved ||
         !SouthY.Resolved || !SouthTongue.Resolved)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the integrator rejected a drawer spring" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the integrator rejected a drawer spring" });
     }
 
     Motion       = &Integrator;
@@ -94,7 +94,7 @@ Outcome<bool> DrawerSpace::ConstructDrawerSpace(MotionIntegrator&              I
     Place(DrawerBearing::North, DrawerPose::Closed);
     Place(DrawerBearing::South, DrawerPose::Closed);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void DrawerSpace::Reset()

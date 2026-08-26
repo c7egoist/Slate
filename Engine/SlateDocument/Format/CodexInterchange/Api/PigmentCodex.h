@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Format/CodexInterchange/Api/CodexInterchange.h"
 
 #include <cstdint>
@@ -33,12 +33,12 @@ class PigmentCodexInterchange
 public:
 
     /// 🧩 Adds the typed pigment-information section to a PigmentCodex document.
-    Outcome<CodexDocument> EncodePigment(const PigmentCodex& Pigment,
+    Deliver<CodexDocument> EncodePigment(const PigmentCodex& Pigment,
                                          std::uint64_t      Identity,
                                          std::uint64_t      Revision) const;
 
     /// 🧩 Resolves the typed pigment-information section from a PigmentCodex document.
-    Outcome<PigmentCodex> DecodePigment(const CodexDocument& Document) const;
+    Deliver<PigmentCodex> DecodePigment(const CodexDocument& Document) const;
 };
 
 }   // namespace Slate

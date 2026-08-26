@@ -159,11 +159,11 @@ void RotateSpan(RotationQuaternion Rotation,
 //                                                THE INNER SUBDIVISION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> BoundingStructure::ConstructSubdivision(const TopologyStructure& Imported, const TopologyConditioning& Conditioned)
+Deliver<bool> BoundingStructure::ConstructSubdivision(const TopologyStructure& Imported, const TopologyConditioning& Conditioned)
 {
     if (!Imported.Sealed())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "an unsealed topology is not immutable for the run" });
     }
 
@@ -171,7 +171,7 @@ Outcome<bool> BoundingStructure::ConstructSubdivision(const TopologyStructure& I
     //    moved, and every intersection resolved against them is confidently wrong rather than merely absent.
     if (Conditioned.ConditionedRevision() != Imported.Revision())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ExtentExhausted, "the conditioning describes a different topology revision" });
     }
 
@@ -225,7 +225,7 @@ Outcome<bool> BoundingStructure::ConstructSubdivision(const TopologyStructure& I
 
     StructureBuilt = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void BoundingStructure::Divide(std::uint32_t RecordIndex, std::uint32_t Depth)
@@ -621,10 +621,10 @@ std::size_t OctantSpace::Located(OwnerIdentity Subject) const
     return Accepted.size();
 }
 
-Outcome<bool> OctantSpace::Accept(const AcceptedOwner& Incoming)
+Deliver<bool> OctantSpace::Accept(const AcceptedOwner& Incoming)
 {
     if (!Incoming.Owner.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity occupies nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity occupies nothing" });
 
     const std::size_t Located_ = Located(Incoming.Owner);
 
@@ -635,36 +635,36 @@ Outcome<bool> OctantSpace::Accept(const AcceptedOwner& Incoming)
 
     BuildOwed = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> OctantSpace::Withdraw(OwnerIdentity Subject)
+Deliver<bool> OctantSpace::Withdraw(OwnerIdentity Subject)
 {
     const std::size_t Located_ = Located(Subject);
 
     if (Located_ == Accepted.size())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
 
     Accepted.erase(Accepted.begin() + static_cast<std::ptrdiff_t>(Located_));
     BuildOwed = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> OctantSpace::Refit(OwnerIdentity           Subject,
+Deliver<bool> OctantSpace::Refit(OwnerIdentity           Subject,
                                  const DecomposedTransform& Composed,
                                  ConditionedExtent          Extent)
 {
     const std::size_t Located_ = Located(Subject);
 
     if (Located_ == Accepted.size())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
 
     Accepted[Located_].Composed = Composed;
     Accepted[Located_].Extent   = Extent;
 
     if (BuildOwed || Records.empty())
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     // 🔴 Refit, not rebuild — `40` §4. Every record on the path to the owner widens to hold the new extent and
     //    the subdivision's shape is untouched. The widening is accumulated so `RebuildWorthwhile` can measure how
@@ -695,20 +695,20 @@ Outcome<bool> OctantSpace::Refit(OwnerIdentity           Subject,
     if (After > Before)
         WidenedVolume += After - Before;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<AcceptedOwner> OctantSpace::Current(OwnerIdentity Subject) const
+Deliver<AcceptedOwner> OctantSpace::Current(OwnerIdentity Subject) const
 {
     const std::size_t Located_ = Located(Subject);
 
     if (Located_ == Accepted.size())
-        return Outcome<AcceptedOwner>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
+        return Deliver<AcceptedOwner>::Refuse({ RefusalReason::IdentityStale, "the owner is not accepted here" });
 
-    return Outcome<AcceptedOwner>::Result(Accepted[Located_]);
+    return Deliver<AcceptedOwner>::Result(Accepted[Located_]);
 }
 
-Outcome<bool> OctantSpace::ConstructOctants()
+Deliver<bool> OctantSpace::ConstructOctants()
 {
     Records.clear();
     EntryOrder.clear();
@@ -734,7 +734,7 @@ Outcome<bool> OctantSpace::ConstructOctants()
     WidenedVolume = 0.0;
     BuildOwed     = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void OctantSpace::Divide(std::uint32_t RecordIndex, std::uint32_t Depth)
@@ -1096,7 +1096,7 @@ void AxisSpace::ConstructAxes(const std::vector<DomainExtent>& Declaring)
     Extents = Declaring;
 }
 
-Outcome<bool> AxisSpace::Refit(std::uint32_t PlacementIndex, DomainExtent Amending)
+Deliver<bool> AxisSpace::Refit(std::uint32_t PlacementIndex, DomainExtent Amending)
 {
     for (DomainExtent& Held : Extents)
     {
@@ -1106,13 +1106,13 @@ Outcome<bool> AxisSpace::Refit(std::uint32_t PlacementIndex, DomainExtent Amendi
         Held = Amending;
         Held.PlacementIndex = PlacementIndex;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "no placement carries that ordinal" });
+    return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "no placement carries that ordinal" });
 }
 
-Outcome<std::uint32_t> AxisSpace::Resolve(double PositionX, double PositionY) const
+Deliver<std::uint32_t> AxisSpace::Resolve(double PositionX, double PositionY) const
 {
     bool          Found    = false;
     std::uint32_t Resolved = 0u;
@@ -1138,9 +1138,9 @@ Outcome<std::uint32_t> AxisSpace::Resolve(double PositionX, double PositionY) co
     }
 
     if (!Found)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no placement contains the position" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ExtentExhausted, "no placement contains the position" });
 
-    return Outcome<std::uint32_t>::Result(Resolved);
+    return Deliver<std::uint32_t>::Result(Resolved);
 }
 
 std::vector<std::uint32_t> AxisSpace::Overlapping(DomainExtent Extent) const

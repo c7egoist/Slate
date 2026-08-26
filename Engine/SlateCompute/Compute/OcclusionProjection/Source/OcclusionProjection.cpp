@@ -219,12 +219,12 @@ bool ExtentsOverlap(const PartitionExtent& Left, DocumentPosition Position, doub
 //                                                    THE PACKED INDEX
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionIndex::Derive(const IlluminantIndex& Reaching, const IlluminantPopulation& Illuminants)
+Deliver<bool> OcclusionIndex::Derive(const IlluminantIndex& Reaching, const IlluminantPopulation& Illuminants)
 {
     const std::uint32_t Spanned = Reaching.SpannedCount();
 
     if (Spanned == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the reaching index spans no partition" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the reaching index spans no partition" });
 
     Packed.assign(Spanned, PackedPartition{});
     TruncatedAccumulated = 0u;
@@ -240,12 +240,12 @@ Outcome<bool> OcclusionIndex::Derive(const IlluminantIndex& Reaching, const Illu
         //    rotation and on every machine — and `18` unpacks by position without a second ordering to consult.
         for (std::uint32_t ReachIndex = 0u; ReachIndex < ReachingCount; ++ReachIndex)
         {
-            const Outcome<OwnerIdentity> Named = Reaching.Reaching(PartitionIndex, ReachIndex);
+            const Deliver<OwnerIdentity> Named = Reaching.Reaching(PartitionIndex, ReachIndex);
 
             if (!Named.Resolved)
                 continue;
 
-            const Outcome<IlluminantSpecification> Declared = Illuminants.Resolve(Named.Resolve());
+            const Deliver<IlluminantSpecification> Declared = Illuminants.Resolve(Named.Resolve());
 
             // 🔴 An illuminant not registered for occlusion occupies **no slot**. `44` §2 gives the artist the
             //    switch and `60` §3 declares the unenrolled illuminant integrated unattenuated; a slot spent on
@@ -267,20 +267,20 @@ Outcome<bool> OcclusionIndex::Derive(const IlluminantIndex& Reaching, const Illu
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<std::uint32_t> OcclusionIndex::SlotOf(std::uint32_t PartitionIndex, OwnerIdentity Illuminant) const
+Deliver<std::uint32_t> OcclusionIndex::SlotOf(std::uint32_t PartitionIndex, OwnerIdentity Illuminant) const
 {
     if (PartitionIndex >= Packed.size())
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no such partition" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no such partition" });
 
     const PackedPartition& Packing = Packed[PartitionIndex];
 
     for (std::uint32_t Slot = 0u; Slot < Packing.OccupiedCount; ++Slot)
     {
         if (Packing.Occupying[Slot] == Illuminant)
-            return Outcome<std::uint32_t>::Result(Slot);
+            return Deliver<std::uint32_t>::Result(Slot);
     }
 
     // 🔴 The two refusals are different facts. Truncated means the illuminant reaches the partition and `18`
@@ -288,20 +288,20 @@ Outcome<std::uint32_t> OcclusionIndex::SlotOf(std::uint32_t PartitionIndex, Owne
     //    conflating them makes every distant illuminant look like a truncation in `86`'s register.
     if (Packing.TruncatedCount != 0u)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ExtentExhausted, "the packed word cannot carry it; integrate it unattenuated" });
     }
 
-    return Outcome<std::uint32_t>::Refuse(
+    return Deliver<std::uint32_t>::Refuse(
         { RefusalReason::ContentUnsupported, "the illuminant does not reach that partition" });
 }
 
-Outcome<OwnerIdentity> OcclusionIndex::IlluminantAt(std::uint32_t PartitionIndex, std::uint32_t Slot) const
+Deliver<OwnerIdentity> OcclusionIndex::IlluminantAt(std::uint32_t PartitionIndex, std::uint32_t Slot) const
 {
     if (PartitionIndex >= Packed.size() || Slot >= Packed[PartitionIndex].OccupiedCount)
-        return Outcome<OwnerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the slot carries nothing" });
+        return Deliver<OwnerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the slot carries nothing" });
 
-    return Outcome<OwnerIdentity>::Result(Packed[PartitionIndex].Occupying[Slot]);
+    return Deliver<OwnerIdentity>::Result(Packed[PartitionIndex].Occupying[Slot]);
 }
 
 std::uint32_t OcclusionIndex::TruncatedCount(std::uint32_t PartitionIndex) const
@@ -320,42 +320,42 @@ std::uint32_t OcclusionIndex::SpannedCount() const
 //                                                    THE AMBIENT TERM
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> AmbientOcclusionSequence::Declare(const AmbientOcclusionSpecification& Declaring)
+Deliver<bool> AmbientOcclusionSequence::Declare(const AmbientOcclusionSpecification& Declaring)
 {
     if (Declaring.SampleRadius <= 0.0)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a hemisphere of no radius closes nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a hemisphere of no radius closes nothing" });
 
     if (Declaring.SampleCount == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a term of no sample resolves nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a term of no sample resolves nothing" });
 
     // ⚠️ Rejected above two rather than accepted as a quality setting. `08` §2 claims `OcclusionSurface` at half
     //    extent and `Shared/`'s upsample reads exactly four taps against that claim; a third would need a
     //    different tap count, and the extent would then be declared in two places that disagree.
     if (Declaring.ExtentDivisor != 2u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "`08` §2 claims the target at half extent and nowhere else" });
     }
 
     Specification = Declaring;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> AmbientOcclusionSequence::Resolve(std::uint32_t  DisplayX,
+Deliver<bool> AmbientOcclusionSequence::Resolve(std::uint32_t  DisplayX,
                                                 std::uint32_t  DisplayY,
                                                 std::uint32_t& ResolvedX,
                                                 std::uint32_t& ResolvedY) const
 {
     if (DisplayX == 0u || DisplayY == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a display extent of nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a display extent of nothing" });
 
     // 📐 Rounded up on both ordinates, matching `RenderSchedule`'s own fraction-of-display claim exactly. The two
     //    rounding the same way is what makes the target this component resolves into the target `08` claimed.
     ResolvedX  = (DisplayX  + Specification.ExtentDivisor - 1u) / Specification.ExtentDivisor;
     ResolvedY = (DisplayY + Specification.ExtentDivisor - 1u) / Specification.ExtentDivisor;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const AmbientOcclusionSpecification& AmbientOcclusionSequence::Declared() const { return Specification; }
@@ -364,7 +364,7 @@ const AmbientOcclusionSpecification& AmbientOcclusionSequence::Declared() const 
 //                                                    THE RECORDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionProjectionSpace::Contribute(RenderSchedule& Schedule) const
+Deliver<bool> OcclusionProjectionSpace::Contribute(RenderSchedule& Schedule) const
 {
     DeclaredRecording Declared;
     Declared.Identity = OcclusionRecordingIdentity;
@@ -388,11 +388,11 @@ Outcome<bool> OcclusionProjectionSpace::Contribute(RenderSchedule& Schedule) con
 //                                                    THE CAMERA
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionProjectionSpace::DeclareCamera(const CameraSpecification& Declaring)
+Deliver<bool> OcclusionProjectionSpace::DeclareCamera(const CameraSpecification& Declaring)
 {
     if (!Declaring.Clipping.IntervalValid())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the camera declares no clipping interval to subdivide" });
     }
 
@@ -421,7 +421,7 @@ Outcome<bool> OcclusionProjectionSpace::DeclareCamera(const CameraSpecification&
         if (Moved <= CameraAltitudeMateriality && !RangeAmended && !RotationAmended)
         {
             ReferenceCamera = Declaring;
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
     }
 
@@ -439,7 +439,7 @@ Outcome<bool> OcclusionProjectionSpace::DeclareCamera(const CameraSpecification&
             Current.RebuildOwed = true;
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -457,7 +457,7 @@ std::size_t OcclusionProjectionSpace::Located(OwnerIdentity Illuminant) const
     return Projections.size();
 }
 
-Outcome<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
+Deliver<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
                                                    OwnerIdentity    Subject,
                                                    PartitionExtent     Extent)
 {
@@ -472,12 +472,12 @@ Outcome<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
                 // 📝 An illuminant carrying no projection yet is accepted rather than rejected. It is either
                 //    newly registered or newly declared, and `Rebuild` derives it on its next pass — refusing
                 //    would make the caller test registration before declaring a change it already made.
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
 
             Projections[Located_].RebuildOwed = true;
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case InvalidationSubject::OwnerMoved:
@@ -503,7 +503,7 @@ Outcome<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
                     Current.RebuildOwed = true;
             }
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case InvalidationSubject::CameraMoved:
@@ -516,7 +516,7 @@ Outcome<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
                     Current.RebuildOwed = true;
             }
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case InvalidationSubject::RadiantIntensity:
@@ -528,21 +528,21 @@ Outcome<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
             //    constantly, and both are accepted here so a caller may declare every change it makes without
             //    knowing which ones matter — which is the only arrangement in which the ones that do not matter
             //    stay free.
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case InvalidationSubject::SubjectCount:
             break;
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such invalidation subject" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such invalidation subject" });
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE DERIVATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpecification& Declared,
+Deliver<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpecification& Declared,
                                                             OwnerIdentity               Illuminant,
                                                             std::uint64_t                  RecordingIndex) const
 {
@@ -554,7 +554,7 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
     Deriving.RebuildOwed  = false;
 
     if (Deriving.Shape == ProjectionShape::ShapeCount)
-        return Outcome<DerivedProjection>::Refuse({ RefusalReason::ContentUnsupported, "no such emission shape" });
+        return Deliver<DerivedProjection>::Refuse({ RefusalReason::ContentUnsupported, "no such emission shape" });
 
     switch (Deriving.Shape)
     {
@@ -584,14 +584,14 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
 
                 if (!Projecting.Clipping.IntervalValid())
                 {
-                    return Outcome<DerivedProjection>::Refuse(
+                    return Deliver<DerivedProjection>::Refuse(
                         { RefusalReason::ContentUnsupported, "the declared extent lies inside the emission surface" });
                 }
 
-                const Outcome<ViewProjection> Projected = Slate::Derive(Projecting);
+                const Deliver<ViewProjection> Projected = Slate::Derive(Projecting);
 
                 if (!Projected.Resolved)
-                    return Outcome<DerivedProjection>::Refuse(Projected.Error);
+                    return Deliver<DerivedProjection>::Refuse(Projected.Error);
 
                 ProjectionFace Face;
                 Face.Projected     = Projected.Resolve();
@@ -625,14 +625,14 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
 
             if (!Projecting.Clipping.IntervalValid())
             {
-                return Outcome<DerivedProjection>::Refuse(
+                return Deliver<DerivedProjection>::Refuse(
                     { RefusalReason::ContentUnsupported, "the declared extent lies inside the emission surface" });
             }
 
-            const Outcome<ViewProjection> Projected = Slate::Derive(Projecting);
+            const Deliver<ViewProjection> Projected = Slate::Derive(Projecting);
 
             if (!Projected.Resolved)
-                return Outcome<DerivedProjection>::Refuse(Projected.Error);
+                return Deliver<DerivedProjection>::Refuse(Projected.Error);
 
             ProjectionFace Face;
             Face.Projected     = Projected.Resolve();
@@ -665,14 +665,14 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
 
             if (!Projecting.Clipping.IntervalValid())
             {
-                return Outcome<DerivedProjection>::Refuse(
+                return Deliver<DerivedProjection>::Refuse(
                     { RefusalReason::ContentUnsupported, "the declared extent lies inside the emission surface" });
             }
 
-            const Outcome<ViewProjection> Projected = Slate::Derive(Projecting);
+            const Deliver<ViewProjection> Projected = Slate::Derive(Projecting);
 
             if (!Projected.Resolved)
-                return Outcome<DerivedProjection>::Refuse(Projected.Error);
+                return Deliver<DerivedProjection>::Refuse(Projected.Error);
 
             ProjectionFace Face;
             Face.Projected     = Projected.Resolve();
@@ -689,7 +689,7 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
         {
             if (!CameraDeclared)
             {
-                return Outcome<DerivedProjection>::Refuse(
+                return Deliver<DerivedProjection>::Refuse(
                     { RefusalReason::ContentUnsupported, "a directional subdivision needs the camera's own range" });
             }
 
@@ -740,10 +740,10 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
                 Projecting.Clipping.Nearest  = Radius * 0.5;
                 Projecting.Clipping.Furthest = Radius * 4.0;
 
-                const Outcome<ViewProjection> Projected = Slate::Derive(Projecting);
+                const Deliver<ViewProjection> Projected = Slate::Derive(Projecting);
 
                 if (!Projected.Resolved)
-                    return Outcome<DerivedProjection>::Refuse(Projected.Error);
+                    return Deliver<DerivedProjection>::Refuse(Projected.Error);
 
                 ProjectionFace Face;
                 Face.Projected     = Projected.Resolve();
@@ -756,7 +756,7 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
 
             if (Deriving.Faces.empty())
             {
-                return Outcome<DerivedProjection>::Refuse(
+                return Deliver<DerivedProjection>::Refuse(
                     { RefusalReason::ContentUnsupported, "the camera's range subdivides into no slice" });
             }
 
@@ -764,18 +764,18 @@ Outcome<DerivedProjection> OcclusionProjectionSpace::Derive(const IlluminantSpec
         }
     }
 
-    return Outcome<DerivedProjection>::Result(Deriving);
+    return Deliver<DerivedProjection>::Result(Deriving);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE REBUILD
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> OcclusionProjectionSpace::Rebuild(const IlluminantPopulation& Illuminants,
+Deliver<bool> OcclusionProjectionSpace::Rebuild(const IlluminantPopulation& Illuminants,
                                                 std::uint64_t               RecordingIndex)
 {
     if (!CameraDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no camera has been declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no camera has been declared" });
 
     Reported.RebuiltThisRecording = 0u;
     Reported.UnenrolledCount     = 0u;
@@ -785,7 +785,7 @@ Outcome<bool> OcclusionProjectionSpace::Rebuild(const IlluminantPopulation& Illu
 
     for (const OwnerIdentity& Illuminant : Illuminants.Registered())
     {
-        const Outcome<IlluminantSpecification> Declared = Illuminants.Resolve(Illuminant);
+        const Deliver<IlluminantSpecification> Declared = Illuminants.Resolve(Illuminant);
 
         if (!Declared.Resolved)
             continue;
@@ -810,10 +810,10 @@ Outcome<bool> OcclusionProjectionSpace::Rebuild(const IlluminantPopulation& Illu
             continue;
         }
 
-        const Outcome<DerivedProjection> Derived = Derive(Declared.Resolve(), Illuminant, RecordingIndex);
+        const Deliver<DerivedProjection> Derived = Derive(Declared.Resolve(), Illuminant, RecordingIndex);
 
         if (!Derived.Resolved)
-            return Outcome<bool>::Refuse(Derived.Error);
+            return Deliver<bool>::Refuse(Derived.Error);
 
         Current.push_back(Derived.Resolve());
 
@@ -832,24 +832,24 @@ Outcome<bool> OcclusionProjectionSpace::Rebuild(const IlluminantPopulation& Illu
 
     Reported.TruncatedTotal = PackedIndex.TruncatedTotal();
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE READS
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<const DerivedProjection*> OcclusionProjectionSpace::Current(OwnerIdentity Illuminant) const
+Deliver<const DerivedProjection*> OcclusionProjectionSpace::Current(OwnerIdentity Illuminant) const
 {
     const std::size_t Located_ = Located(Illuminant);
 
     if (Located_ == Projections.size())
     {
-        return Outcome<const DerivedProjection*>::Refuse(
+        return Deliver<const DerivedProjection*>::Refuse(
             { RefusalReason::ExtentExhausted, "the illuminant carries no projection; integrate it unattenuated" });
     }
 
-    return Outcome<const DerivedProjection*>::Result(&Projections[Located_]);
+    return Deliver<const DerivedProjection*>::Result(&Projections[Located_]);
 }
 
 bool OcclusionProjectionSpace::RebuildOwed() const

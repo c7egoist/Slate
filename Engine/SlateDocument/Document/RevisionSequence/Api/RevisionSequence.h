@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 #include <string>
@@ -69,7 +69,7 @@ public:
     /// out   Result       [-]  refuses when a transaction is already open
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Open(const std::string& Description, const std::string& OperationName);
+    Deliver<bool> Open(const std::string& Description, const std::string& OperationName);
 
     /// 🧩 Ends the open transaction with no effect. The prior content is restored by the caller.
     /// cost  ✔️
@@ -83,19 +83,19 @@ public:
     /// post  the scrub position is the end of the sequence
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Seal(std::uint64_t SealedAt, bool MergeDeclared);
+    Deliver<bool> Seal(std::uint64_t SealedAt, bool MergeDeclared);
 
     /// 🧩 Scrubs one transaction backwards, replaying its inverse.
     /// out   Result  [-]  refuses when the scrub position is already at the beginning
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Retreat();
+    Deliver<bool> Retreat();
 
     /// 🧩 Scrubs one transaction forwards, replaying its forward operation.
     /// out   Result  [-]  refuses when the scrub position is already at the end
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Advance();
+    Deliver<bool> Advance();
 
     /// 🧩 The committed transactions, in order, for `84` to present.
     /// cost  ✔️

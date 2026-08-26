@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -52,13 +52,13 @@ public:
     AtmospherePresentationSurface& operator=(const AtmospherePresentationSurface&) = delete;
     ~AtmospherePresentationSurface();
 
-    Outcome<bool> ConstructAtmosphereSurface(const VulkanExchange& Exchange,
+    Deliver<bool> ConstructAtmosphereSurface(const VulkanExchange& Exchange,
                                              const DiagnosticExtension& Naming,
                                              ShaderCodec& Streams);
 
     /// Records a compute refresh only when Dirty is true. The surface is transitioned back to sampled layout
     /// before the interface records its image geometry.
-    Outcome<bool> Record(VkCommandBuffer Command, const DynamicSkyParameters& Parameters, bool Dirty);
+    Deliver<bool> Record(VkCommandBuffer Command, const DynamicSkyParameters& Parameters, bool Dirty);
 
     VkImageView View() const { return ImageViewSlot; }
     VkSampler Sampler() const { return SamplerSlot; }

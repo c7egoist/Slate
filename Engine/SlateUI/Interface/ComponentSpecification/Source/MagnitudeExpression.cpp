@@ -169,18 +169,18 @@ private:
 
 }   // namespace
 
-Outcome<double> ResolveMagnitudeExpression(const char* Expression)
+Deliver<double> ResolveMagnitudeExpression(const char* Expression)
 {
     ExpressionCursor Cursor(Expression);
     const double Reading = Cursor.Resolve();
 
     if (!Cursor.Succeeded())
     {
-        return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported,
                                          "the magnitude expression is malformed or non-finite" });
     }
 
-    return Outcome<double>::Result(Reading);
+    return Deliver<double>::Result(Reading);
 }
 
 }   // namespace Slate

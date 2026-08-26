@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateMath/Numeric/ColourProjection/Api/ColourProjection.h"
 
@@ -181,7 +181,7 @@ public:
     ///        its bounds is an invalid value presented on every surface that never overrode it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareChannel(ChannelSubject Channel, const ChannelSpecification& Declaring);
+    Deliver<bool> DeclareChannel(ChannelSubject Channel, const ChannelSpecification& Declaring);
 
     /// 🧩 Declares the coverage threshold a cutout owner is resolved against.
     /// note  🔴 Per material, never global — `62` §2. A single threshold across a document makes one artist's
@@ -240,19 +240,19 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted at the declared ceiling
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(const std::string& Named);
+    Deliver<std::uint32_t> Declare(const std::string& Named);
 
     /// 🧩 One declared material, for reading.
     /// out   Result  [-]  refuses with ContentUnsupported outside the declared count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const MaterialSpecification*> Resolve(std::uint32_t MaterialIndex) const;
+    Deliver<const MaterialSpecification*> Resolve(std::uint32_t MaterialIndex) const;
 
     /// 🧩 One declared material, for amending.
     /// out   Result  [-]  refuses with ContentUnsupported outside the declared count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<MaterialSpecification*> Amend(std::uint32_t MaterialIndex);
+    Deliver<MaterialSpecification*> Amend(std::uint32_t MaterialIndex);
 
     const std::string& DeclaredName(std::uint32_t MaterialIndex) const;
     std::uint32_t      DeclaredCount() const;
@@ -305,14 +305,14 @@ public:
     ///                       the declared ceiling
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<PartitionIdentity> Declare(const ResolvedPartition& Resolving);
+    Deliver<PartitionIdentity> Declare(const ResolvedPartition& Resolving);
 
     /// 🧩 Resolves one partition identity.
     /// out   Result  [-]  refuses with IdentityStale when the generation no longer matches — which is what a
     ///                     re-partition since the identity was taken looks like
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ResolvedPartition> Resolve(PartitionIdentity Subject) const;
+    Deliver<ResolvedPartition> Resolve(PartitionIdentity Subject) const;
 
     /// 🧩 The revision the last rebuild advanced to; `70` §2 compares counters against it.
     /// cost  ✔️

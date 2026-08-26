@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Feature/WorkspaceDirectoryProjection/Api/WorkspaceDirectoryProjection.h"
 #include "SlateFeature/Feature/WorkspacePropertyProjection/Api/WorkspacePropertyProjection.h"
 #include "SlateFeature/Feature/WorkspaceRevisionSequence/Api/WorkspaceRevisionSequence.h"
@@ -175,7 +175,7 @@ inline std::string BridgeSubjectReference(const WorkspaceRecord& Subject)
     return "";
 }
 
-inline Outcome<bool> BridgeParametricDirectory(const WorkspaceDirectoryProjection& Source,
+inline Deliver<bool> BridgeParametricDirectory(const WorkspaceDirectoryProjection& Source,
                                                ParametricWorkspaceBridgeStorage& Delivered)
 {
     Delivered.DirectoryRows.clear();
@@ -183,7 +183,7 @@ inline Outcome<bool> BridgeParametricDirectory(const WorkspaceDirectoryProjectio
 
     if (Source.Rows.size() > ParametricWorkspaceContext::RowLimit)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted,
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
                                        "the parametric workspace row limit would be exceeded" });
     }
 
@@ -213,10 +213,10 @@ inline Outcome<bool> BridgeParametricDirectory(const WorkspaceDirectoryProjectio
         Delivered.DirectoryRows.push_back(Presented);
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-inline Outcome<bool> BridgeParametricInspector(const WorkspaceRecordStructure& Records,
+inline Deliver<bool> BridgeParametricInspector(const WorkspaceRecordStructure& Records,
                                                WorkspaceRecordName SubjectName,
                                                const WorkspacePropertyProjection& Source,
                                                const WorkspaceRevisionSequence& Revisions,
@@ -233,19 +233,19 @@ inline Outcome<bool> BridgeParametricInspector(const WorkspaceRecordStructure& R
 
     if (!SubjectName.Assigned())
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the selected workspace record is not assigned" });
     }
 
     if (Source.Subject == nullptr)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the selected workspace record is absent from the property projection" });
     }
 
     if (Source.RevisionSet.size() > ParametricWorkspaceContext::RevisionLimit)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted,
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
                                        "the parametric revision row limit would be exceeded" });
     }
 
@@ -321,7 +321,7 @@ inline Outcome<bool> BridgeParametricInspector(const WorkspaceRecordStructure& R
         const WorkspaceRevision* Revision = Revisions.Resolve(RevisionName);
         if (Revision == nullptr)
         {
-            return Outcome<bool>::Refuse({ RefusalReason::IdentityStale,
+            return Deliver<bool>::Refuse({ RefusalReason::IdentityStale,
                                            "a projected workspace revision is no longer declared" });
         }
 
@@ -341,7 +341,7 @@ inline Outcome<bool> BridgeParametricInspector(const WorkspaceRecordStructure& R
         Delivered.RevisionRows.push_back(Presented);
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 } // namespace Slate

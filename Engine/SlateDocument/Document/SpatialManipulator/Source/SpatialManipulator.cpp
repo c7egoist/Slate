@@ -555,27 +555,27 @@ ManipulationGrip DeclareRotationGrip(std::uint32_t        AxisIndex,
 //                                                       THE LAYOUT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ManipulationLayout::Layout(DocumentPosition        Origin,
+Deliver<bool> ManipulationLayout::Layout(DocumentPosition        Origin,
                                          RotationQuaternion      Orientation,
                                          const CameraProjection& Camera,
                                          ManipulatedSubject      Addressing)
 {
     if (Addressing == ManipulatedSubject::TargetCount)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the closed target count names no target to manipulate" });
     }
 
     if (Addressing == ManipulatedSubject::Nothing)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "no target is addressed; the manipulator is not presented" });
     }
 
     if (Camera.DerivationOwed())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the camera owes a reconciliation; its projection is last tick's" });
     }
 
@@ -608,7 +608,7 @@ Outcome<bool> ManipulationLayout::Layout(DocumentPosition        Origin,
 
     if (!(LaidExtent > 0.0))
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the camera resolves no view height at the layout's own position" });
     }
 
@@ -709,14 +709,14 @@ Outcome<bool> ManipulationLayout::Layout(DocumentPosition        Origin,
     LaidUnitExtent  = LaidExtent;
     LayoutDeclared  = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                        THE GRASP
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> ManipulationLayout::Grasp(const CameraProjection& Camera,
+Deliver<std::uint32_t> ManipulationLayout::Grasp(const CameraProjection& Camera,
                                                  double                  PointerX,
                                                  double                  PointerY,
                                                  std::uint32_t           DisplayX,
@@ -724,16 +724,16 @@ Outcome<std::uint32_t> ManipulationLayout::Grasp(const CameraProjection& Camera,
 {
     if (!LayoutDeclared)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ContentUnsupported, "no layout stands; there is nothing to grasp" });
     }
 
-    const Outcome<ProjectedRay> Cast = ProjectPointerRay(Camera, PointerX, PointerY,
+    const Deliver<ProjectedRay> Cast = ProjectPointerRay(Camera, PointerX, PointerY,
                                                          DisplayX, DisplayY);
 
     if (!Cast.Resolved)
     {
-        return Outcome<std::uint32_t>::Refuse(Cast.Error);
+        return Deliver<std::uint32_t>::Refuse(Cast.Error);
     }
 
     const ProjectedRay& Pointing = Cast.Resolve();
@@ -777,28 +777,28 @@ Outcome<std::uint32_t> ManipulationLayout::Grasp(const CameraProjection& Camera,
 
     if (!GraspDeclared)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ContentUnsupported, "the pointer grasps no grip of the standing layout" });
     }
 
-    return Outcome<std::uint32_t>::Result(GraspedIndex);
+    return Deliver<std::uint32_t>::Result(GraspedIndex);
 }
 
-Outcome<const ManipulationGrip*> ManipulationLayout::Resolve(std::uint32_t GripIndex) const
+Deliver<const ManipulationGrip*> ManipulationLayout::Resolve(std::uint32_t GripIndex) const
 {
     if (GripIndex >= static_cast<std::uint32_t>(Declared.size()))
     {
-        return Outcome<const ManipulationGrip*>::Refuse(
+        return Deliver<const ManipulationGrip*>::Refuse(
             { RefusalReason::ContentUnsupported, "the ordinal is outside the standing layout" });
     }
 
     if (!Declared[GripIndex].GripDeclared)
     {
-        return Outcome<const ManipulationGrip*>::Refuse(
+        return Deliver<const ManipulationGrip*>::Refuse(
             { RefusalReason::ContentUnsupported, "this target offers no grip at that ordinal" });
     }
 
-    return Outcome<const ManipulationGrip*>::Result(&Declared[GripIndex]);
+    return Deliver<const ManipulationGrip*>::Result(&Declared[GripIndex]);
 }
 
 const std::vector<ManipulationGrip>& ManipulationLayout::Grips() const
@@ -840,7 +840,7 @@ void ManipulationLayout::Reclaim()
 //                                                       OPENING A DRAG
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
+Deliver<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
                                          const ManipulationLayout& Laid,
                                          const CameraProjection&   Camera,
                                          double                    PointerX,
@@ -850,22 +850,22 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 {
     if (OpenDeclared)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "a manipulation is already open; seal or abandon it first" });
     }
 
     if (!Grasping.GripDeclared || !Laid.LayoutCurrent())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the grip is undeclared, or no layout stands behind it" });
     }
 
-    const Outcome<ProjectedRay> Cast = ProjectPointerRay(Camera, PointerX, PointerY,
+    const Deliver<ProjectedRay> Cast = ProjectPointerRay(Camera, PointerX, PointerY,
                                                          DisplayX, DisplayY);
 
     if (!Cast.Resolved)
     {
-        return Outcome<bool>::Refuse(Cast.Error);
+        return Deliver<bool>::Refuse(Cast.Error);
     }
 
     const ProjectedRay& Pointing = Cast.Resolve();
@@ -879,7 +879,7 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 
     if (AxisIndex >= 3u)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the grip addresses no axis of the reference orientation" });
     }
 
@@ -893,7 +893,7 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 
         if (!SolvePlanePoint(RayOrigin, RayDirection, OriginSpan, AxisSpan, Met))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer resolves no position on the grip's own plane" });
         }
 
@@ -906,7 +906,7 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 
         if (!SolvePlanePoint(RayOrigin, RayDirection, OriginSpan, AxisSpan, Met))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer resolves no position on the rotation's own plane" });
         }
 
@@ -927,7 +927,7 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 
         if (!SolveAxisParameter(RayOrigin, RayDirection, OriginSpan, AxisSpan, Parameter))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer ray lies along the constraint axis" });
         }
 
@@ -957,14 +957,14 @@ Outcome<bool> ManipulationSequence::Open(const ManipulationGrip&   Grasping,
 
     OpenDeclared    = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     AMENDING A DRAG
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ManipulationSequence::Amend(double        PointerX,
+Deliver<bool> ManipulationSequence::Amend(double        PointerX,
                                           double        PointerY,
                                           std::uint32_t DisplayX,
                                           std::uint32_t DisplayY,
@@ -972,19 +972,19 @@ Outcome<bool> ManipulationSequence::Amend(double        PointerX,
 {
     if (!OpenDeclared)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "no manipulation is open to amend" });
     }
 
     // 🔴 The camera read at Open, not the one standing now. An artist who orbits mid-drag moves the display and
     //    not the plane the drag resolves against, which is `78` §2's whole rule — re-reading here would make the
     //    manipulated object jump by whatever the orbit changed, at the moment the artist was doing something else.
-    const Outcome<ProjectedRay> Cast = ProjectPointerRay(HeldCamera, PointerX, PointerY,
+    const Deliver<ProjectedRay> Cast = ProjectPointerRay(HeldCamera, PointerX, PointerY,
                                                          DisplayX, DisplayY);
 
     if (!Cast.Resolved)
     {
-        return Outcome<bool>::Refuse(Cast.Error);
+        return Deliver<bool>::Refuse(Cast.Error);
     }
 
     const ProjectedRay& Pointing = Cast.Resolve();
@@ -1006,7 +1006,7 @@ Outcome<bool> ManipulationSequence::Amend(double        PointerX,
 
         if (!SolvePlanePoint(RayOrigin, RayDirection, OriginSpan, AxisSpan, Met))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer resolves no position on the fixed plane" });
         }
 
@@ -1037,7 +1037,7 @@ Outcome<bool> ManipulationSequence::Amend(double        PointerX,
 
         if (!SolvePlanePoint(RayOrigin, RayDirection, OriginSpan, AxisSpan, Met))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer resolves no position on the fixed rotation plane" });
         }
 
@@ -1064,7 +1064,7 @@ Outcome<bool> ManipulationSequence::Amend(double        PointerX,
 
         if (!SolveAxisParameter(RayOrigin, RayDirection, OriginSpan, AxisSpan, Parameter))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pointer ray lies along the fixed axis" });
         }
 
@@ -1111,18 +1111,18 @@ Outcome<bool> ManipulationSequence::Amend(double        PointerX,
 
     Current = Amending;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      ENDING A DRAG
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ManipulationAmendment> ManipulationSequence::Abandon()
+Deliver<ManipulationAmendment> ManipulationSequence::Abandon()
 {
     if (!OpenDeclared)
     {
-        return Outcome<ManipulationAmendment>::Refuse(
+        return Deliver<ManipulationAmendment>::Refuse(
             { RefusalReason::HostDenied, "no manipulation is open to abandon" });
     }
 
@@ -1136,14 +1136,14 @@ Outcome<ManipulationAmendment> ManipulationSequence::Abandon()
     Current     = {};
     OpenDeclared = false;
 
-    return Outcome<ManipulationAmendment>::Result(Abandoned);
+    return Deliver<ManipulationAmendment>::Result(Abandoned);
 }
 
-Outcome<ManipulationAmendment> ManipulationSequence::Seal()
+Deliver<ManipulationAmendment> ManipulationSequence::Seal()
 {
     if (!OpenDeclared)
     {
-        return Outcome<ManipulationAmendment>::Refuse(
+        return Deliver<ManipulationAmendment>::Refuse(
             { RefusalReason::HostDenied, "no manipulation is open to seal" });
     }
 
@@ -1153,7 +1153,7 @@ Outcome<ManipulationAmendment> ManipulationSequence::Seal()
     Current     = {};
     OpenDeclared = false;
 
-    return Outcome<ManipulationAmendment>::Result(Sealed);
+    return Deliver<ManipulationAmendment>::Result(Sealed);
 }
 
 const ManipulationAmendment& ManipulationSequence::Amended() const

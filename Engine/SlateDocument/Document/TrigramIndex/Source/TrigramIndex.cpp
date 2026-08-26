@@ -112,10 +112,10 @@ void TrigramIndex::Enter(std::uint32_t SlotIndex, const std::string& Declared)
     }
 }
 
-Outcome<bool> TrigramIndex::Declare(OwnerIdentity Subject, const std::string& Declared)
+Deliver<bool> TrigramIndex::Declare(OwnerIdentity Subject, const std::string& Declared)
 {
     if (!Subject.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity carries no name" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "an undeclared identity carries no name" });
 
     // 🔴 The former name's entries are withdrawn before the new ones are entered. Skipping the withdrawal is
     //    exactly the defect step ⑦ exists to prevent: the owner stays findable under a name it lost.
@@ -137,7 +137,7 @@ Outcome<bool> TrigramIndex::Declare(OwnerIdentity Subject, const std::string& De
 
     Enter(Subject.SlotIndex, Declared);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void TrigramIndex::Withdraw(OwnerIdentity Subject)

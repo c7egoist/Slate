@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/RegistrationIndex/Api/RegistrationIndex.h"
 #include "SlateDocument/Document/TopologyStructure/Api/TopologyStructure.h"
@@ -73,7 +73,7 @@ public:
     /// post  every read below describes the supplied topology at its sealed revision
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Condition(const TopologyStructure& Imported);
+    Deliver<bool> Condition(const TopologyStructure& Imported);
 
     /// 🧩 The welded position one imported vertex belongs to.
     /// in    VertexIndex  [-]  an imported vertex
@@ -83,7 +83,7 @@ public:
     ///        every coordinate discontinuity, and `18` reads the imported ordinals so authored coordinates live.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> WeldedPosition(std::uint32_t VertexIndex) const;
+    Deliver<std::uint32_t> WeldedPosition(std::uint32_t VertexIndex) const;
 
     /// 🧩 The corner across the edge one corner opens, where exactly one face is adjacent there.
     /// out   Result  [-]  refuses with ContentUnsupported at a boundary or non-manifold edge
@@ -91,7 +91,7 @@ public:
     ///        traversal's result depend on face declaration order, and `34` §6 forbids exactly that shape.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> AdjacentCorner(std::uint32_t CornerIndex) const;
+    Deliver<std::uint32_t> AdjacentCorner(std::uint32_t CornerIndex) const;
 
     /// 🧩 Whether one face is registered under a degeneracy condition.
     /// note  Answered by interval comparison, per `38` §3, so an excluded population costs nothing to skip.

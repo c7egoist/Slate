@@ -6,7 +6,7 @@
 //    UI guarantee. The CAD render pass remains a later phase; viewport leaves are placeholders for now.
 
 #define SLATE_PARAMETRIC_SKETCH_HOST 1
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "Application/Api/SharedCadDrawingController.h"
 #include "Application/Api/ParametricWorkspaceBridge.h"
@@ -1087,7 +1087,7 @@ void AdoptCommittedDraft(ParametricDraftSubject Subject,
                          SketchStructure& Sketch,
                          WorkspaceRecordStructure& Records,
                          WorkspaceRevisionSequence& Revisions,
-                         const Outcome<WorkspaceRecordName>& Record,
+                         const Deliver<WorkspaceRecordName>& Record,
                          WorkspaceRecordName& PendingSelection)
 {
     if (!Record.Resolved)
@@ -1237,7 +1237,7 @@ WorkspaceRecordName AutoDeclareWorkspaceProfilesFromChains(WorkspaceNameIndex& N
                                                              WorkspaceRecordStructure& Records,
                                                              WorkspaceRevisionSequence& Revisions)
 {
-    const Outcome<std::vector<ProfileNameInFeature>> Profiles = AutoDeclareClosedAreaProfiles(Sketch, 0.05);
+    const Deliver<std::vector<ProfileNameInFeature>> Profiles = AutoDeclareClosedAreaProfiles(Sketch, 0.05);
     if (!Profiles.Resolved || Profiles.Resolve().empty())
         return {};
     std::vector<WorkspaceRecordName> Written;
@@ -1477,7 +1477,7 @@ SpatialPoint ApplyParametricDraftSettings(const ParametricDraftState& Draft,
     return Hover;
 }
 
-Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
+Deliver<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
                                          SketchStructure& Sketch,
                                          WorkspaceRecordStructure& Records,
                                          WorkspaceRevisionSequence& Revisions,
@@ -1496,7 +1496,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
                                Draft.AnchorSnaps.size() > 0u ? &Draft.AnchorSnaps[0] : nullptr,
                                Draft.AnchorSnaps.size() > 1u ? &Draft.AnchorSnaps[1] : nullptr,
                                Written);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Point && Draft.HoverStanding)
@@ -1506,15 +1506,15 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspacePoint(Naming, Records, EncodeDraftPointName(Curve, 0u));
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Point", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Polyline && Draft.Anchors.size() >= 2u)
     {
         std::vector<SketchCurveName> Curves;
-        const Outcome<bool> Declared = Sketch.DeclarePolyline(Draft.Anchors, Curves);
+        const Deliver<bool> Declared = Sketch.DeclarePolyline(Draft.Anchors, Curves);
         if (!Declared.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Declared.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Declared.Error);
 
         std::vector<WorkspaceRecordName> RecordsWritten;
         RecordsWritten.reserve(Curves.size());
@@ -1530,20 +1530,20 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         }
         Revisions.Seal("Declared polyline", Draft.Construction ? "Create Construction Polyline" : "Create Polyline",
                        RecordsWritten, Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(RecordsWritten.empty() ? WorkspaceRecordName{} : RecordsWritten.front());
+        return Deliver<WorkspaceRecordName>::Result(RecordsWritten.empty() ? WorkspaceRecordName{} : RecordsWritten.front());
     }
 
     if (Draft.Subject == ParametricDraftSubject::Arc && Draft.Anchors.size() >= 3u)
     {
         if (!DraftArcReady(Draft.Anchors[0], Draft.Anchors[1], Draft.Anchors[2]))
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                           "the arc points are collinear" });
         const SketchCurveName Curve = Sketch.DeclareThreePointArc(Draft.Anchors[0], Draft.Anchors[1], Draft.Anchors[2]);
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Draft.Construction);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming),
                        Draft.Construction ? "Create Construction Arc" : "Create Arc", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if ((Draft.Subject == ParametricDraftSubject::CenterStartEndArc || Draft.Subject == ParametricDraftSubject::TangentArc) && Draft.Anchors.size() >= 3u)
@@ -1553,7 +1553,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const SpatialPoint End = Draft.Anchors[2];
         const double Radius = std::sqrt(LengthSquared(Difference(Centre, Start)));
         if (Radius <= 1.0e-6)
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the arc radius is too small" });
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the arc radius is too small" });
         const double A0 = std::atan2(Start.Forward - Centre.Forward, Start.Left - Centre.Left);
         const double A1 = std::atan2(End.Forward - Centre.Forward, End.Left - Centre.Left);
         double Sweep = A1 - A0;
@@ -1565,7 +1565,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming),
                        Draft.Subject == ParametricDraftSubject::TangentArc ? "Create Tangent Arc" : "Create Center Arc", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::EllipticalArc && Draft.Anchors.size() >= 3u)
@@ -1581,7 +1581,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Draft.Construction);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Elliptical Arc", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::BasisSpline && Draft.Anchors.size() >= 3u)
@@ -1594,7 +1594,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Draft.Construction);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Basis Spline", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::RationalSpline && Draft.Anchors.size() >= 3u)
@@ -1608,7 +1608,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Draft.Construction);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create NURBS Curve", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Hermite && Draft.Anchors.size() >= 4u)
@@ -1622,7 +1622,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Draft.Construction);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Hermite Curve", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::DiameterCircle && Draft.Anchors.size() >= 2u)
@@ -1632,22 +1632,22 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const SpatialPoint Centre = { (A.Left + B.Left) * 0.5, (A.Up + B.Up) * 0.5, (A.Forward + B.Forward) * 0.5 };
         const double Radius = std::sqrt(LengthSquared(Difference(Centre, A)));
         if (Radius <= 1.0e-6)
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the circle radius is too small" });
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the circle radius is too small" });
         const CircleCurve Circle = { Centre, Sketch.HeldPlane().Normal, Normalize(Difference(Centre, A)), Radius };
-        const Outcome<ProfileNameInFeature> Profile = Draft.Construction ? Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "construction circle" })
+        const Deliver<ProfileNameInFeature> Profile = Draft.Construction ? Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "construction circle" })
                                                                          : Sketch.DeclareCircleProfile(Circle);
         if (Profile.Resolved)
         {
             const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
             Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Diameter Circle", { Record },
                            Revisions.DeclaredCount() + 1u);
-            return Outcome<WorkspaceRecordName>::Result(Record);
+            return Deliver<WorkspaceRecordName>::Result(Record);
         }
         const SketchCurveName Curve = Sketch.DeclareCircle(Circle);
         const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, true);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Construction Diameter Circle", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::ThreePointCircle && Draft.Anchors.size() >= 3u)
@@ -1655,39 +1655,39 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         SpatialPoint Centre = {};
         double Radius = 0.0;
         if (!ResolveThreePointCircle(Draft.Anchors[0], Draft.Anchors[1], Draft.Anchors[2], Centre, Radius))
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the circle points are collinear" });
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported, "the circle points are collinear" });
         const CircleCurve Circle = { Centre, Sketch.HeldPlane().Normal, Normalize(Difference(Centre, Draft.Anchors[0])), Radius };
-        const Outcome<ProfileNameInFeature> Profile = Sketch.DeclareCircleProfile(Circle);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareCircleProfile(Circle);
         if (!Profile.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Profile.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Three Point Circle", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Polygon && Draft.Anchors.size() >= 2u)
     {
         const double Radius = std::sqrt(LengthSquared(Difference(Draft.Anchors[0], Draft.Anchors[1])));
-        const Outcome<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(Draft.Anchors[0], Radius, 6u);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(Draft.Anchors[0], Radius, 6u);
         if (!Profile.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Profile.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Polygon", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Slot && Draft.Anchors.size() >= 3u)
     {
         const double Radius = std::sqrt(LengthSquared(Difference(Draft.Anchors[1], Draft.Anchors[2])));
-        const Outcome<ProfileNameInFeature> Profile = Sketch.DeclareSlot(Draft.Anchors[0], Draft.Anchors[1], Radius);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareSlot(Draft.Anchors[0], Draft.Anchors[1], Radius);
         if (!Profile.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Profile.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Slot", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::ThreePointRectangle && Draft.Anchors.size() >= 3u)
@@ -1709,7 +1709,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Sketch.DeclareProfile(Profile));
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Three Point Rectangle", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::LinearDimension && Draft.AnchorSnaps.size() >= 2u)
@@ -1717,7 +1717,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const ReferenceSpecification Primary = ReferenceFromSnap(Draft.AnchorSnaps[0]);
         const ReferenceSpecification Secondary = ReferenceFromSnap(Draft.AnchorSnaps[1]);
         if (!Primary.Declared() || !Secondary.Declared())
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                           "linear dimensions require two snapped sketch references" });
         DimensionSpecification Dimension = {};
         Dimension.Subject = DimensionSubject::Aligned;
@@ -1728,7 +1728,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceDimension(Naming, Records, DimensionNamed);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Dimension", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Ellipse && Draft.Anchors.size() >= 1u && Draft.HoverStanding)
@@ -1740,7 +1740,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const double Major = std::fabs(HoverAlong - CentreAlong);
         double Minor = std::fabs(HoverAcross - CentreAcross);
         if (Major <= 1.0e-6)
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                           "the ellipse major radius is too small" });
         if (Minor <= 1.0e-6)
             Minor = Major * 0.5;
@@ -1751,15 +1751,15 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
             const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, true);
             Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Construction Ellipse", { Record },
                            Revisions.DeclaredCount() + 1u);
-            return Outcome<WorkspaceRecordName>::Result(Record);
+            return Deliver<WorkspaceRecordName>::Result(Record);
         }
-        const Outcome<ProfileNameInFeature> Profile = Sketch.DeclareEllipseProfile(Ellipse);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareEllipseProfile(Ellipse);
         if (!Profile.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Profile.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Ellipse Profile", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Bezier && Draft.Anchors.size() >= 2u)
@@ -1769,7 +1769,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming),
                        Draft.Construction ? "Create Construction Bezier" : "Create Bezier", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Circle && Draft.Anchors.size() >= 1u && Draft.HoverStanding)
@@ -1777,7 +1777,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const SpatialDirection Radius = Difference(Draft.Anchors[0], Draft.Hover);
         const double RadiusLength = std::sqrt(LengthSquared(Radius));
         if (RadiusLength <= 1.0e-6)
-            return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                           "the circle radius is too small" });
 
         const CircleCurve Circle = { Draft.Anchors[0], Sketch.HeldPlane().Normal, Normalize(Radius), RadiusLength };
@@ -1788,12 +1788,12 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
             Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming),
                            "Create Construction Circle", { Record },
                            Revisions.DeclaredCount() + 1u);
-            return Outcome<WorkspaceRecordName>::Result(Record);
+            return Deliver<WorkspaceRecordName>::Result(Record);
         }
 
-        const Outcome<ProfileNameInFeature> Profile = Sketch.DeclareCircleProfile(Circle);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareCircleProfile(Circle);
         if (!Profile.Resolved)
-            return Outcome<WorkspaceRecordName>::Refuse(Profile.Error);
+            return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Profile", { Record },
                        Revisions.DeclaredCount() + 1u);
@@ -1809,7 +1809,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
             Revisions.Seal("Declared " + std::string(Records.Resolve(DimensionRecord)->Naming), "Create Radius Dimension", { DimensionRecord },
                            Revisions.DeclaredCount() + 1u);
         }
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::CenterRectangle && Draft.Anchors.size() >= 1u && Draft.HoverStanding)
@@ -1833,7 +1833,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Sketch.DeclareProfile(Profile));
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Center Rectangle", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
     if (Draft.Subject == ParametricDraftSubject::Rectangle && Draft.Anchors.size() >= 1u && Draft.HoverStanding)
@@ -1859,7 +1859,7 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
             const WorkspaceRecordName Fourth = DeclareWorkspaceCurve(Naming, Records, DA, true);
             Revisions.Seal("Declared construction rectangle", "Create Construction Rectangle",
                            { First, Second, Third, Fourth }, Revisions.DeclaredCount() + 1u);
-            return Outcome<WorkspaceRecordName>::Result(First);
+            return Deliver<WorkspaceRecordName>::Result(First);
         }
         Loop.Traversal = { { { AB.IssuedIndex }, true }, { { BC.IssuedIndex }, true },
                            { { CD.IssuedIndex }, true }, { { DA.IssuedIndex }, true } };
@@ -1868,10 +1868,10 @@ Outcome<WorkspaceRecordName> CommitDraft(WorkspaceNameIndex& Naming,
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, ProfileName);
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Profile", { Record },
                        Revisions.DeclaredCount() + 1u);
-        return Outcome<WorkspaceRecordName>::Result(Record);
+        return Deliver<WorkspaceRecordName>::Result(Record);
     }
 
-    return Outcome<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+    return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                   "the active draft is not ready to commit" });
 }
 
@@ -2118,7 +2118,7 @@ void DriveDrawing(const PlaneExtent& Extent,
             Draft.Anchors.push_back(Draft.Hover);
             if (Draft.Anchors.size() >= 2u)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -2129,7 +2129,7 @@ void DriveDrawing(const PlaneExtent& Extent,
                 Draft.Anchors.push_back(Draft.Hover);
             else
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4133,7 +4133,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
             Draft.Anchors.size() < 2u)
             return;
 
-        const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+        const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
         AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
         CancelDraft(Draft);
         PointerTaken = true;
@@ -4150,7 +4150,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
             AppendDraftAnchor(Draft);
             if (Draft.Anchors.size() >= 2u)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4160,7 +4160,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
             AppendDraftAnchor(Draft);
             if (Pointer.ContactDoublePressed && Draft.Anchors.size() >= 2u)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4176,7 +4176,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
             AppendDraftAnchor(Draft);
             if (Draft.Anchors.size() >= 3u)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4191,7 +4191,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                 static_cast<SharedCadDraftSubject>(static_cast<std::uint32_t>(Draft.Subject)));
             if (Pointer.ContactDoublePressed && Draft.Anchors.size() >= RequiredAnchors)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4199,7 +4199,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
         else if (Draft.Subject == ParametricDraftSubject::Point)
         {
             AppendDraftAnchor(Draft);
-            const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+            const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
             AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
             CancelDraft(Draft);
         }
@@ -4209,7 +4209,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                 AppendDraftAnchor(Draft);
             if (Draft.AnchorSnaps.size() >= 2u)
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4225,7 +4225,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                 AppendDraftAnchor(Draft);
             else
             {
-                const Outcome<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
+                const Deliver<WorkspaceRecordName> Record = CommitDraft(Naming, Sketch, Records, Revisions, Draft);
                 AdoptCommittedDraft(Draft.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
                 CancelDraft(Draft);
             }
@@ -4367,7 +4367,7 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
         TrimMask.IntersectionAccepted = true;
         const SketchSnapPlacement TrimSnap = ResolveNearestSnap(Sketch, Probe, 25.0, TrimMask);
         const SpatialPoint TrimPosition = TrimSnap.Resolved() ? TrimSnap.Position : Probe;
-        const Outcome<SketchCurveName> Trimmed = TrimCurve(Sketch, ActiveSelection.Curve, TrimPosition, true);
+        const Deliver<SketchCurveName> Trimmed = TrimCurve(Sketch, ActiveSelection.Curve, TrimPosition, true);
         if (!Trimmed.Resolved)
             return false;
         Discard(Records.ToggleVisible(ActiveSelection.Record, false));
@@ -4382,7 +4382,7 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
         ExtendMask.IntersectionAccepted = true;
         const SketchSnapPlacement ExtendSnap = ResolveNearestSnap(Sketch, Probe, 1000.0, ExtendMask);
         const SpatialPoint ExtendPosition = ExtendSnap.Resolved() ? ExtendSnap.Position : Probe;
-        const Outcome<SketchCurveName> Extended = TrimCurve(Sketch, ActiveSelection.Curve, ExtendPosition, false);
+        const Deliver<SketchCurveName> Extended = TrimCurve(Sketch, ActiveSelection.Curve, ExtendPosition, false);
         if (!Extended.Resolved)
             return false;
         Discard(Records.ToggleVisible(ActiveSelection.Record, false));
@@ -4391,7 +4391,7 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
     else if (Tool == ParametricToolSubject::Offset)
     {
         const SpatialDirection Offset = Difference(ActiveSelection.Position, Probe);
-        const Outcome<PatternResult> Duplicated = DuplicateCurves(Sketch, { ActiveSelection.Curve }, Offset);
+        const Deliver<PatternResult> Duplicated = DuplicateCurves(Sketch, { ActiveSelection.Curve }, Offset);
         if (!Duplicated.Resolved)
             return false;
         CommitCurveSet(Naming, Records, Revisions, Duplicated.Resolve().CurveSet, "Offset Curve", Written);
@@ -4399,7 +4399,7 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
     else if (Tool == ParametricToolSubject::LinearArray)
     {
         const SpatialDirection Step = Added(Scaled(Basis.Along, 40.0), Scaled(Basis.Across, 0.0));
-        const Outcome<PatternResult> Pattern = DeclareLinearPattern(Sketch, { ActiveSelection.Curve }, Step, 3u);
+        const Deliver<PatternResult> Pattern = DeclareLinearPattern(Sketch, { ActiveSelection.Curve }, Step, 3u);
         if (!Pattern.Resolved)
             return false;
         CommitCurveSet(Naming, Records, Revisions, Pattern.Resolve().CurveSet, "Linear Pattern", Written);
@@ -4408,14 +4408,14 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
     {
         const SpatialPoint AxisStart = Added(Probe, Scaled(Basis.Across, -100.0));
         const SpatialPoint AxisEnd = Added(Probe, Scaled(Basis.Across, 100.0));
-        const Outcome<PatternResult> Mirrored = MirrorCurves(Sketch, { ActiveSelection.Curve }, AxisStart, AxisEnd);
+        const Deliver<PatternResult> Mirrored = MirrorCurves(Sketch, { ActiveSelection.Curve }, AxisStart, AxisEnd);
         if (!Mirrored.Resolved)
             return false;
         CommitCurveSet(Naming, Records, Revisions, Mirrored.Resolve().CurveSet, "Mirror Curve", Written);
     }
     else if (Tool == ParametricToolSubject::Fillet || Tool == ParametricToolSubject::Chamfer)
     {
-        const Outcome<std::vector<SketchCurveName>> Cut = CutCurve(Sketch, ActiveSelection.Curve, Probe);
+        const Deliver<std::vector<SketchCurveName>> Cut = CutCurve(Sketch, ActiveSelection.Curve, Probe);
         if (!Cut.Resolved)
             return false;
         Discard(Records.ToggleVisible(ActiveSelection.Record, false));
@@ -4685,7 +4685,7 @@ void ConstructParametricLayout(PanelStructure& Partition)
                           PanelDivisionSide::Minimum).Resolved)
         return;
 
-    const Outcome<PanelRecord> Root = Partition.Current(PanelStructure::RootIndex);
+    const Deliver<PanelRecord> Root = Partition.Current(PanelStructure::RootIndex);
     if (!Root.Resolved)
         return;
 
@@ -4695,7 +4695,7 @@ void ConstructParametricLayout(PanelStructure& Partition)
     if (!Partition.Divide(Right, PanelDivisionAxis::X, PanelDivisionSide::Minimum).Resolved)
         return;
 
-    const Outcome<PanelRecord> RightBranch = Partition.Current(Right);
+    const Deliver<PanelRecord> RightBranch = Partition.Current(Right);
     if (!RightBranch.Resolved)
         return;
 
@@ -4776,7 +4776,7 @@ void SeatParametricContext(const WorkspaceDirectoryProjection& Directory,
     }
 }
 
-Outcome<bool> SynchroniseParametricPresentation(const WorkspaceRecordStructure& Records,
+Deliver<bool> SynchroniseParametricPresentation(const WorkspaceRecordStructure& Records,
                                                 const WorkspaceRevisionSequence& Revisions,
                                                 WorkspaceDirectoryProjection& Directory,
                                                 ParametricWorkspaceBridgeStorage& Bridge,
@@ -4786,7 +4786,7 @@ Outcome<bool> SynchroniseParametricPresentation(const WorkspaceRecordStructure& 
 {
     ProjectWorkspaceDirectory(Records, Directory);
 
-    const Outcome<bool> DirectoryBridge = BridgeParametricDirectory(Directory, Bridge);
+    const Deliver<bool> DirectoryBridge = BridgeParametricDirectory(Directory, Bridge);
     if (!DirectoryBridge.Resolved)
         return DirectoryBridge;
 
@@ -4794,7 +4794,7 @@ Outcome<bool> SynchroniseParametricPresentation(const WorkspaceRecordStructure& 
 
     if (PendingSelection.Assigned())
     {
-        const Outcome<std::uint32_t> Row = ResolveWorkspaceDirectoryRow(Directory, PendingSelection);
+        const Deliver<std::uint32_t> Row = ResolveWorkspaceDirectoryRow(Directory, PendingSelection);
         if (Row.Resolved && Row.Resolve() < ParametricWorkspaceContext::RowLimit)
         {
             for (std::uint32_t Index = 0u; Index < ParametricWorkspaceContext::RowLimit; ++Index)
@@ -4811,19 +4811,19 @@ Outcome<bool> SynchroniseParametricPresentation(const WorkspaceRecordStructure& 
         Directory.Rows[Applied.RowTaken].Role != WorkspaceDirectoryRowRole::Record)
     {
         ClearInspectorBridge(Bridge);
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     const WorkspaceRecordName Selected = Directory.Rows[Applied.RowTaken].Record;
-    const Outcome<WorkspacePropertyProjection> Property =
+    const Deliver<WorkspacePropertyProjection> Property =
         ProjectWorkspaceProperty(Records, Revisions, Selected);
     if (!Property.Resolved)
-        return Outcome<bool>::Refuse(Property.Error);
+        return Deliver<bool>::Refuse(Property.Error);
 
     return BridgeParametricInspector(Records, Selected, Property.Resolve(), Revisions, Bridge);
 }
 
-Outcome<bool> SynchroniseCadPacket(const SketchStructure& Sketch,
+Deliver<bool> SynchroniseCadPacket(const SketchStructure& Sketch,
                                    const WorkspaceRecordStructure& Records,
                                    WorkspaceCadPacket& Delivered)
 {
@@ -5198,28 +5198,28 @@ int main(int ArgumentCount, char** ArgumentValues)
         return 1;
     }
 
-    const Outcome<bool> CodecOutcome =
+    const Deliver<bool> CodecDelivery =
         CadCodec.AttachShaderStreams(Lifetime.DeviceExchange(), ShaderStreamDirectory());
-    if (!CodecOutcome.Resolved)
+    if (!CodecDelivery.Resolved)
     {
         std::printf("%s — the CAD shader streams were not attached (reason %u: %s)\n",
                     HostName,
-                    static_cast<unsigned>(CodecOutcome.Error.DeclaredReason),
-                    CodecOutcome.Error.Detail);
+                    static_cast<unsigned>(CodecDelivery.Error.DeclaredReason),
+                    CodecDelivery.Error.Detail);
     }
     else
     {
-        const Outcome<bool> PassOutcome = CadPass.ConstructWorkspaceCadPass(Lifetime.DeviceExchange(),
+        const Deliver<bool> PassDelivery = CadPass.ConstructWorkspaceCadPass(Lifetime.DeviceExchange(),
                                                                             Lifetime.DiagnosticsExtension(),
                                                                             CadCodec,
                                                                             Lifetime.Offering().ColourTargetFormat);
-        if (!PassOutcome.Resolved)
+        if (!PassDelivery.Resolved)
         {
             CadPassWarned = true;
             std::printf("%s — the CAD pass was not standing (reason %u: %s); using fallback presentation\n",
                         HostName,
-                        static_cast<unsigned>(PassOutcome.Error.DeclaredReason),
-                        PassOutcome.Error.Detail);
+                        static_cast<unsigned>(PassDelivery.Error.DeclaredReason),
+                        PassDelivery.Error.Detail);
         }
     }
 
@@ -5229,7 +5229,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         std::printf("%s — the workspace style was not applied\n", HostName);
     }
 
-    const Outcome<std::uint32_t> DefaultWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
+    const Deliver<std::uint32_t> DefaultWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
     if (!DefaultWorkspace.Resolved)
     {
         std::printf("%s — the default workspace could not be opened\n", HostName);
@@ -5272,11 +5272,11 @@ int main(int ArgumentCount, char** ArgumentValues)
             SceneDirectory.Reapply(Viewport.Appearance());
             ContentBrowser.Reapply(Viewport.Appearance());
 
-            const Outcome<bool> Reattached =
+            const Deliver<bool> Reattached =
                 CadCodec.AttachShaderStreams(Lifetime.DeviceExchange(), ShaderStreamDirectory());
             if (Reattached.Resolved)
             {
-                const Outcome<bool> Rebuilt = CadPass.ConstructWorkspaceCadPass(Lifetime.DeviceExchange(),
+                const Deliver<bool> Rebuilt = CadPass.ConstructWorkspaceCadPass(Lifetime.DeviceExchange(),
                                                                                 Lifetime.DiagnosticsExtension(),
                                                                                 CadCodec,
                                                                                 Lifetime.Offering().ColourTargetFormat);
@@ -5320,7 +5320,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             continue;
         }
 
-        const Outcome<bool> Presented = SynchroniseParametricPresentation(Records, Revisions,
+        const Deliver<bool> Presented = SynchroniseParametricPresentation(Records, Revisions,
                                                                           Directory, Bridge,
                                                                           ParametricApplied,
                                                                           PendingSelection,
@@ -5343,7 +5343,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             Bridge.Reclaim();
         }
 
-        const Outcome<bool> PacketProjected = SynchroniseCadPacket(Sketch, Records, CadPacket);
+        const Deliver<bool> PacketProjected = SynchroniseCadPacket(Sketch, Records, CadPacket);
         if (!PacketProjected.Resolved && !CadPacketWarned)
         {
             std::printf("%s — the CAD packet projection refused (reason %u: %s)\n",
@@ -5640,14 +5640,14 @@ int main(int ArgumentCount, char** ArgumentValues)
         if (Viewport.Seam().RecordWorkspaceAddition(Workspace.Strip(), OpenCount, AskingNode))
         {
             RegisterIntoNode = AskingNode;
-            const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
+            const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
             if (RegisteredWorkspace.Resolved)
                 ConstructParametricLayout(PanelPartitions[RegisteredWorkspace.Resolve()]);
         }
 
         if (OpenCount == 0u && Viewport.Seam().VacantPressed(Whole))
         {
-            const Outcome<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
+            const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
             if (RegisteredWorkspace.Resolved)
                 ConstructParametricLayout(PanelPartitions[RegisteredWorkspace.Resolve()]);
         }
@@ -5716,7 +5716,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                         ContentBrowserApplied.ImportEntries[ContentBrowserApplied.ImportTaken].Naming;
                     if (MaterialImageFormatSupported(ImportPath.string()))
                     {
-                        const Outcome<ImportedMaterialImage> Imported = ImportMaterialImageReference(ImportPath.string());
+                        const Deliver<ImportedMaterialImage> Imported = ImportMaterialImageReference(ImportPath.string());
                         if (!Imported.Resolved)
                         {
                             std::printf("%s — material image import refused (reason %u: %s)\n", HostName,
@@ -5745,7 +5745,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                             {
                                 if (Material.Reference != MaterialReference)
                                     continue;
-                                const Outcome<std::uint32_t> Bound = BindWorkspaceMaterialImage(
+                                const Deliver<std::uint32_t> Bound = BindWorkspaceMaterialImage(
                                     Material, Imported.Resolve().SuggestedChannel, Imported.Resolve().Reference);
                                 if (!Bound.Resolved)
                                     std::printf("%s — material image bind refused (reason %u: %s)\n", HostName,
@@ -5761,7 +5761,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                     }
                     else
                     {
-                        const Outcome<ImportedSceneMesh> Imported = ImportSceneMeshFile(ImportPath.string());
+                        const Deliver<ImportedSceneMesh> Imported = ImportSceneMeshFile(ImportPath.string());
                         if (!Imported.Resolved)
                         {
                             std::printf("%s — mesh import refused (reason %u: %s)\n", HostName,

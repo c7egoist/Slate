@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
 #include <cstdint>
@@ -56,7 +56,7 @@ public:
     ///        it from a device this component is forbidden to name.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ReserveTileSpace(std::uint32_t SlotLimit, std::uint32_t BytesPerTexel);
+    Deliver<bool> ReserveTileSpace(std::uint32_t SlotLimit, std::uint32_t BytesPerTexel);
 
     /// 🧩 Reservations one free slot.
     /// out   Result  [-]  refuses with ExtentExhausted when every slot is claimed or quarantined
@@ -65,7 +65,7 @@ public:
     ///        designed. Reporting it would mean the register is never quiet.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Reserve();
+    Deliver<std::uint32_t> Reserve();
 
     /// 🧩 Releases one claimed slot into quarantine.
     /// in    SlotIndex      [-]  the slot
@@ -74,7 +74,7 @@ public:
     /// post  the slot is unusable until `RecordingSlotCount` rotations have passed
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Release(std::uint32_t SlotIndex, std::uint64_t RecordingIndex);
+    Deliver<bool> Release(std::uint32_t SlotIndex, std::uint64_t RecordingIndex);
 
     /// 🧩 Returns quarantined slots whose release is older than the recording slot count.
     /// in    RecordingIndex  [-]  the rotation now being recorded
@@ -92,7 +92,7 @@ public:
     ///        may not name it. `06` adds the base; nothing here knows one exists.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<std::uint64_t> ByteOffsetOf(std::uint32_t SlotIndex) const;
+    Deliver<std::uint64_t> ByteOffsetOf(std::uint32_t SlotIndex) const;
 
     /// 🧩 What one tile occupies, apron included.
     /// cost  ✔️

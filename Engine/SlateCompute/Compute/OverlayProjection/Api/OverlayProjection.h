@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/ToolSequence/Api/ToolSequence.h"
 #include "SlateMath/Numeric/ColourProjection/Api/ColourProjection.h"
@@ -113,7 +113,7 @@ public:
     ///        as an offset that had no effect, and the caller then raises it until something else breaks.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(OverlaySubject Current, const OverlaySpecification& Declaring);
+    Deliver<bool> Declare(OverlaySubject Current, const OverlaySpecification& Declaring);
 
     /// 🧩 Contributes both of `08` §3's overlay recordings — ⑩ depth-tested, ⑪ depth-free.
     /// in    Schedule  [-]  where the two declarations land
@@ -127,7 +127,7 @@ public:
     ///        inputs and compressed with the radiance, which is §2's failure exactly.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 Whether one overlay is presented this rotation, as `76` holds it.
     /// in    Tooling    [-]  `76`, the one owner of overlay presence
@@ -156,7 +156,7 @@ public:
     /// out   Result    [-]  refuses with ContentUnsupported for the closed count and for an overlay never declared
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const OverlaySpecification*> Specification(OverlaySubject Current) const;
+    Deliver<const OverlaySpecification*> Specification(OverlaySubject Current) const;
 
     /// 🧩 Declares how many overlays each recording drew; appends nothing.
     /// in    Tooling   [-]  `76`, read for presence

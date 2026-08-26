@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialPreviewAtlas.h"
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialProcessingExchange.h"
 
@@ -28,7 +28,7 @@ struct MaterialPreviewBakeJob
 class MaterialPreviewBakeSchedule
 {
 public:
-    Outcome<MaterialPreviewBakeJob> Schedule(const MaterialPreviewTile& Tile,
+    Deliver<MaterialPreviewBakeJob> Schedule(const MaterialPreviewTile& Tile,
                                              const MaterialProcessingSnapshot& Snapshot) const;
 };
 

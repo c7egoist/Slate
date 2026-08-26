@@ -143,26 +143,26 @@ SketchCurveName SketchStructure::DeclareHermite(const HermiteCurve& Declared)
     return DeclareCurve(CurveSpecification::DeclareHermite(Declared, { 0.0, 1.0 }));
 }
 
-Outcome<bool> SketchStructure::DeclarePolyline(const std::vector<SpatialPoint>& Positions,
+Deliver<bool> SketchStructure::DeclarePolyline(const std::vector<SpatialPoint>& Positions,
                                                std::vector<SketchCurveName>& DeclaredCurves)
 {
     DeclaredCurves.clear();
     if (Positions.size() < 2u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a polyline requires at least two positions" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a polyline requires at least two positions" });
 
     DeclaredCurves.reserve(Positions.size() - 1u);
     for (std::size_t PositionIndex = 0u; PositionIndex + 1u < Positions.size(); ++PositionIndex)
         DeclaredCurves.push_back(DeclareLine(Positions[PositionIndex], Positions[PositionIndex + 1u]));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<ProfileNameInFeature> SketchStructure::DeclareCircleProfile(const CircleCurve& Declared)
+Deliver<ProfileNameInFeature> SketchStructure::DeclareCircleProfile(const CircleCurve& Declared)
 {
     if (!PlaneStanding || !Plane.Declared())
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
     if (Declared.Radius <= 0.0)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the circle requires a positive radius" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the circle requires a positive radius" });
 
     ProfileSpecification Profile;
     Profile.DeclarePlane({ Plane.Origin, Plane.Normal, Plane.AlongDirection });
@@ -183,15 +183,15 @@ Outcome<ProfileNameInFeature> SketchStructure::DeclareCircleProfile(const Circle
     }
 
     Profile.DeclareLoop(Loop);
-    return Outcome<ProfileNameInFeature>::Result(DeclareProfile(Profile));
+    return Deliver<ProfileNameInFeature>::Result(DeclareProfile(Profile));
 }
 
-Outcome<ProfileNameInFeature> SketchStructure::DeclareEllipseProfile(const EllipseCurve& Declared)
+Deliver<ProfileNameInFeature> SketchStructure::DeclareEllipseProfile(const EllipseCurve& Declared)
 {
     if (!PlaneStanding || !Plane.Declared())
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
     if (Declared.MajorRadius <= 0.0 || Declared.MinorRadius <= 0.0)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the ellipse requires positive axes" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the ellipse requires positive axes" });
 
     ProfileSpecification Profile;
     Profile.DeclarePlane({ Plane.Origin, Plane.Normal, Plane.AlongDirection });
@@ -210,22 +210,22 @@ Outcome<ProfileNameInFeature> SketchStructure::DeclareEllipseProfile(const Ellip
     }
 
     Profile.DeclareLoop(Loop);
-    return Outcome<ProfileNameInFeature>::Result(DeclareProfile(Profile));
+    return Deliver<ProfileNameInFeature>::Result(DeclareProfile(Profile));
 }
 
-Outcome<ProfileNameInFeature> SketchStructure::DeclareOvalProfile(const EllipseCurve& Declared)
+Deliver<ProfileNameInFeature> SketchStructure::DeclareOvalProfile(const EllipseCurve& Declared)
 {
     return DeclareEllipseProfile(Declared);
 }
 
-Outcome<ProfileNameInFeature> SketchStructure::DeclareRegularPolygon(const SpatialPoint& Centre,
+Deliver<ProfileNameInFeature> SketchStructure::DeclareRegularPolygon(const SpatialPoint& Centre,
                                                                      double Radius,
                                                                      std::uint32_t SideCount)
 {
     if (!PlaneStanding || !Plane.Declared())
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
     if (Radius <= 0.0 || SideCount < 3u)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the polygon requires positive radius and three sides" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the polygon requires positive radius and three sides" });
 
     const SpatialDirection AlongDirection = Normalize(Plane.AlongDirection);
     const SpatialDirection AcrossDirection = Normalize(Cross(Plane.Normal, AlongDirection));
@@ -257,23 +257,23 @@ Outcome<ProfileNameInFeature> SketchStructure::DeclareRegularPolygon(const Spati
     }
 
     Profile.DeclareLoop(Loop);
-    return Outcome<ProfileNameInFeature>::Result(DeclareProfile(Profile));
+    return Deliver<ProfileNameInFeature>::Result(DeclareProfile(Profile));
 }
 
-Outcome<ProfileNameInFeature> SketchStructure::DeclareSlot(const SpatialPoint& StartPoint,
+Deliver<ProfileNameInFeature> SketchStructure::DeclareSlot(const SpatialPoint& StartPoint,
                                                            const SpatialPoint& EndPoint,
                                                            double Radius)
 {
     if (!PlaneStanding || !Plane.Declared())
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
     if (Radius <= 0.0)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the slot requires a positive radius" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the slot requires a positive radius" });
 
     const SpatialDirection AxisOffset = { EndPoint.Left - StartPoint.Left,
                                           EndPoint.Up - StartPoint.Up,
                                           EndPoint.Forward - StartPoint.Forward };
     if (LengthSquared(AxisOffset) == 0.0)
-        return Outcome<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the slot endpoints must differ" });
+        return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the slot endpoints must differ" });
 
     const SpatialDirection AxisDirection = Normalize(AxisOffset);
     const SpatialDirection SideDirection = Normalize(Cross(Plane.Normal, AxisDirection));
@@ -303,7 +303,7 @@ Outcome<ProfileNameInFeature> SketchStructure::DeclareSlot(const SpatialPoint& S
     };
     Profile.DeclareLoop(Loop);
 
-    return Outcome<ProfileNameInFeature>::Result(DeclareProfile(Profile));
+    return Deliver<ProfileNameInFeature>::Result(DeclareProfile(Profile));
 }
 
 bool SketchStructure::Declared() const

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
 
@@ -41,11 +41,11 @@ public:
     MaterialTextureUpload& operator=(const MaterialTextureUpload&) = delete;
     ~MaterialTextureUpload();
 
-    Outcome<bool> ConstructMaterialTextureUpload(const VulkanExchange& Exchange,
+    Deliver<bool> ConstructMaterialTextureUpload(const VulkanExchange& Exchange,
                                                  const DiagnosticExtension& Naming,
                                                  const MaterialTextureUploadDeclaration& Declaring);
 
-    Outcome<bool> UploadRgbaFloat(const float* Texels, std::uint32_t Width, std::uint32_t Height);
+    Deliver<bool> UploadRgbaFloat(const float* Texels, std::uint32_t Width, std::uint32_t Height);
     MaterialTextureSamplerLink SamplerLink() const;
     bool Standing() const { return DeviceEdge != nullptr && Image != VK_NULL_HANDLE && View != VK_NULL_HANDLE && Sampler != VK_NULL_HANDLE; }
 

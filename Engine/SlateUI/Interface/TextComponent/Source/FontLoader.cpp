@@ -42,13 +42,13 @@ bool Matches(const std::string& Name, FontWeight Weight, FontSlant Slant)
 }
 }
 
-Outcome<bool> FontLoader::Discover(const char* FontRoot)
+Deliver<bool> FontLoader::Discover(const char* FontRoot)
 {
     Root = FontRoot != nullptr ? FontRoot : "";
     Families.clear();
     PreviewFaces.clear();
     if (FontRoot == nullptr || !std::filesystem::exists(FontRoot))
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font archive directory is unavailable" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font archive directory is unavailable" });
 
     for (const auto& Entry : std::filesystem::directory_iterator(FontRoot))
     {
@@ -58,7 +58,7 @@ Outcome<bool> FontLoader::Discover(const char* FontRoot)
     std::sort(Families.begin(), Families.end());
     std::fprintf(stderr, "[Fonts] discovered %u families in %s\n",
                  static_cast<unsigned>(Families.size()), FontRoot);
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const char* FontLoader::FamilyName(std::uint32_t Index) const
@@ -66,10 +66,10 @@ const char* FontLoader::FamilyName(std::uint32_t Index) const
     return Index < Families.size() ? Families[Index].c_str() : nullptr;
 }
 
-Outcome<bool> FontLoader::PreparePreviews(float DisplayScale)
+Deliver<bool> FontLoader::PreparePreviews(float DisplayScale)
 {
     if (Root.empty() || ImGui::GetCurrentContext() == nullptr || ImGui::GetIO().Fonts == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font context is unavailable" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font context is unavailable" });
 
     const std::size_t StandingCount = PreviewFaces.size();
     for (const std::string& Family : Families)
@@ -82,7 +82,7 @@ Outcome<bool> FontLoader::PreparePreviews(float DisplayScale)
         ImGui::GetIO().Fonts->Build();
     std::fprintf(stderr, "[Fonts] prepared %u preview faces before recording\n",
                  static_cast<unsigned>(PreviewFaces.size()));
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 bool FontLoader::HasFace(FontWeight Weight, FontSlant Slant) const
@@ -134,15 +134,15 @@ ImFont* FontLoader::Preview(const char* Family, float DisplayScale)
     return nullptr;
 }
 
-Outcome<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile, float DisplayScale)
+Deliver<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile, float DisplayScale)
 {
     if (FontRoot == nullptr || ImGui::GetCurrentContext() == nullptr || ImGui::GetIO().Fonts == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font context is unavailable" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font context is unavailable" });
 
     const char* Family = (Profile.Family[0] != '\0') ? Profile.Family : "Inter";
     const std::filesystem::path Root = std::filesystem::path(FontRoot) / Family;
     if (!std::filesystem::exists(Root))
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "selected font family is not installed" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "selected font family is not installed" });
 
     const float Size = 16.0f * ((DisplayScale > 0.0f) ? DisplayScale : 1.0f);
 
@@ -204,12 +204,12 @@ Outcome<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile,
     }
 
     if (Face(FontWeight::Regular, FontSlant::Upright) == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "selected font family has no usable upright face" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "selected font family has no usable upright face" });
 
     ImGui::GetIO().Fonts->Build();
     std::fprintf(stderr, "[Fonts] loaded %u faces for %s\n",
                  static_cast<unsigned>(LoadedCount), Family);
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void FontLoader::RequestLoad(const char* FontRoot, const FontProfile& Profile, float DisplayScale)
@@ -220,10 +220,10 @@ void FontLoader::RequestLoad(const char* FontRoot, const FontProfile& Profile, f
     Pending = true;
 }
 
-Outcome<bool> FontLoader::FlushPending()
+Deliver<bool> FontLoader::FlushPending()
 {
     if (!Pending)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     Pending = false;
     return Load(PendingRoot.c_str(), PendingProfile, PendingScale);
 }

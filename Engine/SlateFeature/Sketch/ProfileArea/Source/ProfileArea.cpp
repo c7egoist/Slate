@@ -301,11 +301,11 @@ ProfileAreaAnalysis AnalyzeProfileAreas(const SketchStructure& Declared,
     return Analysis;
 }
 
-Outcome<std::vector<ProfileNameInFeature>> AutoDeclareClosedAreaProfiles(SketchStructure& Declared,
+Deliver<std::vector<ProfileNameInFeature>> AutoDeclareClosedAreaProfiles(SketchStructure& Declared,
                                                                             double ClosureTolerance)
 {
     if (!Declared.Declared())
-        return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     const ProfileAreaAnalysis Analysis = AnalyzeProfileAreas(Declared, ClosureTolerance);
     std::vector<ProfileNameInFeature> Produced;
@@ -336,7 +336,7 @@ Outcome<std::vector<ProfileNameInFeature>> AutoDeclareClosedAreaProfiles(SketchS
 
         Produced.push_back(Declared.DeclareProfile(Profile));
     }
-    return Outcome<std::vector<ProfileNameInFeature>>::Result(Produced);
+    return Deliver<std::vector<ProfileNameInFeature>>::Result(Produced);
 }
 
 } // namespace Slate

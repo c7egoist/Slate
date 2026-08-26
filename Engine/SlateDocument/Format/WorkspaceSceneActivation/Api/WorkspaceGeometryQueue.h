@@ -8,6 +8,6 @@ struct WorkspaceGeometryQueueEntry { ActivatedGeometryEntry Geometry = {}; std::
 class WorkspaceGeometryQueue
 {
 public:
- Outcome<std::vector<WorkspaceGeometryQueueEntry>> Prepare(const ActivatedWorkspaceScene& Scene) const;
+ Deliver<std::vector<WorkspaceGeometryQueueEntry>> Prepare(const ActivatedWorkspaceScene& Scene) const;
 };
 }

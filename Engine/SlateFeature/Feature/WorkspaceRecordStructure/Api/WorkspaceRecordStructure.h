@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Feature/WorkspaceNameIndex/Api/WorkspaceNameIndex.h"
 #include "SlateFeature/Reference/ReferenceSpecification/Api/ReferenceSpecification.h"
 #include "SlateFeature/Sketch/ConstraintSpecification/Api/ConstraintSpecification.h"
@@ -97,12 +97,12 @@ class WorkspaceRecordStructure
 {
 public:
     WorkspaceRecordName Declare(WorkspaceRecord Incoming);
-    Outcome<bool> Promote(WorkspaceRecordName Subject, WorkspaceRecordSubject TargetSubject);
-    Outcome<bool> Rename(WorkspaceRecordName Subject, const std::string& Naming);
-    Outcome<bool> SetFolderCategory(WorkspaceRecordName Subject, WorkspaceCategory Category);
-    Outcome<bool> MoveToFolder(WorkspaceRecordName Subject, WorkspaceRecordName Folder);
-    Outcome<bool> ToggleVisible(WorkspaceRecordName Subject, bool Visible);
-    Outcome<bool> ToggleLocked(WorkspaceRecordName Subject, bool Locked);
+    Deliver<bool> Promote(WorkspaceRecordName Subject, WorkspaceRecordSubject TargetSubject);
+    Deliver<bool> Rename(WorkspaceRecordName Subject, const std::string& Naming);
+    Deliver<bool> SetFolderCategory(WorkspaceRecordName Subject, WorkspaceCategory Category);
+    Deliver<bool> MoveToFolder(WorkspaceRecordName Subject, WorkspaceRecordName Folder);
+    Deliver<bool> ToggleVisible(WorkspaceRecordName Subject, bool Visible);
+    Deliver<bool> ToggleLocked(WorkspaceRecordName Subject, bool Locked);
     const WorkspaceRecord* Resolve(WorkspaceRecordName Subject) const;
     WorkspaceRecord* Resolve(WorkspaceRecordName Subject);
     void ResolvePresented(std::vector<WorkspacePresentedRow>& Presented) const;

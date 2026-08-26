@@ -26,17 +26,17 @@ std::string Lower(std::string Text)
     return Text;
 }
 
-Outcome<std::vector<std::uint8_t>> ReadPrefix(const std::string& Path, std::size_t Count)
+Deliver<std::vector<std::uint8_t>> ReadPrefix(const std::string& Path, std::size_t Count)
 {
     std::ifstream Input(Path, std::ios::binary);
     if (!Input)
-        return Outcome<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the image file could not be opened" });
+        return Deliver<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the image file could not be opened" });
     std::vector<std::uint8_t> Bytes(Count);
     Input.read(reinterpret_cast<char*>(Bytes.data()), static_cast<std::streamsize>(Bytes.size()));
     Bytes.resize(static_cast<std::size_t>(Input.gcount()));
     if (Bytes.empty())
-        return Outcome<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the image file is empty" });
-    return Outcome<std::vector<std::uint8_t>>::Result(std::move(Bytes));
+        return Deliver<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the image file is empty" });
+    return Deliver<std::vector<std::uint8_t>>::Result(std::move(Bytes));
 }
 
 std::uint16_t Le16(const std::vector<std::uint8_t>& Bytes, std::size_t Offset)
@@ -196,14 +196,14 @@ ChannelSubject SuggestMaterialImageChannel(const std::string& Path, bool& Colour
     return ChannelSubject::AlbedoColour;
 }
 
-Outcome<ImportedMaterialImage> ImportMaterialImageReference(const std::string& Path)
+Deliver<ImportedMaterialImage> ImportMaterialImageReference(const std::string& Path)
 {
     const MaterialImageFormat Format = ClassifyMaterialImageFormat(Path);
     if (Format == MaterialImageFormat::Unsupported)
-        return Outcome<ImportedMaterialImage>::Refuse({ RefusalReason::ContentUnsupported, "the material image format is unsupported" });
+        return Deliver<ImportedMaterialImage>::Refuse({ RefusalReason::ContentUnsupported, "the material image format is unsupported" });
 
-    const Outcome<std::vector<std::uint8_t>> Prefix = ReadPrefix(Path, 65536u);
-    if (!Prefix.Resolved) return Outcome<ImportedMaterialImage>::Refuse(Prefix.Error);
+    const Deliver<std::vector<std::uint8_t>> Prefix = ReadPrefix(Path, 65536u);
+    if (!Prefix.Resolved) return Deliver<ImportedMaterialImage>::Refuse(Prefix.Error);
 
     ImportedMaterialImage Imported;
     Imported.Format = Format;
@@ -220,12 +220,12 @@ Outcome<ImportedMaterialImage> ImportMaterialImageReference(const std::string& P
         Parsed = IdentifyExternal(Path, Imported.Reference);
 
     if (!Parsed)
-        return Outcome<ImportedMaterialImage>::Refuse({ RefusalReason::ContentUnsupported, "the material image header is unsupported" });
+        return Deliver<ImportedMaterialImage>::Refuse({ RefusalReason::ContentUnsupported, "the material image header is unsupported" });
 
     bool ColourData = true;
     Imported.SuggestedChannel = SuggestMaterialImageChannel(Path, ColourData);
     Imported.Reference.ColourData = ColourData;
-    return Outcome<ImportedMaterialImage>::Result(Imported);
+    return Deliver<ImportedMaterialImage>::Result(Imported);
 }
 
 } // namespace Slate

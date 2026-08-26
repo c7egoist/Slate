@@ -41,47 +41,47 @@ namespace
     }
 }
 
-Outcome<bool> ProjectSolid(const SolidStructure& Exact,
+Deliver<bool> ProjectSolid(const SolidStructure& Exact,
                            const TessellationSpecification& Requested,
                            TopologyStructure& Projected)
 {
     if (!Requested.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the tessellation request is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the tessellation request is not declared" });
     if (!Exact.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the exact solid is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the exact solid is not declared" });
 
     const SolidView Resolved = Exact.Resolve();
     if (Resolved.Vertices == nullptr || Resolved.Faces == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the exact solid view is unresolved" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the exact solid view is unresolved" });
 
     std::vector<DocumentPosition> Positions;
     Positions.reserve(Resolved.Vertices->size());
     for (const DeclaredVertex& Vertex : *Resolved.Vertices)
         Positions.push_back({ Vertex.Position.Left, Vertex.Position.Up, Vertex.Position.Forward });
 
-    const Outcome<bool> PositionsDeclared = Projected.DeclarePositions(Positions);
+    const Deliver<bool> PositionsDeclared = Projected.DeclarePositions(Positions);
     if (!PositionsDeclared)
-        return Outcome<bool>::Refuse(PositionsDeclared.Error);
+        return Deliver<bool>::Refuse(PositionsDeclared.Error);
 
     std::vector<std::uint32_t> CornerVertices;
     for (const DeclaredFace& Face : *Resolved.Faces)
     {
         if (!FaceProjectable(Exact, Face, CornerVertices))
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "the solid carries a face the polygon projection cannot express" });
         }
 
-        const Outcome<bool> Declared = Projected.DeclareFace(CornerVertices);
+        const Deliver<bool> Declared = Projected.DeclareFace(CornerVertices);
         if (!Declared)
-            return Outcome<bool>::Refuse(Declared.Error);
+            return Deliver<bool>::Refuse(Declared.Error);
     }
 
-    const Outcome<bool> Sealed = Projected.Seal();
+    const Deliver<bool> Sealed = Projected.Seal();
     if (!Sealed)
-        return Outcome<bool>::Refuse(Sealed.Error);
+        return Deliver<bool>::Refuse(Sealed.Error);
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 } // namespace Slate

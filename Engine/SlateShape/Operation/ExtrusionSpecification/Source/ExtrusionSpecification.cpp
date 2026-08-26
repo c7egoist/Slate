@@ -304,7 +304,7 @@ namespace
         return SamePoint(PreviousEnd, FirstStart);
     }
 
-    Outcome<LoopName> DeclareCapLoop(SolidStructure& Constructed,
+    Deliver<LoopName> DeclareCapLoop(SolidStructure& Constructed,
                                      const BuiltLoopRing& Built,
                                      bool StartCap)
     {
@@ -316,9 +316,9 @@ namespace
             for (std::size_t EdgeIndex = 0u; EdgeIndex < Built.StartEdges.size(); ++EdgeIndex)
             {
                 const std::size_t ReverseIndex = Built.StartEdges.size() - 1u - EdgeIndex;
-                const Outcome<CoedgeName> Coedge = Constructed.DeclareCoedge(Built.StartEdges[ReverseIndex], EdgeOrientation::Reversed);
+                const Deliver<CoedgeName> Coedge = Constructed.DeclareCoedge(Built.StartEdges[ReverseIndex], EdgeOrientation::Reversed);
                 if (!Coedge)
-                    return Outcome<LoopName>::Refuse(Coedge.Error);
+                    return Deliver<LoopName>::Refuse(Coedge.Error);
                 Coedges.push_back(Coedge.Resolve());
             }
         }
@@ -326,9 +326,9 @@ namespace
         {
             for (EdgeName Traversed : Built.EndEdges)
             {
-                const Outcome<CoedgeName> Coedge = Constructed.DeclareCoedge(Traversed, EdgeOrientation::Forward);
+                const Deliver<CoedgeName> Coedge = Constructed.DeclareCoedge(Traversed, EdgeOrientation::Forward);
                 if (!Coedge)
-                    return Outcome<LoopName>::Refuse(Coedge.Error);
+                    return Deliver<LoopName>::Refuse(Coedge.Error);
                 Coedges.push_back(Coedge.Resolve());
             }
         }
@@ -398,14 +398,14 @@ ExtrusionDisposition EvaluateExtrusion(const ExtrusionSpecification& Declared)
     return ExtrusionDisposition::ImplementationAbsent;
 }
 
-Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourceProfile,
+Deliver<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourceProfile,
                                            const std::vector<CurveSpecification>& SourceCurves,
                                            const ExtrusionSpecification& Declared)
 {
     if (!Declared.Declared())
-        return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion request is not declared" });
+        return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion request is not declared" });
     if (!SourceProfile.Declared())
-        return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the source profile is not declared" });
+        return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the source profile is not declared" });
 
     std::vector<ResolvedLoopRing> ResolvedLoops;
     ResolvedLoops.reserve(SourceProfile.HeldLoops().size());
@@ -416,7 +416,7 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
         ResolvedLoopRing Resolved = {};
         if (!ResolveLoopRing(Loop, SourceCurves, Resolved))
         {
-            return Outcome<SolidStructure>::Refuse(
+            return Deliver<SolidStructure>::Refuse(
                 { RefusalReason::ContentUnsupported, "the extrusion requires connected declared profile curves" });
         }
         if (Resolved.Orientation == ProfileLoopOrientation::Outer)
@@ -425,7 +425,7 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
     }
 
     if (OuterCount != 1u)
-        return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion requires exactly one outer loop" });
+        return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion requires exactly one outer loop" });
 
     const SpatialDirection Axis = Normalize(Declared.Direction);
     const double StartShift = Declared.Symmetric ? -Declared.Distance * 0.5 : 0.0;
@@ -480,11 +480,11 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
             const CurveNameInSolid SpineCurveName = Constructed.DeclareCurve(
                 CurveSpecification::DeclareLine(Built.StartRing[EdgeIndex], Built.EndRing[EdgeIndex]));
 
-            const Outcome<EdgeName> StartEdge = Constructed.DeclareEdge(Built.StartVertices[EdgeIndex], Built.StartVertices[NextIndex], StartCurveName);
-            const Outcome<EdgeName> EndEdge = Constructed.DeclareEdge(Built.EndVertices[EdgeIndex], Built.EndVertices[NextIndex], EndCurveName);
-            const Outcome<EdgeName> SpineEdge = Constructed.DeclareEdge(Built.StartVertices[EdgeIndex], Built.EndVertices[EdgeIndex], SpineCurveName);
+            const Deliver<EdgeName> StartEdge = Constructed.DeclareEdge(Built.StartVertices[EdgeIndex], Built.StartVertices[NextIndex], StartCurveName);
+            const Deliver<EdgeName> EndEdge = Constructed.DeclareEdge(Built.EndVertices[EdgeIndex], Built.EndVertices[NextIndex], EndCurveName);
+            const Deliver<EdgeName> SpineEdge = Constructed.DeclareEdge(Built.StartVertices[EdgeIndex], Built.EndVertices[EdgeIndex], SpineCurveName);
             if (!StartEdge || !EndEdge || !SpineEdge)
-                return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion edge set could not be declared" });
+                return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion edge set could not be declared" });
 
             Built.StartCurves.push_back(StartCurveName);
             Built.EndCurves.push_back(EndCurveName);
@@ -506,10 +506,10 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
 
     for (const BuiltLoopRing& Built : BuiltLoops)
     {
-        const Outcome<LoopName> StartLoop = DeclareCapLoop(Constructed, Built, true);
-        const Outcome<LoopName> EndLoop = DeclareCapLoop(Constructed, Built, false);
+        const Deliver<LoopName> StartLoop = DeclareCapLoop(Constructed, Built, true);
+        const Deliver<LoopName> EndLoop = DeclareCapLoop(Constructed, Built, false);
         if (!StartLoop || !EndLoop)
-            return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the cap loops could not be declared" });
+            return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the cap loops could not be declared" });
 
         StartLoopSet.push_back(DeclareCapFaceLoop(Built, StartLoop.Resolve(), true));
         EndLoopSet.push_back(DeclareCapFaceLoop(Built, EndLoop.Resolve(), false));
@@ -517,16 +517,16 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
 
     if (Declared.StartCap)
     {
-        const Outcome<FaceName> StartFace = Constructed.DeclareFace({ StartSurface, true, StartLoopSet });
+        const Deliver<FaceName> StartFace = Constructed.DeclareFace({ StartSurface, true, StartLoopSet });
         if (!StartFace)
-            return Outcome<SolidStructure>::Refuse(StartFace.Error);
+            return Deliver<SolidStructure>::Refuse(StartFace.Error);
     }
 
     if (Declared.EndCap)
     {
-        const Outcome<FaceName> EndFace = Constructed.DeclareFace({ EndSurface, true, EndLoopSet });
+        const Deliver<FaceName> EndFace = Constructed.DeclareFace({ EndSurface, true, EndLoopSet });
         if (!EndFace)
-            return Outcome<SolidStructure>::Refuse(EndFace.Error);
+            return Deliver<SolidStructure>::Refuse(EndFace.Error);
     }
 
     for (const BuiltLoopRing& Built : BuiltLoops)
@@ -535,17 +535,17 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
         {
             const std::size_t NextIndex = (EdgeIndex + 1u) % Built.StartEdges.size();
 
-            const Outcome<CoedgeName> AlongStart = Constructed.DeclareCoedge(Built.StartEdges[EdgeIndex], EdgeOrientation::Forward);
-            const Outcome<CoedgeName> RiseEnd = Constructed.DeclareCoedge(Built.SpineEdges[NextIndex], EdgeOrientation::Forward);
-            const Outcome<CoedgeName> AlongEnd = Constructed.DeclareCoedge(Built.EndEdges[EdgeIndex], EdgeOrientation::Reversed);
-            const Outcome<CoedgeName> FallStart = Constructed.DeclareCoedge(Built.SpineEdges[EdgeIndex], EdgeOrientation::Reversed);
+            const Deliver<CoedgeName> AlongStart = Constructed.DeclareCoedge(Built.StartEdges[EdgeIndex], EdgeOrientation::Forward);
+            const Deliver<CoedgeName> RiseEnd = Constructed.DeclareCoedge(Built.SpineEdges[NextIndex], EdgeOrientation::Forward);
+            const Deliver<CoedgeName> AlongEnd = Constructed.DeclareCoedge(Built.EndEdges[EdgeIndex], EdgeOrientation::Reversed);
+            const Deliver<CoedgeName> FallStart = Constructed.DeclareCoedge(Built.SpineEdges[EdgeIndex], EdgeOrientation::Reversed);
             if (!AlongStart || !RiseEnd || !AlongEnd || !FallStart)
-                return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the wall traversal could not be declared" });
+                return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the wall traversal could not be declared" });
 
-            const Outcome<LoopName> WallLoop = Constructed.DeclareLoop(
+            const Deliver<LoopName> WallLoop = Constructed.DeclareLoop(
                 { LoopStanding::Outer, { AlongStart.Resolve(), RiseEnd.Resolve(), AlongEnd.Resolve(), FallStart.Resolve() } });
             if (!WallLoop)
-                return Outcome<SolidStructure>::Refuse(WallLoop.Error);
+                return Deliver<SolidStructure>::Refuse(WallLoop.Error);
 
             DeclaredFaceLoop WallFaceLoop;
             WallFaceLoop.TraversedLoop = WallLoop.Resolve();
@@ -556,16 +556,16 @@ Outcome<SolidStructure> ConstructExtrusion(const ProfileSpecification& SourcePro
                 { Built.SpineCurves[EdgeIndex], false }
             };
 
-            const Outcome<FaceName> WallFace = Constructed.DeclareFace({ Built.WallSurfaces[EdgeIndex], true, { WallFaceLoop } });
+            const Deliver<FaceName> WallFace = Constructed.DeclareFace({ Built.WallSurfaces[EdgeIndex], true, { WallFaceLoop } });
             if (!WallFace)
-                return Outcome<SolidStructure>::Refuse(WallFace.Error);
+                return Deliver<SolidStructure>::Refuse(WallFace.Error);
         }
     }
 
     if (!Constructed.Declared())
-        return Outcome<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion result is structurally incomplete" });
+        return Deliver<SolidStructure>::Refuse({ RefusalReason::ContentUnsupported, "the extrusion result is structurally incomplete" });
 
-    return Outcome<SolidStructure>::Result(Constructed);
+    return Deliver<SolidStructure>::Result(Constructed);
 }
 
 } // namespace Slate

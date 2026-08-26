@@ -33,14 +33,14 @@ const ThemeToken ParametricFacetColours[ParametricFacetCount] =
 
 } // namespace
 
-Outcome<bool> ParametricWorkspacePanel::ConstructParametricWorkspacePanel(ControlIndex& IncomingInteraction,
+Deliver<bool> ParametricWorkspacePanel::ConstructParametricWorkspacePanel(ControlIndex& IncomingInteraction,
                                                                           MotionIntegrator& Integrator,
                                                                           RecordingSurface& IncomingSurface,
                                                                           const ThemeProfile& Resolved)
 {
     if (Interaction != nullptr)
     {
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the parametric workspace panel is already constructed" });
     }
 
@@ -52,25 +52,25 @@ Outcome<bool> ParametricWorkspacePanel::ConstructParametricWorkspacePanel(Contro
     if (!Controls.ConstructControlPanel(IncomingInteraction, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the shared CAD controls were rejected" });
     }
 
     if (!Facets.ConstructFacetPanel(Integrator, IncomingSurface, Resolved).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the CAD facet controls were rejected" });
     }
 
     ControlIdentity* const Fixed[] = { &SearchField, &InspectorStrip, &DirectoryCall, &InspectCall };
     for (ControlIdentity* Identity : Fixed)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
         {
             Reset();
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
         }
         *Identity = Registered.Resolve();
     }
@@ -80,11 +80,11 @@ Outcome<bool> ParametricWorkspacePanel::ConstructParametricWorkspacePanel(Contro
         ControlIdentity* const RowControls[] = { &RowContacts[Index], &RowDisclosures[Index] };
         for (ControlIdentity* Identity : RowControls)
         {
-            const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+            const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
             if (!Registered.Resolved)
             {
                 Reset();
-                return Outcome<bool>::Refuse(Registered.Error);
+                return Deliver<bool>::Refuse(Registered.Error);
             }
             *Identity = Registered.Resolve();
         }
@@ -93,12 +93,12 @@ Outcome<bool> ParametricWorkspacePanel::ConstructParametricWorkspacePanel(Contro
     if (!OutlinePages.ConstructSlidingPages(Integrator, 0u).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the CAD page travel was rejected" });
     }
 
     Reapply(Resolved);
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ParametricWorkspacePanel::Advance(const PointerCondition& Contact, double Elapsed,

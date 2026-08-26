@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 
 #include <cstdint>
@@ -83,7 +83,7 @@ public:
     ///        replacement here would take that stream away from it silently.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Attach(void* NativeWindowSlot, const TickSequence& HostTimeline);
+    Deliver<bool> Attach(void* NativeWindowSlot, const TickSequence& HostTimeline);
 
     /// 🧩 Returns the pointer stream to whoever held it before this attachment.
     /// note  Called by the destructor as well, so an exchange that outlives its window releases nothing twice.

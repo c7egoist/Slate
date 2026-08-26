@@ -47,7 +47,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Shared/OverlayGeometry.slang.h"
 #include "SlateUI/Interface/ControlPanel/Api/ControlPanel.h"
 #include "SlateUI/Interface/FacetPanel/Api/FacetPanel.h"
@@ -270,7 +270,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported when a construction already stands
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructTexturePaintPanel(ControlIndex&              IncomingInteraction,
+    Deliver<bool> ConstructTexturePaintPanel(ControlIndex&              IncomingInteraction,
                             MotionIntegrator&              Integrator,
                             RecordingSurface&              Surface,
                             const ThemeProfile& Resolved);

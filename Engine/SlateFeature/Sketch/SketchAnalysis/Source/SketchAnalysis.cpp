@@ -27,10 +27,10 @@ namespace
     }
 }
 
-Outcome<SketchAnalysis> AnalyseSketch(const SketchStructure& Declared)
+Deliver<SketchAnalysis> AnalyseSketch(const SketchStructure& Declared)
 {
     if (!Declared.Declared())
-        return Outcome<SketchAnalysis>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<SketchAnalysis>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     SketchAnalysis Analysed = {};
     Analysed.DegreeOfFreedom = static_cast<std::uint32_t>(Declared.Curves().size() * 4u + Declared.Profiles().size() * 2u);
@@ -57,7 +57,7 @@ Outcome<SketchAnalysis> AnalyseSketch(const SketchStructure& Declared)
         if (Dimension.Declared() && Analysed.DegreeOfFreedom > 0u)
             --Analysed.DegreeOfFreedom;
 
-    return Outcome<SketchAnalysis>::Result(Analysed);
+    return Deliver<SketchAnalysis>::Result(Analysed);
 }
 
 } // namespace Slate

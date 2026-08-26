@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
@@ -83,7 +83,7 @@ public:
     ///        differently at each bisection step and the search would not converge to anything reproducible.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Arrange(const std::vector<ChartExtent>& Extents, bool CommonScale);
+    Deliver<bool> Arrange(const std::vector<ChartExtent>& Extents, bool CommonScale);
 
     /// 🧩 The placements, in the order the extents were supplied.
     /// cost  ✔️

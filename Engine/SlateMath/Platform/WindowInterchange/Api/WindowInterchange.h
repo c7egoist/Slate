@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 
@@ -50,7 +50,7 @@ public:
     /// out   Result         [-]   refuses with HostDenied when the window system declines
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Open(DisplayExtent RequestedExtent, const char* WindowTitle);
+    Deliver<bool> Open(DisplayExtent RequestedExtent, const char* WindowTitle);
 
     /// 🧩 Drains the window system's pending messages into this window's recorded condition.
     /// cost  ✔️

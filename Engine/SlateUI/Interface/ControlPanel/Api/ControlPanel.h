@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
@@ -128,7 +128,7 @@ public:
     /// out   Result  [-]  refuses when a construction already stands
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructControlPanel(ControlIndex&              IncomingInteraction,
+    Deliver<bool> ConstructControlPanel(ControlIndex&              IncomingInteraction,
                             RecordingSurface&              Recording,
                             const ThemeProfile& Appearance);
 

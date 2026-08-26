@@ -148,13 +148,13 @@ namespace
     }
 }
 
-Outcome<ClosureResult> CloseCurveChain(SketchStructure& Declared,
+Deliver<ClosureResult> CloseCurveChain(SketchStructure& Declared,
                                        const std::vector<SketchCurveName>& CurveSet)
 {
     std::vector<SpatialPoint> Points;
     bool Closed = false;
     if (!OrderLineChain(Declared, CurveSet, Points, Closed) || Closed)
-        return Outcome<ClosureResult>::Refuse({ RefusalReason::ContentUnsupported, "the curve set is not one open connected line chain" });
+        return Deliver<ClosureResult>::Refuse({ RefusalReason::ContentUnsupported, "the curve set is not one open connected line chain" });
 
     ProfileSpecification Profile;
     Profile.DeclarePlane({ Declared.HeldPlane().Origin, Declared.HeldPlane().Normal, Declared.HeldPlane().AlongDirection });
@@ -171,16 +171,16 @@ Outcome<ClosureResult> CloseCurveChain(SketchStructure& Declared,
     ClosureResult Result;
     Result.Profile = Declared.DeclareProfile(Profile);
     Result.Closed = true;
-    return Outcome<ClosureResult>::Result(Result);
+    return Deliver<ClosureResult>::Result(Result);
 }
 
-Outcome<ClosureResult> JoinCurveChain(SketchStructure& Declared,
+Deliver<ClosureResult> JoinCurveChain(SketchStructure& Declared,
                                       const std::vector<SketchCurveName>& CurveSet)
 {
     std::vector<SpatialPoint> Points;
     bool Closed = false;
     if (!OrderLineChain(Declared, CurveSet, Points, Closed))
-        return Outcome<ClosureResult>::Refuse({ RefusalReason::ContentUnsupported, "the curve set is not one connected line chain" });
+        return Deliver<ClosureResult>::Refuse({ RefusalReason::ContentUnsupported, "the curve set is not one connected line chain" });
 
     if (Closed)
         return CloseCurveChain(Declared, CurveSet);
@@ -189,26 +189,26 @@ Outcome<ClosureResult> JoinCurveChain(SketchStructure& Declared,
     for (std::size_t PointIndex = 0u; PointIndex + 1u < Points.size(); ++PointIndex)
         Result.CurveSet.push_back(Declared.DeclareLine(Points[PointIndex], Points[PointIndex + 1u]));
     Result.Closed = false;
-    return Outcome<ClosureResult>::Result(Result);
+    return Deliver<ClosureResult>::Result(Result);
 }
 
-Outcome<std::vector<SketchCurveName>> OpenProfileLoop(SketchStructure& Declared,
+Deliver<std::vector<SketchCurveName>> OpenProfileLoop(SketchStructure& Declared,
                                                       ProfileNameInFeature Subject,
                                                       std::uint32_t LoopIndex,
                                                       std::uint32_t BreakEdgeIndex)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Profiles().size())
-        return Outcome<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
+        return Deliver<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such profile is declared" });
 
     const ProfileSpecification& Profile = Declared.Profiles()[Subject.IssuedIndex - 1u];
     if (LoopIndex >= Profile.HeldLoops().size())
-        return Outcome<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such loop is declared" });
+        return Deliver<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such loop is declared" });
 
     std::vector<SpatialPoint> Points;
     if (!ResolveLoopPoints(Declared, Profile.HeldLoops()[LoopIndex], Points))
-        return Outcome<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "opening currently accepts line-only loops" });
+        return Deliver<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "opening currently accepts line-only loops" });
     if (BreakEdgeIndex >= Points.size())
-        return Outcome<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such break edge is declared" });
+        return Deliver<std::vector<SketchCurveName>>::Refuse({ RefusalReason::ContentUnsupported, "no such break edge is declared" });
 
     std::vector<SketchCurveName> Result;
     Result.reserve(Points.size() - 1u);
@@ -221,7 +221,7 @@ Outcome<std::vector<SketchCurveName>> OpenProfileLoop(SketchStructure& Declared,
         Result.push_back(Declared.DeclareLine(Points[Index], Points[NextIndex]));
     }
 
-    return Outcome<std::vector<SketchCurveName>>::Result(Result);
+    return Deliver<std::vector<SketchCurveName>>::Result(Result);
 }
 
 } // namespace Slate

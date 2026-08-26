@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/OutlinerSequence/Api/OutlinerSequence.h"
 #include "SlateDocument/Document/PersistenceSequence/Api/PersistenceSequence.h"
 #include "SlateDocument/Document/RecoverySequence/Api/RecoverySequence.h"
@@ -84,7 +84,7 @@ public:
     /// out   Result       [-]  refuses with ContentUnsupported when either path is empty
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareStorage(const std::string& DeclaredPath, const std::string& JournalPath);
+    Deliver<bool> DeclareStorage(const std::string& DeclaredPath, const std::string& JournalPath);
 
     /// 🧩 Captures everything a save reads, from sealed state only — `48` §3.
     /// in    Encoded   [-]  the document as `FormatCodec` wrote it; sealed transactions only
@@ -98,7 +98,7 @@ public:
     ///        this knows the session; a session that encoded would be a second place the layout is written.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<SealedContent> Seal(const std::vector<std::uint8_t>& Encoded, std::uint64_t SealedAt) const;
+    Deliver<SealedContent> Seal(const std::vector<std::uint8_t>& Encoded, std::uint64_t SealedAt) const;
 
     /// 🧩 Records that a save landed, so the session stops standing amended.
     /// in    Completed  [-]  what `PersistenceSequence::Persist` delivered
@@ -204,7 +204,7 @@ public:
     ///        reference file mid-stroke would otherwise lose the workspace they were painting in.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Open();
+    Deliver<std::uint32_t> Open();
 
     /// 🧩 Closes one session, discarding everything held only while it was open.
     /// out   Result  [-]  refuses with ExtentExhausted outside the open count
@@ -213,27 +213,27 @@ public:
     ///        the answer is a conversation with the artist and this component cannot have one.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Close(std::uint32_t SessionIndex);
+    Deliver<bool> Close(std::uint32_t SessionIndex);
 
     /// 🧩 One open session.
     /// out   Result  [-]  refuses with ExtentExhausted outside the open count, and for a closed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<DocumentSession*>       Resolve(std::uint32_t SessionIndex);
-    Outcome<const DocumentSession*> Resolve(std::uint32_t SessionIndex) const;
+    Deliver<DocumentSession*>       Resolve(std::uint32_t SessionIndex);
+    Deliver<const DocumentSession*> Resolve(std::uint32_t SessionIndex) const;
 
     /// 🧩 Declares which session the interface presents — `14` presents one at a time.
     /// out   Result  [-]  refuses with ExtentExhausted outside the open count, and for a closed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareCurrent(std::uint32_t SessionIndex);
+    Deliver<bool> DeclareCurrent(std::uint32_t SessionIndex);
 
     /// 🧩 The session the interface presents.
     /// out   Result  [-]  refuses with ExtentExhausted when no session is open
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<DocumentSession*>       Current();
-    Outcome<const DocumentSession*> Current() const;
+    Deliver<DocumentSession*>       Current();
+    Deliver<const DocumentSession*> Current() const;
 
     /// 🧩 Which ordinal is presented; the ceiling when nothing is open.
     /// cost  ✔️
@@ -246,7 +246,7 @@ public:
     ///        journals against it, and §4.1's pairing then cannot say which one recovers it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Located(const std::string& StoragePath) const;
+    Deliver<std::uint32_t> Located(const std::string& StoragePath) const;
 
     /// 🧩 How many sessions are open.
     /// cost  ✔️

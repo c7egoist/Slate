@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/ThemeSpecification/Api/ThemeSpecification.h"
 
 #include <cstdint>
@@ -48,7 +48,7 @@ public:
     /// note  A file that names only `[selection]` is valid and common: it records which appearance the artist
     ///       chose while leaving what that appearance contains to the build.
     /// cost  🔴
-    static Outcome<ThemeArchive> Transcribe(const char* Path);
+    static Deliver<ThemeArchive> Transcribe(const char* Path);
 
     /// 🧩 Writes one archive as the appearance file, replacing whatever was there.
     /// in    Path      [-]  NUL-terminated, UTF-8
@@ -58,7 +58,7 @@ public:
     ///        that stops mid-write would otherwise leave a half-file that the next run refuses, and the
     ///        artist's appearance would be lost to a crash that had nothing to do with it.
     /// cost  🔴
-    static Outcome<bool> Inscribe(const char* Path, const ThemeArchive& Recorded);
+    static Deliver<bool> Inscribe(const char* Path, const ThemeArchive& Recorded);
 
     /// 🧩 Resolves a leaf name against the folder the running executable sits in.
     /// in    ExecutablePath  [-]  argv[0] as the host received it
@@ -69,7 +69,7 @@ public:
     /// note  An executable path carrying no separator resolves to the bare leaf, which reads the working
     ///       directory — the right answer when a host is launched from the folder it lives in.
     /// cost  ✔️
-    static Outcome<bool> Beside(const char*   ExecutablePath,
+    static Deliver<bool> Beside(const char*   ExecutablePath,
                                 const char*   Leaf,
                                 char*         Produced,
                                 std::uint32_t Limit);
@@ -88,7 +88,7 @@ public:
     ///        window an artist recognises — not a window drawn from a partially adopted archive.
     /// use   Called once at startup, before the first panel is recorded.
     /// cost  🔴
-    static Outcome<bool> AdoptBeside(const char* ExecutablePath, ThemeSelection& Produced);
+    static Deliver<bool> AdoptBeside(const char* ExecutablePath, ThemeSelection& Produced);
 
     /// 🧩 Writes the standing appearance and the given selection to the file beside the executable.
     /// in    ExecutablePath  [-]  argv[0] as the host received it
@@ -97,7 +97,7 @@ public:
     /// err   ExtentExhausted  the resolved path exceeds PathLimit
     /// use   Called when the artist changes a colour, not every tick.
     /// cost  🔴
-    static Outcome<bool> RecordBeside(const char* ExecutablePath, const ThemeSelection& Selected);
+    static Deliver<bool> RecordBeside(const char* ExecutablePath, const ThemeSelection& Selected);
 };
 
 }   // namespace Slate

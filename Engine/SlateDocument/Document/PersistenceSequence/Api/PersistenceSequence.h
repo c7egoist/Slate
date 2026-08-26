@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Format/FormatCodec/Api/FormatCodec.h"
 #include "SlateMath/Platform/FileInterchange/Api/FileInterchange.h"
@@ -94,7 +94,7 @@ public:
     ///        session and this routine runs off it. `Reached` is what tells the caller ③ actually landed.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<PersistenceConclusion> Persist(const SealedContent& Sealed);
+    Deliver<PersistenceConclusion> Persist(const SealedContent& Sealed);
 
     /// 🧩 Whether two streams are identical, byte for byte — `48` §3 ② and `48` §8's exact tier.
     /// in    Written  [-]  what the save handed to the file surface

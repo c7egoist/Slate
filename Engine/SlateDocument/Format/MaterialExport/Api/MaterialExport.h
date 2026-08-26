@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
 
@@ -104,14 +104,14 @@ const char* MaterialExportTargetText(MaterialExportTarget Target);
 const char* MaterialExportFormatExtension(MaterialExportImageFormat Format);
 const char* MaterialExportChannelText(ChannelSubject Channel);
 
-Outcome<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(MaterialExportTarget Target,
+Deliver<std::vector<MaterialExportImageDeclaration>> MaterialExportPreset(MaterialExportTarget Target,
                                                                           MaterialExportImageFormat Format,
                                                                           MaterialExportBitDepth BitDepth,
                                                                           MaterialExportNormalConvention NormalConvention);
 
-Outcome<MaterialExportPackage> BuildMaterialExportPackage(const WorkspaceMaterialRecord& Material,
+Deliver<MaterialExportPackage> BuildMaterialExportPackage(const WorkspaceMaterialRecord& Material,
                                                           const MaterialExportOptions& Options);
 
-Outcome<std::string> EncodeMaterialExportManifest(const MaterialExportPackage& Package);
+Deliver<std::string> EncodeMaterialExportManifest(const MaterialExportPackage& Package);
 
 } // namespace Slate

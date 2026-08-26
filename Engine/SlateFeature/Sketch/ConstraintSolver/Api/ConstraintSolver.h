@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <cstdint>
@@ -24,10 +24,10 @@ enum class ConstraintDisposition : std::uint32_t
 };
 
 ConstraintDisposition EvaluateConstraints(const SketchStructure& Declared);
-Outcome<bool> ResolveConstraintConflict(const SketchStructure& Declared,
+Deliver<bool> ResolveConstraintConflict(const SketchStructure& Declared,
                                         ConstraintName Subject);
-Outcome<bool> ApplyConstraints(SketchStructure& Declared);
-Outcome<bool> ApplyConstraint(SketchStructure& Declared,
+Deliver<bool> ApplyConstraints(SketchStructure& Declared);
+Deliver<bool> ApplyConstraint(SketchStructure& Declared,
                               ConstraintName Subject);
 
 } // namespace Slate

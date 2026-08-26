@@ -7,19 +7,19 @@
 namespace Slate
 {
 
-Outcome<GeometryIdentity> GeometryInterchange::AcceptDecoded(const DecodedTopology& Decoded,
+Deliver<GeometryIdentity> GeometryInterchange::AcceptDecoded(const DecodedTopology& Decoded,
                                                              const std::string& Name,
                                                              IntakeIndex& Intake)
 {
     std::unique_ptr<TopologyStructure> Topology = std::make_unique<TopologyStructure>();
-    const Outcome<bool> Intaken = Transfer.IntakeTopology(Decoded, *Topology, Intake);
+    const Deliver<bool> Intaken = Transfer.IntakeTopology(Decoded, *Topology, Intake);
     if (!Intaken.Resolved)
-        return Outcome<GeometryIdentity>::Refuse(Intaken.Error);
+        return Deliver<GeometryIdentity>::Refuse(Intaken.Error);
 
     std::unique_ptr<TopologyConditioning> Conditioning = std::make_unique<TopologyConditioning>();
-    const Outcome<bool> Conditioned = Conditioning->Condition(*Topology);
+    const Deliver<bool> Conditioned = Conditioning->Condition(*Topology);
     if (!Conditioned.Resolved)
-        return Outcome<GeometryIdentity>::Refuse(Conditioned.Error);
+        return Deliver<GeometryIdentity>::Refuse(Conditioned.Error);
 
     std::uint32_t Slot = 0u;
     if (!ReleasedSlots.empty())
@@ -51,16 +51,16 @@ Outcome<GeometryIdentity> GeometryInterchange::AcceptDecoded(const DecodedTopolo
     GeometryIdentity Identity;
     Identity.SlotIndex = Slot;
     Identity.SlotGeneration = Registered.Generation;
-    return Outcome<GeometryIdentity>::Result(Identity);
+    return Deliver<GeometryIdentity>::Result(Identity);
 }
 
-Outcome<GeometryAssetView> GeometryInterchange::Resolve(GeometryIdentity Subject) const
+Deliver<GeometryAssetView> GeometryInterchange::Resolve(GeometryIdentity Subject) const
 {
     if (!Subject.IdentityDeclared() || Subject.SlotIndex >= Assets.size())
-        return Outcome<GeometryAssetView>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
+        return Deliver<GeometryAssetView>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
     const GeometryAsset& Registered = Assets[Subject.SlotIndex];
     if (!Registered.Occupied || Registered.Generation != Subject.SlotGeneration)
-        return Outcome<GeometryAssetView>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
+        return Deliver<GeometryAssetView>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
 
     GeometryAssetView Delivered;
     Delivered.Identity = Subject;
@@ -68,16 +68,16 @@ Outcome<GeometryAssetView> GeometryInterchange::Resolve(GeometryIdentity Subject
     Delivered.Conditioning = Registered.Conditioning.get();
     Delivered.Name = &Registered.Name;
     Delivered.SourceRecord = &Registered.SourceRecord;
-    return Outcome<GeometryAssetView>::Result(Delivered);
+    return Deliver<GeometryAssetView>::Result(Delivered);
 }
 
-Outcome<bool> GeometryInterchange::Retire(GeometryIdentity Subject)
+Deliver<bool> GeometryInterchange::Retire(GeometryIdentity Subject)
 {
     if (!Subject.IdentityDeclared() || Subject.SlotIndex >= Assets.size())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
     GeometryAsset& Registered = Assets[Subject.SlotIndex];
     if (!Registered.Occupied || Registered.Generation != Subject.SlotGeneration)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry identity is stale" });
 
     Registered.Topology.reset();
     Registered.Conditioning.reset();
@@ -88,7 +88,7 @@ Outcome<bool> GeometryInterchange::Retire(GeometryIdentity Subject)
     if (Registered.Generation == 0u) Registered.Generation = 1u;
     ReleasedSlots.push_back(Subject.SlotIndex);
     --OccupiedCount;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void GeometryInterchange::Reclaim()

@@ -152,11 +152,11 @@ constexpr std::uint32_t RoleTilePositions = 8u;
 
 } // namespace
 
-Outcome<bool> ControlCentrePanel::ConstructControlCentrePanel(MotionIntegrator& IncomingMotion, RecordingSurface& IncomingSurface,
+Deliver<bool> ControlCentrePanel::ConstructControlCentrePanel(MotionIntegrator& IncomingMotion, RecordingSurface& IncomingSurface,
                                             const ThemeProfile& IncomingAppearance)
 {
     if (Motion != nullptr)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             {RefusalReason::ContentUnsupported, "a Control Centre construction already stands"});
 
     Motion = &IncomingMotion;
@@ -164,30 +164,30 @@ Outcome<bool> ControlCentrePanel::ConstructControlCentrePanel(MotionIntegrator& 
     Appearance = &IncomingAppearance;
 
     if (!Interaction.AttachMotion(IncomingMotion).Resolved)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             {RefusalReason::ExtentExhausted, "the Control Centre interaction index was rejected"});
 
     if (!SharedControls.ConstructComponents(Interaction, IncomingSurface, IncomingAppearance).Resolved)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             {RefusalReason::ContentUnsupported, "the shared Control Centre controls were rejected"});
     if (!SettingsNotice.ConstructNoticeDialog(IncomingMotion, IncomingSurface).Resolved)
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             {RefusalReason::ContentUnsupported, "the Control Centre notice dialog was rejected"});
 
     for (std::uint32_t Index = 0u; Index < ControlCapacity; ++Index)
     {
-        const Outcome<ControlIdentity> Registered = Interaction.Register();
-        if (!Registered.Resolved) return Outcome<bool>::Refuse(Registered.Error);
+        const Deliver<ControlIdentity> Registered = Interaction.Register();
+        if (!Registered.Resolved) return Deliver<bool>::Refuse(Registered.Error);
         Controls[Index] = Registered.Resolve();
     }
 
-    const Outcome<std::uint32_t> PageRegistered = IncomingMotion.RegisterEased(1.0);
-    const Outcome<std::uint32_t> TabRegistered = IncomingMotion.RegisterEased(1.0);
-    const Outcome<std::uint32_t> ThemeRegistered = IncomingMotion.RegisterEased(1.0);
-    const Outcome<std::uint32_t> FontRegistered = IncomingMotion.RegisterEased(1.0);
+    const Deliver<std::uint32_t> PageRegistered = IncomingMotion.RegisterEased(1.0);
+    const Deliver<std::uint32_t> TabRegistered = IncomingMotion.RegisterEased(1.0);
+    const Deliver<std::uint32_t> ThemeRegistered = IncomingMotion.RegisterEased(1.0);
+    const Deliver<std::uint32_t> FontRegistered = IncomingMotion.RegisterEased(1.0);
     if (!PageRegistered.Resolved || !TabRegistered.Resolved || !ThemeRegistered.Resolved ||
         !FontRegistered.Resolved)
-        return Outcome<bool>::Refuse({RefusalReason::ExtentExhausted, "the Control Centre carousel was rejected"});
+        return Deliver<bool>::Refuse({RefusalReason::ExtentExhausted, "the Control Centre carousel was rejected"});
 
     PageMotion = PageRegistered.Resolve();
     TabMotion = TabRegistered.Resolve();
@@ -197,32 +197,32 @@ Outcome<bool> ControlCentrePanel::ConstructControlCentrePanel(MotionIntegrator& 
     for (std::uint32_t Index = 0u;
          Index < static_cast<std::uint32_t>(ControlCentrePage::PageCount); ++Index)
     {
-        const Outcome<std::uint32_t> ScrollRegistered = IncomingMotion.RegisterEased(1.0);
+        const Deliver<std::uint32_t> ScrollRegistered = IncomingMotion.RegisterEased(1.0);
         if (!ScrollRegistered.Resolved)
-            return Outcome<bool>::Refuse({RefusalReason::ExtentExhausted,
+            return Deliver<bool>::Refuse({RefusalReason::ExtentExhausted,
                                           "the Control Centre scroll motion was rejected"});
         ScrollMotion[Index] = ScrollRegistered.Resolve();
     }
 
     for (std::uint32_t Index = 0u; Index < 3u; ++Index)
     {
-        const Outcome<std::uint32_t> ScrollRegistered = IncomingMotion.RegisterEased(1.0);
+        const Deliver<std::uint32_t> ScrollRegistered = IncomingMotion.RegisterEased(1.0);
         if (!ScrollRegistered.Resolved)
-            return Outcome<bool>::Refuse({RefusalReason::ExtentExhausted,
+            return Deliver<bool>::Refuse({RefusalReason::ExtentExhausted,
                                           "the display tab scroll motion was rejected"});
         DisplayScrollMotion[Index] = ScrollRegistered.Resolve();
     }
 
     for (std::uint32_t Index = 0u; Index < 8u; ++Index)
     {
-        const Outcome<std::uint32_t> RoleRegistered = IncomingMotion.RegisterEased(1.0);
+        const Deliver<std::uint32_t> RoleRegistered = IncomingMotion.RegisterEased(1.0);
         if (!RoleRegistered.Resolved)
-            return Outcome<bool>::Refuse({RefusalReason::ExtentExhausted,
+            return Deliver<bool>::Refuse({RefusalReason::ExtentExhausted,
                                           "the typography strip motion was rejected"});
         RoleFontMotion[Index] = RoleRegistered.Resolve();
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ControlCentrePanel::Advance(const PointerCondition& Sampled, double Elapsed)
@@ -310,13 +310,13 @@ void ControlCentrePanel::Navigate(ControlCentrePage Incoming)
     Motion->Eased(PageMotion).Depart(0.0, 1.0, DragDuration, 0.0, EaseCurve::Carousel);
 }
 
-Outcome<bool> ControlCentrePanel::Record(const PlaneExtent& Interior, ControlCentreConfiguration& Committed)
+Deliver<bool> ControlCentrePanel::Record(const PlaneExtent& Interior, ControlCentreConfiguration& Committed)
 {
     if (Surface == nullptr || Motion == nullptr)
-        return Outcome<bool>::Refuse({RefusalReason::CapabilityAbsent, "no Control Centre construction stands"});
+        return Deliver<bool>::Refuse({RefusalReason::CapabilityAbsent, "no Control Centre construction stands"});
 
     if (Interior.Width() <= 0.0f || Interior.Height() <= 0.0f || Surface->Excluded(Interior))
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     ExclusionCount = 0u;
     if (!WorkingConfigurationReady)
@@ -474,7 +474,7 @@ Outcome<bool> ControlCentrePanel::Record(const PlaneExtent& Interior, ControlCen
     }
     // Dismissing the confirmation returns to the staged edits. Only the footer's explicit Discard
     // action restores AppliedConfiguration.
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ControlCentrePanel::RecordSettingsFooter(const PlaneExtent& Extent,

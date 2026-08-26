@@ -274,22 +274,22 @@ void ProjectWorkspaceDirectory(const WorkspaceRecordStructure& Records,
     Builder.Emit();
 }
 
-Outcome<std::uint32_t> ResolveWorkspaceDirectoryRow(const WorkspaceDirectoryProjection& Presented,
+Deliver<std::uint32_t> ResolveWorkspaceDirectoryRow(const WorkspaceDirectoryProjection& Presented,
                                                     WorkspaceRecordName Subject)
 {
     if (!Subject.Assigned())
     {
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported,
                                                 "the workspace record is not assigned" });
     }
 
     for (std::uint32_t RowIndex = 0u; RowIndex < Presented.Rows.size(); ++RowIndex)
     {
         if (Presented.Rows[RowIndex].Record.IssuedIndex == Subject.IssuedIndex)
-            return Outcome<std::uint32_t>::Result(RowIndex);
+            return Deliver<std::uint32_t>::Result(RowIndex);
     }
 
-    return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported,
+    return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported,
                                             "the workspace record is not present in the directory projection" });
 }
 

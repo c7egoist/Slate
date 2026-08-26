@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 #include "SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h"
 #include "SlateDocument/Format/CodexInterchange/Api/CodexInterchange.h"
@@ -97,12 +97,12 @@ WorkspaceMaterialRecord DefaultWorkspaceMaterialRecord(const std::string& Refere
 void EnsureWorkspaceMaterialRecords(WorkspaceCodex& Workspace);
 
 /// 🧩 Assigns a declared material to one geometry entry without changing any mesh data.
-Outcome<bool> AssignWorkspaceMaterial(WorkspaceCodex& Workspace,
+Deliver<bool> AssignWorkspaceMaterial(WorkspaceCodex& Workspace,
                                       std::uint32_t SceneIndex,
                                       const std::string& MaterialReference);
 
 /// 🧩 Binds one imported image reference to a material channel and returns its material-local source ordinal.
-Outcome<std::uint32_t> BindWorkspaceMaterialImage(WorkspaceMaterialRecord& Material,
+Deliver<std::uint32_t> BindWorkspaceMaterialImage(WorkspaceMaterialRecord& Material,
                                                   ChannelSubject Channel,
                                                   const WorkspaceMaterialImageReference& Image);
 
@@ -116,14 +116,14 @@ public:
     /// in    Identity  [-]  stable document identity
     /// in    Revision  [-]  committed revision introducing the sections
     /// out   Result    [-]  complete WorkspaceCodex document
-    Outcome<CodexDocument> EncodeWorkspace(const WorkspaceCodex& Workspace,
+    Deliver<CodexDocument> EncodeWorkspace(const WorkspaceCodex& Workspace,
                                            std::uint64_t          Identity,
                                            std::uint64_t          Revision) const;
 
     /// 🧩 Resolves typed workspace sections from a WorkspaceCodex document while leaving unknown sections retained.
     /// in    Document [-]  decoded WorkspaceCodex document
     /// out   Result   [-]  typed workspace content
-    Outcome<WorkspaceCodex> DecodeWorkspace(const CodexDocument& Document) const;
+    Deliver<WorkspaceCodex> DecodeWorkspace(const CodexDocument& Document) const;
 };
 
 }   // namespace Slate

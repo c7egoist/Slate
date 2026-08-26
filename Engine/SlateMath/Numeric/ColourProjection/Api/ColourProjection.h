@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 
@@ -147,7 +147,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Exact, PrecisionGuarantee::Exact);
 ///        omission that matters — the transfer — produces an image that is merely "a bit washed out".
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<ColourSpecification> Project(ColourSpecification             Incoming,
+Deliver<ColourSpecification> Project(ColourSpecification             Incoming,
                                     const ColourSpaceSpecification& IncomingSpace,
                                     const ColourSpaceSpecification& Target);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
@@ -167,7 +167,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 ///        nothing new is exposed by it.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<ColourSpecification> ProjectTristimulus(double                          TristimulusX,
+Deliver<ColourSpecification> ProjectTristimulus(double                          TristimulusX,
                                                 double                          TristimulusY,
                                                 double                          TristimulusZ,
                                                 const ColourSpaceSpecification& Target);
@@ -203,7 +203,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 ///        5600 expects to see 5600 when they return, and a coordinate cannot be inverted back to it exactly.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<ColourSpecification> ProjectTemperature(double                          Temperature,
+Deliver<ColourSpecification> ProjectTemperature(double                          Temperature,
                                                const ColourSpaceSpecification& Target);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 
 #include <cstdint>
@@ -61,7 +61,7 @@ public:
     /// out   Result  [-]  refuses when the entry point is already registered
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Register(const ParityRegistration& Incoming);
+    Deliver<bool> Register(const ParityRegistration& Incoming);
 
     /// 🧩 Compares every registered entry point and reports each one.
     /// out   Reports  [-]  one report per registration, in registration order

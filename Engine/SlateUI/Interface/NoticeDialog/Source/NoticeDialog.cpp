@@ -66,25 +66,25 @@ void RecordWrapped(RecordingSurface& Surface, const PlaneExtent& Extent, ThemeTo
 }
 }
 
-Outcome<bool> NoticeDialog::ConstructNoticeDialog(MotionIntegrator& IncomingMotion,
+Deliver<bool> NoticeDialog::ConstructNoticeDialog(MotionIntegrator& IncomingMotion,
                                                    RecordingSurface& IncomingSurface)
 {
     if (Surface != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                       "a notice dialog construction already stands" });
     Motion = &IncomingMotion;
     Surface = &IncomingSurface;
     if (!Interaction.AttachMotion(IncomingMotion).Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted,
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
                                       "the notice dialog interaction index was rejected" });
-    const Outcome<ControlIdentity> Accepted = Interaction.Register();
-    const Outcome<ControlIdentity> Dismissed = Interaction.Register();
+    const Deliver<ControlIdentity> Accepted = Interaction.Register();
+    const Deliver<ControlIdentity> Dismissed = Interaction.Register();
     if (!Accepted.Resolved || !Dismissed.Resolved)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted,
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
                                       "the notice dialog controls were rejected" });
     Accept = Accepted.Resolve();
     Dismiss = Dismissed.Resolve();
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void NoticeDialog::Advance(const PointerCondition& Sampled, double ElapsedMilliseconds)

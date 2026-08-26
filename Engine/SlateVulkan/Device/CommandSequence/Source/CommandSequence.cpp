@@ -12,10 +12,10 @@ namespace Slate
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Exchange, const DiagnosticExtension& Naming)
+Deliver<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Exchange, const DiagnosticExtension& Naming)
 {
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     NamingEdge = &Naming;
@@ -42,7 +42,7 @@ Outcome<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Ex
         if (vkCreateCommandPool(Active, &ExtentDeclaration, nullptr, &Slot.RecordingExtent) != VK_SUCCESS)
         {
             Reclaim();
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ExtentExhausted, "the device rejected a recording extent of the rotation" });
         }
 
@@ -55,7 +55,7 @@ Outcome<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Ex
         if (vkAllocateCommandBuffers(Active, &RecordingDeclaration, &Slot.Primary) != VK_SUCCESS)
         {
             Reclaim();
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ExtentExhausted, "the device rejected a recording of the rotation" });
         }
 
@@ -79,7 +79,7 @@ Outcome<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Ex
     if (vkCreateCommandPool(Active, &ExtentDeclaration, nullptr, &ImmediateExtent) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ExtentExhausted, "the device rejected the immediate recording extent" });
     }
 
@@ -89,25 +89,25 @@ Outcome<bool> CommandSequence::ConstructCommandSequence(const VulkanExchange& Ex
                         reinterpret_cast<std::uint64_t>(ImmediateExtent),
                         "CommandSequence immediate extent"));
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE OPENING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<VkCommandBuffer> CommandSequence::Open(std::uint32_t SlotIndex)
+Deliver<VkCommandBuffer> CommandSequence::Open(std::uint32_t SlotIndex)
 {
     if (DeviceEdge == nullptr || static_cast<std::size_t>(SlotIndex) >= Slots.size())
     {
-        return Outcome<VkCommandBuffer>::Refuse(
+        return Deliver<VkCommandBuffer>::Refuse(
             { RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
     }
 
     RecordingSlot& Slot = Slots[SlotIndex];
 
     if (Slot.SlotOpen)
-        return Outcome<VkCommandBuffer>::Refuse({ RefusalReason::RelationCyclic, "the slot is already open" });
+        return Deliver<VkCommandBuffer>::Refuse({ RefusalReason::RelationCyclic, "the slot is already open" });
 
     const VkDevice Active = DeviceEdge->ActiveDevice();
 
@@ -116,7 +116,7 @@ Outcome<VkCommandBuffer> CommandSequence::Open(std::uint32_t SlotIndex)
     //    already established that no execution still reads them.
     if (vkResetCommandPool(Active, Slot.RecordingExtent, 0u) != VK_SUCCESS)
     {
-        return Outcome<VkCommandBuffer>::Refuse(
+        return Deliver<VkCommandBuffer>::Refuse(
             { RefusalReason::HostDenied, "the device failed to reset the slot's recording extent" });
     }
 
@@ -125,45 +125,45 @@ Outcome<VkCommandBuffer> CommandSequence::Open(std::uint32_t SlotIndex)
     OpenDeclaration.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     if (vkBeginCommandBuffer(Slot.Primary, &OpenDeclaration) != VK_SUCCESS)
-        return Outcome<VkCommandBuffer>::Refuse({ RefusalReason::HostDenied, "the device failed to open the recording" });
+        return Deliver<VkCommandBuffer>::Refuse({ RefusalReason::HostDenied, "the device failed to open the recording" });
 
     Slot.SlotOpen = true;
 
-    return Outcome<VkCommandBuffer>::Result(Slot.Primary);
+    return Deliver<VkCommandBuffer>::Result(Slot.Primary);
 }
 
-Outcome<VkCommandBuffer> CommandSequence::Recording(std::uint32_t SlotIndex) const
+Deliver<VkCommandBuffer> CommandSequence::Recording(std::uint32_t SlotIndex) const
 {
     if (static_cast<std::size_t>(SlotIndex) >= Slots.size())
     {
-        return Outcome<VkCommandBuffer>::Refuse(
+        return Deliver<VkCommandBuffer>::Refuse(
             { RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
     }
 
     if (!Slots[SlotIndex].SlotOpen)
-        return Outcome<VkCommandBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not open" });
+        return Deliver<VkCommandBuffer>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not open" });
 
-    return Outcome<VkCommandBuffer>::Result(Slots[SlotIndex].Primary);
+    return Deliver<VkCommandBuffer>::Result(Slots[SlotIndex].Primary);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE SURRENDER
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> CommandSequence::Submit(std::uint32_t SlotIndex, const SubmitOrdering& Ordering)
+Deliver<bool> CommandSequence::Submit(std::uint32_t SlotIndex, const SubmitOrdering& Ordering)
 {
     if (DeviceEdge == nullptr || static_cast<std::size_t>(SlotIndex) >= Slots.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the cycle slot is outside the depth" });
 
     RecordingSlot& Slot = Slots[SlotIndex];
 
     if (!Slot.SlotOpen)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not open" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the slot is not open" });
 
     if (vkEndCommandBuffer(Slot.Primary) != VK_SUCCESS)
     {
         Slot.SlotOpen = false;
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the device failed to close the recording" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the device failed to close the recording" });
     }
 
     VkSubmitInfo SubmitDeclaration       = {};
@@ -195,22 +195,22 @@ Outcome<bool> CommandSequence::Submit(std::uint32_t SlotIndex, const SubmitOrder
     // 🔴 `06` §7: reported upward, and the slot is closed either way. Nothing is destroyed here — the recording
     //    and its extent stay standing so that `06` §4.2's recovery reclaims them in its own order.
     if (Accepted == VK_ERROR_DEVICE_LOST)
-        return Outcome<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost surrendering a cycle slot" });
+        return Deliver<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost surrendering a cycle slot" });
 
     if (Accepted != VK_SUCCESS)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the queue rejected the surrender" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the queue rejected the surrender" });
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                 OUTSIDE THE ROTATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<VkCommandBuffer> CommandSequence::OpenImmediate()
+Deliver<VkCommandBuffer> CommandSequence::OpenImmediate()
 {
     if (DeviceEdge == nullptr || ImmediateExtent == VK_NULL_HANDLE)
-        return Outcome<VkCommandBuffer>::Refuse({ RefusalReason::CapabilityAbsent, "no immediate extent stands" });
+        return Deliver<VkCommandBuffer>::Refuse({ RefusalReason::CapabilityAbsent, "no immediate extent stands" });
 
     VkCommandBufferAllocateInfo RecordingDeclaration = {};
     RecordingDeclaration.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -222,7 +222,7 @@ Outcome<VkCommandBuffer> CommandSequence::OpenImmediate()
 
     if (vkAllocateCommandBuffers(DeviceEdge->ActiveDevice(), &RecordingDeclaration, &Incoming) != VK_SUCCESS)
     {
-        return Outcome<VkCommandBuffer>::Refuse(
+        return Deliver<VkCommandBuffer>::Refuse(
             { RefusalReason::ExtentExhausted, "the device rejected an immediate recording" });
     }
 
@@ -233,7 +233,7 @@ Outcome<VkCommandBuffer> CommandSequence::OpenImmediate()
     if (vkBeginCommandBuffer(Incoming, &OpenDeclaration) != VK_SUCCESS)
     {
         vkFreeCommandBuffers(DeviceEdge->ActiveDevice(), ImmediateExtent, 1u, &Incoming);
-        return Outcome<VkCommandBuffer>::Refuse(
+        return Deliver<VkCommandBuffer>::Refuse(
             { RefusalReason::HostDenied, "the device failed to open the immediate recording" });
     }
 
@@ -243,23 +243,23 @@ Outcome<VkCommandBuffer> CommandSequence::OpenImmediate()
                         reinterpret_cast<std::uint64_t>(Incoming),
                         "CommandSequence immediate recording"));
 
-    return Outcome<VkCommandBuffer>::Result(Incoming);
+    return Deliver<VkCommandBuffer>::Result(Incoming);
 }
 
-Outcome<bool> CommandSequence::SubmitImmediate(VkCommandBuffer Recorded)
+Deliver<bool> CommandSequence::SubmitImmediate(VkCommandBuffer Recorded)
 {
     if (DeviceEdge == nullptr || ImmediateExtent == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no immediate extent stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no immediate extent stands" });
 
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording to surrender" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording to surrender" });
 
     const VkDevice Active = DeviceEdge->ActiveDevice();
 
     if (vkEndCommandBuffer(Recorded) != VK_SUCCESS)
     {
         vkFreeCommandBuffers(Active, ImmediateExtent, 1u, &Recorded);
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the device failed to close the immediate recording" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the device failed to close the immediate recording" });
     }
 
     // 📝 A completion of its own rather than the rotation's. Awaiting the rotation's here would make bring-up's
@@ -273,7 +273,7 @@ Outcome<bool> CommandSequence::SubmitImmediate(VkCommandBuffer Recorded)
     if (vkCreateFence(Active, &CompletionDeclaration, nullptr, &Completion) != VK_SUCCESS)
     {
         vkFreeCommandBuffers(Active, ImmediateExtent, 1u, &Recorded);
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected an ordering point" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected an ordering point" });
     }
 
     // 📝 🔴 `06` §7's gate. Named although it is destroyed a few lines below, because the report that matters
@@ -302,18 +302,18 @@ Outcome<bool> CommandSequence::SubmitImmediate(VkCommandBuffer Recorded)
     //    a lost device leaves them unusable rather than owned by something else. What the loss reports is the
     //    device, which this never held.
     if (Accepted == VK_ERROR_DEVICE_LOST || Reached == VK_ERROR_DEVICE_LOST)
-        return Outcome<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost during an immediate surrender" });
+        return Deliver<bool>::Refuse({ RefusalReason::DeviceLost, "the device was lost during an immediate surrender" });
 
     if (Accepted != VK_SUCCESS)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the queue rejected the immediate surrender" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the queue rejected the immediate surrender" });
 
     if (Reached == VK_TIMEOUT)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the immediate recording did not complete within the ceiling" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the immediate recording did not complete within the ceiling" });
 
     if (Reached != VK_SUCCESS)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the device rejected the wait" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the device rejected the wait" });
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

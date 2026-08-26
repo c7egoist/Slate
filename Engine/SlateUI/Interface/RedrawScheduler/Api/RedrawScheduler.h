@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <cstdint>
 
@@ -86,7 +86,7 @@ public:
     ///        failed to open rather than as a mark that was never raised.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<std::uint32_t> Register(const char* Naming);
+    Deliver<std::uint32_t> Register(const char* Naming);
 
     /// 🧩 Raises one panel's mark to the dearer of what it carries and what is declared.
     /// in    PanelIndex  [-]  what Register delivered; an unenrolled ordinal marks nothing

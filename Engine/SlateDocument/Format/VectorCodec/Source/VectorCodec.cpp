@@ -500,7 +500,7 @@ bool ElementNamed(const std::string& Element, const char* Spelling)
 }
 
 /// 🧩 Translates one whole vector source, whichever route it arrived by.
-Outcome<DecodedOutline> TranslateSource(const std::string& Source)
+Deliver<DecodedOutline> TranslateSource(const std::string& Source)
 {
     DecodedOutline Produced;
 
@@ -568,7 +568,7 @@ Outcome<DecodedOutline> TranslateSource(const std::string& Source)
 
     if (Produced.Declared.Paths.empty())
     {
-        return Outcome<DecodedOutline>::Refuse(
+        return Deliver<DecodedOutline>::Refuse(
             { RefusalReason::ContentUnsupported, "the vector stream declares no path the accepted subset takes" });
     }
 
@@ -576,7 +576,7 @@ Outcome<DecodedOutline> TranslateSource(const std::string& Source)
     //    replace, and a colour without its space is a number three subsystems each interpret differently.
     Produced.Declared.ColourDeclared = false;
 
-    return Outcome<DecodedOutline>::Result(Produced);
+    return Deliver<DecodedOutline>::Result(Produced);
 }
 
 }   // namespace
@@ -585,17 +585,17 @@ Outcome<DecodedOutline> TranslateSource(const std::string& Source)
 //                                                   THE TRANSLATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<DecodedOutline> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath)
+Deliver<DecodedOutline> Translate(const std::vector<std::uint8_t>& Stream, const std::string& OriginPath)
 {
     if (Stream.empty())
     {
-        return Outcome<DecodedOutline>::Refuse(
+        return Deliver<DecodedOutline>::Refuse(
             { RefusalReason::ContentUnsupported, "a vector stream of no bytes carries no outline" });
     }
 
     const std::string Source(reinterpret_cast<const char*>(Stream.data()), Stream.size());
 
-    Outcome<DecodedOutline> Produced = TranslateSource(Source);
+    Deliver<DecodedOutline> Produced = TranslateSource(Source);
 
     if (Produced.Resolved)
     {
@@ -605,15 +605,15 @@ Outcome<DecodedOutline> Translate(const std::vector<std::uint8_t>& Stream, const
     return Produced;
 }
 
-Outcome<DecodedOutline> TranslateText(const std::string& SourceText)
+Deliver<DecodedOutline> TranslateText(const std::string& SourceText)
 {
     if (SourceText.empty())
     {
-        return Outcome<DecodedOutline>::Refuse(
+        return Deliver<DecodedOutline>::Refuse(
             { RefusalReason::ContentUnsupported, "a supplied vector source of no text carries no outline" });
     }
 
-    Outcome<DecodedOutline> Produced = TranslateSource(SourceText);
+    Deliver<DecodedOutline> Produced = TranslateSource(SourceText);
 
     // 🔴 `52` §1: the text is retained, because there is no file to re-read. A source whose only copy was a
     //    clipboard is unrecoverable after a reopen, and the artist reads that as the document having lost

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <array>
 #include <string>
@@ -16,11 +16,11 @@ namespace Slate
 class FontLoader
 {
 public:
-    Outcome<bool> Discover(const char* FontRoot);
-    Outcome<bool> PreparePreviews(float DisplayScale);
-    Outcome<bool> Load(const char* FontRoot, const FontProfile& Profile, float DisplayScale);
+    Deliver<bool> Discover(const char* FontRoot);
+    Deliver<bool> PreparePreviews(float DisplayScale);
+    Deliver<bool> Load(const char* FontRoot, const FontProfile& Profile, float DisplayScale);
     void RequestLoad(const char* FontRoot, const FontProfile& Profile, float DisplayScale);
-    Outcome<bool> FlushPending();
+    Deliver<bool> FlushPending();
     std::uint32_t FamilyCount() const { return static_cast<std::uint32_t>(Families.size()); }
     const char* FamilyName(std::uint32_t Index) const;
     ImFont* Active() const { return Face(FontWeight::Regular, FontSlant::Upright); }

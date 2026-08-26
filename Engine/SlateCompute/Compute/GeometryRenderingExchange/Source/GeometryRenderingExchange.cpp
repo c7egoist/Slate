@@ -109,11 +109,11 @@ bool BuildFace(const TopologyStructure& Topology, std::uint32_t Face,
     return true;
 }
 
-Outcome<GeometryRenderingSnapshot> BuildSnapshot(const GeometryAssetView& Geometry)
+Deliver<GeometryRenderingSnapshot> BuildSnapshot(const GeometryAssetView& Geometry)
 {
     if (!Geometry.Identity.IdentityDeclared() || Geometry.Topology == nullptr ||
         Geometry.Conditioning == nullptr || !Geometry.Topology->Sealed())
-        return Outcome<GeometryRenderingSnapshot>::Refuse(
+        return Deliver<GeometryRenderingSnapshot>::Refuse(
             { RefusalReason::IdentityStale, "geometry rendering requires one resolved immutable geometry view" });
 
     const TopologyStructure& Topology = *Geometry.Topology;
@@ -149,14 +149,14 @@ Outcome<GeometryRenderingSnapshot> BuildSnapshot(const GeometryAssetView& Geomet
         }
         if (!BuildFace(Topology, Face, Built, TriangleEdges)) Built.UnpresentedFaces.push_back(Face);
     }
-    return Outcome<GeometryRenderingSnapshot>::Result(std::move(Built));
+    return Deliver<GeometryRenderingSnapshot>::Result(std::move(Built));
 }
 }
 
-Outcome<GeometryRenderingIdentity> GeometryRenderingExchange::Synchronise(const GeometryAssetView& Geometry)
+Deliver<GeometryRenderingIdentity> GeometryRenderingExchange::Synchronise(const GeometryAssetView& Geometry)
 {
     if (!Geometry.Identity.IdentityDeclared() || Geometry.Topology == nullptr || Geometry.Conditioning == nullptr)
-        return Outcome<GeometryRenderingIdentity>::Refuse(
+        return Deliver<GeometryRenderingIdentity>::Refuse(
             { RefusalReason::IdentityStale, "geometry rendering requires one resolved immutable geometry view" });
 
     for (std::uint32_t Slot = 0u; Slot < Entries.size(); ++Slot)
@@ -164,17 +164,17 @@ Outcome<GeometryRenderingIdentity> GeometryRenderingExchange::Synchronise(const 
         Entry& Held = Entries[Slot];
         if (!Held.Occupied || Held.Snapshot.Geometry != Geometry.Identity) continue;
         if (Held.Snapshot.TopologyRevision == Geometry.Topology->Revision())
-            return Outcome<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
-        const Outcome<GeometryRenderingSnapshot> Built = BuildSnapshot(Geometry);
-        if (!Built.Resolved) return Outcome<GeometryRenderingIdentity>::Refuse(Built.Error);
+            return Deliver<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
+        const Deliver<GeometryRenderingSnapshot> Built = BuildSnapshot(Geometry);
+        if (!Built.Resolved) return Deliver<GeometryRenderingIdentity>::Refuse(Built.Error);
         Held.Snapshot = Built.Resolve();
         ++Held.Generation;
         if (Held.Generation == 0u) Held.Generation = 1u;
-        return Outcome<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
+        return Deliver<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
     }
 
-    const Outcome<GeometryRenderingSnapshot> Built = BuildSnapshot(Geometry);
-    if (!Built.Resolved) return Outcome<GeometryRenderingIdentity>::Refuse(Built.Error);
+    const Deliver<GeometryRenderingSnapshot> Built = BuildSnapshot(Geometry);
+    if (!Built.Resolved) return Deliver<GeometryRenderingIdentity>::Refuse(Built.Error);
     std::uint32_t Slot = 0u;
     if (!ReleasedSlots.empty()) { Slot = ReleasedSlots.back(); ReleasedSlots.pop_back(); }
     else { Slot = static_cast<std::uint32_t>(Entries.size()); Entries.push_back({}); }
@@ -182,33 +182,33 @@ Outcome<GeometryRenderingIdentity> GeometryRenderingExchange::Synchronise(const 
     Held.Snapshot = Built.Resolve();
     Held.Occupied = true;
     ++OccupiedCount;
-    return Outcome<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
+    return Deliver<GeometryRenderingIdentity>::Result({ Slot, Held.Generation });
 }
 
-Outcome<const GeometryRenderingSnapshot*> GeometryRenderingExchange::Resolve(GeometryRenderingIdentity Subject) const
+Deliver<const GeometryRenderingSnapshot*> GeometryRenderingExchange::Resolve(GeometryRenderingIdentity Subject) const
 {
     if (!Subject.IdentityDeclared() || Subject.SlotIndex >= Entries.size())
-        return Outcome<const GeometryRenderingSnapshot*>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
+        return Deliver<const GeometryRenderingSnapshot*>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
     const Entry& Held = Entries[Subject.SlotIndex];
     if (!Held.Occupied || Held.Generation != Subject.SlotGeneration)
-        return Outcome<const GeometryRenderingSnapshot*>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
-    return Outcome<const GeometryRenderingSnapshot*>::Result(&Held.Snapshot);
+        return Deliver<const GeometryRenderingSnapshot*>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
+    return Deliver<const GeometryRenderingSnapshot*>::Result(&Held.Snapshot);
 }
 
-Outcome<bool> GeometryRenderingExchange::Retire(GeometryRenderingIdentity Subject)
+Deliver<bool> GeometryRenderingExchange::Retire(GeometryRenderingIdentity Subject)
 {
     if (!Subject.IdentityDeclared() || Subject.SlotIndex >= Entries.size())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
     Entry& Held = Entries[Subject.SlotIndex];
     if (!Held.Occupied || Held.Generation != Subject.SlotGeneration)
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the geometry rendering cache is stale" });
     Held.Snapshot = {};
     Held.Occupied = false;
     ++Held.Generation;
     if (Held.Generation == 0u) Held.Generation = 1u;
     ReleasedSlots.push_back(Subject.SlotIndex);
     --OccupiedCount;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void GeometryRenderingExchange::Reclaim()

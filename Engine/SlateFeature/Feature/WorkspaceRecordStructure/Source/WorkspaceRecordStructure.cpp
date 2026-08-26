@@ -62,72 +62,72 @@ WorkspaceRecordName WorkspaceRecordStructure::Declare(WorkspaceRecord Incoming)
     return { static_cast<std::uint32_t>(HeldRecords.size()) };
 }
 
-Outcome<bool> WorkspaceRecordStructure::Promote(WorkspaceRecordName Subject, WorkspaceRecordSubject TargetSubject)
+Deliver<bool> WorkspaceRecordStructure::Promote(WorkspaceRecordName Subject, WorkspaceRecordSubject TargetSubject)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     Held->Subject = TargetSubject;
     Held->ClosedSemantic = TargetSubject == WorkspaceRecordSubject::ClosedProfile || TargetSubject == WorkspaceRecordSubject::Solid;
     if (Held->ClosedSemantic && !Held->CappedExtrusionSemantic)
         Held->CappedExtrusionSemantic = true;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkspaceRecordStructure::Rename(WorkspaceRecordName Subject, const std::string& Naming)
+Deliver<bool> WorkspaceRecordStructure::Rename(WorkspaceRecordName Subject, const std::string& Naming)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     Held->Naming = Naming;
     Held->AutoNamed = false;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkspaceRecordStructure::SetFolderCategory(WorkspaceRecordName Subject, WorkspaceCategory Category)
+Deliver<bool> WorkspaceRecordStructure::SetFolderCategory(WorkspaceRecordName Subject, WorkspaceCategory Category)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     if (Held->Subject != WorkspaceRecordSubject::Folder)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "only workspace folders carry a folder category" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "only workspace folders carry a folder category" });
     if (Category == WorkspaceCategory::Folder || Category == WorkspaceCategory::CategoryCount)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "folder categories must resolve to a workspace content category" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "folder categories must resolve to a workspace content category" });
     Held->FolderCategory = Category;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkspaceRecordStructure::MoveToFolder(WorkspaceRecordName Subject, WorkspaceRecordName Folder)
+Deliver<bool> WorkspaceRecordStructure::MoveToFolder(WorkspaceRecordName Subject, WorkspaceRecordName Folder)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     if (Folder.Assigned())
     {
         const WorkspaceRecord* Parent = Resolve(Folder);
         if (Parent == nullptr || Parent->Subject != WorkspaceRecordSubject::Folder)
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the target folder is not declared" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the target folder is not declared" });
     }
     Held->ParentFolder = Folder;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkspaceRecordStructure::ToggleVisible(WorkspaceRecordName Subject, bool Visible)
+Deliver<bool> WorkspaceRecordStructure::ToggleVisible(WorkspaceRecordName Subject, bool Visible)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     Held->Visible = Visible;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> WorkspaceRecordStructure::ToggleLocked(WorkspaceRecordName Subject, bool Locked)
+Deliver<bool> WorkspaceRecordStructure::ToggleLocked(WorkspaceRecordName Subject, bool Locked)
 {
     WorkspaceRecord* Held = Resolve(Subject);
     if (Held == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such workspace record is declared" });
     Held->Locked = Locked;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const WorkspaceRecord* WorkspaceRecordStructure::Resolve(WorkspaceRecordName Subject) const

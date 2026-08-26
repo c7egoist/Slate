@@ -128,26 +128,26 @@ namespace
     }
 }
 
-Outcome<bool> EnforceSketchPoint(SketchStructure& Declared,
+Deliver<bool> EnforceSketchPoint(SketchStructure& Declared,
                                  SketchPointName Subject,
                                  const SpatialPoint& Position)
 {
     std::uint32_t CurveIndex = 0u;
     std::uint32_t LocalIndex = 0u;
     if (!DecodePointName(Subject, CurveIndex, LocalIndex))
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch point is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch point is not declared" });
 
     DeclaredSketchCurve* Held = ResolveCurve(Declared, CurveIndex);
     if (Held == nullptr || !Held->Geometry.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
 
     switch (Held->Geometry.Subject())
     {
         case CurveSubject::Line:
             if (LocalIndex == 0u) Held->Geometry.HeldLine().Origin = Position;
             else if (LocalIndex == 1u) Held->Geometry.HeldLine().Terminus = Position;
-            else return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the line point is absent" });
-            return Outcome<bool>::Result(true);
+            else return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the line point is absent" });
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::CircularArc:
         {
@@ -162,15 +162,15 @@ Outcome<bool> EnforceSketchPoint(SketchStructure& Declared,
                 else if (LocalIndex == 1u)
                     Held->Geometry = CurveSpecification::DeclareThreePointArc(StartPoint, Arc.ThroughPoint, Position);
                 else
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc point is absent" });
-                return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc point is absent" });
+                return Deliver<bool>::Result(true);
             }
 
             if (LocalIndex == 0u)
             {
                 Arc.StartDirection = Normalize(Difference(Arc.Centre, Position));
                 Arc.Radius = std::sqrt(LengthSquared(Difference(Arc.Centre, Position)));
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
             if (LocalIndex == 1u)
             {
@@ -183,9 +183,9 @@ Outcome<bool> EnforceSketchPoint(SketchStructure& Declared,
                     Sweep = -Sweep;
                 Arc.SweepRadians = Sweep;
                 Arc.Radius = std::sqrt(LengthSquared(Difference(Arc.Centre, Position)));
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc point is absent" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc point is absent" });
         }
 
         case CurveSubject::EllipticalArc:
@@ -199,50 +199,50 @@ Outcome<bool> EnforceSketchPoint(SketchStructure& Declared,
                 const double EndPhase = Arc.StartRadians + Arc.SweepRadians;
                 Arc.StartRadians = Phase;
                 Arc.SweepRadians = EndPhase - Arc.StartRadians;
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
             if (LocalIndex == 1u)
             {
                 Arc.SweepRadians = Phase - Arc.StartRadians;
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the elliptical-arc point is absent" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the elliptical-arc point is absent" });
         }
 
         case CurveSubject::Bezier:
             if (LocalIndex == 0u) Held->Geometry.HeldBezier().ControlPoints.front() = Position;
             else if (LocalIndex == 1u) Held->Geometry.HeldBezier().ControlPoints.back() = Position;
-            else return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the bezier point is absent" });
-            return Outcome<bool>::Result(true);
+            else return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the bezier point is absent" });
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::BasisSpline:
             if (LocalIndex == 0u) Held->Geometry.HeldBasisSpline().ControlPoints.front() = Position;
             else if (LocalIndex == 1u) Held->Geometry.HeldBasisSpline().ControlPoints.back() = Position;
-            else return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the spline point is absent" });
-            return Outcome<bool>::Result(true);
+            else return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the spline point is absent" });
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::RationalSpline:
             if (LocalIndex == 0u) Held->Geometry.HeldRationalSpline().ControlPoints.front() = Position;
             else if (LocalIndex == 1u) Held->Geometry.HeldRationalSpline().ControlPoints.back() = Position;
-            else return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the rational-spline point is absent" });
-            return Outcome<bool>::Result(true);
+            else return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the rational-spline point is absent" });
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::Hermite:
             if (LocalIndex == 0u) Held->Geometry.HeldHermite().StartPoint = Position;
             else if (LocalIndex == 1u) Held->Geometry.HeldHermite().EndPoint = Position;
-            else return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the hermite point is absent" });
-            return Outcome<bool>::Result(true);
+            else return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the hermite point is absent" });
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::Circle:
         case CurveSubject::Ellipse:
         case CurveSubject::SubjectCount:
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "that curve exposes controls rather than direct points" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "that curve exposes controls rather than direct points" });
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch point was not resolved" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch point was not resolved" });
 }
 
-Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
+Deliver<bool> EnforceSketchControl(SketchStructure& Declared,
                                    SketchControlName Subject,
                                    const SpatialPoint& Position)
 {
@@ -250,11 +250,11 @@ Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
     SketchControlSubject ControlSubject = SketchControlSubject::ControlPoint;
     std::uint32_t LocalIndex = 0u;
     if (!DecodeControlName(Subject, CurveIndex, ControlSubject, LocalIndex))
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch control is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch control is not declared" });
 
     DeclaredSketchCurve* Held = ResolveCurve(Declared, CurveIndex);
     if (Held == nullptr || !Held->Geometry.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
 
     switch (Held->Geometry.Subject())
     {
@@ -265,23 +265,23 @@ Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
             {
                 case SketchControlSubject::Centre:
                     Arc.Centre = Position;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::Radius:
                     Arc.StartDirection = Normalize(Difference(Arc.Centre, Position));
                     Arc.Radius = std::sqrt(LengthSquared(Difference(Arc.Centre, Position)));
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::Through:
                     if (!Arc.ThroughDeclared)
-                        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the through control is absent" });
+                        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the through control is absent" });
                     Arc.ThroughPoint = Position;
                     Held->Geometry = CurveSpecification::DeclareThreePointArc(
                         Added(Arc.Centre, Scaled(Normalize(Arc.StartDirection), Arc.Radius)),
                         Position,
                         Added(Arc.Centre,
                               Scaled(RotateAroundAxis(Normalize(Arc.StartDirection), Arc.Normal, Arc.SweepRadians), Arc.Radius)));
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 default:
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc control is unsupported" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the arc control is unsupported" });
             }
         }
 
@@ -292,13 +292,13 @@ Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
             {
                 case SketchControlSubject::Centre:
                     Circle.Centre = Position;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::Radius:
                     Circle.StartDirection = Normalize(Difference(Circle.Centre, Position));
                     Circle.Radius = std::sqrt(LengthSquared(Difference(Circle.Centre, Position)));
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 default:
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the circle control is unsupported" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the circle control is unsupported" });
             }
         }
 
@@ -311,17 +311,17 @@ Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
             {
                 case SketchControlSubject::Centre:
                     Arc.Centre = Position;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::MajorAxis:
                     Arc.MajorRadius = std::sqrt(LengthSquared(Difference(Arc.Centre, Position)));
                     Arc.MajorDirection = Normalize(Difference(Arc.Centre, Position));
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::MinorAxis:
                     Arc.MinorRadius = std::sqrt(LengthSquared(Difference(Arc.Centre, Position)));
                     (void)MinorDirection;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 default:
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the elliptical-arc control is unsupported" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the elliptical-arc control is unsupported" });
             }
         }
 
@@ -333,59 +333,59 @@ Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
             {
                 case SketchControlSubject::Centre:
                     Ellipse.Centre = Position;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::MajorAxis:
                     Ellipse.MajorRadius = std::sqrt(LengthSquared(Difference(Ellipse.Centre, Position)));
                     Ellipse.MajorDirection = Normalize(Difference(Ellipse.Centre, Position));
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 case SketchControlSubject::MinorAxis:
                     Ellipse.MinorRadius = std::sqrt(LengthSquared(Difference(Ellipse.Centre, Position)));
                     (void)MajorDirection;
-                    return Outcome<bool>::Result(true);
+                    return Deliver<bool>::Result(true);
                 default:
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the ellipse control is unsupported" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the ellipse control is unsupported" });
             }
         }
 
         case CurveSubject::Bezier:
             if (ControlSubject != SketchControlSubject::ControlPoint || LocalIndex >= Held->Geometry.HeldBezier().ControlPoints.size())
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the bezier control is absent" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the bezier control is absent" });
             Held->Geometry.HeldBezier().ControlPoints[LocalIndex] = Position;
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::BasisSpline:
             if (ControlSubject != SketchControlSubject::ControlPoint || LocalIndex >= Held->Geometry.HeldBasisSpline().ControlPoints.size())
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the spline control is absent" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the spline control is absent" });
             Held->Geometry.HeldBasisSpline().ControlPoints[LocalIndex] = Position;
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::RationalSpline:
             if (ControlSubject != SketchControlSubject::ControlPoint || LocalIndex >= Held->Geometry.HeldRationalSpline().ControlPoints.size())
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the rational-spline control is absent" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the rational-spline control is absent" });
             Held->Geometry.HeldRationalSpline().ControlPoints[LocalIndex] = Position;
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
 
         case CurveSubject::Hermite:
             if (ControlSubject == SketchControlSubject::StartTangent)
             {
                 Held->Geometry.HeldHermite().StartTangent = Difference(Held->Geometry.HeldHermite().StartPoint, Position);
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
             if (ControlSubject == SketchControlSubject::EndTangent)
             {
                 Held->Geometry.HeldHermite().EndTangent = Difference(Held->Geometry.HeldHermite().EndPoint, Position);
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the hermite control is unsupported" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the hermite control is unsupported" });
 
         case CurveSubject::Line:
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the line exposes direct points rather than controls" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the line exposes direct points rather than controls" });
 
         case CurveSubject::SubjectCount:
             break;
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch control was not resolved" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch control was not resolved" });
 }
 
 } // namespace Slate

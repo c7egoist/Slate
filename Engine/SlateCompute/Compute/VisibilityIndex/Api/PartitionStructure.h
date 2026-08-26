@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
@@ -125,7 +125,7 @@ struct DerivedPartitioning
 ///        nothing.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<DerivedPartitioning> DerivePartitioning(const TopologyStructure&    Imported,
+Deliver<DerivedPartitioning> DerivePartitioning(const TopologyStructure&    Imported,
                                                 const TopologyConditioning& Conditioned);
 
 // 📐 The extents and the cone are Bounded; the adjacency traversal, the face counting and the material comparison
@@ -151,7 +151,7 @@ public:
     /// post  the revision advanced; every identity registered against the prior one is discoverably stale
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Adopt(const DerivedPartitioning& Incoming);
+    Deliver<bool> Adopt(const DerivedPartitioning& Incoming);
 
     /// 🧩 Declares every standing partition into `42`'s resolution, retaining the identities it issues.
     /// in    Resolutions  [-]  the document's resolution; rebuilt by `42` and written here
@@ -163,7 +163,7 @@ public:
     ///        recover one from the other. This declaration is the only place the two are related.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(PartitionResolutionIndex& Resolutions, OwnerIdentity Owner);
+    Deliver<bool> Declare(PartitionResolutionIndex& Resolutions, OwnerIdentity Owner);
 
     /// 🧩 The standing partitioning.
     /// pre   PartitioningCurrent holds
@@ -176,7 +176,7 @@ public:
     ///                     IdentityStale when nothing has been declared since the last adoption
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<PartitionIdentity> IdentityOf(std::uint32_t PartitionIndex) const;
+    Deliver<PartitionIdentity> IdentityOf(std::uint32_t PartitionIndex) const;
 
     /// 🧩 Discards the standing partitioning and every identity taken against it.
     /// cost  🚩

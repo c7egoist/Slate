@@ -202,7 +202,7 @@ ConstraintDisposition EvaluateConstraints(const SketchStructure& Declared)
     if (!Declared.Declared())
         return ConstraintDisposition::InvalidSketch;
 
-    const Outcome<SketchAnalysis> Analysed = AnalyseSketch(Declared);
+    const Deliver<SketchAnalysis> Analysed = AnalyseSketch(Declared);
     if (!Analysed)
         return ConstraintDisposition::InvalidSketch;
     for (const ConstraintFinding& Finding : Analysed.Resolve().Findings)
@@ -247,44 +247,44 @@ ConstraintDisposition EvaluateConstraints(const SketchStructure& Declared)
     return ConstraintDisposition::Produced;
 }
 
-Outcome<bool> ResolveConstraintConflict(const SketchStructure& Declared,
+Deliver<bool> ResolveConstraintConflict(const SketchStructure& Declared,
                                         ConstraintName Subject)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Constraints().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint is declared" });
-    const Outcome<SketchAnalysis> Analysed = AnalyseSketch(Declared);
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint is declared" });
+    const Deliver<SketchAnalysis> Analysed = AnalyseSketch(Declared);
     if (!Analysed)
-        return Outcome<bool>::Refuse(Analysed.Error);
+        return Deliver<bool>::Refuse(Analysed.Error);
     const ConstraintFinding& Finding = Analysed.Resolve().Findings[Subject.IssuedIndex - 1u];
-    return Outcome<bool>::Result(Finding.Conflicting || Finding.Repeated);
+    return Deliver<bool>::Result(Finding.Conflicting || Finding.Repeated);
 }
 
-Outcome<bool> ApplyConstraints(SketchStructure& Declared)
+Deliver<bool> ApplyConstraints(SketchStructure& Declared)
 {
     if (EvaluateConstraints(Declared) == ConstraintDisposition::NotRequested)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     if (EvaluateConstraints(Declared) != ConstraintDisposition::Produced)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch constraints are unsupported" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch constraints are unsupported" });
 
     for (std::uint32_t Pass = 0u; Pass < 8u; ++Pass)
     {
         for (std::uint32_t ConstraintIndex = 1u; ConstraintIndex <= Declared.Constraints().size(); ++ConstraintIndex)
         {
-            const Outcome<bool> Applied = ApplyConstraint(Declared, { ConstraintIndex });
+            const Deliver<bool> Applied = ApplyConstraint(Declared, { ConstraintIndex });
             if (!Applied)
                 return Applied;
         }
     }
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> ApplyConstraint(SketchStructure& Declared,
+Deliver<bool> ApplyConstraint(SketchStructure& Declared,
                               ConstraintName Subject)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Constraints().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint is declared" });
     if (!Declared.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     const ConstraintSpecification& Constraint = Declared.Constraints()[Subject.IssuedIndex - 1u];
     const SketchPlane& Plane = Declared.HeldPlane();
@@ -298,7 +298,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
             if (!ResolveConstraintPoint(Declared, Constraint.Primary, First)
              || !ResolveConstraintPoint(Declared, Constraint.Secondary, Second))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the coincident points are not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the coincident points are not resolved" });
             }
             return EnforceSketchPoint(Declared, Second.Name, First.Position);
         }
@@ -307,16 +307,16 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
         case ConstraintSubject::Vertical:
         {
             if (Constraint.Primary.Subject == ReferenceSubject::SketchPoint)
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
 
             SketchCurveName Curve = {};
             if (!ResolveConstraintCurve(Declared, Constraint.Primary, Curve))
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the constrained curve is not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the constrained curve is not resolved" });
 
             SpatialPoint StartPoint = {};
             SpatialPoint EndPoint = {};
             if (!ResolveLine(Declared, Curve, StartPoint, EndPoint))
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "horizontal and vertical constraints currently accept line curves only" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "horizontal and vertical constraints currently accept line curves only" });
 
             const PlanarPoint FlatStart = Flatten(Plane, StartPoint);
             PlanarPoint FlatEnd = Flatten(Plane, EndPoint);
@@ -337,7 +337,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
             if (!ResolveConstraintCurve(Declared, Constraint.Primary, Primary)
              || !ResolveConstraintCurve(Declared, Constraint.Secondary, Secondary))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the constrained curves are not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the constrained curves are not resolved" });
             }
 
             SpatialPoint PrimaryStart = {}, PrimaryEnd = {};
@@ -345,7 +345,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
             if (!ResolveLine(Declared, Primary, PrimaryStart, PrimaryEnd)
              || !ResolveLine(Declared, Secondary, SecondaryStart, SecondaryEnd))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "parallel, perpendicular and equal currently accept line curves only" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "parallel, perpendicular and equal currently accept line curves only" });
             }
 
             SpatialDirection PrimaryDirection = Normalize(Difference(PrimaryStart, PrimaryEnd));
@@ -371,7 +371,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
         }
 
         case ConstraintSubject::Fixed:
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
 
         case ConstraintSubject::Tangent:
         {
@@ -380,7 +380,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
             if (!ResolveConstraintCurve(Declared, Constraint.Primary, Primary)
              || !ResolveConstraintCurve(Declared, Constraint.Secondary, Secondary))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the tangent curves are not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the tangent curves are not resolved" });
             }
 
             SpatialPoint LineStart = {}, LineEnd = {};
@@ -400,7 +400,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
                 const bool EndResolved = ResolveCurveTangentNearPoint(Declared, Secondary, LineEnd, EndContact, EndTangent, EndDistance);
                 if (!StartResolved && !EndResolved)
                 {
-                    return Outcome<bool>::Refuse(
+                    return Deliver<bool>::Refuse(
                         { RefusalReason::ContentUnsupported, "tangent currently requires one line and one target curve" });
                 }
 
@@ -410,7 +410,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
                 const SpatialDirection TangentDirection = UseStart ? StartTangent : EndTangent;
                 const double Length = std::sqrt(LengthSquared(Difference(Anchor, Contact)));
                 const SpatialPoint Adjusted = Added(Contact, Scaled(TangentDirection, Length));
-                const Outcome<bool> ContactApplied = EnforceSketchPoint(Declared,
+                const Deliver<bool> ContactApplied = EnforceSketchPoint(Declared,
                     { (Primary.IssuedIndex << 8u) | (UseStart ? 1u : 2u) }, Contact);
                 if (!ContactApplied)
                     return ContactApplied;
@@ -430,10 +430,10 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
                 const double Distance = std::max(FirstCircle.Radius + SecondCircle.Radius, 1.0e-6);
                 Declared.Curves()[Secondary.IssuedIndex - 1u].Geometry.HeldCircle().Centre =
                     Added(FirstCircle.Centre, Scaled(Direction, Distance));
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
             }
 
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                            "tangent currently requires a line plus curve or two circles" });
         }
 
@@ -441,7 +441,7 @@ Outcome<bool> ApplyConstraint(SketchStructure& Declared,
             break;
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint subject is supported" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such constraint subject is supported" });
 }
 
 } // namespace Slate

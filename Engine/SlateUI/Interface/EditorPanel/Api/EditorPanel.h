@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/EditorPanel/Api/EditorLeafPanels.h"
@@ -112,11 +112,11 @@ public:
     static constexpr std::uint32_t ControlsPerRecord = 30u;
     static constexpr std::uint32_t ControlCapacity = PanelStructure::RecordLimit * ControlsPerRecord;
 
-    Outcome<bool> ConstructEditorPanel(MotionIntegrator& Motion,
+    Deliver<bool> ConstructEditorPanel(MotionIntegrator& Motion,
                             RecordingSurface& Surface,
                             const ThemeProfile& Appearance);
     void Advance(const PointerCondition& Sampled, double Elapsed);
-    Outcome<bool> Record(const PlaneExtent& Extent,
+    Deliver<bool> Record(const PlaneExtent& Extent,
                          PanelStructure& Partition,
                          EditorPanelConfiguration& Configuration,
                          std::uint32_t PresentationIndex = 0u,

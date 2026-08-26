@@ -47,18 +47,18 @@ VkImageAspectFlags ImageSpace::AspectOf(ImageIntent Intent)
 //                                                     CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ImageSpace::ConstructImageSpace(const VulkanExchange&      Exchange,
+Deliver<bool> ImageSpace::ConstructImageSpace(const VulkanExchange&      Exchange,
                                     ByteSpace&                 BackingSpace,
                                     const DiagnosticExtension& Naming)
 {
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE || Exchange.ScoredDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge   = &Exchange;
     BackingBytes = &BackingSpace;
     NamingEdge   = &Naming;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 const char* ImageSpace::NameOf(ImageIntent Intent)
@@ -81,22 +81,22 @@ const char* ImageSpace::NameOf(ImageIntent Intent)
 //                                                      THE CLAIM
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
+Deliver<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
 {
     if (DeviceEdge == nullptr || BackingBytes == nullptr)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     if (Declared.Width == 0u || Declared.Height == 0u)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of zero extent" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of zero extent" });
 
     if (Declared.Format == VK_FORMAT_UNDEFINED)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of no declared format" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of no declared format" });
 
     if (Declared.LayerCount == 0u || Declared.LevelCount == 0u)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of no layer or no level" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "an image of no layer or no level" });
 
     if (Declared.Intent == ImageIntent::IntentCount)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such intent" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "no such intent" });
 
     const VkDevice Active = DeviceEdge->ActiveDevice();
 
@@ -107,7 +107,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
 
     if ((FormatDeclaration.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) == 0u)
     {
-        return Outcome<ImageReservation>::Refuse(
+        return Deliver<ImageReservation>::Refuse(
             { RefusalReason::ContentUnsupported, "the device declines the declared format for an optimal image" });
     }
 
@@ -129,7 +129,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
     VkImage Incoming = VK_NULL_HANDLE;
 
     if (vkCreateImage(Active, &ImageDeclaration, nullptr, &Incoming) != VK_SUCCESS)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the image" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ExtentExhausted, "the device rejected the image" });
 
     // 📝 The requirement is read from the created image and never computed from the shape. Tiling, alignment
     //    and the admissible residencies are the vendor's, and a computed figure is right on one driver.
@@ -138,7 +138,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
 
     // 🔴 `06` §7: a target is committed rather than discretionary. `08` §2's set is the working set for every
     //    recording in the ordering, and evicting one of them mid-ordering is a recording reading a released span.
-    const Outcome<ByteReservation> Backing = BackingBytes->Reserve(Required.size,
+    const Deliver<ByteReservation> Backing = BackingBytes->Reserve(Required.size,
                                                            Required.alignment,
                                                            ExtentResidency::DeviceLocal,
                                                            ReservationCondition::Committed);
@@ -146,7 +146,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
     if (!Backing.Resolved)
     {
         vkDestroyImage(Active, Incoming, nullptr);
-        return Outcome<ImageReservation>::Refuse(Backing.Error);
+        return Deliver<ImageReservation>::Refuse(Backing.Error);
     }
 
     const ByteReservation Sliced = Backing.Resolve();
@@ -156,7 +156,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
         BackingBytes->Release(Sliced);
         vkDestroyImage(Active, Incoming, nullptr);
 
-        return Outcome<ImageReservation>::Refuse(
+        return Deliver<ImageReservation>::Refuse(
             { RefusalReason::ContentUnsupported, "the device failed to bind the claimed span to the image" });
     }
 
@@ -179,7 +179,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
         vkDestroyImage(Active, Incoming, nullptr);
         BackingBytes->Release(Sliced);
 
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "the device rejected the image view" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "the device rejected the image view" });
     }
 
     HeldImage Taken;
@@ -231,7 +231,7 @@ Outcome<ImageReservation> ImageSpace::Reserve(const ImageShape& Declared)
     Handed.Shape          = Declared;
     Handed.ImageIndex   = Index;
 
-    return Outcome<ImageReservation>::Result(Handed);
+    return Deliver<ImageReservation>::Result(Handed);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -292,13 +292,13 @@ namespace
     }
 }
 
-Outcome<bool> ImageSpace::Transition(VkCommandBuffer Recorded, std::uint32_t ImageIndex, VkImageLayout Incoming)
+Deliver<bool> ImageSpace::Transition(VkCommandBuffer Recorded, std::uint32_t ImageIndex, VkImageLayout Incoming)
 {
     if (Recorded == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording to record the barrier into" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no recording to record the barrier into" });
 
     if (static_cast<std::size_t>(ImageIndex) >= Images.size() || !Images[ImageIndex].SlotOccupied)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
 
     HeldImage& Held = Images[ImageIndex];
 
@@ -306,7 +306,7 @@ Outcome<bool> ImageSpace::Transition(VkCommandBuffer Recorded, std::uint32_t Ima
     //    declaring the same read of the same target, and refusing the second would make the contribution
     //    order a correctness condition the ordering does not promise.
     if (Held.CurrentLayout == Incoming)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     VkPipelineStageFlags DepartingStage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     VkPipelineStageFlags IncomingStage   = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -338,17 +338,17 @@ Outcome<bool> ImageSpace::Transition(VkCommandBuffer Recorded, std::uint32_t Ima
     //    the image stood in one rotation ago.
     Held.CurrentLayout = Incoming;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                   WHAT IS CLAIMED
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ImageReservation> ImageSpace::Current(std::uint32_t ImageIndex) const
+Deliver<ImageReservation> ImageSpace::Current(std::uint32_t ImageIndex) const
 {
     if (static_cast<std::size_t>(ImageIndex) >= Images.size() || !Images[ImageIndex].SlotOccupied)
-        return Outcome<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
+        return Deliver<ImageReservation>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
 
     const HeldImage& Held = Images[ImageIndex];
 
@@ -359,27 +359,27 @@ Outcome<ImageReservation> ImageSpace::Current(std::uint32_t ImageIndex) const
     Reported.Shape          = Held.Shape;
     Reported.ImageIndex   = ImageIndex;
 
-    return Outcome<ImageReservation>::Result(Reported);
+    return Deliver<ImageReservation>::Result(Reported);
 }
 
-Outcome<VkImageView> ImageSpace::LevelView(std::uint32_t ImageIndex, std::uint32_t LevelIndex)
+Deliver<VkImageView> ImageSpace::LevelView(std::uint32_t ImageIndex, std::uint32_t LevelIndex)
 {
     if (DeviceEdge == nullptr)
-        return Outcome<VkImageView>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<VkImageView>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     if (static_cast<std::size_t>(ImageIndex) >= Images.size() || !Images[ImageIndex].SlotOccupied)
-        return Outcome<VkImageView>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
+        return Deliver<VkImageView>::Refuse({ RefusalReason::ContentUnsupported, "no image stands at that ordinal" });
 
     HeldImage& Held = Images[ImageIndex];
 
     if (LevelIndex >= Held.Shape.LevelCount)
-        return Outcome<VkImageView>::Refuse({ RefusalReason::ContentUnsupported, "the level is outside the declared count" });
+        return Deliver<VkImageView>::Refuse({ RefusalReason::ContentUnsupported, "the level is outside the declared count" });
 
     // 📝 Constructed on first ask and held for the image's life. `16` §2's reduction walks the chain once per
     //    rotation, and a view constructed per walk is a vendor object created and destroyed inside the
     //    rotation that reads it.
     if (Held.LevelViews[LevelIndex] != VK_NULL_HANDLE)
-        return Outcome<VkImageView>::Result(Held.LevelViews[LevelIndex]);
+        return Deliver<VkImageView>::Result(Held.LevelViews[LevelIndex]);
 
     VkImageViewCreateInfo ViewDeclaration            = {};
     ViewDeclaration.sType                            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -397,7 +397,7 @@ Outcome<VkImageView> ImageSpace::LevelView(std::uint32_t ImageIndex, std::uint32
 
     if (vkCreateImageView(DeviceEdge->ActiveDevice(), &ViewDeclaration, nullptr, &Constructed) != VK_SUCCESS)
     {
-        return Outcome<VkImageView>::Refuse(
+        return Deliver<VkImageView>::Refuse(
             { RefusalReason::ContentUnsupported, "the device rejected a view over the declared level" });
     }
 
@@ -412,7 +412,7 @@ Outcome<VkImageView> ImageSpace::LevelView(std::uint32_t ImageIndex, std::uint32
                         "ImageSpace level view",
                         LevelIndex));
 
-    return Outcome<VkImageView>::Result(Constructed);
+    return Deliver<VkImageView>::Result(Constructed);
 }
 
 std::uint32_t ImageSpace::ReservedCount() const

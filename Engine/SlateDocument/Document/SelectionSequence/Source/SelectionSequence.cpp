@@ -33,10 +33,10 @@ void SelectionSequence::Seal(const std::vector<OwnerIdentity>& Selected, std::ui
 //                                                      TRAVERSAL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> SelectionSequence::Retreat()
+Deliver<bool> SelectionSequence::Retreat()
 {
     if (TraversalIndex == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the traversal is at the beginning" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the traversal is at the beginning" });
 
     --TraversalIndex;
 
@@ -45,21 +45,21 @@ Outcome<bool> SelectionSequence::Retreat()
     else
         CurrentSelection = CommittedOrder[static_cast<std::size_t>(TraversalIndex) - 1u].SelectedOwners;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SelectionSequence::Advance()
+Deliver<bool> SelectionSequence::Advance()
 {
     if (TraversalIndex >= CommittedOrder.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the traversal is at the end" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the traversal is at the end" });
 
     CurrentSelection = CommittedOrder[static_cast<std::size_t>(TraversalIndex)].SelectedOwners;
     ++TraversalIndex;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> SelectionSequence::RestoreAt(std::uint64_t RevisionIndex)
+Deliver<bool> SelectionSequence::RestoreAt(std::uint64_t RevisionIndex)
 {
     // 📝 The most recent selection sealed at or before the arrived-at revision. Searched backwards because a
     //    scrub arrives at a revision the artist selected against several times, and the last one is theirs.
@@ -71,10 +71,10 @@ Outcome<bool> SelectionSequence::RestoreAt(std::uint64_t RevisionIndex)
         CurrentSelection = CommittedOrder[Index].SelectedOwners;
         TraversalIndex  = Index + 1u;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "no selection was sealed at that revision" });
+    return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "no selection was sealed at that revision" });
 }
 
 //------------------------------------------------------------------------------------------------------------------------

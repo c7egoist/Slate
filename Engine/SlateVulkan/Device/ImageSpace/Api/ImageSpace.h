@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/ByteSpace/Api/ByteSpace.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/VulkanExchange/Api/VulkanExchange.h"
@@ -101,7 +101,7 @@ public:
     ///        view under a named image reports as an address beside a name, which reads as two objects.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructImageSpace(const VulkanExchange&      Exchange,
+    Deliver<bool> ConstructImageSpace(const VulkanExchange&      Exchange,
                             ByteSpace&                 BackingSpace,
                             const DiagnosticExtension& Naming);
 
@@ -114,7 +114,7 @@ public:
     ///        vendor allocation nothing holds a reference to, and it is reclaimed only at device teardown.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<ImageReservation> Reserve(const ImageShape& Declared);
+    Deliver<ImageReservation> Reserve(const ImageShape& Declared);
 
     /// 🧩 Records the barrier that carries one image from where it stands to where it is next read.
     /// in    Recorded    [-]  the command being recorded into
@@ -126,13 +126,13 @@ public:
     ///        derived from the declared reads and writes, and this is the one place it is recorded.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Transition(VkCommandBuffer Recorded, std::uint32_t ImageIndex, VkImageLayout Incoming);
+    Deliver<bool> Transition(VkCommandBuffer Recorded, std::uint32_t ImageIndex, VkImageLayout Incoming);
 
     /// 🧩 The current record for one claimed image, including the layout the last transition left it in.
     /// out   Result  [-]  refuses with ContentUnsupported for an unclaimed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ImageReservation> Current(std::uint32_t ImageIndex) const;
+    Deliver<ImageReservation> Current(std::uint32_t ImageIndex) const;
 
     /// 🧩 Constructs a view over one reduction level, for the chain `16` §2 walks a level at a time.
     /// in    ImageIndex [-]  a claimed image whose LevelCount accepts the level
@@ -142,7 +142,7 @@ public:
     ///        holding a handle the vendor has already reused.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<VkImageView> LevelView(std::uint32_t ImageIndex, std::uint32_t LevelIndex);
+    Deliver<VkImageView> LevelView(std::uint32_t ImageIndex, std::uint32_t LevelIndex);
 
     /// 🧩 Destroys one image, every view over it, and returns its bytes.
     /// pre   the device is idle, or no recording still in the rotation reads it

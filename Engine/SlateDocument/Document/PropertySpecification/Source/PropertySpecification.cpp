@@ -14,39 +14,39 @@ namespace Slate
 //                                                    THE VALIDATION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> Validate(const PropertyDeclaration& Declared, const PropertyValue& Offered)
+Deliver<bool> Validate(const PropertyDeclaration& Declared, const PropertyValue& Offered)
 {
     if (Declared.Measured != Offered.Measured)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the value does not measure what the property declares" });
     }
 
     switch (Declared.Measured)
     {
         case PropertyMeasure::Truth:
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
 
         case PropertyMeasure::Index:
         {
             if (Declared.UpperIndex != 0u && Offered.IndexHeld > Declared.UpperIndex)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the ordinal exceeds its ceiling" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the ordinal exceeds its ceiling" });
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Signed:
         {
             if (!Declared.BoundsDeclared)
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
 
             if (Offered.SignedHeld < Declared.LowerSigned)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "below the declared lower bound" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "below the declared lower bound" });
 
             if (Offered.SignedHeld > Declared.UpperSigned)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "above the declared upper bound" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "above the declared upper bound" });
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Magnitude:
@@ -55,26 +55,26 @@ Outcome<bool> Validate(const PropertyDeclaration& Declared, const PropertyValue&
             //    unbounded emission but never an unrepresentable value, and one written here propagates through
             //    every integration that reads it without ever naming its origin.
             if (std::isnan(Offered.MagnitudeHeld))
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the magnitude is not a number" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the magnitude is not a number" });
 
             if (!Declared.BoundsDeclared)
-                return Outcome<bool>::Result(true);
+                return Deliver<bool>::Result(true);
 
             if (Offered.MagnitudeHeld < Declared.LowerMagnitude)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "below the declared interval" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "below the declared interval" });
 
             if (Offered.MagnitudeHeld > Declared.UpperMagnitude)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "above the declared interval" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "above the declared interval" });
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Text:
         {
             if (Declared.TextExtent != 0u && Offered.TextHeld.size() > Declared.TextExtent)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the text exceeds its extent" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the text exceeds its extent" });
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Colour:
@@ -83,30 +83,30 @@ Outcome<bool> Validate(const PropertyDeclaration& Declared, const PropertyValue&
             //    An assumed space is the defect `36` exists to prevent, and assuming it here would place the
             //    assumption where no report can name it.
             if (!Offered.ColourHeld.ColourDeclared())
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the colour declares no space" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the colour declares no space" });
 
             if (Declared.RequiredSpace != 0u && Offered.ColourHeld.SpaceIdentity != Declared.RequiredSpace)
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "the colour is not in the space the property requires" });
             }
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Registration:
         {
             if (Offered.IndexHeld >= Declared.RegisteredOptions.size())
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such declared option" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such declared option" });
 
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::Owner:
         {
             if (!Offered.OwnerHeld.IdentityDeclared())
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::IdentityStale, "an undeclared identity names no owner" });
             }
 
@@ -114,25 +114,25 @@ Outcome<bool> Validate(const PropertyDeclaration& Declared, const PropertyValue&
             //    a `PopulationIndex` would make every property declaration depend on the population that
             //    happens to be open, and `10` §2.1's generational compare already refuses a stale reference
             //    wherever it is resolved.
-            return Outcome<bool>::Result(true);
+            return Deliver<bool>::Result(true);
         }
 
         case PropertyMeasure::MeasureCount:
             break;
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the declared measure has no validation" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the declared measure has no validation" });
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE BOUNDING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<PropertyValue> Bounded(const PropertyDeclaration& Declared, const PropertyValue& Offered)
+Deliver<PropertyValue> Bounded(const PropertyDeclaration& Declared, const PropertyValue& Offered)
 {
     if (Declared.Measured != Offered.Measured)
     {
-        return Outcome<PropertyValue>::Refuse(
+        return Deliver<PropertyValue>::Refuse(
             { RefusalReason::ContentUnsupported, "no bounding reconciles two different measures" });
     }
 
@@ -142,7 +142,7 @@ Outcome<PropertyValue> Bounded(const PropertyDeclaration& Declared, const Proper
     {
         if (std::isnan(Bounding.MagnitudeHeld))
         {
-            return Outcome<PropertyValue>::Refuse(
+            return Deliver<PropertyValue>::Refuse(
                 { RefusalReason::ContentUnsupported, "the magnitude is not a number" });
         }
 
@@ -164,7 +164,7 @@ Outcome<PropertyValue> Bounded(const PropertyDeclaration& Declared, const Proper
             Bounding.IndexHeld = Declared.UpperIndex;
     }
 
-    return Outcome<PropertyValue>::Result(Bounding);
+    return Deliver<PropertyValue>::Result(Bounding);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -182,14 +182,14 @@ std::size_t PropertyIndex::Located(const std::string& Identity) const
     return DeclaredProperties.size();
 }
 
-Outcome<bool> PropertyIndex::Declare(const PropertyDeclaration& Declaring)
+Deliver<bool> PropertyIndex::Declare(const PropertyDeclaration& Declaring)
 {
     if (Declaring.Identity.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a property declares no identity" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a property declares no identity" });
 
     // 🔴 The declaration's own default is validated against it. A default outside its bounds presents an invalid
     //    value on every owner that never wrote the property, which is every owner at the moment it arrives.
-    const Outcome<bool> Defaulted = Validate(Declaring, Declaring.Defaulted);
+    const Deliver<bool> Defaulted = Validate(Declaring, Declaring.Defaulted);
 
     if (!Defaulted.Resolved)
         return Defaulted;
@@ -202,7 +202,7 @@ Outcome<bool> PropertyIndex::Declare(const PropertyDeclaration& Declaring)
         HeldValues.push_back(Declaring.Defaulted);
         ValueDeclared.push_back(false);
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     // 📝 A redeclaration returns the value to the new default rather than retaining the old one. The former
@@ -212,17 +212,17 @@ Outcome<bool> PropertyIndex::Declare(const PropertyDeclaration& Declaring)
     HeldValues[Located_]         = Declaring.Defaulted;
     ValueDeclared[Located_]      = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> PropertyIndex::Write(const std::string& Identity, const PropertyValue& Offered)
+Deliver<bool> PropertyIndex::Write(const std::string& Identity, const PropertyValue& Offered)
 {
     const std::size_t Located_ = Located(Identity);
 
     if (Located_ == DeclaredProperties.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing declares that property" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing declares that property" });
 
-    const Outcome<bool> Validated = Validate(DeclaredProperties[Located_], Offered);
+    const Deliver<bool> Validated = Validate(DeclaredProperties[Located_], Offered);
 
     if (!Validated.Resolved)
         return Validated;
@@ -230,33 +230,33 @@ Outcome<bool> PropertyIndex::Write(const std::string& Identity, const PropertyVa
     HeldValues[Located_]    = Offered;
     ValueDeclared[Located_] = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<PropertyValue> PropertyIndex::Resolve(const std::string& Identity) const
+Deliver<PropertyValue> PropertyIndex::Resolve(const std::string& Identity) const
 {
     const std::size_t Located_ = Located(Identity);
 
     if (Located_ == DeclaredProperties.size())
     {
-        return Outcome<PropertyValue>::Refuse(
+        return Deliver<PropertyValue>::Refuse(
             { RefusalReason::ContentUnsupported, "nothing declares that property" });
     }
 
-    return Outcome<PropertyValue>::Result(HeldValues[Located_]);
+    return Deliver<PropertyValue>::Result(HeldValues[Located_]);
 }
 
-Outcome<PropertyDeclaration> PropertyIndex::Declared(const std::string& Identity) const
+Deliver<PropertyDeclaration> PropertyIndex::Declared(const std::string& Identity) const
 {
     const std::size_t Located_ = Located(Identity);
 
     if (Located_ == DeclaredProperties.size())
     {
-        return Outcome<PropertyDeclaration>::Refuse(
+        return Deliver<PropertyDeclaration>::Refuse(
             { RefusalReason::ContentUnsupported, "nothing declares that property" });
     }
 
-    return Outcome<PropertyDeclaration>::Result(DeclaredProperties[Located_]);
+    return Deliver<PropertyDeclaration>::Result(DeclaredProperties[Located_]);
 }
 
 const std::vector<PropertyDeclaration>& PropertyIndex::Declarations() const
@@ -271,17 +271,17 @@ bool PropertyIndex::ValueWritten(const std::string& Identity) const
     return Located_ != DeclaredProperties.size() && ValueDeclared[Located_];
 }
 
-Outcome<bool> PropertyIndex::Reclaim(const std::string& Identity)
+Deliver<bool> PropertyIndex::Reclaim(const std::string& Identity)
 {
     const std::size_t Located_ = Located(Identity);
 
     if (Located_ == DeclaredProperties.size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing declares that property" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "nothing declares that property" });
 
     HeldValues[Located_]    = DeclaredProperties[Located_].Defaulted;
     ValueDeclared[Located_] = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 bool PropertyIndex::ValuesValid() const

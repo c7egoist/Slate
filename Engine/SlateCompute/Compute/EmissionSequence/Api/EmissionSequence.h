@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/AnalyticProjection/Api/AnalyticProjection.h"
 #include "SlateDocument/Document/AssetInterchange/Api/AssetInterchange.h"
@@ -129,7 +129,7 @@ public:
     /// out   Result   [-]  refuses with ContentUnsupported for an absent resolver
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> ConstructEmissionSequence(const EmissionSources& Supplied);
+    Deliver<bool> ConstructEmissionSequence(const EmissionSources& Supplied);
 
     /// 🧩 Opens one image of a validated emission, ready for its first band.
     /// in    Declaring     [-]  the emission specification; validated here, again, and not assumed
@@ -145,7 +145,7 @@ public:
     ///        trusting a copy, and `50` §5.1's wrong arrangement is exactly what that copy would carry.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Open(const EmissionSpecification& Declaring,
+    Deliver<bool> Open(const EmissionSpecification& Declaring,
                        const MaterialIndex&         Materials,
                        std::uint32_t                ImageIndex);
 
@@ -163,7 +163,7 @@ public:
     ///        near and the resolution picks one arbitrarily.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> ResolveBand(const SurfaceLayerSequence& Content);
+    Deliver<std::uint32_t> ResolveBand(const SurfaceLayerSequence& Content);
 
     /// 🧩 Whether rows remain to be resolved.
     /// cost  ✔️
@@ -182,7 +182,7 @@ public:
     ///        to a codec is a file that opens, looks approximately right, and is wrong along one edge.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<EmittedTexels> Seal();
+    Deliver<EmittedTexels> Seal();
 
     /// 🧩 Abandons the standing emission and reclaims its texels.
     /// cost  🚩

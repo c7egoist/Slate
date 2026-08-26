@@ -416,7 +416,7 @@ void AppendProfileFill(const SketchStructure& Sketch,
 
 } // namespace
 
-Outcome<bool> ProjectSketchRendering(const SketchStructure& Sketch,
+Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
                                      const WorkspaceRecordStructure& Records,
                                      WorkspaceCadPacket& Delivered,
                                      const SketchRenderingStyle& Style)
@@ -424,7 +424,7 @@ Outcome<bool> ProjectSketchRendering(const SketchStructure& Sketch,
     Delivered.Reset();
 
     if (!Sketch.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the sketch declarations are incomplete" });
 
     const PlanarBasis Basis = ResolvePlanarBasis(Sketch.HeldPlane());
@@ -508,7 +508,7 @@ Outcome<bool> ProjectSketchRendering(const SketchStructure& Sketch,
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 } // namespace Slate

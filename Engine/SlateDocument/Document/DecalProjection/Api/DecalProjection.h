@@ -7,7 +7,7 @@
 
 #include "Foundation/Combination.h"
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateDocument/Document/SpatialSubdivision/Api/SpatialSubdivision.h"
 #include "SlateDocument/Document/TopologyStructure/Api/TopologyStructure.h"
@@ -125,7 +125,7 @@ constexpr bool PlacementWritesChannel(const PlacementSpecification& Placed, std:
 ///        a shoulder should not also appear on the far side of the arm — and it is what the default declares.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<DomainExtent> ProjectPlacementExtent(const PlacementSpecification&         Placed,
+Deliver<DomainExtent> ProjectPlacementExtent(const PlacementSpecification&         Placed,
                                              std::uint32_t                         PlacementIndex,
                                              std::uint32_t                         SequenceIndex,
                                              const TopologyStructure&              Imported,
@@ -182,7 +182,7 @@ public:
     ///                     ExtentExhausted at the declared ceiling
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> Declare(const PlacementSpecification& Declaring);
+    Deliver<std::uint32_t> Declare(const PlacementSpecification& Declaring);
 
     /// 🧩 Amends one placement, advancing its revision only where `00` §10.1 ② requires it.
     /// in    PlacementIndex  [-]  an ordinal this component registered
@@ -194,13 +194,13 @@ public:
     ///        applied to afterwards.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(std::uint32_t PlacementIndex, const PlacementSpecification& Amending);
+    Deliver<bool> Amend(std::uint32_t PlacementIndex, const PlacementSpecification& Amending);
 
     /// 🧩 One declared placement.
     /// out   Result  [-]  refuses with ContentUnsupported for an unclaimed ordinal
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<const PlacementSpecification*> Resolve(std::uint32_t PlacementIndex) const;
+    Deliver<const PlacementSpecification*> Resolve(std::uint32_t PlacementIndex) const;
 
     /// 🧩 Withdraws one placement, returning its slot for reuse.
     /// note  🔴 Called from `12` §12's retirement cascade, inside that cascade's single transaction. A placement
@@ -208,7 +208,7 @@ public:
     ///        rather than surviving it as an orphaned reference `56` still names.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Withdraw(std::uint32_t PlacementIndex);
+    Deliver<bool> Withdraw(std::uint32_t PlacementIndex);
 
     /// 🧩 One placement's revision, for `70` §2's per-tile comparison.
     /// out   Revision  [-]  zero for an unclaimed ordinal, which no resolved tile ever recorded
@@ -266,26 +266,26 @@ public:
     /// post  nothing is recorded; the placement stands unamended until Seal
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Open(std::uint32_t PlacementIndex, const PlacementSpecification& Current, bool CameraFollowed);
+    Deliver<bool> Open(std::uint32_t PlacementIndex, const PlacementSpecification& Current, bool CameraFollowed);
 
     /// 🧩 Amends the open drag's placing transform.
     /// out   Result  [-]  refuses with HostDenied when no drag is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Amend(const DecomposedTransform& Amending);
+    Deliver<bool> Amend(const DecomposedTransform& Amending);
 
     /// 🧩 Ends the drag with no effect, returning the specification that stood at Open.
     /// out   Result  [-]  refuses with HostDenied when no drag is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<PlacementSpecification> Abandon();
+    Deliver<PlacementSpecification> Abandon();
 
     /// 🧩 Ends the drag, returning the specification the caller commits as one transaction.
     /// out   Result  [-]  refuses with HostDenied when no drag is open
     /// post  🔴 the returned specification carries an advanced revision; `70` re-resolves against it
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<PlacementSpecification> Seal();
+    Deliver<PlacementSpecification> Seal();
 
     /// 🧩 The placement as the drag has amended it, for `82`'s speculative resolution.
     /// cost  ✔️

@@ -33,19 +33,19 @@ namespace
         return std::filesystem::path(Path).stem().string();
     }
 
-    Outcome<std::vector<std::uint8_t>> ReadBytes(const std::string& Path)
+    Deliver<std::vector<std::uint8_t>> ReadBytes(const std::string& Path)
     {
         std::ifstream Input(Path, std::ios::binary);
         if (!Input)
-            return Outcome<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the mesh file could not be opened" });
+            return Deliver<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the mesh file could not be opened" });
         Input.seekg(0, std::ios::end);
         const std::streamoff Count = Input.tellg();
         if (Count <= 0)
-            return Outcome<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the mesh file is empty" });
+            return Deliver<std::vector<std::uint8_t>>::Refuse({ RefusalReason::ContentUnsupported, "the mesh file is empty" });
         Input.seekg(0, std::ios::beg);
         std::vector<std::uint8_t> Bytes(static_cast<std::size_t>(Count));
         Input.read(reinterpret_cast<char*>(Bytes.data()), Count);
-        return Outcome<std::vector<std::uint8_t>>::Result(std::move(Bytes));
+        return Deliver<std::vector<std::uint8_t>>::Result(std::move(Bytes));
     }
 
     void AddMaterialSlot(ImportedSceneMesh& Imported, const std::string& Slot)
@@ -101,12 +101,12 @@ namespace
         return Mesh.Positions.size() >= 9u && Mesh.Positions.size() % 3u == 0u && Mesh.Indices.size() >= 3u;
     }
 
-    Outcome<ImportedSceneMesh> FinishOrRefuse(ImportedSceneMesh Imported, const std::string& Path)
+    Deliver<ImportedSceneMesh> FinishOrRefuse(ImportedSceneMesh Imported, const std::string& Path)
     {
         if (!MeshStanding(Imported.Mesh))
-            return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the imported mesh did not contain triangles" });
+            return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the imported mesh did not contain triangles" });
         FinaliseImported(Imported, Path);
-        return Outcome<ImportedSceneMesh>::Result(std::move(Imported));
+        return Deliver<ImportedSceneMesh>::Result(std::move(Imported));
     }
 
     std::int32_t ObjIndex(const std::string& Token, std::uint32_t VertexCount)
@@ -121,7 +121,7 @@ namespace
         return -1;
     }
 
-    Outcome<ImportedSceneMesh> ImportObj(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportObj(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         ImportedSceneMesh Imported;
         Imported.Format = SceneMeshFormat::WavefrontObj;
@@ -164,7 +164,7 @@ namespace
         return FinishOrRefuse(std::move(Imported), Path);
     }
 
-    Outcome<ImportedSceneMesh> ImportAsciiStl(const std::string& Text, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportAsciiStl(const std::string& Text, const std::string& Path)
     {
         ImportedSceneMesh Imported;
         Imported.Format = SceneMeshFormat::Stl;
@@ -203,14 +203,14 @@ namespace
         return Value;
     }
 
-    Outcome<ImportedSceneMesh> ImportBinaryStl(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportBinaryStl(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         if (Bytes.size() < 84u)
-            return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the binary STL header is incomplete" });
+            return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the binary STL header is incomplete" });
         std::uint32_t TriangleCount = 0u;
         std::memcpy(&TriangleCount, Bytes.data() + 80u, sizeof(std::uint32_t));
         if (84ull + static_cast<unsigned long long>(TriangleCount) * 50ull > Bytes.size())
-            return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the binary STL triangle run is incomplete" });
+            return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the binary STL triangle run is incomplete" });
         ImportedSceneMesh Imported;
         Imported.Format = SceneMeshFormat::Stl;
         for (std::uint32_t Triangle = 0u; Triangle < TriangleCount; ++Triangle)
@@ -229,20 +229,20 @@ namespace
         return FinishOrRefuse(std::move(Imported), Path);
     }
 
-    Outcome<ImportedSceneMesh> ImportStl(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportStl(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         const bool LooksAscii = Bytes.size() >= 5u && std::memcmp(Bytes.data(), "solid", 5u) == 0;
         if (LooksAscii)
         {
             std::string Text(reinterpret_cast<const char*>(Bytes.data()), Bytes.size());
-            Outcome<ImportedSceneMesh> Ascii = ImportAsciiStl(Text, Path);
+            Deliver<ImportedSceneMesh> Ascii = ImportAsciiStl(Text, Path);
             if (Ascii.Resolved)
                 return Ascii;
         }
         return ImportBinaryStl(Bytes, Path);
     }
 
-    Outcome<ImportedSceneMesh> ImportAsciiPly(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportAsciiPly(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         ImportedSceneMesh Imported;
         Imported.Format = SceneMeshFormat::Ply;
@@ -258,7 +258,7 @@ namespace
             std::string A, B;
             Tokens >> A >> B;
             if (A == "format" && B != "ascii")
-                return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "only ASCII PLY is supported by the MVP importer" });
+                return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "only ASCII PLY is supported by the MVP importer" });
             if (A == "element" && B == "vertex") Tokens >> VertexCount;
             if (A == "element" && B == "face") Tokens >> FaceCount;
             if (A == "end_header") Header = false;
@@ -317,7 +317,7 @@ namespace
         return Values;
     }
 
-    Outcome<ImportedSceneMesh> ImportAsciiFbx(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportAsciiFbx(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         ImportedSceneMesh Imported;
         Imported.Format = SceneMeshFormat::FbxAscii;
@@ -342,7 +342,7 @@ namespace
         return FinishOrRefuse(std::move(Imported), Path);
     }
 
-    Outcome<ImportedSceneMesh> ImportSimpleGltfJson(const std::string& Json, const std::vector<std::uint8_t>& Binary, const std::string& Path, SceneMeshFormat Format)
+    Deliver<ImportedSceneMesh> ImportSimpleGltfJson(const std::string& Json, const std::vector<std::uint8_t>& Binary, const std::string& Path, SceneMeshFormat Format)
     {
         ImportedSceneMesh Imported;
         Imported.Format = Format;
@@ -387,7 +387,7 @@ namespace
         return FinishOrRefuse(std::move(Imported), Path);
     }
 
-    Outcome<ImportedSceneMesh> ImportGltfText(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportGltfText(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         return ImportSimpleGltfJson(std::string(reinterpret_cast<const char*>(Bytes.data()), Bytes.size()), {}, Path, SceneMeshFormat::GltfText);
     }
@@ -400,10 +400,10 @@ namespace
         return Value;
     }
 
-    Outcome<ImportedSceneMesh> ImportGlb(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
+    Deliver<ImportedSceneMesh> ImportGlb(const std::vector<std::uint8_t>& Bytes, const std::string& Path)
     {
         if (Bytes.size() < 20u || ReadU32(Bytes, 0u) != 0x46546C67u)
-            return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the GLB header is not recognised" });
+            return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the GLB header is not recognised" });
         std::string Json;
         std::vector<std::uint8_t> Binary;
         std::size_t Offset = 12u;
@@ -421,7 +421,7 @@ namespace
             Offset += Length;
         }
         if (Json.empty())
-            return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the GLB JSON chunk is absent" });
+            return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the GLB JSON chunk is absent" });
         return ImportSimpleGltfJson(Json, Binary, Path, SceneMeshFormat::GltfBinary);
     }
 }
@@ -443,14 +443,14 @@ bool SceneMeshFormatSupported(const std::string& Path)
     return ClassifySceneMeshFormat(Path) != SceneMeshFormat::Unsupported;
 }
 
-Outcome<ImportedSceneMesh> ImportSceneMeshFile(const std::string& Path)
+Deliver<ImportedSceneMesh> ImportSceneMeshFile(const std::string& Path)
 {
     const SceneMeshFormat Format = ClassifySceneMeshFormat(Path);
     if (Format == SceneMeshFormat::Unsupported)
-        return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the mesh import format is unsupported" });
-    const Outcome<std::vector<std::uint8_t>> Bytes = ReadBytes(Path);
+        return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the mesh import format is unsupported" });
+    const Deliver<std::vector<std::uint8_t>> Bytes = ReadBytes(Path);
     if (!Bytes.Resolved)
-        return Outcome<ImportedSceneMesh>::Refuse(Bytes.Error);
+        return Deliver<ImportedSceneMesh>::Refuse(Bytes.Error);
 
     switch (Format)
     {
@@ -462,7 +462,7 @@ Outcome<ImportedSceneMesh> ImportSceneMeshFile(const std::string& Path)
         case SceneMeshFormat::Ply:          return ImportAsciiPly(Bytes.Resolve(), Path);
         case SceneMeshFormat::Unsupported:  break;
     }
-    return Outcome<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the mesh import format is unsupported" });
+    return Deliver<ImportedSceneMesh>::Refuse({ RefusalReason::ContentUnsupported, "the mesh import format is unsupported" });
 }
 
 } // namespace Slate

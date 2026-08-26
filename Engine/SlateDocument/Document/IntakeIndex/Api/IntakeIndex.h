@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Numeric/ReportSequence/Api/ReportSequence.h"
 
 #include <cstdint>
@@ -87,7 +87,7 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted when nothing arrived from there
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<IntakeRecord> Resolve(const std::string& OriginPath) const;
+    Deliver<IntakeRecord> Resolve(const std::string& OriginPath) const;
 
     /// 🧩 How many intakes carried an assumption.
     /// cost  ✔️

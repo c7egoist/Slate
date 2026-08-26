@@ -105,33 +105,33 @@ double PlanarArea(PlanarPosition Alpha, PlanarPosition Beta, PlanarPosition Gamm
 //                                                      THE SOLVE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ConvergentResult<std::vector<PlanarPosition>>> Solve(const UnwrapSpecification& Declaring)
+Deliver<ConvergentResult<std::vector<PlanarPosition>>> Solve(const UnwrapSpecification& Declaring)
 {
     using Result = ConvergentResult<std::vector<PlanarPosition>>;
 
     const std::size_t VertexSpan = Declaring.Positions.size();
 
     if (VertexSpan < 3u)
-        return Outcome<Result>::Refuse({ RefusalReason::ExtentExhausted, "a chart of fewer than three positions" });
+        return Deliver<Result>::Refuse({ RefusalReason::ExtentExhausted, "a chart of fewer than three positions" });
 
     if (Declaring.TriangleCorners.size() % 3u != 0u || Declaring.TriangleCorners.empty())
-        return Outcome<Result>::Refuse({ RefusalReason::ContentUnsupported, "the triangulation is not whole" });
+        return Deliver<Result>::Refuse({ RefusalReason::ContentUnsupported, "the triangulation is not whole" });
 
     for (const std::uint32_t Corner : Declaring.TriangleCorners)
     {
         if (Corner >= VertexSpan)
-            return Outcome<Result>::Refuse({ RefusalReason::ContentUnsupported, "a corner addresses no position" });
+            return Deliver<Result>::Refuse({ RefusalReason::ContentUnsupported, "a corner addresses no position" });
     }
 
     if (Declaring.ContourLoop.size() < 3u)
-        return Outcome<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary loop is not a loop" });
+        return Deliver<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary loop is not a loop" });
 
     std::vector<bool> DividerHeld(VertexSpan, false);
 
     for (const std::uint32_t Index : Declaring.ContourLoop)
     {
         if (Index >= VertexSpan)
-            return Outcome<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary addresses no position" });
+            return Deliver<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary addresses no position" });
 
         DividerHeld[Index] = true;
     }
@@ -154,7 +154,7 @@ Outcome<ConvergentResult<std::vector<PlanarPosition>>> Solve(const UnwrapSpecifi
     const double Perimeter = Accumulated[LoopSpan];
 
     if (Perimeter <= 0.0)
-        return Outcome<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary encloses no extent" });
+        return Deliver<Result>::Refuse({ RefusalReason::ContentUnsupported, "the boundary encloses no extent" });
 
     std::vector<PlanarPosition> Flattened(VertexSpan);
 
@@ -307,7 +307,7 @@ Outcome<ConvergentResult<std::vector<PlanarPosition>>> Solve(const UnwrapSpecifi
     Produced.ResidualNorm   = Residual;
     Produced.IterationCount = IterationIndex;
 
-    return Outcome<Result>::Result(Produced);
+    return Deliver<Result>::Result(Produced);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

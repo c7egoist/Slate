@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateVulkan/Device/CycleScheduler/Api/CycleScheduler.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
@@ -68,7 +68,7 @@ public:
     ///        being written from the one the device is still executing, and that pair is the whole rotation.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructCommandSequence(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
+    Deliver<bool> ConstructCommandSequence(const VulkanExchange& Exchange, const DiagnosticExtension& Naming);
 
     /// 🧩 Resets one cycle slot's recording extent and opens its recording for writing.
     /// in    SlotIndex  [-]  below `RecordingSlotCount`
@@ -78,13 +78,13 @@ public:
     /// post  the slot is open; Submit closes it
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<VkCommandBuffer> Open(std::uint32_t SlotIndex);
+    Deliver<VkCommandBuffer> Open(std::uint32_t SlotIndex);
 
     /// 🧩 The recording one cycle slot holds, for a document contributing commands to an open slot.
     /// out   Result  [-]  refuses with ContentUnsupported for an excessive slot or a slot that is not open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<VkCommandBuffer> Recording(std::uint32_t SlotIndex) const;
+    Deliver<VkCommandBuffer> Recording(std::uint32_t SlotIndex) const;
 
     /// 🧩 Closes one cycle slot's recording and surrenders it to the one graphics queue.
     /// in    SlotIndex [-]  below `RecordingSlotCount`
@@ -98,7 +98,7 @@ public:
     ///        moment for every other reader of it.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Submit(std::uint32_t SlotIndex, const SubmitOrdering& Ordering);
+    Deliver<bool> Submit(std::uint32_t SlotIndex, const SubmitOrdering& Ordering);
 
     /// 🧩 Opens a recording outside the rotation, for the one-off transfers bring-up records.
     /// out   Result  [-]  refuses with ExtentExhausted when the device declines the recording
@@ -106,7 +106,7 @@ public:
     ///        a rotation's — an immediate wait inside a rotation is the whole device serialised on the host.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<VkCommandBuffer> OpenImmediate();
+    Deliver<VkCommandBuffer> OpenImmediate();
 
     /// 🧩 Closes an immediate recording, surrenders it, waits for it, and returns it.
     /// in    Recorded [-]  a recording OpenImmediate delivered
@@ -114,7 +114,7 @@ public:
     ///                     DeviceLost when the device was lost; the recording is returned either way
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> SubmitImmediate(VkCommandBuffer Recorded);
+    Deliver<bool> SubmitImmediate(VkCommandBuffer Recorded);
 
     /// 🧩 Destroys every recording and every extent.
     /// pre   the device is idle

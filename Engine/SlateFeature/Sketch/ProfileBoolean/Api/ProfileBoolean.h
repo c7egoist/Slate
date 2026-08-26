@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 #include "SlateShape/Operation/BooleanSolver/Api/BooleanSolver.h"
 
@@ -27,7 +27,7 @@ ProfileBooleanDisposition EvaluateProfileBoolean(const SketchStructure& Declared
                                                  const std::vector<ProfileNameInFeature>& OperandSet,
                                                  BooleanSubject Subject);
 
-Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& Declared,
+Deliver<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& Declared,
                                                                const std::vector<ProfileNameInFeature>& OperandSet,
                                                                BooleanSubject Subject);
 

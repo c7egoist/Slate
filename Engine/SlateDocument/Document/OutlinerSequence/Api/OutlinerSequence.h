@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateDocument/Document/RegistrationIndex/Api/RegistrationIndex.h"
 #include "SlateDocument/Document/PopulationIndex/Api/PopulationIndex.h"
 #include "SlateDocument/Document/RevisionSequence/Api/RevisionSequence.h"
@@ -101,7 +101,7 @@ public:
     /// post  the owner sits last in the root ordering, attached to nothing, in no subset
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<OwnerIdentity> Register(const std::string& DeclaredName);
+    Deliver<OwnerIdentity> Register(const std::string& DeclaredName);
 
     /// 🧩 Declares one intent, to be applied at the next tick's ①.
     /// in    Incoming  [-]  the intent, every operand named
@@ -110,7 +110,7 @@ public:
     ///        against a linearisation that is halfway rebuilt.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const DeclaredIntent& Incoming);
+    Deliver<bool> Declare(const DeclaredIntent& Incoming);
 
     /// 🧩 Scrubs the document one transaction backwards, restoring the selection that transaction applied to.
     /// in    SealedAt  [ns]  accepted for symmetry with the tick; the restoration seals nothing — `84` §3
@@ -124,7 +124,7 @@ public:
     ///        clearing it. The artist selected nothing there, so there is nothing to restore.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Retreat(std::uint64_t SealedAt);
+    Deliver<bool> Retreat(std::uint64_t SealedAt);
 
     /// 🧩 Scrubs the document one transaction forwards, restoring the selection that transaction applied to.
     /// in    SealedAt  [ns]  accepted for symmetry with the tick; the restoration seals nothing — `84` §3
@@ -132,7 +132,7 @@ public:
     /// post  the document position and the standing selection moved together
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Advance(std::uint64_t SealedAt);
+    Deliver<bool> Advance(std::uint64_t SealedAt);
 
     /// 🧩 Runs one whole tick in the fixed order ①–⑦.
     /// in    SealedAt  [ns]  the arrival stamp transactions sealed this tick carry
@@ -142,7 +142,7 @@ public:
     ///        are checked as each transaction seals.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Reconcile(std::uint64_t SealedAt);
+    Deliver<bool> Reconcile(std::uint64_t SealedAt);
 
     /// 🧩 The rows the last completed tick linearised.
     /// cost  ✔️
@@ -199,13 +199,13 @@ public:
 
 private:
 
-    Outcome<bool> ApplyIntent(const DeclaredIntent& Applying, std::uint64_t SealedAt);
-    Outcome<bool> ApplySubset(const DeclaredIntent& Applying, SubsetSubject Addressed, std::uint64_t SealedAt);
-    Outcome<bool> ApplyNarrowing(const DeclaredIntent& Applying);
-    Outcome<bool> DeriveNarrowing();
-    Outcome<bool> ApplySelection(const std::vector<OwnerIdentity>& Current, std::uint64_t SealedAt);
-    Outcome<bool> RegisterSelection(const std::vector<OwnerIdentity>& Current);
-    Outcome<bool> RetireCascade(const DeclaredIntent& Applying, std::uint64_t SealedAt);
+    Deliver<bool> ApplyIntent(const DeclaredIntent& Applying, std::uint64_t SealedAt);
+    Deliver<bool> ApplySubset(const DeclaredIntent& Applying, SubsetSubject Addressed, std::uint64_t SealedAt);
+    Deliver<bool> ApplyNarrowing(const DeclaredIntent& Applying);
+    Deliver<bool> DeriveNarrowing();
+    Deliver<bool> ApplySelection(const std::vector<OwnerIdentity>& Current, std::uint64_t SealedAt);
+    Deliver<bool> RegisterSelection(const std::vector<OwnerIdentity>& Current);
+    Deliver<bool> RetireCascade(const DeclaredIntent& Applying, std::uint64_t SealedAt);
     void          Reject(const DeclaredIntent& Rejected, const Refusal& Declining);
 
     PopulationIndex                Population;                   // [-] - `10`'s slot index, reconciled at ②

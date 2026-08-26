@@ -37,9 +37,9 @@ def main() -> int:
 
     surface_header = require_text(
         "Engine/SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h",
-        "Outcome<std::uint32_t> DeclareChannelMask",
-        "Outcome<LayerContentSource> DeclareSource",
-        "Outcome<CoverageSpecification> DeclareCoverage",
+        "Deliver<std::uint32_t> DeclareChannelMask",
+        "Deliver<LayerContentSource> DeclareSource",
+        "Deliver<CoverageSpecification> DeclareCoverage",
         "std::uint32_t       ChannelMask",
         "bool                Inverted",
     )

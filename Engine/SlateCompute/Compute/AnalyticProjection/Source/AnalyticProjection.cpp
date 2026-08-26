@@ -114,14 +114,14 @@ double SamplePainted(const PaintedContent& Held,
 //                                                      CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> AnalyticProjection::ConstructAnalyticProjection(const AnalyticSources& Supplied_)
+Deliver<bool> AnalyticProjection::ConstructAnalyticProjection(const AnalyticSources& Supplied_)
 {
     Supplied = Supplied_;
 
     // 📝 Nothing is rejected here. A document holding no tiling resolves every one of its layers without one, and
     //    refusing at construction would refuse a document for content it does not contain. `SourcesPresent`
     //    below is what a promotion asks, against the sequence it is about to resolve.
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -161,14 +161,14 @@ const std::vector<std::vector<PlanarPosition>>* AnalyticProjection::Flattening(s
 //                                                    THE FOUR SOURCES
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolveOutlineAt(std::uint32_t  SourceIndex,
+Deliver<ResolvedSample> AnalyticProjection::ResolveOutlineAt(std::uint32_t  SourceIndex,
                                                              double         SourceX,
                                                              double         SourceY,
                                                              double         Tolerance) const
 {
     if (Supplied.Outlines == nullptr || SourceIndex >= Supplied.Outlines->size())
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "no outline stands at that source ordinal" });
     }
 
@@ -181,7 +181,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveOutlineAt(std::uint32_t  Sour
 
     if (Flattened == nullptr)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "the outline flattened to no path" });
     }
 
@@ -192,7 +192,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveOutlineAt(std::uint32_t  Sour
     //    outward rounding `38` §6 applies everywhere else, and refusing it would give every outline a one-texel
     //    gap along its own edge.
     if (Declared.Classify(*Flattened, SourceX, SourceY) < 0)
-        return Outcome<ResolvedSample>::Result(Resolved);
+        return Deliver<ResolvedSample>::Result(Resolved);
 
     if (Declared.Declared().ColourDeclared)
         AcceptColour(Resolved, Declared.Declared().DeclaredColour, ResolvedComponentLimit);
@@ -200,7 +200,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveOutlineAt(std::uint32_t  Sour
     Resolved.Coverage       = 1.0;
     Resolved.SampleResolved = true;
 
-    return Outcome<ResolvedSample>::Result(Resolved);
+    return Deliver<ResolvedSample>::Result(Resolved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -302,14 +302,14 @@ void FoldRevision(std::uint64_t& Running, std::uint64_t Incoming)
 //                                                        TEXT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolveTextAt(std::uint32_t  SourceIndex,
+Deliver<ResolvedSample> AnalyticProjection::ResolveTextAt(std::uint32_t  SourceIndex,
                                                          double         SourceX,
                                                          double         SourceY,
                                                          double         Tolerance) const
 {
     if (Supplied.Texts == nullptr || SourceIndex >= Supplied.Texts->size() || Supplied.Typeface == nullptr)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "no text or no typeface stands at that source ordinal" });
     }
 
@@ -319,7 +319,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTextAt(std::uint32_t  SourceI
     ResolvedSample Resolved;
 
     if (Declared.GlyphSequence.empty())
-        return Outcome<ResolvedSample>::Result(Resolved);
+        return Deliver<ResolvedSample>::Result(Resolved);
 
     // 📐 The sequence is walked in typeface units and the position is carried into them once, rather than each
     //    glyph's outline being carried into the unit square. `52` §3's advances and pair adjustments are declared
@@ -342,10 +342,10 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTextAt(std::uint32_t  SourceI
         //    glyph sequence precisely so that shaping is not re-run per resolution; a sequence naming a glyph the
         //    typeface no longer carries is a typeface that was replaced, and skipping it silently would reflow
         //    the text the artist already positioned.
-        const Outcome<const GlyphSpecification*> Held = Faced.ResolveGlyph(GlyphIdentity);
+        const Deliver<const GlyphSpecification*> Held = Faced.ResolveGlyph(GlyphIdentity);
 
         if (!Held.Resolved)
-            return Outcome<ResolvedSample>::Refuse(Held.Error);
+            return Deliver<ResolvedSample>::Refuse(Held.Error);
 
         const GlyphSpecification& Glyph = *Held.Resolve();
 
@@ -366,20 +366,20 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTextAt(std::uint32_t  SourceI
             Resolved.ComponentCount = ResolvedComponentLimit;
             Resolved.SampleResolved = true;
 
-            return Outcome<ResolvedSample>::Result(Resolved);
+            return Deliver<ResolvedSample>::Result(Resolved);
         }
 
         Advanced += Glyph.Advance;
     }
 
-    return Outcome<ResolvedSample>::Result(Resolved);
+    return Deliver<ResolvedSample>::Result(Resolved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       TILING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  TilingIndex,
+Deliver<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  TilingIndex,
                                                             double         SourceX,
                                                             double         SourceY,
                                                             double         Tolerance,
@@ -387,7 +387,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
 {
     if (Supplied.Tilings == nullptr)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "no tiling index was supplied" });
     }
 
@@ -396,21 +396,21 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
     //    was nested — and recursing on it is an unbounded resolution `20` §2.2's evaluation budget cannot bound.
     if (NestingDepth > TilingNestingLimit)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "the nesting exceeds `54` §3's declared ceiling" });
     }
 
-    const Outcome<const TilingSpecification*> Declared = Supplied.Tilings->Resolve(TilingIndex);
+    const Deliver<const TilingSpecification*> Declared = Supplied.Tilings->Resolve(TilingIndex);
 
     if (!Declared.Resolved)
-        return Outcome<ResolvedSample>::Refuse(Declared.Error);
+        return Deliver<ResolvedSample>::Refuse(Declared.Error);
 
     const TilingSpecification& Tiled = *Declared.Resolve();
 
-    const Outcome<ClassifiedCell> Classified = Tiled.Classify(SourceX, SourceY);
+    const Deliver<ClassifiedCell> Classified = Tiled.Classify(SourceX, SourceY);
 
     if (!Classified.Resolved)
-        return Outcome<ResolvedSample>::Refuse(Classified.Error);
+        return Deliver<ResolvedSample>::Refuse(Classified.Error);
 
     const ClassifiedCell& Cell = Classified.Resolve();
 
@@ -444,7 +444,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
 
             case CellContentSource::VectorOutline:
             {
-                const Outcome<ResolvedSample> Outlined =
+                const Deliver<ResolvedSample> Outlined =
                     ResolveOutlineAt(Element.SourceIndex, ElementX, ElementY, Tolerance);
 
                 if (!Outlined.Resolved)
@@ -456,7 +456,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
 
             case CellContentSource::NestedTiling:
             {
-                const Outcome<ResolvedSample> Nested = ResolveTilingAt(Element.SourceIndex,
+                const Deliver<ResolvedSample> Nested = ResolveTilingAt(Element.SourceIndex,
                                                                       ElementX,
                                                                       ElementY,
                                                                       Tolerance,
@@ -474,7 +474,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
                 // ⚠️ 🚧 Rejected for the reason the class note gives: `50` retains a decoded image's original
                 //    bytes and performs `36` §3's conversion into the working space nowhere, so sampling here
                 //    would return values in a content-native space nothing declared.
-                return Outcome<ResolvedSample>::Refuse(
+                return Deliver<ResolvedSample>::Refuse(
                     { RefusalReason::ContentUnsupported, "imagery is not resolvable; `36` §3's conversion is unbuilt" });
             }
 
@@ -490,28 +490,28 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveTilingAt(std::uint32_t  Tilin
         AccumulateSample(Resolved, Incoming, Element.Combination, ResolvedComponentLimit);
     }
 
-    return Outcome<ResolvedSample>::Result(Resolved);
+    return Deliver<ResolvedSample>::Result(Resolved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  PLACED CONTENT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolvePlacedAt(std::uint32_t  PlacementIndex,
+Deliver<ResolvedSample> AnalyticProjection::ResolvePlacedAt(std::uint32_t  PlacementIndex,
                                                             double         PositionX,
                                                             double         PositionY,
                                                             double         Tolerance) const
 {
     if (Supplied.Placements == nullptr)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "no placement index was supplied" });
     }
 
-    const Outcome<const PlacementSpecification*> Declared = Supplied.Placements->Resolve(PlacementIndex);
+    const Deliver<const PlacementSpecification*> Declared = Supplied.Placements->Resolve(PlacementIndex);
 
     if (!Declared.Resolved)
-        return Outcome<ResolvedSample>::Refuse(Declared.Error);
+        return Deliver<ResolvedSample>::Refuse(Declared.Error);
 
     const PlacementSpecification& Placed = *Declared.Resolve();
 
@@ -522,7 +522,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolvePlacedAt(std::uint32_t  Place
     //    transform into a source space; the source is then one of the three below, resolved exactly as it would
     //    be resolved were it applied as a layer.
     if (!ProjectIntoSource(Placed, PositionX, PositionY, SourceX, SourceY))
-        return Outcome<ResolvedSample>::Result(ResolvedSample{});
+        return Deliver<ResolvedSample>::Result(ResolvedSample{});
 
     switch (Placed.Source)
     {
@@ -536,21 +536,21 @@ Outcome<ResolvedSample> AnalyticProjection::ResolvePlacedAt(std::uint32_t  Place
             return ResolveTilingAt(Placed.SourceIndex, SourceX, SourceY, Tolerance, 0u);
 
         case PlacedSource::Imagery:
-            return Outcome<ResolvedSample>::Refuse(
+            return Deliver<ResolvedSample>::Refuse(
                 { RefusalReason::ContentUnsupported, "imagery is not resolvable; `36` §3's conversion is unbuilt" });
 
         case PlacedSource::SourceCount:
             break;
     }
 
-    return Outcome<ResolvedSample>::Refuse({ RefusalReason::ContentUnsupported, "no such placed source" });
+    return Deliver<ResolvedSample>::Refuse({ RefusalReason::ContentUnsupported, "no such placed source" });
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     ONE ENTRY
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecification&  Held,
+Deliver<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecification&  Held,
                                                            double                     PositionX,
                                                            double                     PositionY,
                                                            double                     Tolerance,
@@ -566,7 +566,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
             //    reconstruction sources and a mixed sequence needs all three composed; a resolver that skipped
             //    painted entries would hand `20` a partial tile it has no route to complete.
             if (Held.Painted.ExtentTexels == 0u || Held.Painted.Texels.empty())
-                return Outcome<ResolvedSample>::Result(Resolved);
+                return Deliver<ResolvedSample>::Result(Resolved);
 
             for (std::uint32_t Component = 0u; Component < ComponentCount; ++Component)
             {
@@ -583,7 +583,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::PlacedContent:
         {
-            const Outcome<ResolvedSample> Placed =
+            const Deliver<ResolvedSample> Placed =
                 ResolvePlacedAt(Held.SourceIndex, PositionX, PositionY, Tolerance);
 
             if (!Placed.Resolved)
@@ -595,7 +595,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::Tiling:
         {
-            const Outcome<ResolvedSample> Tiled =
+            const Deliver<ResolvedSample> Tiled =
                 ResolveTilingAt(Held.SourceIndex, PositionX, PositionY, Tolerance, 0u);
 
             if (!Tiled.Resolved)
@@ -607,7 +607,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::AnalyticResolution:
         {
-            const Outcome<ResolvedSample> Outlined =
+            const Deliver<ResolvedSample> Outlined =
                 ResolveOutlineAt(Held.SourceIndex, PositionX, PositionY, Tolerance);
 
             if (!Outlined.Resolved)
@@ -622,16 +622,16 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
             // 🔴 A nested entry is resolved by `ResolveAt`, which holds the sequence this one only names. `56`
             //    §4.1 combines the nested content internally first and applies the enclosing entry's combination
             //    and coverage **once** to the result, and only the routine holding both sequences can do that.
-            return Outcome<ResolvedSample>::Refuse(
+            return Deliver<ResolvedSample>::Refuse(
                 { RefusalReason::HostDenied, "a nested entry is resolved by the sequence walk, not per entry" });
         }
 
         case LayerContentSource::SourceCount:
-            return Outcome<ResolvedSample>::Refuse({ RefusalReason::ContentUnsupported, "no such content source" });
+            return Deliver<ResolvedSample>::Refuse({ RefusalReason::ContentUnsupported, "no such content source" });
     }
 
     if (!Held.Coverage.CoverageDeclared || !Resolved.SampleResolved)
-        return Outcome<ResolvedSample>::Result(Resolved);
+        return Deliver<ResolvedSample>::Result(Resolved);
 
     // 🔴 Coverage restricts where the entry applies and is resolved through the **same four sources** its content
     //    is — `56` §5. A coverage that could only be painted would make a tiled mask impossible, and an artist
@@ -650,7 +650,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::PlacedContent:
         {
-            const Outcome<ResolvedSample> Masked =
+            const Deliver<ResolvedSample> Masked =
                 ResolvePlacedAt(Held.Coverage.SourceIndex, PositionX, PositionY, Tolerance);
 
             if (!Masked.Resolved)
@@ -662,7 +662,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::Tiling:
         {
-            const Outcome<ResolvedSample> Masked =
+            const Deliver<ResolvedSample> Masked =
                 ResolveTilingAt(Held.Coverage.SourceIndex, PositionX, PositionY, Tolerance, 0u);
 
             if (!Masked.Resolved)
@@ -674,7 +674,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
         case LayerContentSource::AnalyticResolution:
         {
-            const Outcome<ResolvedSample> Masked =
+            const Deliver<ResolvedSample> Masked =
                 ResolveOutlineAt(Held.Coverage.SourceIndex, PositionX, PositionY, Tolerance);
 
             if (!Masked.Resolved)
@@ -689,14 +689,14 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
         {
             // 📝 A nested sequence is not a coverage source. `56` §5's four sources are §3's four, and a nested
             //    sequence is the fifth entry source rather than one of them.
-            return Outcome<ResolvedSample>::Refuse(
+            return Deliver<ResolvedSample>::Refuse(
                 { RefusalReason::ContentUnsupported, "a nested sequence is not a coverage source" });
         }
     }
 
     Resolved.Coverage *= Covered < 0.0 ? 0.0 : (Covered > 1.0 ? 1.0 : Covered);
 
-    return Outcome<ResolvedSample>::Result(Resolved);
+    return Deliver<ResolvedSample>::Result(Resolved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -734,7 +734,7 @@ std::uint64_t AnalyticProjection::ContentRevision(const SurfaceLayerSequence& Co
     //    revision. `56` §4.1 reads a nested sequence as one entry and this reads it as one operand.
     for (std::uint32_t NestedIndex = 0u; NestedIndex < Content.NestedCount(); ++NestedIndex)
     {
-        const Outcome<const SurfaceLayerSequence*> Nesting = Content.Nested(NestedIndex);
+        const Deliver<const SurfaceLayerSequence*> Nesting = Content.Nested(NestedIndex);
 
         if (Nesting.Resolved)
             FoldRevision(Folded, ContentRevision(*Nesting.Resolve()));
@@ -751,7 +751,7 @@ std::uint64_t AnalyticProjection::ContentRevision(const SurfaceLayerSequence& Co
 //                                                   ONE POSITION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence&           Content,
+Deliver<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence&           Content,
                                                       const std::vector<ChannelPlacement>&  Placements,
                                                       double                                PositionX,
                                                       double                                PositionY,
@@ -760,7 +760,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
 {
     if (ComponentCount == 0u || ComponentCount > ResolvedComponentLimit)
     {
-        return Outcome<ResolvedSample>::Refuse(
+        return Deliver<ResolvedSample>::Refuse(
             { RefusalReason::ContentUnsupported, "the component count is zero or above the declared ceiling" });
     }
 
@@ -775,16 +775,16 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
 
         if (Held.Source == LayerContentSource::NestedSequence)
         {
-            const Outcome<const SurfaceLayerSequence*> Nesting = Content.Nested(Held.NestedIndex);
+            const Deliver<const SurfaceLayerSequence*> Nesting = Content.Nested(Held.NestedIndex);
 
             if (!Nesting.Resolved)
-                return Outcome<ResolvedSample>::Refuse(Nesting.Error);
+                return Deliver<ResolvedSample>::Refuse(Nesting.Error);
 
             // 🔴 `56` §4.1: the nested content combines **internally first**, and this entry's combination and
             //    coverage are each applied once to the nested result. Applying the enclosing coverage per nested
             //    entry instead darkens a partly covered nested sequence at its own internal overlaps, which is
             //    `22` §3's defect at a different scale.
-            const Outcome<ResolvedSample> Nested = ResolveAt(*Nesting.Resolve(),
+            const Deliver<ResolvedSample> Nested = ResolveAt(*Nesting.Resolve(),
                                                              Placements,
                                                              PositionX,
                                                              PositionY,
@@ -804,7 +804,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
 
                 // 📝 The enclosing coverage is resolved through the entry path with the nested content's own
                 //    source stood down, so one routine resolves coverage for every entry rather than two.
-                const Outcome<ResolvedSample> Masked =
+                const Deliver<ResolvedSample> Masked =
                     ResolveEntryAt(Enclosing, PositionX, PositionY, Tolerance, ComponentCount);
 
                 if (!Masked.Resolved)
@@ -815,7 +815,7 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
         }
         else
         {
-            const Outcome<ResolvedSample> Entry =
+            const Deliver<ResolvedSample> Entry =
                 ResolveEntryAt(Held, PositionX, PositionY, Tolerance, ComponentCount);
 
             if (!Entry.Resolved)
@@ -833,31 +833,31 @@ Outcome<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
         AccumulateSample(Resolved, Incoming, Held.Combination, ComponentCount);
     }
 
-    return Outcome<ResolvedSample>::Result(Resolved);
+    return Deliver<ResolvedSample>::Result(Resolved);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     ONE TILE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence&           Content,
+Deliver<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence&           Content,
                                                       const std::vector<ChannelPlacement>&  Placements,
                                                       CellAddress                           Addressed,
                                                       std::uint32_t                         ComponentCount) const
 {
     if (Addressed.Level >= ReductionLevelCount)
-        return Outcome<ResolvedTile>::Refuse({ RefusalReason::ContentUnsupported, "no such reduction level" });
+        return Deliver<ResolvedTile>::Refuse({ RefusalReason::ContentUnsupported, "no such reduction level" });
 
     if (ComponentCount == 0u || ComponentCount > ResolvedComponentLimit)
     {
-        return Outcome<ResolvedTile>::Refuse(
+        return Deliver<ResolvedTile>::Refuse(
             { RefusalReason::ContentUnsupported, "the component count is zero or above the declared ceiling" });
     }
 
     const std::uint32_t CellsPerEdge = CellsPerEdgeAt(Addressed.Level);
 
     if (Addressed.X >= CellsPerEdge || Addressed.Y >= CellsPerEdge)
-        return Outcome<ResolvedTile>::Refuse({ RefusalReason::ContentUnsupported, "no such cell at that level" });
+        return Deliver<ResolvedTile>::Refuse({ RefusalReason::ContentUnsupported, "no such cell at that level" });
 
     const std::uint32_t WorkingExtent = CellsPerEdge * PhysicalTileTexels;
     const double        Tolerance     = ToleranceAtLevel(Addressed.Level);
@@ -894,7 +894,7 @@ Outcome<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence
             const double PositionX  = (static_cast<double>(OriginX  + X)  + 0.5) / Edge;
             const double PositionY = (static_cast<double>(OriginY + Y) + 0.5) / Edge;
 
-            const Outcome<ResolvedSample> Sampled =
+            const Deliver<ResolvedSample> Sampled =
                 ResolveAt(Content, Placements, PositionX, PositionY, Tolerance, ComponentCount);
 
             if (!Sampled.Resolved)
@@ -904,7 +904,7 @@ Outcome<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence
                 //    records as resolved and every later sample reads as content.
                 Flattenings.clear();
 
-                return Outcome<ResolvedTile>::Refuse(Sampled.Error);
+                return Deliver<ResolvedTile>::Refuse(Sampled.Error);
             }
 
             const ResolvedSample& Resolved = Sampled.Resolve();
@@ -930,7 +930,7 @@ Outcome<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence
 
     Flattenings.clear();
 
-    return Outcome<ResolvedTile>::Result(Produced);
+    return Deliver<ResolvedTile>::Result(Produced);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -967,7 +967,7 @@ bool AnalyticProjection::SourcesPresent(const SurfaceLayerSequence& Content) con
                 if (Supplied.Placements == nullptr)
                     return false;
 
-                const Outcome<const PlacementSpecification*> Placed =
+                const Deliver<const PlacementSpecification*> Placed =
                     Supplied.Placements->Resolve(Held.SourceIndex);
 
                 if (!Placed.Resolved)
@@ -1022,7 +1022,7 @@ bool AnalyticProjection::SourcesPresent(const SurfaceLayerSequence& Content) con
 
             case LayerContentSource::NestedSequence:
             {
-                const Outcome<const SurfaceLayerSequence*> Nesting = Content.Nested(Held.NestedIndex);
+                const Deliver<const SurfaceLayerSequence*> Nesting = Content.Nested(Held.NestedIndex);
 
                 if (!Nesting.Resolved || !SourcesPresent(*Nesting.Resolve()))
                     return false;

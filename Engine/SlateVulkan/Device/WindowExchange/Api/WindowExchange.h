@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 
 #include <vulkan/vulkan.h>
 
@@ -24,7 +24,7 @@ namespace Slate
 ///       The split is what keeps `SlateMath` free of a Vulkan header.
 /// cost  🚩
 /// tag   api, nonthrowing
-Outcome<VkSurfaceKHR> Convert(VkInstance Instance, void* NativeHandle);
+Deliver<VkSurfaceKHR> Convert(VkInstance Instance, void* NativeHandle);
 
 /// 🧩 Destroys a surface previously converted.
 /// cost  ✔️

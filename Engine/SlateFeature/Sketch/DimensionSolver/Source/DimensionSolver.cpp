@@ -297,7 +297,7 @@ DimensionDisposition EvaluateDimensions(const SketchStructure& Declared)
     if (!Declared.Declared())
         return DimensionDisposition::InvalidSketch;
 
-    const Outcome<SketchAnalysis> Analysed = AnalyseSketch(Declared);
+    const Deliver<SketchAnalysis> Analysed = AnalyseSketch(Declared);
     if (!Analysed)
         return DimensionDisposition::InvalidSketch;
 
@@ -332,13 +332,13 @@ DimensionDisposition EvaluateDimensions(const SketchStructure& Declared)
     return DimensionDisposition::Produced;
 }
 
-Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
+Deliver<double> ResolveDimensionValue(const SketchStructure& Declared,
                                       DimensionName Subject)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Dimensions().size())
-        return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
+        return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
     if (!Declared.Declared())
-        return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     const DimensionSpecification& Dimension = Declared.Dimensions()[Subject.IssuedIndex - 1u];
     const SketchPlane& Plane = Declared.HeldPlane();
@@ -356,7 +356,7 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
                 SketchPointPlacement First = {};
                 SketchPointPlacement Second = {};
                 if (!ResolveDimensionPoint(Declared, Dimension.Primary, First) || !ResolveDimensionPoint(Declared, Dimension.Secondary, Second))
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension points are not resolved" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension points are not resolved" });
                 FirstPoint = First.Position;
                 SecondPoint = Second.Position;
             }
@@ -364,19 +364,19 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
             {
                 SketchCurveName Curve = {};
                 if (!ResolveDimensionCurve(Declared, Dimension.Primary, Curve) || !ResolveCurveEndpoints(Declared, Curve, FirstPoint, SecondPoint))
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
             }
             else
-                return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension subject is unsupported" });
+                return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension subject is unsupported" });
 
             const PlanarPoint FlatFirst = Flatten(Plane, FirstPoint);
             const PlanarPoint FlatSecond = Flatten(Plane, SecondPoint);
             if (Dimension.Subject == DimensionSubject::Horizontal)
-                return Outcome<double>::Result(std::fabs(FlatSecond.Along - FlatFirst.Along));
+                return Deliver<double>::Result(std::fabs(FlatSecond.Along - FlatFirst.Along));
             if (Dimension.Subject == DimensionSubject::Vertical)
-                return Outcome<double>::Result(std::fabs(FlatSecond.Across - FlatFirst.Across));
+                return Deliver<double>::Result(std::fabs(FlatSecond.Across - FlatFirst.Across));
             const PlanarPoint Delta = { FlatSecond.Along - FlatFirst.Along, FlatSecond.Across - FlatFirst.Across };
-            return Outcome<double>::Result(std::sqrt(Delta.Along * Delta.Along + Delta.Across * Delta.Across));
+            return Deliver<double>::Result(std::sqrt(Delta.Along * Delta.Along + Delta.Across * Delta.Across));
         }
 
         case DimensionSubject::Radius:
@@ -387,10 +387,10 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
             {
                 SketchControlPlacement Control = {};
                 if (!ResolveDimensionControl(Declared, Dimension.Primary, Control))
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the radius control is not resolved" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the radius control is not resolved" });
                 SpatialPoint Centre = {};
                 if (Control.SourceCurve.IssuedIndex == 0u || Control.SourceCurve.IssuedIndex > Declared.Curves().size())
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the source curve is not declared" });
                 const CurveSpecification& Geometry = Declared.Curves()[Control.SourceCurve.IssuedIndex - 1u].Geometry;
                 if (Geometry.Subject() == CurveSubject::Circle)
                     Centre = Geometry.HeldCircle().Centre;
@@ -401,14 +401,14 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
                 else if (Geometry.Subject() == CurveSubject::EllipticalArc)
                     Centre = Geometry.HeldEllipticalArc().Centre;
                 else
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
                 Radius = std::sqrt(LengthSquared(Difference(Centre, Control.Position)));
             }
             else
             {
                 SketchCurveName Curve = {};
                 if (!ResolveDimensionCurve(Declared, Dimension.Primary, Curve))
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
                 const CurveSpecification& Geometry = Declared.Curves()[Curve.IssuedIndex - 1u].Geometry;
                 if (Geometry.Subject() == CurveSubject::Circle)
                     Radius = Geometry.HeldCircle().Radius;
@@ -419,9 +419,9 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
                 else if (Geometry.Subject() == CurveSubject::EllipticalArc)
                     Radius = Geometry.HeldEllipticalArc().MajorRadius;
                 else
-                    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
+                    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
             }
-            return Outcome<double>::Result(Dimension.Subject == DimensionSubject::Radius ? Radius : Radius * 2.0);
+            return Deliver<double>::Result(Dimension.Subject == DimensionSubject::Radius ? Radius : Radius * 2.0);
         }
 
         case DimensionSubject::Angle:
@@ -431,7 +431,7 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
             if (!ResolveDimensionCurve(Declared, Dimension.Primary, Base)
              || !ResolveDimensionCurve(Declared, Dimension.Secondary, Driven))
             {
-                return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves are not resolved" });
+                return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves are not resolved" });
             }
 
             SpatialPoint BaseStart = {}, BaseEnd = {};
@@ -439,60 +439,60 @@ Outcome<double> ResolveDimensionValue(const SketchStructure& Declared,
             if (!ResolveCurveEndpoints(Declared, Base, BaseStart, BaseEnd)
              || !ResolveCurveEndpoints(Declared, Driven, DrivenStart, DrivenEnd))
             {
-                return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves do not expose endpoints" });
+                return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves do not expose endpoints" });
             }
 
             const SpatialDirection BaseDirection = Normalize(Difference(BaseStart, BaseEnd));
             const SpatialDirection DrivenDirection = Normalize(Difference(DrivenStart, DrivenEnd));
             const double Cosine = std::clamp(Dot(BaseDirection, DrivenDirection), -1.0, 1.0);
-            return Outcome<double>::Result(std::acos(Cosine));
+            return Deliver<double>::Result(std::acos(Cosine));
         }
 
         case DimensionSubject::SubjectCount:
             break;
     }
 
-    return Outcome<double>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension subject is supported" });
+    return Deliver<double>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension subject is supported" });
 }
 
-Outcome<bool> ResolveDimensionConflict(const SketchStructure& Declared,
+Deliver<bool> ResolveDimensionConflict(const SketchStructure& Declared,
                                        DimensionName Subject)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Dimensions().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
     if (!Declared.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     const DimensionSpecification& Dimension = Declared.Dimensions()[Subject.IssuedIndex - 1u];
-    const Outcome<double> Current = ResolveDimensionValue(Declared, Subject);
+    const Deliver<double> Current = ResolveDimensionValue(Declared, Subject);
     if (!Current)
-        return Outcome<bool>::Refuse(Current.Error);
-    return Outcome<bool>::Result(std::fabs(Current.Resolve() - Dimension.Target) > 1.0e-4);
+        return Deliver<bool>::Refuse(Current.Error);
+    return Deliver<bool>::Result(std::fabs(Current.Resolve() - Dimension.Target) > 1.0e-4);
 }
 
-Outcome<bool> ApplyDimensions(SketchStructure& Declared)
+Deliver<bool> ApplyDimensions(SketchStructure& Declared)
 {
     if (EvaluateDimensions(Declared) == DimensionDisposition::NotRequested)
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     if (EvaluateDimensions(Declared) != DimensionDisposition::Produced)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch dimensions are unsupported" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch dimensions are unsupported" });
 
     for (std::uint32_t DimensionIndex = 1u; DimensionIndex <= Declared.Dimensions().size(); ++DimensionIndex)
     {
-        const Outcome<bool> Applied = ApplyDimension(Declared, { DimensionIndex });
+        const Deliver<bool> Applied = ApplyDimension(Declared, { DimensionIndex });
         if (!Applied)
             return Applied;
     }
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> ApplyDimension(SketchStructure& Declared,
+Deliver<bool> ApplyDimension(SketchStructure& Declared,
                              DimensionName Subject)
 {
     if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Dimensions().size())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension is declared" });
     if (!Declared.Declared())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
 
     const DimensionSpecification& Dimension = Declared.Dimensions()[Subject.IssuedIndex - 1u];
     const SketchPlane& Plane = Declared.HeldPlane();
@@ -510,7 +510,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
                 if (!ResolveDimensionPoint(Declared, Dimension.Primary, First)
                  || !ResolveDimensionPoint(Declared, Dimension.Secondary, Second))
                 {
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension points are not resolved" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension points are not resolved" });
                 }
 
                 const PlanarPoint FlatFirst = Flatten(Plane, First.Position);
@@ -540,12 +540,12 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             {
                 SketchCurveName Curve = {};
                 if (!ResolveDimensionCurve(Declared, Dimension.Primary, Curve))
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
 
                 SpatialPoint StartPoint = {};
                 SpatialPoint EndPoint = {};
                 if (!ResolveCurveEndpoints(Declared, Curve, StartPoint, EndPoint))
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve does not expose endpoints" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve does not expose endpoints" });
 
                 const PlanarPoint FlatStart = Flatten(Plane, StartPoint);
                 PlanarPoint FlatEnd = Flatten(Plane, EndPoint);
@@ -570,7 +570,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
                 return EnforceSketchPoint(Declared, { (Curve.IssuedIndex << 8u) | 2u }, Lift(Plane, FlatEnd));
             }
 
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension references are unsupported" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension references are unsupported" });
         }
 
         case DimensionSubject::Radius:
@@ -581,12 +581,12 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             {
                 SketchControlPlacement Control = {};
                 if (!ResolveDimensionControl(Declared, Dimension.Primary, Control))
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the radius control is not resolved" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the radius control is not resolved" });
                 if (Control.Subject != SketchControlSubject::Radius &&
                     Control.Subject != SketchControlSubject::MajorAxis &&
                     Control.Subject != SketchControlSubject::MinorAxis)
                 {
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the referenced control is not a round-axis control" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the referenced control is not a round-axis control" });
                 }
 
                 const DeclaredSketchCurve& Curve = Declared.Curves()[Control.SourceCurve.IssuedIndex - 1u];
@@ -600,7 +600,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
                 else if (Curve.Geometry.Subject() == CurveSubject::EllipticalArc)
                     Centre = Curve.Geometry.HeldEllipticalArc().Centre;
                 else
-                    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
+                    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
 
                 const SpatialDirection Direction = Normalize(Difference(Centre, Control.Position));
                 return EnforceSketchControl(Declared, Control.Name, Added(Centre, Scaled(Direction, Radius)));
@@ -608,7 +608,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
 
             SketchCurveName Curve = {};
             if (!ResolveDimensionCurve(Declared, Dimension.Primary, Curve))
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the dimension curve is not resolved" });
 
             const CurveSpecification& Geometry = Declared.Curves()[Curve.IssuedIndex - 1u].Geometry;
             if (Geometry.Subject() == CurveSubject::Circle)
@@ -623,7 +623,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             if (Geometry.Subject() == CurveSubject::EllipticalArc)
                 return EnforceSketchControl(Declared, { (Curve.IssuedIndex << 12u) | (static_cast<std::uint32_t>(SketchControlSubject::MajorAxis) << 8u) | 1u },
                                             Added(Geometry.HeldEllipticalArc().Centre, Scaled(Normalize(Geometry.HeldEllipticalArc().MajorDirection), Radius)));
-            return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
+            return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven curve is not round" });
         }
 
         case DimensionSubject::Angle:
@@ -633,7 +633,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             if (!ResolveDimensionCurve(Declared, Dimension.Primary, Base)
              || !ResolveDimensionCurve(Declared, Dimension.Secondary, Driven))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves are not resolved" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves are not resolved" });
             }
 
             SpatialPoint BaseStart = {}, BaseEnd = {};
@@ -641,12 +641,12 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             if (!ResolveCurveEndpoints(Declared, Base, BaseStart, BaseEnd)
              || !ResolveCurveEndpoints(Declared, Driven, DrivenStart, DrivenEnd))
             {
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves do not expose endpoints" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the angle curves do not expose endpoints" });
             }
 
             const DeclaredSketchCurve& DrivenCurveEntry = Declared.Curves()[Driven.IssuedIndex - 1u];
             if (DrivenCurveEntry.Geometry.Subject() != CurveSubject::Line)
-                return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven angle curve must be a line" });
+                return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the driven angle curve must be a line" });
 
             const SpatialDirection BaseDirection = Normalize(Difference(BaseStart, BaseEnd));
             const double Length = std::sqrt(LengthSquared(Difference(DrivenStart, DrivenEnd)));
@@ -658,7 +658,7 @@ Outcome<bool> ApplyDimension(SketchStructure& Declared,
             break;
     }
 
-    return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension subject is supported" });
+    return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "no such dimension subject is supported" });
 }
 
 } // namespace Slate

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateMath/Numeric/QuadratureIntegrator/Api/QuadratureIntegrator.h"
 
@@ -66,7 +66,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 ///        functions and drifts from them the moment the fit is amended.
 /// cost  🚩
 /// tag   api, nonthrowing
-Outcome<double> LuminanceNormalisation(const QuadratureRule& Rule);
+Deliver<double> LuminanceNormalisation(const QuadratureRule& Rule);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -89,22 +89,22 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 /// cost  🔴
 /// tag   api, nonthrowing
 template <typename Spectrum>
-Outcome<TristimulusCoordinate> ProjectSpectrum(const QuadratureRule& Rule, Spectrum Evaluate)
+Deliver<TristimulusCoordinate> ProjectSpectrum(const QuadratureRule& Rule, Spectrum Evaluate)
 {
     if (!Rule.Derived())
     {
-        return Outcome<TristimulusCoordinate>::Refuse(
+        return Deliver<TristimulusCoordinate>::Refuse(
             { RefusalReason::ContentUnsupported, "the rule has not been derived" });
     }
 
-    const Outcome<double> Normalisation = LuminanceNormalisation(Rule);
+    const Deliver<double> Normalisation = LuminanceNormalisation(Rule);
 
     if (!Normalisation.Resolved)
-        return Outcome<TristimulusCoordinate>::Refuse(Normalisation.Error);
+        return Deliver<TristimulusCoordinate>::Refuse(Normalisation.Error);
 
     if (Normalisation.Resolve() <= 0.0)
     {
-        return Outcome<TristimulusCoordinate>::Refuse(
+        return Deliver<TristimulusCoordinate>::Refuse(
             { RefusalReason::ContentUnsupported, "the luminance response integrates to nothing" });
     }
 
@@ -135,7 +135,7 @@ Outcome<TristimulusCoordinate> ProjectSpectrum(const QuadratureRule& Rule, Spect
     Projected.MagnitudeY *= Reciprocal;
     Projected.MagnitudeZ *= Reciprocal;
 
-    return Outcome<TristimulusCoordinate>::Result(Projected);
+    return Deliver<TristimulusCoordinate>::Result(Projected);
 }
 
 }   // namespace Slate

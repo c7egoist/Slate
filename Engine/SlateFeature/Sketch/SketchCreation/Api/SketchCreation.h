@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchSnap/Api/SketchSnap.h"
 
 #include <vector>
@@ -63,7 +63,7 @@ void AppendSketchCreation(SketchCreationContext& Context,
                           const SpatialPoint& Position);
 void CancelSketchCreation(SketchCreationContext& Context);
 bool CreationReady(const SketchCreationContext& Context);
-Outcome<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
+Deliver<SketchCreationResult> FinishSketchCreation(SketchStructure& Declared,
                                                    SketchCreationContext& Context);
 
 } // namespace Slate

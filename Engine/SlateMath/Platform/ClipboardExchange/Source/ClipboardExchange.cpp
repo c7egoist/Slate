@@ -120,58 +120,58 @@ std::wstring Widen(const std::string& Narrowed)
 //                                                        THE TEXT
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::string> ClipboardExchange::ReadText()
+Deliver<std::string> ClipboardExchange::ReadText()
 {
 #if defined(_WIN32)
 
     if (IsClipboardFormatAvailable(CF_UNICODETEXT) == 0)
-        return Outcome<std::string>::Refuse({ RefusalReason::CapabilityAbsent, "the clipboard carries no text" });
+        return Deliver<std::string>::Refuse({ RefusalReason::CapabilityAbsent, "the clipboard carries no text" });
 
     const ClipboardHolder Holding(OpenAttemptLimit);
 
     if (!Holding.Held())
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
 
     const HANDLE Carried = GetClipboardData(CF_UNICODETEXT);
 
     if (Carried == nullptr)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to report its text" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to report its text" });
 
     const wchar_t* Reading = static_cast<const wchar_t*>(GlobalLock(Carried));
 
     if (Reading == nullptr)
-        return Outcome<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be read" });
+        return Deliver<std::string>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be read" });
 
     const std::string Narrowed = Narrow(Reading);
 
     GlobalUnlock(Carried);
 
-    return Outcome<std::string>::Result(Narrowed);
+    return Deliver<std::string>::Result(Narrowed);
 
 #else
 
     // 🚧 `04` §8 leaves which operating systems ship first open. The X11 and Wayland selections are a protocol
     //    exchange with the owning client rather than a read of a shared extent, so they arrive with the host
     //    rather than as a translation of this one.
-    return Outcome<std::string>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
+    return Deliver<std::string>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
 
 #endif
 }
 
-Outcome<bool> ClipboardExchange::WriteText(const std::string& Supplied)
+Deliver<bool> ClipboardExchange::WriteText(const std::string& Supplied)
 {
 #if defined(_WIN32)
 
     const ClipboardHolder Holding(OpenAttemptLimit);
 
     if (!Holding.Held())
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
 
     if (EmptyClipboard() == 0)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to be emptied" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to be emptied" });
 
     if (Supplied.empty())
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
 
     const std::wstring Widened = Widen(Supplied);
 
@@ -181,14 +181,14 @@ Outcome<bool> ClipboardExchange::WriteText(const std::string& Supplied)
     const HGLOBAL Reserved = GlobalAlloc(GMEM_MOVEABLE, (Widened.size() + 1u) * sizeof(wchar_t));
 
     if (Reserved == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the host rejected the clipboard extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the host rejected the clipboard extent" });
 
     wchar_t* Writing = static_cast<wchar_t*>(GlobalLock(Reserved));
 
     if (Writing == nullptr)
     {
         GlobalFree(Reserved);
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be written" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be written" });
     }
 
     for (std::size_t Index = 0u; Index < Widened.size(); ++Index)
@@ -201,17 +201,17 @@ Outcome<bool> ClipboardExchange::WriteText(const std::string& Supplied)
     if (SetClipboardData(CF_UNICODETEXT, Reserved) == nullptr)
     {
         GlobalFree(Reserved);
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard rejected the text" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard rejected the text" });
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 
 #else
 
     (void)Supplied;
 
     // 🚧 `04` §8 leaves which operating systems ship first open.
-    return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
+    return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
 
 #endif
 }
@@ -220,23 +220,23 @@ Outcome<bool> ClipboardExchange::WriteText(const std::string& Supplied)
 //                                                       THE IMAGERY
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<ClipboardImage> ClipboardExchange::ReadImage()
+Deliver<ClipboardImage> ClipboardExchange::ReadImage()
 {
 #if defined(_WIN32)
 
     if (IsClipboardFormatAvailable(CF_DIB) == 0)
-        return Outcome<ClipboardImage>::Refuse({ RefusalReason::CapabilityAbsent, "the clipboard carries no imagery" });
+        return Deliver<ClipboardImage>::Refuse({ RefusalReason::CapabilityAbsent, "the clipboard carries no imagery" });
 
     const ClipboardHolder Holding(OpenAttemptLimit);
 
     if (!Holding.Held())
-        return Outcome<ClipboardImage>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
+        return Deliver<ClipboardImage>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
 
     const HANDLE Carried = GetClipboardData(CF_DIB);
 
     if (Carried == nullptr)
     {
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::HostDenied, "the clipboard failed to report its imagery" });
     }
 
@@ -244,7 +244,7 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
 
     if (Reading == nullptr)
     {
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::HostDenied, "the clipboard extent could not be read" });
     }
 
@@ -255,7 +255,7 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
     if (Spanned < sizeof(BITMAPINFOHEADER))
     {
         GlobalUnlock(Carried);
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::ContentUnsupported, "the clipboard imagery carries no whole declaration" });
     }
 
@@ -278,14 +278,14 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
     if (ColumnCount <= 0 || RowCount <= 0)
     {
         GlobalUnlock(Carried);
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::ContentUnsupported, "the clipboard imagery declares no extent" });
     }
 
     if (static_cast<std::uint64_t>(ColumnCount) * static_cast<std::uint64_t>(RowCount) > ImageTexelLimit)
     {
         GlobalUnlock(Carried);
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::ExtentExhausted, "the clipboard imagery exceeds the declared texel ceiling" });
     }
 
@@ -295,7 +295,7 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
     if (Declared.biCompression != BI_RGB || (Declared.biBitCount != 24u && Declared.biBitCount != 32u))
     {
         GlobalUnlock(Carried);
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::ContentUnsupported, "the clipboard imagery carries a layout this surface does not read" });
     }
 
@@ -313,7 +313,7 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
     if (Spanned < DeclaredBytes + RowStride * static_cast<std::size_t>(RowCount))
     {
         GlobalUnlock(Carried);
-        return Outcome<ClipboardImage>::Refuse(
+        return Deliver<ClipboardImage>::Refuse(
             { RefusalReason::ContentUnsupported, "the clipboard imagery is shorter than its own declaration" });
     }
 
@@ -361,39 +361,39 @@ Outcome<ClipboardImage> ClipboardExchange::ReadImage()
 
     GlobalUnlock(Carried);
 
-    return Outcome<ClipboardImage>::Result(Received);
+    return Deliver<ClipboardImage>::Result(Received);
 
 #else
 
     // 🚧 `04` §8 leaves which operating systems ship first open.
-    return Outcome<ClipboardImage>::Refuse(
+    return Deliver<ClipboardImage>::Refuse(
         { RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
 
 #endif
 }
 
-Outcome<bool> ClipboardExchange::WriteImage(const ClipboardImage& Supplied)
+Deliver<bool> ClipboardExchange::WriteImage(const ClipboardImage& Supplied)
 {
 #if defined(_WIN32)
 
     if (Supplied.Width == 0u || Supplied.Height == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the imagery declares no extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the imagery declares no extent" });
 
     const std::size_t Wanted = static_cast<std::size_t>(Supplied.Width) * Supplied.Height * 4u;
 
     if (Supplied.Texels.size() != Wanted)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the texel extent is not the declared extent" });
     }
 
     const ClipboardHolder Holding(OpenAttemptLimit);
 
     if (!Holding.Held())
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard could not be opened" });
 
     if (EmptyClipboard() == 0)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to be emptied" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard failed to be emptied" });
 
     const std::size_t RowStride    = static_cast<std::size_t>(Supplied.Width) * 4u;
     const std::size_t SuppliedSpan = sizeof(BITMAPINFOHEADER) + RowStride * Supplied.Height;
@@ -401,14 +401,14 @@ Outcome<bool> ClipboardExchange::WriteImage(const ClipboardImage& Supplied)
     const HGLOBAL Reserved = GlobalAlloc(GMEM_MOVEABLE, SuppliedSpan);
 
     if (Reserved == nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the host rejected the clipboard extent" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the host rejected the clipboard extent" });
 
     std::uint8_t* Writing = static_cast<std::uint8_t*>(GlobalLock(Reserved));
 
     if (Writing == nullptr)
     {
         GlobalFree(Reserved);
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be written" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard extent could not be written" });
     }
 
     BITMAPINFOHEADER Declaring = {};
@@ -444,17 +444,17 @@ Outcome<bool> ClipboardExchange::WriteImage(const ClipboardImage& Supplied)
     if (SetClipboardData(CF_DIB, Reserved) == nullptr)
     {
         GlobalFree(Reserved);
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard rejected the imagery" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the clipboard rejected the imagery" });
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 
 #else
 
     (void)Supplied;
 
     // 🚧 `04` §8 leaves which operating systems ship first open.
-    return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
+    return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no clipboard translation on this host" });
 
 #endif
 }

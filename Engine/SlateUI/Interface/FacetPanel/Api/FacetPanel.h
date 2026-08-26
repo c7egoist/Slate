@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
@@ -46,14 +46,14 @@ public:
     static constexpr std::uint32_t FacetCapacity = 24u;   // [-] - bounded available facets
     static constexpr std::uint32_t AbsentFacet   = 0xFFFFFFFFu;
 
-    Outcome<bool> ConstructFacetPanel(MotionIntegrator& Motion,
+    Deliver<bool> ConstructFacetPanel(MotionIntegrator& Motion,
                             RecordingSurface& Surface,
                             const ThemeProfile& Appearance);
     void Advance(const PointerCondition& Sampled, double Elapsed);
     float MeasureHeight(float Width,
                         const FacetDeclaration& Declared,
                         const bool* Enabled) const;
-    Outcome<bool> Record(const PlaneExtent& Extent,
+    Deliver<bool> Record(const PlaneExtent& Extent,
                          const FacetDeclaration& Declared,
                          bool* Enabled);
     void RecordDeferred();

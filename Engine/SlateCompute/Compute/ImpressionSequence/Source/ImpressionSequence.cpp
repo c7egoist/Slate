@@ -14,15 +14,15 @@ namespace Slate
 //                                                   THE PAINTING LEVEL
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> PaintingLevelOf(std::uint32_t WorkingExtent)
+Deliver<std::uint32_t> PaintingLevelOf(std::uint32_t WorkingExtent)
 {
     for (std::uint32_t Candidate = 0u; Candidate < ReductionLevelCount; ++Candidate)
     {
         if (CellsPerEdgeAt(Candidate) * CoverageTileTexels == WorkingExtent)
-            return Outcome<std::uint32_t>::Result(Candidate);
+            return Deliver<std::uint32_t>::Result(Candidate);
     }
 
-    return Outcome<std::uint32_t>::Refuse(
+    return Deliver<std::uint32_t>::Refuse(
         { RefusalReason::ContentUnsupported, "no reduction level carries that working extent" });
 }
 
@@ -77,33 +77,33 @@ double BoundedUnit(double Magnitude)
 //                                                       OPENING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed)
+Deliver<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const BrushSpecification& Brushed)
 {
     if (OpenDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "a stroke is already open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "a stroke is already open" });
 
-    const Outcome<std::uint32_t> Levelled = PaintingLevelOf(Declaring.WorkingExtent);
+    const Deliver<std::uint32_t> Levelled = PaintingLevelOf(Declaring.WorkingExtent);
 
     if (!Levelled.Resolved)
-        return Outcome<bool>::Refuse(Levelled.Error);
+        return Deliver<bool>::Refuse(Levelled.Error);
 
     if (Declaring.ComponentCount == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "an entry of no component holds nothing" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an entry of no component holds nothing" });
 
     if (!Declaring.Subject.IdentityDeclared())
-        return Outcome<bool>::Refuse({ RefusalReason::IdentityStale, "the stroke names no entry to paint into" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the stroke names no entry to paint into" });
 
     // 🚧 `58` §3's imagery and outline sources need `50` and `52` intake, which are unbuilt. Rejected at Open
     //    rather than substituted, because `58` §8 promises the preview and the committed impression share one
     //    shape — and a substituted profile breaks that promise where the artist is least able to see it coming.
     if (Brushed.Shape().Source != ShapeSource::Analytic)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "only an analytic shape resolves; `50` and `52` intake is unbuilt" });
     }
 
     if (Brushed.Channels().empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes no channel" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the brush writes no channel" });
 
     // 🔴 Every declared channel must be placed, and every placement must lie inside the entry. A placement that
     //    ran past the components would write into the texel after it, which is the next texel's first channel —
@@ -121,13 +121,13 @@ Outcome<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const
 
             if (Placing.ComponentSpan != Required)
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "the placement's span does not match the channel's measure" });
             }
 
             if (Placing.ComponentIndex + Placing.ComponentSpan > Declaring.ComponentCount)
             {
-                return Outcome<bool>::Refuse(
+                return Deliver<bool>::Refuse(
                     { RefusalReason::ContentUnsupported, "the placement runs past the entry's components" });
             }
 
@@ -137,7 +137,7 @@ Outcome<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const
 
         if (!Placed)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "a declared brush channel carries no placement" });
         }
     }
@@ -166,7 +166,7 @@ Outcome<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const
     PathBegun         = false;
     PathBroken        = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -253,10 +253,10 @@ void ImpressionSequence::Emit(double              PositionX,
         NextSpacing = ImpressionSpacingFloor * Brush.Extent();
 }
 
-Outcome<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
+Deliver<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
 {
     if (!OpenDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
 
     // 🔴 The pointer left the surface. The path breaks here and the next resolved arrival begins a new segment
     //    rather than interpolating across the gap — a stroke that leaves an object and returns must not paint a
@@ -266,12 +266,12 @@ Outcome<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
         PathBroken      = true;
         PendingDistance = 0.0;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     if (Sequenced.size() >= ImpressionLimit)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ExtentExhausted, "the stroke reached the declared impression ceiling" });
     }
 
@@ -295,7 +295,7 @@ Outcome<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
         PendingDistance = 0.0;
         PathBroken      = false;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     const double Width  = Incoming.PositionX  - LastX;
@@ -308,7 +308,7 @@ Outcome<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
         //    emitting an impression for each report is how a held brush burns a hole where it rests.
         LastArrival = Incoming.Incoming.Arrival;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     const double TangentX  = Width  / SegmentSpan;
@@ -363,14 +363,14 @@ Outcome<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
     LastY  = Incoming.PositionY;
     LastArrival = Incoming.Incoming.Arrival;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                 IMPRESSION RESOLUTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
+Deliver<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
                                              SurfaceTileSpace& Residency,
                                              RequestQueue&     Requesting,
                                              std::uint64_t     RecordingIndex)
@@ -395,7 +395,7 @@ Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
         //    inside and a deferral that can never clear is a stroke that can never seal.
         Impressing.ResolutionOwed = false;
 
-        return Outcome<bool>::Result(true);
+        return Deliver<bool>::Result(true);
     }
 
     const std::uint32_t FirstCellX  = MinimumX  <= 0.0 ? 0u
@@ -420,11 +420,11 @@ Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
             const double SampleX  = (static_cast<double>(X)  + 0.5) / static_cast<double>(CellsPerEdge);
             const double SampleY = (static_cast<double>(Y) + 0.5) / static_cast<double>(CellsPerEdge);
 
-            const Outcome<SampledCell> Sampled =
+            const Deliver<SampledCell> Sampled =
                 Residency.Sample(Level, SampleX, SampleY, RecordingIndex, Requesting);
 
             if (!Sampled.Resolved)
-                return Outcome<bool>::Refuse(Sampled.Error);
+                return Deliver<bool>::Refuse(Sampled.Error);
 
             // 🔴 `22` §2's rule, and the one comparison that carries it. `Sample` has already recorded the demand
             //    for the level that was wanted; a resolved level coarser than the painting level means the cell
@@ -433,7 +433,7 @@ Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
             //    nothing speculative can be permanently wrong, and a preview that waited for residency would
             //    show the artist nothing exactly while they were deciding.
             if (!Declared.Speculative && Sampled.Resolve().ResolvedLevel != Level)
-                return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the cell is not resident here" });
+                return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the cell is not resident here" });
         }
     }
 
@@ -489,15 +489,15 @@ Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
             Addressed.X  = CellX;
             Addressed.Y = CellY;
 
-            const Outcome<std::uint32_t> CellIndex = IndexOf(Addressed);
+            const Deliver<std::uint32_t> CellIndex = IndexOf(Addressed);
 
             if (!CellIndex.Resolved)
                 continue;
 
-            const Outcome<std::uint32_t> TileIndex = Accumulated.Reserve(CellIndex.Resolve());
+            const Deliver<std::uint32_t> TileIndex = Accumulated.Reserve(CellIndex.Resolve());
 
             if (!TileIndex.Resolved)
-                return Outcome<bool>::Refuse(TileIndex.Error);
+                return Deliver<bool>::Refuse(TileIndex.Error);
 
             // 🔴 `20` §5's gate, declared per cell as the stroke first touches it and withdrawn at Seal. No tile
             //    holding uncommitted paint is evicted; without it the artist's own stroke is the pressure that
@@ -516,15 +516,15 @@ Outcome<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
 
     Impressing.ResolutionOwed = false;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<ResolvedRun> ImpressionSequence::Resolve(SurfaceTileSpace& Residency,
+Deliver<ResolvedRun> ImpressionSequence::Resolve(SurfaceTileSpace& Residency,
                                                  RequestQueue&     Requesting,
                                                  std::uint64_t     RecordingIndex)
 {
     if (!OpenDeclared)
-        return Outcome<ResolvedRun>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
+        return Deliver<ResolvedRun>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
 
     ResolvedRun Ran;
 
@@ -537,7 +537,7 @@ Outcome<ResolvedRun> ImpressionSequence::Resolve(SurfaceTileSpace& Residency,
         if (!Impressing.ResolutionOwed)
             continue;
 
-        const Outcome<bool> Resolved = ResolveOne(Impressing, Residency, Requesting, RecordingIndex);
+        const Deliver<bool> Resolved = ResolveOne(Impressing, Residency, Requesting, RecordingIndex);
 
         if (Resolved.Resolved)
         {
@@ -547,13 +547,13 @@ Outcome<ResolvedRun> ImpressionSequence::Resolve(SurfaceTileSpace& Residency,
         }
 
         if (Resolved.Error.DeclaredReason != RefusalReason::ExtentExhausted)
-            return Outcome<ResolvedRun>::Refuse(Resolved.Error);
+            return Deliver<ResolvedRun>::Refuse(Resolved.Error);
 
         ++Ran.DeferredCount;
         ++Ran.PendingCount;
     }
 
-    return Outcome<ResolvedRun>::Result(Ran);
+    return Deliver<ResolvedRun>::Result(Ran);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -579,14 +579,14 @@ void ImpressionSequence::Abandon(SurfaceTileSpace& Residency)
     PathBroken   = false;
 }
 
-Outcome<bool> ImpressionSequence::ReclaimSpeculative()
+Deliver<bool> ImpressionSequence::ReclaimSpeculative()
 {
     if (!OpenDeclared)
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
 
     if (!Declared.Speculative)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "a committed stroke's accumulation is the only record of it" });
     }
 
@@ -595,48 +595,48 @@ Outcome<bool> ImpressionSequence::ReclaimSpeculative()
     for (ImpressionSample& Impressing : Sequenced)
         Impressing.ResolutionOwed = true;
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      SEALING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
+Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
                                                RevisionSequence&     Revised,
                                                SurfaceTileSpace&     Residency,
                                                std::uint64_t         SealedAt)
 {
     if (!OpenDeclared)
-        return Outcome<SealedStroke>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
+        return Deliver<SealedStroke>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
 
     // 🔴 `22` §4.1: a speculative extent never commits. A Seal that quietly succeeded for one would put a brush
     //    preview into `RevisionSequence`, and the artist would undo a stroke they never made.
     if (Declared.Speculative)
     {
-        return Outcome<SealedStroke>::Refuse(
+        return Deliver<SealedStroke>::Refuse(
             { RefusalReason::HostDenied, "a speculative extent never enters the revision sequence" });
     }
 
-    const Outcome<PaintedContent*> Amending = Content.AmendPainted(Declared.Subject);
+    const Deliver<PaintedContent*> Amending = Content.AmendPainted(Declared.Subject);
 
     if (!Amending.Resolved)
-        return Outcome<SealedStroke>::Refuse(Amending.Error);
+        return Deliver<SealedStroke>::Refuse(Amending.Error);
 
     PaintedContent& Painted = *Amending.Resolve();
 
     if (Painted.ExtentTexels != Declared.WorkingExtent || Painted.ComponentCount != Declared.ComponentCount)
     {
-        return Outcome<SealedStroke>::Refuse(
+        return Deliver<SealedStroke>::Refuse(
             { RefusalReason::ContentUnsupported, "the entry's extent no longer matches the stroke's" });
     }
 
     // 🔴 One transaction, opened here and sealed once — `10` §2.4 and `22` §4. Every channel the brush declared
     //    is written inside it, so `22` §5's multi-channel stroke undoes as the single thing the artist did.
-    const Outcome<bool> Opened = Revised.Open("", "PaintStroke");
+    const Deliver<bool> Opened = Revised.Open("", "PaintStroke");
 
     if (!Opened.Resolved)
-        return Outcome<SealedStroke>::Refuse(Opened.Error);
+        return Deliver<SealedStroke>::Refuse(Opened.Error);
 
     SealedStroke Sealing;
     Sealing.TouchedCells    = Accumulated.TouchedCells();
@@ -656,8 +656,8 @@ Outcome<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
     {
         const std::uint32_t CellIndex = Sealing.TouchedCells[Passed];
 
-        const Outcome<CellAddress>   Addressed   = AddressOf(CellIndex);
-        const Outcome<std::uint32_t> TileIndex = Accumulated.Located(CellIndex);
+        const Deliver<CellAddress>   Addressed   = AddressOf(CellIndex);
+        const Deliver<std::uint32_t> TileIndex = Accumulated.Located(CellIndex);
 
         if (!Addressed.Resolved || !TileIndex.Resolved)
             continue;
@@ -739,10 +739,10 @@ Outcome<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
         Discard(Residency.DeclareUncommitted(CellIndex, false));
     }
 
-    const Outcome<bool> Committed = Revised.Seal(SealedAt, false);
+    const Deliver<bool> Committed = Revised.Seal(SealedAt, false);
 
     if (!Committed.Resolved)
-        return Outcome<SealedStroke>::Refuse(Committed.Error);
+        return Deliver<SealedStroke>::Refuse(Committed.Error);
 
     Accumulated.Reclaim();
     Sequenced.clear();
@@ -751,19 +751,19 @@ Outcome<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
     PathBegun    = false;
     PathBroken   = false;
 
-    return Outcome<SealedStroke>::Result(Sealing);
+    return Deliver<SealedStroke>::Result(Sealing);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE INVERSE
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
+Deliver<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
 {
-    const Outcome<PaintedContent*> Amending = Content.AmendPainted(Sealed.Subject);
+    const Deliver<PaintedContent*> Amending = Content.AmendPainted(Sealed.Subject);
 
     if (!Amending.Resolved)
-        return Outcome<bool>::Refuse(Amending.Error);
+        return Deliver<bool>::Refuse(Amending.Error);
 
     PaintedContent& Painted = *Amending.Resolve();
 
@@ -771,7 +771,7 @@ Outcome<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
 
     if (Painted.ExtentTexels != WorkingExtent || Painted.ComponentCount != Sealed.ComponentCount)
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the entry's extent no longer matches the recorded inverse" });
     }
 
@@ -779,15 +779,15 @@ Outcome<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
     const std::size_t Stride     = static_cast<std::size_t>(Sealed.ComponentCount);
 
     if (Sealed.PriorTexels.size() != Sealed.TouchedCells.size() * TileTexels * Stride)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the recorded inverse is not whole" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the recorded inverse is not whole" });
 
     for (std::size_t Passed = 0u; Passed < Sealed.TouchedCells.size(); ++Passed)
     {
-        const Outcome<CellAddress> Addressed = AddressOf(Sealed.TouchedCells[Passed]);
+        const Deliver<CellAddress> Addressed = AddressOf(Sealed.TouchedCells[Passed]);
 
         if (!Addressed.Resolved || Addressed.Resolve().Level != Sealed.PaintingLevel)
         {
-            return Outcome<bool>::Refuse(
+            return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "a recorded cell does not address the recorded level" });
         }
 
@@ -810,7 +810,7 @@ Outcome<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
         }
     }
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

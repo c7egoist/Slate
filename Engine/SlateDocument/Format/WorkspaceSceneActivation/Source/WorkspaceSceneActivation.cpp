@@ -40,17 +40,17 @@ bool MandatoryBaseLayerDeclared(const WorkspaceMaterialRecord& Material)
 
 }
 
-Outcome<ActivatedWorkspaceScene> WorkspaceSceneActivation::Open(const std::string& CodexPath,
+Deliver<ActivatedWorkspaceScene> WorkspaceSceneActivation::Open(const std::string& CodexPath,
                                                                   const std::string& EngineContentPath) const
 {
     (void)EngineContentPath;
 
     CodexInterchange Stream;
     WorkspaceCodexInterchange Typed;
-    const Outcome<CodexDocument> Document = Stream.Open(CodexPath);
-    if (!Document.Resolved) return Outcome<ActivatedWorkspaceScene>::Refuse(Document.Error);
-    const Outcome<WorkspaceCodex> Decoded = Typed.DecodeWorkspace(Document.Resolve());
-    if (!Decoded.Resolved) return Outcome<ActivatedWorkspaceScene>::Refuse(Decoded.Error);
+    const Deliver<CodexDocument> Document = Stream.Open(CodexPath);
+    if (!Document.Resolved) return Deliver<ActivatedWorkspaceScene>::Refuse(Document.Error);
+    const Deliver<WorkspaceCodex> Decoded = Typed.DecodeWorkspace(Document.Resolve());
+    if (!Decoded.Resolved) return Deliver<ActivatedWorkspaceScene>::Refuse(Decoded.Error);
 
     ActivatedWorkspaceScene Activated;
     Activated.Workspace = Decoded.Resolve();
@@ -65,7 +65,7 @@ Outcome<ActivatedWorkspaceScene> WorkspaceSceneActivation::Open(const std::strin
     {
         if (Material.Reference.empty() || !MandatoryBaseLayerDeclared(Material))
         {
-            return Outcome<ActivatedWorkspaceScene>::Refuse(
+            return Deliver<ActivatedWorkspaceScene>::Refuse(
                 { RefusalReason::ContentUnsupported, "a workspace material lacks a mandatory Base Material layer" });
         }
     }
@@ -78,13 +78,13 @@ Outcome<ActivatedWorkspaceScene> WorkspaceSceneActivation::Open(const std::strin
         else if (Entry.Subject == CodexSceneSubject::Geometry)
         {
             if (Entry.GeometryReference.empty() || Entry.MaterialReference.empty())
-                return Outcome<ActivatedWorkspaceScene>::Refuse(
+                return Deliver<ActivatedWorkspaceScene>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace geometry entry lacks a source or material reference" });
             if (!MeshReferenceDeclared(Activated.Workspace, Entry.GeometryReference))
-                return Outcome<ActivatedWorkspaceScene>::Refuse(
+                return Deliver<ActivatedWorkspaceScene>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace geometry entry references missing embedded mesh data" });
             if (!MaterialReferenceDeclared(Activated.Workspace, Entry.MaterialReference))
-                return Outcome<ActivatedWorkspaceScene>::Refuse(
+                return Deliver<ActivatedWorkspaceScene>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace geometry entry references a missing material" });
 
             ActivatedGeometryEntry Resolved;
@@ -98,11 +98,11 @@ Outcome<ActivatedWorkspaceScene> WorkspaceSceneActivation::Open(const std::strin
 
     if (SunCount != 1u || SkyCount != 1u || AtmosphereCount != 1u || Activated.Geometry.empty())
     {
-        return Outcome<ActivatedWorkspaceScene>::Refuse(
+        return Deliver<ActivatedWorkspaceScene>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace does not declare one environment and scene geometry" });
     }
 
-    return Outcome<ActivatedWorkspaceScene>::Result(Activated);
+    return Deliver<ActivatedWorkspaceScene>::Result(Activated);
 }
 
 } // namespace Slate

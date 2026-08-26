@@ -372,14 +372,14 @@ void EnsureWorkspaceMaterialRecords(WorkspaceCodex& Workspace)
     }
 }
 
-Outcome<bool> AssignWorkspaceMaterial(WorkspaceCodex& Workspace,
+Deliver<bool> AssignWorkspaceMaterial(WorkspaceCodex& Workspace,
                                       std::uint32_t SceneIndex,
                                       const std::string& MaterialReference)
 {
     if (SceneIndex >= Workspace.Scene.size() || Workspace.Scene[SceneIndex].Subject != CodexSceneSubject::Geometry)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the scene entry is not a geometry material owner" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the scene entry is not a geometry material owner" });
     if (MaterialReference.empty())
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material reference is empty" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material reference is empty" });
 
     bool Found = false;
     for (const WorkspaceMaterialRecord& Material : Workspace.Materials)
@@ -393,17 +393,17 @@ Outcome<bool> AssignWorkspaceMaterial(WorkspaceCodex& Workspace,
         Workspace.Materials.push_back(DefaultWorkspaceMaterialRecord(MaterialReference));
 
     Workspace.Scene[SceneIndex].MaterialReference = MaterialReference;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<std::uint32_t> BindWorkspaceMaterialImage(WorkspaceMaterialRecord& Material,
+Deliver<std::uint32_t> BindWorkspaceMaterialImage(WorkspaceMaterialRecord& Material,
                                                   ChannelSubject Channel,
                                                   const WorkspaceMaterialImageReference& Image)
 {
     if (Channel == ChannelSubject::ChannelCount)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "the closed channel count is not bindable" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "the closed channel count is not bindable" });
     if (Image.OriginPath.empty() || Image.Width == 0u || Image.Height == 0u || Image.ComponentCount == 0u)
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "the imported image declaration is incomplete" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "the imported image declaration is incomplete" });
 
     Material.Images.push_back(Image);
     const std::uint32_t SourceIndex = static_cast<std::uint32_t>(Material.Images.size() - 1u);
@@ -420,16 +420,16 @@ Outcome<std::uint32_t> BindWorkspaceMaterialImage(WorkspaceMaterialRecord& Mater
         Declared.UpperMagnitude = 1.0;
     }
 
-    const Outcome<bool> ChannelDeclared = Material.Material.DeclareChannel(Channel, Declared);
+    const Deliver<bool> ChannelDeclared = Material.Material.DeclareChannel(Channel, Declared);
     if (!ChannelDeclared.Resolved)
     {
         Material.Images.pop_back();
-        return Outcome<std::uint32_t>::Refuse(ChannelDeclared.Error);
+        return Deliver<std::uint32_t>::Refuse(ChannelDeclared.Error);
     }
-    return Outcome<std::uint32_t>::Result(SourceIndex);
+    return Deliver<std::uint32_t>::Result(SourceIndex);
 }
 
-Outcome<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const WorkspaceCodex& Workspace,
+Deliver<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const WorkspaceCodex& Workspace,
                                                                    std::uint64_t          Identity,
                                                                    std::uint64_t          Revision) const
 {
@@ -438,7 +438,7 @@ Outcome<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const Workspac
         Workspace.Materials.size() > std::numeric_limits<std::uint32_t>::max() ||
         Workspace.Embedded.size() > std::numeric_limits<std::uint32_t>::max())
     {
-        return Outcome<CodexDocument>::Refuse(
+        return Deliver<CodexDocument>::Refuse(
             { RefusalReason::ExtentExhausted, "the workspace carries too many scene, mesh, material, or embedded documents" });
     }
 
@@ -478,7 +478,7 @@ Outcome<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const Workspac
             Current.Positions.size() / 3u > std::numeric_limits<std::uint32_t>::max() ||
             Current.Indices.size() > std::numeric_limits<std::uint32_t>::max())
         {
-            return Outcome<CodexDocument>::Refuse(
+            return Deliver<CodexDocument>::Refuse(
                 { RefusalReason::ContentUnsupported, "a workspace scene mesh has inconsistent extents" });
         }
         InscribeRun(Meshes, Current.Naming);
@@ -521,10 +521,10 @@ Outcome<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const Workspac
     Inscribe32(Embedded, static_cast<std::uint32_t>(Workspace.Embedded.size()));
     for (const CodexDocument& Current : Workspace.Embedded)
     {
-        const Outcome<std::vector<std::uint8_t>> Encoded = Codex.Encode(Current);
+        const Deliver<std::vector<std::uint8_t>> Encoded = Codex.Encode(Current);
         if (!Encoded.Resolved || Encoded.Resolve().size() > std::numeric_limits<std::uint32_t>::max())
         {
-            return Outcome<CodexDocument>::Refuse(
+            return Deliver<CodexDocument>::Refuse(
                 { RefusalReason::ContentUnsupported, "an embedded Codex document could not be represented" });
         }
 
@@ -542,14 +542,14 @@ Outcome<CodexDocument> WorkspaceCodexInterchange::EncodeWorkspace(const Workspac
     Produced.Sections.push_back(Section(MeshSection, Revision, std::move(Meshes)));
     Produced.Sections.push_back(Section(MaterialSection, Revision, std::move(Materials)));
     Produced.Sections.push_back(Section(EmbeddedSection, Revision, std::move(Embedded)));
-    return Outcome<CodexDocument>::Result(std::move(Produced));
+    return Deliver<CodexDocument>::Result(std::move(Produced));
 }
 
-Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDocument& Document) const
+Deliver<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDocument& Document) const
 {
     if (Document.Profile != CodexProfile::Workspace)
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex document is not a workspace profile" });
     }
 
@@ -561,7 +561,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
     const CodexSection* Embedded = SectionOf(Document, EmbeddedSection);
     if (Naming == nullptr || Environment == nullptr || Scene == nullptr || Embedded == nullptr)
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace is missing one required typed section" });
     }
 
@@ -569,7 +569,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
     std::size_t Position = 0u;
     if (!ExtractRun(Naming->Content, Position, Produced.Naming) || Position != Naming->Content.size())
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace naming section is inconsistent" });
     }
 
@@ -583,7 +583,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
         !ExtractReal(Environment->Content, Position, Produced.Environment.AtmosphereScaleHeight) ||
         Position != Environment->Content.size())
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace environment section is inconsistent" });
     }
 
@@ -591,7 +591,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
     std::uint32_t SceneCount = 0u;
     if (!Extract32(Scene->Content, Position, SceneCount))
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace scene section is incomplete" });
     }
 
@@ -605,22 +605,22 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
             !ExtractRun(Scene->Content, Position, Current.GeometryReference) ||
             !ExtractRun(Scene->Content, Position, Current.MaterialReference))
         {
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "a workspace scene entry is inconsistent" });
         }
 
         Current.Subject = static_cast<CodexSceneSubject>(Subject);
         for (std::uint32_t Axis = 0u; Axis < 3u; ++Axis)
             if (!ExtractReal(Scene->Content, Position, Current.Position[Axis]))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace scene placement is incomplete" });
         for (std::uint32_t Axis = 0u; Axis < 3u; ++Axis)
             if (!ExtractReal(Scene->Content, Position, Current.Rotation[Axis]))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace scene rotation is incomplete" });
         for (std::uint32_t Axis = 0u; Axis < 3u; ++Axis)
             if (!ExtractReal(Scene->Content, Position, Current.Scale[Axis]))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace scene scale is incomplete" });
 
         Produced.Scene.push_back(std::move(Current));
@@ -628,7 +628,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
 
     if (Position != Scene->Content.size())
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace scene section has trailing content" });
     }
 
@@ -638,7 +638,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
         std::uint32_t MeshCount = 0u;
         if (!Extract32(Meshes->Content, Position, MeshCount))
         {
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "the workspace mesh section is incomplete" });
         }
 
@@ -650,7 +650,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
             if (!ExtractRun(Meshes->Content, Position, Current.Naming) ||
                 !Extract32(Meshes->Content, Position, VertexCount))
             {
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace mesh header is inconsistent" });
             }
             Current.Positions.reserve(static_cast<std::size_t>(VertexCount) * 3u);
@@ -658,27 +658,27 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
             {
                 double Held = 0.0;
                 if (!ExtractReal(Meshes->Content, Position, Held))
-                    return Outcome<WorkspaceCodex>::Refuse(
+                    return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace mesh vertex run is incomplete" });
                 Current.Positions.push_back(Held);
             }
             std::uint32_t IndexCount = 0u;
             if (!Extract32(Meshes->Content, Position, IndexCount))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace mesh index count is incomplete" });
             Current.Indices.reserve(IndexCount);
             for (std::uint32_t Index = 0u; Index < IndexCount; ++Index)
             {
                 std::uint32_t Held = 0u;
                 if (!Extract32(Meshes->Content, Position, Held) || Held >= VertexCount)
-                    return Outcome<WorkspaceCodex>::Refuse(
+                    return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace mesh index is inconsistent" });
                 Current.Indices.push_back(Held);
             }
             Produced.SceneMeshes.push_back(std::move(Current));
         }
         if (Position != Meshes->Content.size())
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "the workspace mesh section has trailing content" });
     }
 
@@ -688,7 +688,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
         std::uint32_t MaterialCount = 0u;
         if (!Extract32(Materials->Content, Position, MaterialCount))
         {
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "the workspace material section is incomplete" });
         }
 
@@ -705,7 +705,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
              || !ExtractReal(Materials->Content, Position, CutoutThreshold)
              || !ExtractBool(Materials->Content, Position, CutoutRegistered))
             {
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace material header is inconsistent" });
             }
             Current.Material.DeclareReflectance(static_cast<ReflectanceSelection>(Reflectance));
@@ -716,19 +716,19 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
             {
                 ChannelSpecification Channel;
                 if (!ExtractChannel(Materials->Content, Position, Channel))
-                    return Outcome<WorkspaceCodex>::Refuse(
+                    return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace material channel is incomplete" });
                 if (Channel.ChannelDeclared)
                 {
-                    const Outcome<bool> Declared = Current.Material.DeclareChannel(static_cast<ChannelSubject>(ChannelIndex), Channel);
+                    const Deliver<bool> Declared = Current.Material.DeclareChannel(static_cast<ChannelSubject>(ChannelIndex), Channel);
                     if (!Declared.Resolved)
-                        return Outcome<WorkspaceCodex>::Refuse(Declared.Error);
+                        return Deliver<WorkspaceCodex>::Refuse(Declared.Error);
                 }
             }
 
             std::uint32_t ImageCount = 0u;
             if (!Extract32(Materials->Content, Position, ImageCount))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace material image count is incomplete" });
             Current.Images.reserve(ImageCount);
             for (std::uint32_t ImageIndex = 0u; ImageIndex < ImageCount; ++ImageIndex)
@@ -742,7 +742,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
                  || !Extract32(Materials->Content, Position, Image.BitsPerComponent)
                  || !ExtractBool(Materials->Content, Position, Image.ColourData))
                 {
-                    return Outcome<WorkspaceCodex>::Refuse(
+                    return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace material image is incomplete" });
                 }
                 Current.Images.push_back(std::move(Image));
@@ -750,19 +750,19 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
 
             std::uint32_t LayerCount = 0u;
             if (!Extract32(Materials->Content, Position, LayerCount))
-                return Outcome<WorkspaceCodex>::Refuse(
+                return Deliver<WorkspaceCodex>::Refuse(
                     { RefusalReason::ContentUnsupported, "a workspace material layer count is incomplete" });
             for (std::uint32_t LayerIndex = 0u; LayerIndex < LayerCount; ++LayerIndex)
             {
                 LayerSpecification Layer;
                 if (!ExtractLayer(Materials->Content, Position, Layer))
-                    return Outcome<WorkspaceCodex>::Refuse(
+                    return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace material layer is incomplete" });
                 if (Layer.Source == LayerContentSource::PaintedImpressions && Layer.Painted.Texels.empty())
                     Layer.Source = LayerContentSource::MaterialConstants;
-                const Outcome<LayerIdentity> Added = Current.Layers.Append(Layer);
+                const Deliver<LayerIdentity> Added = Current.Layers.Append(Layer);
                 if (!Added.Resolved)
-                    return Outcome<WorkspaceCodex>::Refuse(Added.Error);
+                    return Deliver<WorkspaceCodex>::Refuse(Added.Error);
             }
 
             if (Current.Layers.EntryCount() == 0u)
@@ -770,7 +770,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
             Produced.Materials.push_back(std::move(Current));
         }
         if (Position != Materials->Content.size())
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "the workspace material section has trailing content" });
     }
 
@@ -780,7 +780,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
     std::uint32_t EmbeddedCount = 0u;
     if (!Extract32(Embedded->Content, Position, EmbeddedCount))
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace embedded section is incomplete" });
     }
 
@@ -791,7 +791,7 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
         std::uint32_t ByteCount = 0u;
         if (!Extract32(Embedded->Content, Position, ByteCount) || ByteCount > Embedded->Content.size() - Position)
         {
-            return Outcome<WorkspaceCodex>::Refuse(
+            return Deliver<WorkspaceCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "an embedded Codex extent is inconsistent" });
         }
 
@@ -799,20 +799,20 @@ Outcome<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
                                          Embedded->Content.begin() + Position + ByteCount);
         Position += ByteCount;
 
-        const Outcome<CodexDocument> Decoded = Codex.Decode(Stream);
+        const Deliver<CodexDocument> Decoded = Codex.Decode(Stream);
         if (!Decoded.Resolved)
-            return Outcome<WorkspaceCodex>::Refuse(Decoded.Error);
+            return Deliver<WorkspaceCodex>::Refuse(Decoded.Error);
 
         Produced.Embedded.push_back(Decoded.Resolve());
     }
 
     if (Position != Embedded->Content.size())
     {
-        return Outcome<WorkspaceCodex>::Refuse(
+        return Deliver<WorkspaceCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the workspace embedded section has trailing content" });
     }
 
-    return Outcome<WorkspaceCodex>::Result(std::move(Produced));
+    return Deliver<WorkspaceCodex>::Result(std::move(Produced));
 }
 
 }   // namespace Slate

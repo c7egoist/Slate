@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateMath/Numeric/TransformProjection/Api/TransformProjection.h"
@@ -107,7 +107,7 @@ struct ViewProjection
 ///        vanishes rather than geometry that sorts wrongly.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<ViewProjection> Derive(const CameraSpecification& Declaring);
+Deliver<ViewProjection> Derive(const CameraSpecification& Declaring);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -214,7 +214,7 @@ public:
     /// out   Result  [-]  refuses with HostDenied when a gesture is already open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Open(NavigationSubject Declaring, const CameraSpecification& Current);
+    Deliver<bool> Open(NavigationSubject Declaring, const CameraSpecification& Current);
 
     /// 🧩 Amends the open gesture by one pointer displacement.
     /// in    DisplacementX   [px]  horizontal displacement since the last amendment
@@ -222,19 +222,19 @@ public:
     /// out   Result             [-]   refuses with HostDenied when no gesture is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Amend(double DisplacementX, double DisplacementY);
+    Deliver<bool> Amend(double DisplacementX, double DisplacementY);
 
     /// 🧩 Ends the gesture with no effect, returning the prior specification.
     /// out   Result  [-]  refuses with HostDenied when no gesture is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<CameraSpecification> Abandon();
+    Deliver<CameraSpecification> Abandon();
 
     /// 🧩 Ends the gesture, returning the specification the caller commits as one transaction.
     /// out   Result  [-]  refuses with HostDenied when no gesture is open
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<CameraSpecification> Seal();
+    Deliver<CameraSpecification> Seal();
 
     /// 🧩 The camera as the gesture has amended it, for presentation while it is open.
     /// cost  ✔️
@@ -272,7 +272,7 @@ private:
 ///        the extent is contained on both axes rather than on whichever happens to be wider.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<DecomposedTransform> Frame(const CameraSpecification& Current,
+Deliver<DecomposedTransform> Frame(const CameraSpecification& Current,
                                    DocumentPosition           Minimum,
                                    DocumentPosition           Maximum);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
@@ -299,13 +299,13 @@ public:
     /// out   Result  [-]  refuses with IdentityStale for an undeclared identity
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Declare(OwnerIdentity Subject, const CameraSpecification& Declaring);
+    Deliver<bool> Declare(OwnerIdentity Subject, const CameraSpecification& Declaring);
 
     /// 🧩 Amends the specification, leaving the derivations owed.
     /// out   Result  [-]  refuses with IdentityStale before Declare has delivered
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> Amend(const CameraSpecification& Amending);
+    Deliver<bool> Amend(const CameraSpecification& Amending);
 
     /// 🧩 Declares the display's drawable extent, from which the sensor proportion follows.
     /// out   Result  [-]  refuses with ContentUnsupported for a zero extent on either axis
@@ -313,14 +313,14 @@ public:
     ///        carrying its author's window proportion opens framed for their monitor and not for the artist's.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> DeclareDisplayExtent(std::uint32_t Width, std::uint32_t Height);
+    Deliver<bool> DeclareDisplayExtent(std::uint32_t Width, std::uint32_t Height);
 
     /// 🧩 Re-derives the view projection and the frustum.
     /// out   Result  [-]  carries `Derive`'s refusal when the specification cannot be projected
     /// post  the frustum and the view projection describe the current specification
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Reconcile();
+    Deliver<bool> Reconcile();
 
     const CameraSpecification&  Declared() const;
     const ViewProjection&       Projected() const;

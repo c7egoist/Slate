@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateVulkan/Device/DescriptorIndex/Api/DescriptorIndex.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
@@ -133,7 +133,7 @@ public:
     ///        after the other — and the errors the two raise read alike until the objects are told apart.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ConstructProgramIndex(const VulkanExchange&      Exchange,
+    Deliver<bool> ConstructProgramIndex(const VulkanExchange&      Exchange,
                             ShaderCodec&               Modules,
                             const DescriptorIndex&     Descriptors,
                             const DiagnosticExtension& Naming);
@@ -147,7 +147,7 @@ public:
     ///       specialisation the vendor reads at construction is held where its addresses stay put.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> DeclareGraphics(const GraphicsDeclaration& Declaring);
+    Deliver<std::uint32_t> DeclareGraphics(const GraphicsDeclaration& Declaring);
 
     /// 🧩 Constructs one compute program, returning the ordinal every later resolution names it by.
     /// in    Declaring  [-]  the module, the layouts and the constant run
@@ -155,14 +155,14 @@ public:
     /// post  nothing is retained on a refusal
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> DeclareCompute(const ComputeDeclaration& Declaring);
+    Deliver<std::uint32_t> DeclareCompute(const ComputeDeclaration& Declaring);
 
     /// 🧩 The program one ordinal names, for the recording that records against it.
     /// in    ProgramIndex  [-]  an ordinal this component registered
     /// out   Result         [-]  refuses with ContentUnsupported for an ordinal naming no program
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<ConstructedProgram> Resolve(std::uint32_t ProgramIndex) const;
+    Deliver<ConstructedProgram> Resolve(std::uint32_t ProgramIndex) const;
 
     /// 🧩 Destroys every program and every layout constructed for one.
     /// pre   the device is idle and no recording that reads them is still executing
@@ -186,7 +186,7 @@ private:
     /// in    ConstantBytes   [B]  the recorded constant run; nought declares none
     /// in    ReachingStages  [-]  which stages read the constant run, as the vendor spells them
     /// out   Result         [-]  refuses with ContentUnsupported for an undeclared layout ordinal
-    Outcome<VkPipelineLayout> ReachLayout(const std::vector<std::uint32_t>&  LayoutIndexs,
+    Deliver<VkPipelineLayout> ReachLayout(const std::vector<std::uint32_t>&  LayoutIndexs,
                                           std::uint32_t                     ConstantBytes,
                                           VkShaderStageFlags                ReachingStages);
 

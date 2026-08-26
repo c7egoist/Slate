@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 
 #include <cstdint>
@@ -33,8 +33,8 @@ struct ResolvedProfileSet
 };
 
 ProfileDisposition EvaluateProfiles(const SketchStructure& Declared);
-Outcome<ResolvedProfileSet> ResolveProfiles(const SketchStructure& Declared);
-Outcome<const ProfileSpecification*> ResolveProfile(const SketchStructure& Declared,
+Deliver<ResolvedProfileSet> ResolveProfiles(const SketchStructure& Declared);
+Deliver<const ProfileSpecification*> ResolveProfile(const SketchStructure& Declared,
                                                     ProfileNameInFeature Profile);
 
 } // namespace Slate

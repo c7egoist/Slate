@@ -887,13 +887,13 @@ void ApplyPreset(std::uint32_t Index, ParametricToolsContext& Applied)
 
 } // namespace
 
-Outcome<bool> ParametricToolsPanel::ConstructParametricToolsPanel(ControlIndex& IncomingInteraction,
+Deliver<bool> ParametricToolsPanel::ConstructParametricToolsPanel(ControlIndex& IncomingInteraction,
                                                                   MotionIntegrator& Integrator,
                                                                   RecordingSurface& IncomingSurface,
                                                                   const ThemeProfile& Resolved)
 {
     if (Interaction != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported,
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the parametric tools panel is already constructed" });
 
     Interaction = &IncomingInteraction;
@@ -904,33 +904,33 @@ Outcome<bool> ParametricToolsPanel::ConstructParametricToolsPanel(ControlIndex& 
     if (!Pages.ConstructSlidingPages(Integrator, 0u).Resolved)
     {
         Reset();
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent,
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
                                        "the construction-menu slide travel was rejected" });
     }
 
-    const Outcome<ControlIdentity> Back = IncomingInteraction.Register();
+    const Deliver<ControlIdentity> Back = IncomingInteraction.Register();
     if (!Back.Resolved)
-        return Outcome<bool>::Refuse(Back.Error);
+        return Deliver<bool>::Refuse(Back.Error);
     BackCall = Back.Resolve();
 
     for (std::uint32_t Index = 0u; Index < ParametricToolsContext::BandLimit; ++Index)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
         BandRows[Index] = Registered.Resolve();
     }
 
     for (std::uint32_t Index = 0u; Index < ParametricToolsContext::TileLimit; ++Index)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
         if (!Registered.Resolved)
-            return Outcome<bool>::Refuse(Registered.Error);
+            return Deliver<bool>::Refuse(Registered.Error);
         TileRows[Index] = Registered.Resolve();
     }
 
     Reapply(Resolved);
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void ParametricToolsPanel::Advance(const PointerCondition& Contact, double Elapsed,

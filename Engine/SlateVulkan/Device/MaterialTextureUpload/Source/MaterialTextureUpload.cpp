@@ -65,17 +65,17 @@ MaterialTextureUpload::~MaterialTextureUpload()
     Reclaim();
 }
 
-Outcome<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
+Deliver<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
     const VulkanExchange& Exchange,
     const DiagnosticExtension& Naming,
     const MaterialTextureUploadDeclaration& Declaring)
 {
     if (DeviceEdge != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "a material texture upload already stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "a material texture upload already stands" });
     if (Declaring.Width == 0u || Declaring.Height == 0u)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material texture extent is empty" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material texture extent is empty" });
     if (Exchange.ActiveDevice() == VK_NULL_HANDLE)
-        return Outcome<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
+        return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "no device is active" });
 
     DeviceEdge = &Exchange;
     NamingEdge = &Naming;
@@ -98,7 +98,7 @@ Outcome<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
     if (vkCreateImage(Active, &ImageDeclaration, nullptr, &Image) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture image was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture image was rejected" });
     }
 
     VkMemoryRequirements Requirements = {};
@@ -111,7 +111,7 @@ Outcome<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
         vkBindImageMemory(Active, Image, ImageMemory, 0u) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture memory was rejected" });
     }
 
     VkImageViewCreateInfo ViewDeclaration = {};
@@ -125,7 +125,7 @@ Outcome<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
     if (vkCreateImageView(Active, &ViewDeclaration, nullptr, &View) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture view was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture view was rejected" });
     }
 
     VkSamplerCreateInfo SamplerDeclaration = {};
@@ -140,21 +140,21 @@ Outcome<bool> MaterialTextureUpload::ConstructMaterialTextureUpload(
     if (vkCreateSampler(Active, &SamplerDeclaration, nullptr, &Sampler) != VK_SUCCESS)
     {
         Reclaim();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture sampler was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture sampler was rejected" });
     }
 
     Discard(Naming.Declare(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<std::uint64_t>(Image), "MaterialTextureUpload.Image"));
     Discard(Naming.Declare(VK_OBJECT_TYPE_IMAGE_VIEW, reinterpret_cast<std::uint64_t>(View), "MaterialTextureUpload.View"));
     Discard(Naming.Declare(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<std::uint64_t>(Sampler), "MaterialTextureUpload.Sampler"));
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
-Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::uint32_t Width, std::uint32_t Height)
+Deliver<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::uint32_t Width, std::uint32_t Height)
 {
     if (!Standing())
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "no material texture upload stands" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "no material texture upload stands" });
     if (Texels == nullptr || Width != Declared.Width || Height != Declared.Height)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material texture upload extent does not match" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the material texture upload extent does not match" });
 
     LastUpload.assign(static_cast<std::size_t>(Width) * Height * 4u, 255u);
     for (std::size_t Index = 0u; Index < LastUpload.size(); ++Index)
@@ -183,7 +183,7 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
     if (vkCreateBuffer(Active, &StagingDeclaring, nullptr, &Staging) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture staging span was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture staging span was rejected" });
     }
 
     VkMemoryRequirements StagingRequirements = {};
@@ -198,14 +198,14 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
         vkBindBufferMemory(Active, Staging, StagingMemory, 0u) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture staging memory was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture staging memory was rejected" });
     }
 
     void* Mapped = nullptr;
     if (vkMapMemory(Active, StagingMemory, 0u, ByteCount, 0u, &Mapped) != VK_SUCCESS || Mapped == nullptr)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the material texture staging memory could not be mapped" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the material texture staging memory could not be mapped" });
     }
     std::memcpy(Mapped, LastUpload.data(), static_cast<std::size_t>(ByteCount));
     vkUnmapMemory(Active, StagingMemory);
@@ -217,7 +217,7 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
     if (vkCreateCommandPool(Active, &PoolDeclaring, nullptr, &ImmediatePool) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture upload command pool was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture upload command pool was rejected" });
     }
 
     VkCommandBufferAllocateInfo RecordingDeclaring = {};
@@ -228,7 +228,7 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
     if (vkAllocateCommandBuffers(Active, &RecordingDeclaring, &Recorded) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture upload recording was rejected" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "the material texture upload recording was rejected" });
     }
 
     VkCommandBufferBeginInfo Begin = {};
@@ -237,7 +237,7 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
     if (vkBeginCommandBuffer(Recorded, &Begin) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the material texture upload recording would not open" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the material texture upload recording would not open" });
     }
 
     const VkAccessFlags SourceAccess = CurrentLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? VK_ACCESS_SHADER_READ_BIT : 0u;
@@ -260,7 +260,7 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
     if (vkEndCommandBuffer(Recorded) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::HostDenied, "the material texture upload recording would not close" });
+        return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "the material texture upload recording would not close" });
     }
 
     VkSubmitInfo Submit = {};
@@ -271,12 +271,12 @@ Outcome<bool> MaterialTextureUpload::UploadRgbaFloat(const float* Texels, std::u
         vkQueueWaitIdle(DeviceEdge->GraphicsQueue()) != VK_SUCCESS)
     {
         Cleanup();
-        return Outcome<bool>::Refuse({ RefusalReason::DeviceLost, "the material texture upload did not complete" });
+        return Deliver<bool>::Refuse({ RefusalReason::DeviceLost, "the material texture upload did not complete" });
     }
 
     CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     Cleanup();
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 MaterialTextureSamplerLink MaterialTextureUpload::SamplerLink() const

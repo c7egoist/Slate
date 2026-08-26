@@ -699,11 +699,11 @@ void TopologyConditioning::DeriveExtents(const TopologyStructure& Imported)
 //                                                   THE CONDITIONING
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<bool> TopologyConditioning::Condition(const TopologyStructure& Imported)
+Deliver<bool> TopologyConditioning::Condition(const TopologyStructure& Imported)
 {
     if (!Imported.Sealed())
     {
-        return Outcome<bool>::Refuse(
+        return Deliver<bool>::Refuse(
             { RefusalReason::HostDenied, "an unsealed topology is not immutable for the run" });
     }
 
@@ -723,36 +723,36 @@ Outcome<bool> TopologyConditioning::Condition(const TopologyStructure& Imported)
 
     DescribedRevision = Imported.Revision();
 
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     WHAT IS READ
 //------------------------------------------------------------------------------------------------------------------------
 
-Outcome<std::uint32_t> TopologyConditioning::WeldedPosition(std::uint32_t VertexIndex) const
+Deliver<std::uint32_t> TopologyConditioning::WeldedPosition(std::uint32_t VertexIndex) const
 {
     if (VertexIndex >= WeldedPositionOfVertex.size())
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ContentUnsupported, "no such imported vertex" });
     }
 
-    return Outcome<std::uint32_t>::Result(WeldedPositionOfVertex[VertexIndex]);
+    return Deliver<std::uint32_t>::Result(WeldedPositionOfVertex[VertexIndex]);
 }
 
-Outcome<std::uint32_t> TopologyConditioning::AdjacentCorner(std::uint32_t CornerIndex) const
+Deliver<std::uint32_t> TopologyConditioning::AdjacentCorner(std::uint32_t CornerIndex) const
 {
     if (CornerIndex >= AdjacentCornerOfCorner.size())
-        return Outcome<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no such corner" });
+        return Deliver<std::uint32_t>::Refuse({ RefusalReason::ContentUnsupported, "no such corner" });
 
     if (AdjacentCornerOfCorner[CornerIndex] == AbsentCorner)
     {
-        return Outcome<std::uint32_t>::Refuse(
+        return Deliver<std::uint32_t>::Refuse(
             { RefusalReason::ContentUnsupported, "the edge is a boundary or is non-manifold" });
     }
 
-    return Outcome<std::uint32_t>::Result(AdjacentCornerOfCorner[CornerIndex]);
+    return Deliver<std::uint32_t>::Result(AdjacentCornerOfCorner[CornerIndex]);
 }
 
 bool TopologyConditioning::FaceRegistered(std::uint32_t FaceIndex, DegeneracySubject Condition) const

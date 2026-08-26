@@ -321,14 +321,14 @@ ProfileBooleanDisposition EvaluateProfileBoolean(const SketchStructure& Declared
     return ProfileBooleanDisposition::Produced;
 }
 
-Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& Declared,
+Deliver<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& Declared,
                                                                const std::vector<ProfileNameInFeature>& OperandSet,
                                                                BooleanSubject Subject)
 {
     if (!Declared.Declared())
-        return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
+        return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "the sketch is not declared" });
     if (OperandSet.size() < 2u)
-        return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "a boolean requires at least two profiles" });
+        return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "a boolean requires at least two profiles" });
 
     std::vector<FlatProfile> OperandProfiles;
     OperandProfiles.reserve(OperandSet.size());
@@ -340,9 +340,9 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
         FlatProfile Flat;
         ProfilePlane Plane = {};
         if (!ResolveFlatProfile(Declared, Operand, Flat, Plane))
-            return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "a boolean operand is not a resolvable profile" });
+            return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "a boolean operand is not a resolvable profile" });
         if (Flat.Loops.empty() || Flat.Loops.front().Orientation != ProfileLoopOrientation::Outer)
-            return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "each boolean operand requires one outer loop" });
+            return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "each boolean operand requires one outer loop" });
         if (FirstPlane)
         {
             SharedPlane = Plane;
@@ -350,7 +350,7 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
         }
         else if (!SamePlane(SharedPlane, Plane))
         {
-            return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "boolean operands must share one plane" });
+            return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "boolean operands must share one plane" });
         }
         OperandProfiles.push_back(Flat);
     }
@@ -371,12 +371,12 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
                 {
                     if (!ConvexPolygon(CurrentOuter) || !ConvexPolygon(ClipOuter))
                     {
-                        return Outcome<std::vector<ProfileNameInFeature>>::Refuse(
+                        return Deliver<std::vector<ProfileNameInFeature>>::Refuse(
                             { RefusalReason::ContentUnsupported, "intersecting profiles currently require convex outer loops" });
                     }
                     Current.Loops = { { IntersectConvex(CurrentOuter, ClipOuter), ProfileLoopOrientation::Outer } };
                     if (Current.Loops.front().Points.size() < 3u)
-                        return Outcome<std::vector<ProfileNameInFeature>>::Result({});
+                        return Deliver<std::vector<ProfileNameInFeature>>::Result({});
                 }
                 else if (PointInsidePolygon(CurrentOuter.front(), ClipOuter))
                 {
@@ -388,11 +388,11 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
                 }
                 else
                 {
-                    return Outcome<std::vector<ProfileNameInFeature>>::Result({});
+                    return Deliver<std::vector<ProfileNameInFeature>>::Result({});
                 }
             }
             Produced.push_back(DeclareProfileFromLoops(Declared, SharedPlane, Current.Loops));
-            return Outcome<std::vector<ProfileNameInFeature>>::Result(Produced);
+            return Deliver<std::vector<ProfileNameInFeature>>::Result(Produced);
         }
 
         case BooleanSubject::Subtract:
@@ -407,11 +407,11 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
                 const std::vector<PlanarPoint>& Cutter = CutterProfile.Loops.front().Points;
                 if (PolygonsIntersect(SubjectOuter, Cutter))
                 {
-                    return Outcome<std::vector<ProfileNameInFeature>>::Refuse(
+                    return Deliver<std::vector<ProfileNameInFeature>>::Refuse(
                         { RefusalReason::ContentUnsupported, "subtract currently accepts disjoint or contained cutters only" });
                 }
                 if (PointInsidePolygon(SubjectOuter.front(), Cutter))
-                    return Outcome<std::vector<ProfileNameInFeature>>::Result({});
+                    return Deliver<std::vector<ProfileNameInFeature>>::Result({});
                 if (!PointInsidePolygon(Cutter.front(), SubjectOuter))
                     continue;
 
@@ -419,7 +419,7 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
             }
 
             Produced.push_back(DeclareProfileFromLoops(Declared, SharedPlane, ResultLoops));
-            return Outcome<std::vector<ProfileNameInFeature>>::Result(Produced);
+            return Deliver<std::vector<ProfileNameInFeature>>::Result(Produced);
         }
 
         case BooleanSubject::Unite:
@@ -438,7 +438,7 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
                     const std::vector<PlanarPoint>& RightOuter = OperandProfiles[RightIndex].Loops.front().Points;
                     if (PolygonsIntersect(LeftOuter, RightOuter))
                     {
-                        return Outcome<std::vector<ProfileNameInFeature>>::Refuse(
+                        return Deliver<std::vector<ProfileNameInFeature>>::Refuse(
                             { RefusalReason::ContentUnsupported, "union currently supports disjoint or contained outer loops only" });
                     }
                     if (PointInsidePolygon(RightOuter.front(), LeftOuter))
@@ -447,11 +447,11 @@ Outcome<std::vector<ProfileNameInFeature>> ApplyProfileBoolean(SketchStructure& 
 
                 Produced.push_back(DeclareProfileFromLoops(Declared, SharedPlane, LeftProfile.Loops));
             }
-            return Outcome<std::vector<ProfileNameInFeature>>::Result(Produced);
+            return Deliver<std::vector<ProfileNameInFeature>>::Result(Produced);
         }
     }
 
-    return Outcome<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "no such boolean subject" });
+    return Deliver<std::vector<ProfileNameInFeature>>::Refuse({ RefusalReason::ContentUnsupported, "no such boolean subject" });
 }
 
 } // namespace Slate

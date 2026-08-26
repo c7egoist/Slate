@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Foundation/Identity.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "SlateMath/Numeric/ColourProjection/Api/ColourProjection.h"
@@ -97,7 +97,7 @@ struct IncidenceProjection
 ///        refusal the integrator would have to branch on.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Outcome<IncidenceProjection> ProjectIncidence(const IlluminantSpecification& Declared, DocumentPosition Shaded);
+Deliver<IncidenceProjection> ProjectIncidence(const IlluminantSpecification& Declared, DocumentPosition Shaded);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -124,25 +124,25 @@ public:
     ///                     atmospheric source
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(OwnerIdentity Subject, const IlluminantSpecification& Declaring);
+    Deliver<bool> Declare(OwnerIdentity Subject, const IlluminantSpecification& Declaring);
 
     /// 🧩 Amends one declared illuminant, validated exactly as a declaration is.
     /// out   Result  [-]  refuses with IdentityStale when the owner declares no illuminant
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Amend(OwnerIdentity Subject, const IlluminantSpecification& Amending);
+    Deliver<bool> Amend(OwnerIdentity Subject, const IlluminantSpecification& Amending);
 
     /// 🧩 Withdraws one illuminant.
     /// out   Result  [-]  refuses with IdentityStale when the owner declares no illuminant
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Withdraw(OwnerIdentity Subject);
+    Deliver<bool> Withdraw(OwnerIdentity Subject);
 
     /// 🧩 One declared illuminant.
     /// out   Result  [-]  refuses with IdentityStale when the owner declares no illuminant
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<IlluminantSpecification> Resolve(OwnerIdentity Subject) const;
+    Deliver<IlluminantSpecification> Resolve(OwnerIdentity Subject) const;
 
     /// 🧩 One illuminant's colour, projected into a declared space.
     /// in    Working  [-]  the space to express the colour in — `36` §2's working space
@@ -152,13 +152,13 @@ public:
     ///        authored temperature is what the artist edits; the coordinate is what `18` integrates.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<ColourSpecification> ResolveColour(OwnerIdentity Subject, const ColourSpaceSpecification& Working) const;
+    Deliver<ColourSpecification> ResolveColour(OwnerIdentity Subject, const ColourSpaceSpecification& Working) const;
 
     /// 🧩 The owner registered as `28`'s atmospheric source.
     /// out   Result  [-]  refuses with ExtentExhausted when none is registered
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<OwnerIdentity> AtmosphericSource() const;
+    Deliver<OwnerIdentity> AtmosphericSource() const;
 
     /// 🧩 Every declared illuminant, in identity order.
     /// cost  ✔️
@@ -178,7 +178,7 @@ public:
 private:
 
     std::size_t   Located(OwnerIdentity Subject) const;
-    Outcome<bool> Validate(const IlluminantSpecification& Declaring, OwnerIdentity Subject) const;
+    Deliver<bool> Validate(const IlluminantSpecification& Declaring, OwnerIdentity Subject) const;
 
     std::vector<OwnerIdentity>         RegisteredOrder;         // [-] - ascending by slot, then by generation
     std::vector<IlluminantSpecification>  Declarations;          // [-] - parallel to it
@@ -219,13 +219,13 @@ public:
     /// post  every partition carries its reaching set, ordered by illuminant identity
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Derive(const IlluminantPopulation& Illuminants, const std::vector<PartitionExtent>& Extents);
+    Deliver<bool> Derive(const IlluminantPopulation& Illuminants, const std::vector<PartitionExtent>& Extents);
 
     /// 🧩 Re-derives one partition's reaching set — the row `44` §5 reaches when an owner moved.
     /// out   Result  [-]  refuses with ExtentExhausted outside the derived partition count
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> DerivePartition(const IlluminantPopulation& Illuminants,
+    Deliver<bool> DerivePartition(const IlluminantPopulation& Illuminants,
                                   std::uint32_t               PartitionIndex,
                                   PartitionExtent             Extent);
 
@@ -238,7 +238,7 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted outside the reaching count
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<OwnerIdentity> Reaching(std::uint32_t PartitionIndex, std::uint32_t ReachIndex) const;
+    Deliver<OwnerIdentity> Reaching(std::uint32_t PartitionIndex, std::uint32_t ReachIndex) const;
 
     /// 🧩 How many illuminants one partition could not carry — `86`'s truncation row.
     /// cost  ✔️

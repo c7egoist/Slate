@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "SlateCompute/Compute/VisibilityIndex/Api/VisibilityIndex.h"
 #include "SlateDocument/Document/RegistrationIndex/Api/RegistrationIndex.h"
@@ -78,7 +78,7 @@ public:
     ///        a validated colour and what stands behind in one that was rejected.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const OutlineSpecification& Outlining_);
+    Deliver<bool> Declare(const OutlineSpecification& Outlining_);
 
     /// 🧩 Contributes `08` §3 ⑨'s recording — coverage into `OutlineSurface`, the outline over `DisplaySurface`.
     /// out   Result  [-]  refuses with whatever the schedule rejected, and with ContentUnsupported before Declare
@@ -91,7 +91,7 @@ public:
     ///        downstream may resolve a pixel to it.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 Whether the owner behind one pixel is registered in the selection subset.
     /// in    Written      [-]  the word read back from `16`'s target
@@ -107,7 +107,7 @@ public:
     ///        edge between rotations that resolved the same geometry.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> ClassifyRegistration(VisibilityWord                  Written,
+    Deliver<bool> ClassifyRegistration(VisibilityWord                  Written,
                                     const VisibilityIndex&          Visibility,
                                     const PartitionResolutionIndex& Resolutions,
                                     const RegistrationIndex&          Registrations) const;
@@ -156,7 +156,7 @@ public:
     ///        is ordered after `66`.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<ColourSpecification> OutlineColour(bool Occluded) const;
+    Deliver<ColourSpecification> OutlineColour(bool Occluded) const;
 
     /// 🧩 Declares every measure; appends nothing.
     /// note  🔴 `26` appears in no row of `86` §4's register. A selection that is outlined is the component

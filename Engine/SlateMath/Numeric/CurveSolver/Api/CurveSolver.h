@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 
 #include <cstdint>
@@ -111,7 +111,7 @@ std::vector<PlanarPosition> Flatten(PlanarPosition                  Origin,
 ///        so declaring one here would be inventing an authored property the artist cannot see.
 /// cost  🚩
 /// tag   api, nonthrowing
-Outcome<std::vector<PlanarPosition>> OffsetOutline(const std::vector<PlanarPosition>& Traversed,
+Deliver<std::vector<PlanarPosition>> OffsetOutline(const std::vector<PlanarPosition>& Traversed,
                                                    double                             HalfWidth,
                                                    bool                               ClosedRun);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);

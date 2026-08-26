@@ -79,7 +79,7 @@
 #include "Shared/OverlayTransform.slang.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "Application/EditorHost/Api/SkyImage.h"
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/AtmosphereIntegrator/Api/AtmosphereIntegrator.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
@@ -831,14 +831,14 @@ struct SceneDriver
         Partition.ConstructPanelPartition(PanelSubject::Viewport);
         Discard(Partition.Divide(PanelStructure::RootIndex, PanelDivisionAxis::X,
                                  PanelDivisionSide::Maximum));
-        const Outcome<PanelRecord> Right = Partition.Current(PanelStructure::RootIndex);
+        const Deliver<PanelRecord> Right = Partition.Current(PanelStructure::RootIndex);
         const std::uint32_t RightLeaf = Right.Resolved ? Right.Resolve().Maximum : 1u;
         Discard(Partition.Assign(RightLeaf, PanelSubject::Outliner));
 
         if (WithProperties)
         {
             Discard(Partition.Divide(RightLeaf, PanelDivisionAxis::Y, PanelDivisionSide::Maximum));
-            const Outcome<PanelRecord> RightRecord = Partition.Current(RightLeaf);
+            const Deliver<PanelRecord> RightRecord = Partition.Current(RightLeaf);
             const std::uint32_t LowerLeaf = RightRecord.Resolved ? RightRecord.Resolve().Maximum : 3u;
             Discard(Partition.Assign(LowerLeaf, PanelSubject::Properties));
         }
@@ -1901,7 +1901,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Partition.ConstructPanelPartition(PanelSubject::Outliner);
         Driver.Settle(12);
 
-        const Outcome<ControlIdentity> Foreign = Driver.Interaction.Register();
+        const Deliver<ControlIdentity> Foreign = Driver.Interaction.Register();
         if (!Foreign.Resolved || !Driver.Interaction.Disclose(Foreign.Resolve()))
         {
             std::fprintf(stderr, "[FAIL] could not stage the foreign disclosure\n");

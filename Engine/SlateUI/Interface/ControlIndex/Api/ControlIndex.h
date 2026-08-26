@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/Identity.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
@@ -119,7 +119,7 @@ public:
     /// post  the index is empty and Register may be called
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<bool> AttachMotion(MotionIntegrator& Motion);
+    Deliver<bool> AttachMotion(MotionIntegrator& Motion);
 
     /// 🧩 Reservations one slot and delivers the identity the caller holds for the life of the interface.
     /// out   Result  [-]  refuses with CapabilityAbsent before Construct, and with ExtentExhausted when the
@@ -129,7 +129,7 @@ public:
     /// post  the delivered identity carries a generation of at least one and resolves until Reset
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<ControlIdentity> Register();
+    Deliver<ControlIdentity> Register();
 
     /// 🧩 Whether one identity still names the slot it was registered for.
     /// out   Resolved  [-]  false for a default-constructed identity and for one registered before a Reset
@@ -185,7 +185,7 @@ public:
     ///       which drifts by a pixel for every tick the pointer was outside the extent.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    Outcome<float> InitialReading(ControlIdentity Target) const;
+    Deliver<float> InitialReading(ControlIdentity Target) const;
 
     /// 🧩 Records the datum the seizing control departed from, once, at grab.
     /// out   Recorded  [-]  false when this control holds no grab

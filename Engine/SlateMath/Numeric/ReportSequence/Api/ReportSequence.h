@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 
 #include <cstdint>
@@ -194,7 +194,7 @@ public:
     ///        capability: a metric that reports zero when it could not be measured is confidently wrong.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<SampledMeasure> Resolve(const char* Origin, const char* Measured) const;
+    Deliver<SampledMeasure> Resolve(const char* Origin, const char* Measured) const;
 
     /// 🧩 Discards every held measure.
     /// cost  ✔️

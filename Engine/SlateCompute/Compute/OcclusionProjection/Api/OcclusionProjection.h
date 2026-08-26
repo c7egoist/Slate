@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 #include "Foundation/NumericTolerance.h"
 #include "Shared/OcclusionProjection.slang.h"
@@ -173,7 +173,7 @@ public:
     ///        losing its shadow when they add a fill.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Derive(const IlluminantIndex& Reaching, const IlluminantPopulation& Illuminants);
+    Deliver<bool> Derive(const IlluminantIndex& Reaching, const IlluminantPopulation& Illuminants);
 
     /// 🧩 The packed component one illuminant occupies in one partition.
     /// out   Result  [-]  refuses with ExtentExhausted where the illuminant reaches the partition and the word
@@ -183,13 +183,13 @@ public:
     ///        contributes its whole direct term unattenuated, and `18` must know which.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<std::uint32_t> SlotOf(std::uint32_t PartitionIndex, OwnerIdentity Illuminant) const;
+    Deliver<std::uint32_t> SlotOf(std::uint32_t PartitionIndex, OwnerIdentity Illuminant) const;
 
     /// 🧩 The illuminant one packed component carries in one partition.
     /// out   Result  [-]  refuses with ExtentExhausted where the slot is unoccupied
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<OwnerIdentity> IlluminantAt(std::uint32_t PartitionIndex, std::uint32_t Slot) const;
+    Deliver<OwnerIdentity> IlluminantAt(std::uint32_t PartitionIndex, std::uint32_t Slot) const;
 
     /// 🧩 How many illuminants one partition could not pack — the excess `18` integrates unattenuated.
     /// cost  ✔️
@@ -253,7 +253,7 @@ public:
     ///        third of the extent would need a different tap count, and the two would be declared in two places.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Declare(const AmbientOcclusionSpecification& Declaring);
+    Deliver<bool> Declare(const AmbientOcclusionSpecification& Declaring);
 
     /// 🧩 The extent the term is resolved at, from one display extent.
     /// out   Result  [-]  refuses with ContentUnsupported for a display extent of nothing
@@ -262,7 +262,7 @@ public:
     ///        then reads outside its own target along one edge.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Resolve(std::uint32_t DisplayX,
+    Deliver<bool> Resolve(std::uint32_t DisplayX,
                           std::uint32_t DisplayY,
                           std::uint32_t& ResolvedX,
                           std::uint32_t& ResolvedY) const;
@@ -315,7 +315,7 @@ public:
     ///        twice to write two scalars.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> Contribute(RenderSchedule& Schedule) const;
+    Deliver<bool> Contribute(RenderSchedule& Schedule) const;
 
     /// 🧩 Declares the camera every directional subdivision is sized against.
     /// in    Declaring  [-]  the presented camera, as `46` holds it
@@ -328,7 +328,7 @@ public:
     ///        extended shapes are world-referred and see what they saw before the camera moved.
     /// cost  ✔️
     /// tag   api, nonthrowing
-    Outcome<bool> DeclareCamera(const CameraSpecification& Declaring);
+    Deliver<bool> DeclareCamera(const CameraSpecification& Declaring);
 
     /// 🧩 Records that something changed, so that only what it reaches is owed a rebuild.
     /// in    Declared  [-]  which of `60` §4's rows
@@ -341,7 +341,7 @@ public:
     ///        arrangement where the ones that do not matter stay free.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<bool> Invalidate(InvalidationSubject Declared,
+    Deliver<bool> Invalidate(InvalidationSubject Declared,
                              OwnerIdentity    Subject,
                              PartitionExtent     Extent);
 
@@ -356,13 +356,13 @@ public:
     ///        disabled occlusion on their key light six months ago has no other way to find out.
     /// cost  🔴
     /// tag   api, nonthrowing
-    Outcome<bool> Rebuild(const IlluminantPopulation& Illuminants, std::uint64_t RecordingIndex);
+    Deliver<bool> Rebuild(const IlluminantPopulation& Illuminants, std::uint64_t RecordingIndex);
 
     /// 🧩 One illuminant's standing projection.
     /// out   Result  [-]  refuses with ExtentExhausted where the illuminant carries none
     /// cost  🚩
     /// tag   api, nonthrowing
-    Outcome<const DerivedProjection*> Current(OwnerIdentity Illuminant) const;
+    Deliver<const DerivedProjection*> Current(OwnerIdentity Illuminant) const;
 
     /// 🧩 Whether anything is owed a rebuild.
     /// note  🔴 What the schedule's contributor reads to decide whether ③ records at all. `60` §4's table exists
@@ -392,7 +392,7 @@ public:
 
 private:
 
-    Outcome<DerivedProjection> Derive(const IlluminantSpecification& Declared,
+    Deliver<DerivedProjection> Derive(const IlluminantSpecification& Declared,
                                       OwnerIdentity               Illuminant,
                                       std::uint64_t                  RecordingIndex) const;
 

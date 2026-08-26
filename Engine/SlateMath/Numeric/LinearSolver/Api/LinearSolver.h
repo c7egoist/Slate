@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "Foundation/PrecisionGuarantee.h"
 
 #include <cstdint>
@@ -101,7 +101,7 @@ struct SolvedSystem
 ///        the coefficients are already of one magnitude. The pivot ratio reports when that assumption failed.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<SolvedSystem> Solve(const DenseSystem& Declaring);
+Deliver<SolvedSystem> Solve(const DenseSystem& Declaring);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 ///        rewrite this declaration is placed here to avoid.
 /// cost  🔴
 /// tag   api, nonthrowing
-Outcome<SolvedSystem> Solve(const SparseSystem& Declaring);
+Deliver<SolvedSystem> Solve(const SparseSystem& Declaring);
 SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounded);
 
 //------------------------------------------------------------------------------------------------------------------------

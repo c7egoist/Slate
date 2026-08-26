@@ -3,7 +3,7 @@
 //============================================================================================================================================
 // 🧩 Records the control sheet and reusable global-interface components for direct visual comparison.
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"
@@ -150,7 +150,7 @@ struct ValidationIdentities
 /// out   Result  [-]  refuses with ExtentExhausted when the index declines any requested identity
 /// note  🔴 A partial registration would leave one control reading another's fade, which draws correctly on the
 ///       first tick and diverges on the second — the hardest possible shape of defect to attribute.
-Outcome<ValidationIdentities> RegisterEvery(ControlIndex& IncomingInteraction)
+Deliver<ValidationIdentities> RegisterEvery(ControlIndex& IncomingInteraction)
 {
     ValidationIdentities  Target;
     ControlIdentity*      Every[] = {
@@ -168,17 +168,17 @@ Outcome<ValidationIdentities> RegisterEvery(ControlIndex& IncomingInteraction)
 
     for (ControlIdentity* Target : Every)
     {
-        const Outcome<ControlIdentity> Registered = IncomingInteraction.Register();
+        const Deliver<ControlIdentity> Registered = IncomingInteraction.Register();
 
         if (!Registered.Resolved)
         {
-            return Outcome<ValidationIdentities>::Refuse(Registered.Error);
+            return Deliver<ValidationIdentities>::Refuse(Registered.Error);
         }
 
         *Target = Registered.Resolve();
     }
 
-    return Outcome<ValidationIdentities>::Result(Target);
+    return Deliver<ValidationIdentities>::Result(Target);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -361,7 +361,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         return 1;
     }
 
-    const Outcome<ValidationIdentities> Registered = RegisterEvery(Interaction);
+    const Deliver<ValidationIdentities> Registered = RegisterEvery(Interaction);
 
     if (!Registered.Resolved)
     {

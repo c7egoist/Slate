@@ -86,7 +86,7 @@ bool ExtractRun(const std::vector<std::uint8_t>& Content, std::size_t& Position,
 
 }
 
-Outcome<CodexDocument> PigmentCodexInterchange::EncodePigment(const PigmentCodex& Pigment,
+Deliver<CodexDocument> PigmentCodexInterchange::EncodePigment(const PigmentCodex& Pigment,
                                                                std::uint64_t       Identity,
                                                                std::uint64_t       Revision) const
 {
@@ -110,14 +110,14 @@ Outcome<CodexDocument> PigmentCodexInterchange::EncodePigment(const PigmentCodex
     Produced.Identity = Identity;
     Produced.CurrentRevision = Revision;
     Produced.Sections.push_back(std::move(Information));
-    return Outcome<CodexDocument>::Result(Produced);
+    return Deliver<CodexDocument>::Result(Produced);
 }
 
-Outcome<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument& Document) const
+Deliver<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument& Document) const
 {
     if (Document.Profile != CodexProfile::Pigment)
     {
-        return Outcome<PigmentCodex>::Refuse(
+        return Deliver<PigmentCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the Codex document is not a pigment profile" });
     }
 
@@ -133,7 +133,7 @@ Outcome<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument
 
     if (Information == nullptr || Information->MajorVersion != 1u)
     {
-        return Outcome<PigmentCodex>::Refuse(
+        return Deliver<PigmentCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the pigment-information section is absent or unsupported" });
     }
 
@@ -141,7 +141,7 @@ Outcome<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument
     std::size_t Position = 0u;
     if (!ExtractRun(Information->Content, Position, Produced.Naming))
     {
-        return Outcome<PigmentCodex>::Refuse(
+        return Deliver<PigmentCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the pigment naming is incomplete" });
     }
 
@@ -149,7 +149,7 @@ Outcome<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument
     {
         if (!ExtractReal(Information->Content, Position, Produced.BaseColour[Component]))
         {
-            return Outcome<PigmentCodex>::Refuse(
+            return Deliver<PigmentCodex>::Refuse(
                 { RefusalReason::ContentUnsupported, "the pigment base colour is incomplete" });
         }
     }
@@ -158,19 +158,19 @@ Outcome<PigmentCodex> PigmentCodexInterchange::DecodePigment(const CodexDocument
         !ExtractReal(Information->Content, Position, Produced.IndexOfRefraction) ||
         Position >= Information->Content.size())
     {
-        return Outcome<PigmentCodex>::Refuse(
+        return Deliver<PigmentCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the pigment surface figures are incomplete" });
     }
 
     const std::uint8_t Dielectric = Information->Content[Position++];
     if (Dielectric > 1u || Position != Information->Content.size())
     {
-        return Outcome<PigmentCodex>::Refuse(
+        return Deliver<PigmentCodex>::Refuse(
             { RefusalReason::ContentUnsupported, "the pigment dielectric declaration is inconsistent" });
     }
 
     Produced.Dielectric = Dielectric != 0u;
-    return Outcome<PigmentCodex>::Result(Produced);
+    return Deliver<PigmentCodex>::Result(Produced);
 }
 
 }   // namespace Slate

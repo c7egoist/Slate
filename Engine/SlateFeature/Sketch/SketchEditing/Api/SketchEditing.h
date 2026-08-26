@@ -6,17 +6,17 @@
 
 #pragma once
 
-#include "Foundation/DeliveryOutcome.h"
+#include "Foundation/DeliveryGuarantee.h"
 #include "SlateFeature/Sketch/SketchStructure/Api/SketchStructure.h"
 #include "SlateFeature/Sketch/SketchSelection/Api/SketchSelection.h"
 
 namespace Slate
 {
 
-Outcome<bool> EnforceSketchPoint(SketchStructure& Declared,
+Deliver<bool> EnforceSketchPoint(SketchStructure& Declared,
                                  SketchPointName Subject,
                                  const SpatialPoint& Position);
-Outcome<bool> EnforceSketchControl(SketchStructure& Declared,
+Deliver<bool> EnforceSketchControl(SketchStructure& Declared,
                                    SketchControlName Subject,
                                    const SpatialPoint& Position);
 

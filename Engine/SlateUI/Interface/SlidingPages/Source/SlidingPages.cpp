@@ -8,15 +8,15 @@
 namespace Slate
 {
 
-Outcome<bool> SlidingPages::ConstructSlidingPages(MotionIntegrator& IncomingMotion, std::uint32_t InitialPage,
+Deliver<bool> SlidingPages::ConstructSlidingPages(MotionIntegrator& IncomingMotion, std::uint32_t InitialPage,
                                                   double Duration, EaseCurve Shape)
 {
     if (Motion != nullptr)
-        return Outcome<bool>::Refuse({ RefusalReason::ContentUnsupported, "sliding pages are already constructed" });
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "sliding pages are already constructed" });
 
-    const Outcome<std::uint32_t> Registered = IncomingMotion.RegisterEased(1.0);
+    const Deliver<std::uint32_t> Registered = IncomingMotion.RegisterEased(1.0);
     if (!Registered.Resolved)
-        return Outcome<bool>::Refuse(Registered.Error);
+        return Deliver<bool>::Refuse(Registered.Error);
 
     Motion         = &IncomingMotion;
     TravelMotion   = Registered.Resolve();
@@ -24,7 +24,7 @@ Outcome<bool> SlidingPages::ConstructSlidingPages(MotionIntegrator& IncomingMoti
     ArrivingPage   = InitialPage;
     TravelDuration = Duration;
     TravelShape    = Shape;
-    return Outcome<bool>::Result(true);
+    return Deliver<bool>::Result(true);
 }
 
 void SlidingPages::Navigate(std::uint32_t IncomingPage)
