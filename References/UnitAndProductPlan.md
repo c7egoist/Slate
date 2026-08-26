@@ -140,7 +140,7 @@ SlateWorkspace/  ←NEW  TextureWorkspace, ParametricWorkspace — panels, tools
       │
 SlateToolset/    ←NEW  brush, line, arc, extrude, constrain — one tool's parameters and pointer behaviour
       │
-SlateRuntime/    ←NEW  bring-up, tick, teardown, feature gate — the 27 calls, written once
+SlateRuntime/    ✅NEW  bring-up, tick, teardown, feature gate — SessionSequence, the 26 calls written once
       │
 SlateUI/               panels, widgets, the one copy of ImGui
 SlateWorld/      ←REN  (was SlateScene) camera, atmosphere, light, transform components
@@ -182,7 +182,7 @@ whole exercise is recovering from.
 | 4 ✅| `git mv SlateScene SlateWorld` + include rewrite — smallest rename, proves the procedure                 | ✔️  | 9 modules moved                               |
 | 5 ✅| `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
 | 6 ✅| Fold `SlateFeature` into `SlateShape` per §2.2 (**70 files**). The 5 `Workspace*` modules went to `SlateShape/Record/`, **not** `SlateDocument` — see §2.2 note | 🚩 | `SlateFeature` gone; the word freed |
-| 7 | Create `SlateRuntime`. Lift the 27 identical seam calls out of `EditorHost` into one tick                | 🚩  | One tick loop exists                          |
+| 7 ✅| Create `SlateRuntime`. Lift the shared seam out of `EditorHost` and `PaintHost` into one tick — **26** identical calls, not 27; see §4.2 | 🚩 | One tick loop exists; `PaintHost` holds **zero** `Lifetime.*` calls |
 | 8 | Create `SlateToolset`. Lift tool behaviour from both hosts, one tool per commit                          | 🔴  | Tools reachable from any product              |
 | 9 | Create `SlateWorkspace`. Define `TextureWorkspace` and `ParametricWorkspace` as declarations             | 🚩  | Disciplines are data                          |
 | 10| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
@@ -192,6 +192,38 @@ whole exercise is recovering from.
 
 ⚠️ **Steps 1–5 are worth doing immediately.** They are mechanical, reversible, and after step 2 the
 codebase begins refusing the mistake instead of inviting it. Step 10 is the real work.
+
+### 4.2 What step 7 actually found
+
+🔴 **The count was 26, not 27, and it was measured rather than trusted.** Re-derived across all three
+hosts at step 7: `EditorHost` names 28 distinct seam methods, `PaintHost` 26, `ParametricSketchHost` 28,
+and the intersection of all three is **26**. The plan's 27 was close enough to act on and wrong enough to
+record.
+
+`SlateRuntime/Session/SessionSequence` now owns that intersection — bring-up, the tick prologue, the seal,
+the submit and the teardown, plus the appearance reconciliation all three hosts had copied. Measured after:
+
+| Host         | Lines           | `Lifetime.*` calls |
+|--------------|-----------------|--------------------|
+| `PaintHost`  | 843 → **676**   | 13 → **0**         |
+| `EditorHost` | 1895 → **1761** | 28 → **14**        |
+
+`EditorHost` keeps 14 because it owns a device estate the session cannot know about — the atmosphere
+surface, the overlay pass, the geometry exchange. Those are reached through `Session.Device()` and rebuilt
+on the tick that reports `DeviceRebuilt`. That is the correct residue, not leftover debt.
+
+🔴 **Two defects were found by verifying rather than by reading.**
+
+① `Engine/SlateWorld/Module.toml` declared `subject = [ "Scene" ]`, a folder step 4 had renamed to
+`World/`. A StaticLibrary archives its whole tree and ignores `subject`, so nothing failed — but
+`Get-UnitSource` throws `"declares subject Scene but ... does not exist"` the moment anything reads it.
+Corrected, and every manifest's subject is now checked against the filesystem.
+
+② **`Application/Api/HostFeature.h` was included by nothing.** The macro reached it from the build and the
+`#error` branch worked, but no host had ever included the header — so the whole feature seam was still
+dead, which is *precisely* the failure §2 of `CAPABILITY-Ownership.md` records as having caused an agent
+to write its own camera, sky and CAD editor. `EditorHost` now includes it and states `HostProduct` at
+bring-up, so the seam is demonstrably read by the surviving source.
 
 ### 4.1 On deleting the `Bridge` headers
 

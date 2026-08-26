@@ -191,12 +191,26 @@ raise precision, it lowers it, because the replacement is always vaguer than the
 
 Exempted under this clause — `Graph`, `Predicate`, `Quadrature`, `Interpolant`, `Field`, `Kernel` (the
 convolution or integration kernel, never "the OS kernel"), `Partition` (domain decomposition), `Region`,
-`Space`, `Tree`.
+`Space`, `Tree`, `Simplex`, `Intrinsic`.
 
 ⚠️ The exemption is **narrow**. It licenses the term only where the mathematical object is genuinely what
 is meant. `NodeGraph` is exempt; `SceneGraph` meaning "the scene manager" is not. `Predicate` in
 `OrientationPredicate` is exempt; `PredicateHandler` is not. `Region` and `Tree` remain retired as *role
 suffixes* regardless of this exemption — the exemption covers mathematical usage, not module naming.
+
+`Simplex` and `Intrinsic` are approved under this clause and are **not yet used anywhere in the engine**.
+They are recorded here so that the mechanism each one denotes is fixed before the first use, rather than
+argued about at it.
+
+| Approved    | The mechanism it names                                                        | What it does **not** license                              |
+|-------------|-------------------------------------------------------------------------------|-----------------------------------------------------------|
+| `Simplex`   | The convex hull of *n*+1 affinely independent points — point, segment, triangle, tetrahedron. The unit of a simplicial complex, of barycentric coordinates, and of Delaunay and GJK reasoning. | "Simple", "the simplest case", or a triangle that is only ever a rendering triangle — that is a `Facet` of a `Structure`. |
+| `Intrinsic` | A quantity determined by a body itself, independent of how it is embedded or observed — Gaussian curvature, geodesic distance, the first fundamental form; and, at the machine edge, a compiler-supplied operation standing for one hardware instruction. | An adjective for "built in", "inherent", or "internal". Those state no mechanism, and `Intrinsic` used that way is the same defect as `Kind`. |
+
+⚠️ `Intrinsic` carries two exact meanings — differential-geometric and machine-level — and both are
+admitted, because both name something measurable. The gate is that the surrounding name must make clear
+which: `IntrinsicCurvature` is the surface, `InstructionIntrinsic` the machine. A bare `Intrinsic`
+qualifying nothing is rejected.
 
 Named individual exemptions — `UvSurfaceDepot` keeps `Surface`; `SpatialReach` keeps `Reach`.
 

@@ -18,6 +18,22 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def offstack(host: str) -> bool:
+    """Whether a host keeps ViewportSequence's ~406 KB out of its automatic frame.
+
+    A Windows thread is handed one megabyte and the budget these hosts assert against is a quarter of
+    it. ViewportSequence alone is over four hundred kilobytes, so it has to live in static storage or
+    the prologue's stack probe faults before main runs a statement -- no window, no log line.
+
+    Two spellings satisfy that. A host may hold the sequence directly, or hold a SessionSequence that
+    holds it; SlateRuntime owns the bring-up from step 7 onward, so the second is what a lifted host
+    looks like. This tests the MECHANISM -- 406 KB off the stack -- rather than one of its spellings,
+    because the earlier literal check reported a regression when a host was lifted correctly.
+    """
+    return ("static ViewportSequence Viewport;" in host or
+            "static SessionSequence Session;" in host)
+
+
 def main() -> int:
     motion = read("Engine/SlateUI/Interface/MotionIntegrator/Api/MotionIntegrator.h")
     match = re.search(r"EaseCapacity\s*=\s*(\d+)u", motion)
@@ -28,8 +44,8 @@ def main() -> int:
     editor = read("Engine/Application/EditorHost/Source/EditorHost.cpp")
     require("constexpr std::size_t AutomaticUiBytes = sizeof(ShaderCodec) + sizeof(WorkspaceOverlayPass);" in editor,
             "EditorHost stack assertion must only count members still on automatic storage")
+    require(offstack(editor), "EditorHost must keep the motion-heavy viewport sequence off the stack")
     for needle in [
-        "static ViewportSequence Viewport;",
         "static WorkspaceIndex          Workspaces;",
         "static WorkspacePanel          Workspace;",
         "static EditorPanel             WorkspacePanels;",
@@ -47,7 +63,7 @@ def main() -> int:
     require("ConsumeSharedCodexActivation" in editor, "EditorHost activation must use the shared codex activation helper")
 
     paint = read("Engine/Application/PaintHost/Source/PaintHost.cpp")
-    require("static ViewportSequence Viewport;" in paint, "PaintHost must keep the motion-heavy viewport sequence off the stack")
+    require(offstack(paint), "PaintHost must keep the motion-heavy viewport sequence off the stack")
     require("EditorCameraComponent" in paint and "CameraInput" in paint,
             "PaintHost viewport must use the shared editor camera component and hotkey path")
     require("ConsumeSharedCodexActivation" in paint,
@@ -58,7 +74,7 @@ def main() -> int:
     require("std::strncpy" not in validation, "InterfaceValidationHost must avoid MSVC strncpy warning")
 
     parametric = read("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp")
-    require("static ViewportSequence Viewport;" in parametric,
+    require(offstack(parametric),
             "ParametricSketchHost must keep the motion-heavy viewport sequence off the stack")
     require("_dupenv_s(&Home" in parametric, "ParametricSketchHost must avoid MSVC getenv warning on Windows")
     require("std::strncpy" not in parametric, "ParametricSketchHost must avoid MSVC strncpy warning")

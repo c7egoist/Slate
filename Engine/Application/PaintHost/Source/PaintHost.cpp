@@ -11,9 +11,8 @@
 #include "SlateUI/Interface/ControlCentrePanel/Api/ControlCentrePanel.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"
 #include "SlateUI/Interface/EditorPanel/Api/EditorPanel.h"
-#include "SlateUI/Interface/ViewportSequence/Api/ViewportSequence.h"
 #include "SlateUI/Interface/WorkspacePanel/Api/WorkspaceIndex.h"
-#include "SlateVulkan/Device/HostLifecycle/Api/HostLifecycle.h"
+#include "SlateRuntime/Session/SessionSequence/Api/SessionSequence.h"
 
 #include <cmath>
 #include <cstdio>
@@ -83,6 +82,15 @@ static_assert(sizeof(WorkspaceIndex) + sizeof(WorkspacePanel) + sizeof(EditorPan
               "this host's automatic UI members no longer fit a quarter of a Windows thread stack — the "
               "prologue's stack probe will fault before main runs a statement and the host will exit with "
               "no window and no log line; move the largest member to static storage");
+
+// 🔴 The session is deliberately absent from the sum above, and that is load-bearing rather than an
+//    oversight: `SessionSequence` holds `ViewportSequence`, which is over four hundred kilobytes on its
+//    own — more than the whole budget below. It is declared `static` in main for exactly that reason, so
+//    it never enters this frame. This assertion states the fact the arrangement depends on, so a reader
+//    who moves the session onto the stack is refused here rather than by a stack probe with no log line.
+static_assert(sizeof(SessionSequence) > AutomaticLimit,
+              "SessionSequence now fits the automatic budget — re-check whether it still needs static "
+              "storage in main, and whether this assertion is still stating anything true");
 
 constexpr float WorkspaceGround[4] = { 0.06f, 0.06f, 0.08f, 1.0f };   // [-]
 
@@ -218,29 +226,6 @@ void RecordSharedViewportChrome(RecordingSurface& Surface, const PlaneExtent& Ex
     Surface.Release();
 }
 
-/// 🧩 Copies the device handles across the layer seam into the attachment the interface declares.
-/// note  🔴 `SlateVulkan` cannot name `InterfaceAttachment` — it lives one layer above — so `HostLifecycle`
-///        offers the same handles as `DeviceOffering` and the host performs the copy. The copy IS the seam:
-///        it happens in the one translation unit that is allowed to see both sides.
-
-
-InterfaceAttachment Attach(const DeviceOffering& Offered)
-{
-    InterfaceAttachment Incoming = {};
-
-    Incoming.Instance                 = Offered.Instance;
-    Incoming.ScoredDevice             = Offered.ScoredDevice;
-    Incoming.ActiveDevice             = Offered.ActiveDevice;
-    Incoming.GraphicsQueue            = Offered.GraphicsQueue;
-    Incoming.GraphicsFamilyIndex    = Offered.GraphicsFamilyIndex;
-    Incoming.ColourTargetFormat       = Offered.ColourTargetFormat;
-    Incoming.MinimumDisplayImageCount = Offered.MinimumDisplayImageCount;
-    Incoming.DisplayImageCount        = Offered.DisplayImageCount;
-    Incoming.NativeWindowSlot         = Offered.NativeWindowSlot;
-
-    return Incoming;
-}
-
 }   // namespace
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -251,41 +236,41 @@ int main(int ArgumentCount, char** ArgumentValues)
 {
     using namespace Slate;
 
-    // ① The five lifetimes — window, instance, surface, diagnostic, device, chain, slots, recordings.
-    HostDeclaration Declared;
+    // ① The session — window, device, chain, recordings, interface, appearance and font atlas, in the one
+    //    order every windowed product shares. 🔴 `SlateRuntime` owns that order; this host owns what it
+    //    puts inside the tick and nothing else.
+    SessionDeclaration Declared;
     Declared.Naming        = HostName;
     Declared.WindowCaption = WindowTitle;
+    Declared.InvokedAs     = (ArgumentCount > 0) ? ArgumentValues[0] : "";
     Declared.InitialWidth  = InitialWidth;
     Declared.InitialHeight = InitialHeight;
     Declared.Pacing        = LatencyIntent::SteadyPacing;
 
-#ifdef SLATE_DEBUG
-    Declared.DiagnosticRequested = true;
-#endif
+    Declared.North.Caption       = "ControlCentre";
+    Declared.North.TongueSubject = SymbolSubject::PulseTrace;
+    Declared.North.PoseCount     = 2u;
 
-    HostLifecycle Lifetime;
+    Declared.South.Caption       = "ContentBrowser";
+    Declared.South.TongueSubject = SymbolSubject::FolderClosed;
+    Declared.South.PoseCount     = 3u;
 
-    if (!Lifetime.ConstructHost(Declared).Resolved)
-        return 1;
+    for (std::uint32_t Channel = 0u; Channel < 4u; ++Channel)
+        Declared.WorkspaceGround[Channel] = WorkspaceGround[Channel];
 
-    // ② The viewport sequence — springs, drawers, and the assembled recording.
-    static ViewportSequence Viewport;
+    // 📝 Static because `ViewportSequence` alone is 406 KB and a Windows thread is handed one megabyte.
+    //    The three ceilings above weigh this host's automatic members; the session is kept out of them.
+    static SessionSequence Session;
 
-    DrawerDeclaration NorthDrawer;
-    NorthDrawer.Caption       = "ControlCentre";
-    NorthDrawer.TongueSubject = SymbolSubject::PulseTrace;
-    NorthDrawer.PoseCount     = 2u;
+    const Deliver<bool> Opened = Session.ConstructSession(Declared);
 
-    DrawerDeclaration SouthDrawer;
-    SouthDrawer.Caption       = "ContentBrowser";
-    SouthDrawer.TongueSubject = SymbolSubject::FolderClosed;
-    SouthDrawer.PoseCount     = 3u;
-
-    if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDrawer, SouthDrawer).Resolved)
+    if (!Opened.Resolved)
     {
-        std::printf("%s \u2014 the viewport sequence was rejected\n", HostName);
+        std::printf("%s \u2014 %s\n", HostName, Opened.Error.Detail);
         return 1;
     }
+
+    ViewportSequence& Viewport = Session.Interface();
 
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
     //                                                       THE TICK LOOP
@@ -310,7 +295,6 @@ int main(int ArgumentCount, char** ArgumentValues)
     EditorPanelConfiguration    PanelConfiguration[WorkspaceIndex::WorkspaceLimit];
     ControlCentrePanel      ControlCentre;
     ControlCentreConfiguration  ControlCentreValues;
-    FontLoader                  Fonts;
 
     ControlIndex         BrowserInteraction;
 
@@ -334,56 +318,25 @@ int main(int ArgumentCount, char** ArgumentValues)
         EditorCamera.Snap();
     }
 
-    // 📝 The appearance file sits beside the executable and is read once, before any panel is recorded. A
-    //    first run has no file yet, which is the ordinary case and not a fault — the build's own appearance
-    //    stands and the first colour the artist changes writes the file.
-    const char* const InvokedAs = (ArgumentCount > 0) ? ArgumentValues[0] : "";
-    const std::filesystem::path ExecutablePath = InvokedAs[0] != '\0'
-                                               ? std::filesystem::absolute(InvokedAs)
-                                               : std::filesystem::current_path();
-    const std::filesystem::path EngineContentRoot = ResolveEngineContentRoot(ExecutablePath);
-    const std::string FontRoot = (EngineContentRoot / "FontArchives").string();
+    // 📝 The appearance the session adopted from beside the executable, seated into the Control Centre so
+    //    the panel opens on what is actually applied. The session owns the file and the atlas; this host
+    //    owns only the panel that presents them.
+    const ThemeSelection& Adopted = Session.Inscribed();
 
-    {
-        ThemeSelection Recorded;
+    ControlCentreValues.Theme       = Adopted.Current;
+    ControlCentreValues.Primary     = Adopted.Primary;
+    ControlCentreValues.Secondary   = Adopted.Secondary;
+    ControlCentreValues.Information = Adopted.Information;
+    ControlCentreValues.Warning     = Adopted.Warning;
+    ControlCentreValues.Alert       = Adopted.Alert;
 
-        if (ThemeInterchange::AdoptBeside(InvokedAs, Recorded))
-        {
-            ControlCentreValues.Theme       = Recorded.Current;
-            ControlCentreValues.Primary     = Recorded.Primary;
-            ControlCentreValues.Secondary   = Recorded.Secondary;
-            ControlCentreValues.Information = Recorded.Information;
-            ControlCentreValues.Warning     = Recorded.Warning;
-            ControlCentreValues.Alert       = Recorded.Alert;
-        }
-    }
-
-    // 🔴 What was last written, so the file is inscribed when a colour actually changes and not every tick.
-    //    A write per frame would rewrite the whole appearance sixty times a second for as long as the
-    //    Control Centre is open, which is a disk cost no artist asked for.
-    ThemeSelection InscribedSelection;
-    InscribedSelection.Current   = ControlCentreValues.Theme;
-    InscribedSelection.Primary     = ControlCentreValues.Primary;
-    InscribedSelection.Secondary   = ControlCentreValues.Secondary;
-    InscribedSelection.Information = ControlCentreValues.Information;
-    InscribedSelection.Warning     = ControlCentreValues.Warning;
-    InscribedSelection.Alert       = ControlCentreValues.Alert;
-
-    // 🔴 Declared BEFORE any panel is constructed. Panels that copy their inks do so out of the appearance the
-    //    viewport hands them at Construct, so a selection declared afterwards would leave the first frames
-    //    drawn in the transcription's own theme and only correct itself on the artist's first colour change.
-    Viewport.Retint(InscribedSelection);
+    const std::filesystem::path EngineContentRoot = Session.ContentRoot();
 
     // 📝 Which dock node the next registered workspace is applied into; zero means the main dock space.
     std::uint32_t  RegisterIntoNode = 0u;
 
-    Viewport.Surface().ApplyFontLoader(Fonts);
-    Discard(Fonts.Discover(FontRoot.c_str()));
-    // 📝 The family carousel's preview faces are added to the atlas BEFORE the first tick records. Added
-    //    during recording instead, the faces would land in an atlas the renderer had already uploaded and
-    //    the preview tiles would draw from stale texture data.
-    Discard(Fonts.PreparePreviews(1.0f));
-    Discard(Fonts.Load(FontRoot.c_str(), Viewport.Appearance().Fonts, 1.0f));
+    FontLoader& Fonts = Session.Fonts();
+
     ControlCentre.SetFontFamilies(Fonts);
     // 📝 Seat the family carousel on the family the appearance names. Without this the carousel opened
     //    on ordinal zero (the alphabetically first family) while the loaded faces were the appearance's
@@ -445,75 +398,23 @@ int main(int ArgumentCount, char** ArgumentValues)
     }
     PanelPartitions[DefaultWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
 
-    // 🔴 The sheet's tab figures applied into the vendor's style, including the four `Patches/` adds. They
-    //    default to 0.0f, at which a patched build draws stock rectangular tabs — so this call is what
-    //    turns the trapezoid on.
-    if (!Viewport.Seam().ApplyWorkspaceStyle(Viewport.Appearance().WorkspaceMeasure,
-                                                 Viewport.Appearance().Workspace).Resolved)
-    {
-        std::printf("%s \u2014 the workspace style was not applied\n", HostName);
-    }
-
     std::printf("%s \u2014 opened %s\n", HostName, Workspaces.ActiveTitle());
 
-    while (Lifetime.Active())
+    while (Session.Active())
     {
-        const TickPass Pass = Lifetime.Await(WorkspaceGround);
-        Discard(Fonts.FlushPending());
+        // 🔴 One call answers the window, the resize, the device loss and the interface tick. Every branch
+        //    this host used to carry — retiring, rebuilding, renegotiating — is `SlateRuntime`'s, written
+        //    once for every product rather than three times with three sets of defects.
+        const SessionPass Pass = Session.Await();
 
-        if (Pass.Current == TickCondition::Closed)
+        if (Pass.Current == SessionCondition::Closed)
             break;
 
-        // 🔴 Phase one of a device rebuild. The device STILL STANDS here, so this is the one moment the
-        //    interface can release its descriptor pool, font atlas and pipelines against a live handle.
-        //    Reclaiming after the rebuild idles a device the vendor has already destroyed, which the
-        //    loader reports as VUID-vkDeviceWaitIdle-device-parameter.
-        if (Pass.DeviceRetiring)
-        {
-            Viewport.Reclaim();
-            continue;
-        }
-
-        // ③·i 🔴 The DEVICE was rebuilt, so every device handle the interface holds names an object the
-        //      vendor has returned — its font atlas, its descriptor sets, its pipelines. Renegotiating the
-        //      image counts would restate figures against a device that no longer exists, so the interface
-        //      is reclaimed and reconstructed against the handles the rebuilt device offers.
-        //      Tested before DisplayRecovered because a device rebuild raises both.
-        if (Lifetime.DeviceRecovered())
-        {
-            // 📝 Not reclaimed here: the retiring tick above already did it, while the device lived.
-            if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDrawer, SouthDrawer).Resolved)
-            {
-                std::printf("%s \u2014 the interface could not be rebuilt on the recovered device\n", HostName);
-                break;
-            }
-
-            // 📝 The display recovery this rebuild also raised is consumed here. The reconstruction above
-            //    already took the counts the new chain holds, and renegotiating them again would restate
-            //    what was just constructed.
-            static_cast<void>(Lifetime.DisplayRecovered());
-        }
-
-        // ③ The chain was re-established. The interface is told the counts it now holds, exactly once.
-        else if (Lifetime.DisplayRecovered())
-        {
-            const DeviceOffering Offered = Lifetime.Offering();
-            // 🔴 Read, not discarded. An interface still holding the previous image counts records
-            //    against a chain depth that no longer exists, and the vendor reports that as a
-            //    descriptor mismatch several ticks later rather than as the resize that caused it.
-            if (!Viewport.Renegotiate(Offered.MinimumDisplayImageCount, Offered.DisplayImageCount))
-            {
-                std::printf("%s \u2014 the interface rejected the restated image counts\n", HostName);
-            }
-        }
-
-        if (Pass.Current != TickCondition::Recording)
+        // 📝 This host owns no device resources of its own, so a retiring tick asks nothing of it. A
+        //    product that holds passes or images releases them here, while the device still stands.
+        if (Pass.Current != SessionCondition::Recording)
             continue;
 
-        // ④ Build the interface tick. A refusal here abandons the tick's content, and the recording is
-        //    still surrendered — an empty rendering scope presents the cleared ground, which is correct
-        //    and is what the artist sees for one tick.
-        if (Viewport.Advance(Pass.ElapsedMilliseconds).Resolved)
         {
             // 🔴 The workspace is recorded FIRST and the drawers over it. One background draw list, so
             //    the order of recording IS the z-order — and the previous arrangement recorded the
@@ -731,89 +632,37 @@ int main(int ArgumentCount, char** ArgumentValues)
                                           0.0f, CornerNone);
             Discard(ControlCentre.Record(ControlInterior, ControlCentreValues));
 
-            // Apply the Control Centre preference to the shared appearance instead of displaying a
-            // disconnected percentage. Content Browser caches derived metrics and is reseated explicitly.
-            if (Viewport.ApplyInterfaceScale(ControlCentreValues.Scaling))
-            {
-                Discard(Viewport.Seam().ApplyWorkspaceStyle(
-                    Viewport.Appearance().WorkspaceMeasure,
-                    Viewport.Appearance().Workspace));
-                ContentBrowser.Reapply(Viewport.Appearance());
-            }
             Discard(Viewport.Seam().ApplyInterfaceAntialiasing(
                 ControlCentreValues.GeometryAntialiasing));
 
-            // 📝 Compared rather than watched. The Control Centre writes the artist's choice straight into the
-            //    ordinates, so the change is visible here as a difference and needs no callback to report it.
+            // 📝 What the Control Centre holds this tick, handed to the session. The comparison against
+            //    what was last inscribed, the write beside the executable and the font pipeline are all
+            //    the session's — this host reapplies only the panel that keeps its own copy of the inks.
             {
                 ThemeSelection Chosen;
-                Chosen.Current   = ControlCentreValues.Theme;
+                Chosen.Current     = ControlCentreValues.Theme;
                 Chosen.Primary     = ControlCentreValues.Primary;
                 Chosen.Secondary   = ControlCentreValues.Secondary;
                 Chosen.Information = ControlCentreValues.Information;
                 Chosen.Warning     = ControlCentreValues.Warning;
                 Chosen.Alert       = ControlCentreValues.Alert;
+
                 if (ControlCentreValues.Font < Fonts.FamilyCount() && Fonts.FamilyName(ControlCentreValues.Font) != nullptr)
                     std::snprintf(Chosen.FontFamily, sizeof(Chosen.FontFamily), "%s", Fonts.FamilyName(ControlCentreValues.Font));
 
-                // 🔴 Only the family re-runs the font pipeline. The other members are colours and reach
-                //    every panel through the appearance; re-loading fonts for them would re-rasterise
-                //    the whole atlas on every theme or colour edit.
-                const bool FamilyAltered = std::strcmp(Chosen.FontFamily, InscribedSelection.FontFamily) != 0;
-                const bool Altered = Chosen.Current   != InscribedSelection.Current
-                                  || Chosen.Primary     != InscribedSelection.Primary
-                                  || Chosen.Secondary   != InscribedSelection.Secondary
-                                  || Chosen.Information != InscribedSelection.Information
-                                  || Chosen.Warning     != InscribedSelection.Warning
-                                  || Chosen.Alert       != InscribedSelection.Alert
-                                  || std::strcmp(Chosen.FontFamily, InscribedSelection.FontFamily) != 0;
-
-                // 🔴 The record is advanced whether the write was delivered or rejected. A read-only folder would
-                //    otherwise have every later tick retry the same rejected write for the life of the process.
-                if (Altered)
-                {
-                    Discard(ThemeInterchange::RecordBeside(InvokedAs, Chosen));
-                    InscribedSelection = Chosen;
-
-                    // 🔴 Declared to the viewport, which re-anchors the whole appearance on the next tick, and
-                    //    then pushed into the two panels that keep their own copy of the inks. The shell reads
-                    //    the appearance through its own Reapply, which the viewport already calls.
-                    Viewport.Retint(Chosen);
-                    Discard(Viewport.Seam().ApplyWorkspaceStyle(
-                        Viewport.Appearance().WorkspaceMeasure,
-                        Viewport.Appearance().Workspace));
+                if (Session.RestateAppearance(Chosen, ControlCentreValues.Scaling))
                     ContentBrowser.Reapply(Viewport.Appearance());
-                    if (FamilyAltered)
-                        Fonts.RequestLoad(FontRoot.c_str(), Viewport.Appearance().Fonts, 1.0f);
-                }
             }
+
             ControlCentre.Exclude(Viewport.Drawers());
             Discard(Viewport.Surface().SwitchLayer(RecordingSurface::ShellLayer::Beneath));
-
-            if (Viewport.SealPanels().Resolved)
-            {
-                Discard(Lifetime.BeginDisplay());
-
-                // 🔴 Read. A rejected Record presents the cleared ground with nothing on it, which is
-                //    indistinguishable from a panel that drew nothing, so the refusal is named here.
-                if (!Viewport.Record(Pass.Recording))
-                {
-                    std::printf("%s \u2014 the interface content was not recorded\n", HostName);
-                }
-            }
-            else
-            {
-                Discard(Viewport.Abandon());
-            }
-        }
-        else
-        {
-            Discard(Viewport.Abandon());
         }
 
-        // ⑤ Close the scope, submit, present, advance. A rejected present re-establishes the chain rather
-        //    than ending the loop.
-        if (!Lifetime.Complete().Resolved)
+        // 🔴 The interface is sealed and recorded by the session, which owns the display scope. A host that
+        //    records device work of its own does it after this returns true.
+        static_cast<void>(Session.Seal(Pass));
+
+        if (!Session.Complete())
             break;
     }
 
@@ -821,23 +670,16 @@ int main(int ArgumentCount, char** ArgumentValues)
     //                                                      RECLAMATION
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
-    // 📝 The viewport is retired before the lifetimes it was constructed over. HostLifecycle idles the
-    //    device inside Reclaim, so nothing here needs to.
-    // 🔴 Read before Reclaim. The register is Device lifetime, and a reclaimed device has emptied it.
-    const std::uint32_t Serious = Lifetime.StateDiagnostics();
-
+    // 📝 This host's own panels first, then the session — the interface and every device lifetime beneath
+    //    it are retired inside `Reclaim`, in the exact reverse of the order they were constructed.
     ControlCentre.Reset();
     WorkspacePanels.Reset();
     for (std::uint32_t Index = 0u; Index < WorkspaceIndex::WorkspaceLimit; ++Index)
         PanelPartitions[Index].Reset();
     Workspace.Reset();
     Workspaces.Reset();
-    Viewport.Reclaim();
-    Lifetime.Reclaim();
-
-    std::printf("%s \u2014 exited cleanly\n", HostName);
 
     // 🔴 Returned rather than only stated. A validation run needs an exit code, so that a serious arrival
     //    fails whatever invoked the host instead of scrolling past in a console nobody reads.
-    return (Serious == 0u) ? 0 : 1;
+    return (Session.Reclaim() == 0u) ? 0 : 1;
 }

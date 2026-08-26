@@ -28,7 +28,7 @@ SlateAuthoring      = { subject = "EditorHost", define = "SLATE_COMBINED_AUTHORI
 # 📝 The host links every unit, so it is the one target where the whole DAG is realised at once. The link
 #    order below is the reverse of the dependency order, which is what the linker resolves against.
 [requires]
-unit = [ "SlateWorld", "SlateUI", "SlateCompute", "SlateVulkan", "SlateDocument", "SlateShape", "SlateMath" ]
+unit = [ "SlateRuntime", "SlateWorld", "SlateUI", "SlateCompute", "SlateVulkan", "SlateDocument", "SlateShape", "SlateMath" ]
 
 [external]
 include = [ "$VULKAN_SDK/Include", "ExternalPackages/glfw/include" ]
@@ -45,7 +45,7 @@ declare = []
 #    what an executable must **link** so every reference resolves. They coincide for most units and part
 #    for `SlateUI`, which links four archives and is permitted to include none of them — a static archive
 #    only satisfies references the linker has already seen, so the order is load-bearing.
-unit    = [ "SlateWorld", "SlateUI", "SlateCompute", "SlateVulkan", "SlateDocument", "SlateShape", "SlateMath" ]
+unit    = [ "SlateRuntime", "SlateWorld", "SlateUI", "SlateCompute", "SlateVulkan", "SlateDocument", "SlateShape", "SlateMath" ]
 library = [ "$VULKAN_SDK/Lib/vulkan-1.lib", "ExternalPackages/glfw/lib-vc2022/glfw3dll.lib", "gdi32.lib" ]
 # 📝 `carry` names files that must sit beside the executable for it to run. glfw3dll.lib above is an import
 #    library, so the DLL itself is a run-time dependency the linker never copies; the appearance file is

@@ -25,6 +25,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Ground grid, lattice, overlay  | `SlateVulkan/Device/WorkspaceOverlayPass`                                |
 | Scene pass, CAD pass           | `SlateVulkan/Device/{WorkspaceScenePass,WorkspaceCadPass}`               |
 | Window, device, chain, tick    | `SlateVulkan/Device/HostLifecycle`                                       |
+| Bring-up, tick order, teardown | `SlateRuntime/Session/SessionSequence` — the order the two below are driven in |
+| Product feature mask           | `Application/Api/HostFeature.h` — the ONE reader of the product macro    |
 | Interface tick and recording   | `SlateUI/Interface/{InterfaceExchange,ViewportSequence}`                 |
 | Immediate-mode drawing         | `SlateUI/Interface/RecordingSurface` (inside `InterfaceExchange`)         |
 | Panels, drawers, docking       | `SlateUI/Interface/{EditorPanel,WorkspacePanel,PanelStructure,DrawerSpace}` |
@@ -51,10 +53,15 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Refusal and delivery contracts | `Engine/Foundation/DeliveryGuarantee.h`                                    |
 
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
-far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), and `SlateFeature`
-folded into `SlateShape` (step 6). Still to come: `SlateRuntime` / `SlateWorkspace` / `SlateToolset`
-are created (steps 7–9). The **owner** does not change — only the path. Update this register in the same
-commit as any rename.
+far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), `SlateFeature` folded
+into `SlateShape` (step 6), and **`SlateRuntime` created (step 7)**. Still to come: `SlateToolset` and
+`SlateWorkspace` (steps 8–9). The **owner** does not change — only the path. Update this register in the
+same commit as any rename.
+
+🔴 **A host now owns `main()`, its panels, its own device estate, and nothing else.** The bring-up order,
+the tick prologue, every recovery branch and the teardown belong to `SessionSequence`. A host that writes
+its own `HostLifecycle` / `ViewportSequence` bring-up is reintroducing the duplication step 7 removed —
+`PaintHost` reaches **zero** `Lifetime.*` calls, which is the shape a lifted host has.
 
 ## What went wrong, so it is not repeated
 
@@ -64,8 +71,10 @@ both are being closed:
 
 1. **The feature seam was dead.** `SharedViewportHostBridge.h` declared `SLATE_*_HOST` masks, the build
    defined none of them, and no caller ever read the result. An agent looking for the live mechanism
-   correctly concluded there was none and wrote its own. Closed by the `[variant]` define and the
-   `#error` fallback.
+   correctly concluded there was none and wrote its own. Closed by the `[product]` define and the
+   `#error` fallback — and then **only half closed**: step 7 found that `HostFeature.h`, the replacement,
+   was itself included by no host at all. A seam is not live because it compiles; it is live because
+   something reads it. `EditorHost` now includes it and states `HostProduct` at bring-up.
 2. **Capabilities were unreachable.** `ParametricSketchHost.cpp` held 5 981 lines with 138 local function
    definitions — a library written inside an executable, reachable from no other host. An agent asked to
    reuse it had no way to. Closed by lifting those behaviours into units.
