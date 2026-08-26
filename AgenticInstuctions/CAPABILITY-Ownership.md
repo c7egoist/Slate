@@ -34,7 +34,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Content browser                | `SlateUI/Interface/ContentBrowserPanel`                                  |
 | Scene outliner / directory     | `SlateUI/Interface/SceneDirectoryPanel`                                  |
 | Texture paint layer stack      | `SlateUI/Interface/TexturePaintPanel`                                    |
-| Sketch tool interface          | `SlateUI/Interface/ParametricTools`                                      |
+| Sketch tool interface          | `SlateUI/Interface/ParametricTools` — the CATALOGUE the artist presses    |
+| Draft placement, anchor counts | `SlateToolset/Draft/DraftPlacement` — what is placed, how many anchors, when it seals |
 | Sketch geometry and solving    | `SlateShape/Sketch/*` — 20 modules, incl. `SketchStructure`, `ConstraintSolver`, `ProfileSolver` |
 | Feature history, recompute     | `SlateShape/Sequence/{FeatureStructure,RecomputeScheduler}`             |
 | Pick classification, provenance| `SlateShape/Reference/{PickClassifier,ProvenanceIndex}`                |
@@ -54,9 +55,9 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
 far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), `SlateFeature` folded
-into `SlateShape` (step 6), and **`SlateRuntime` created (step 7)**. Still to come: `SlateToolset` and
-`SlateWorkspace` (steps 8–9). The **owner** does not change — only the path. Update this register in the
-same commit as any rename.
+into `SlateShape` (step 6), **`SlateRuntime` created (step 7)**, and **`SlateToolset` created (step 8)**.
+Still to come: `SlateWorkspace` (step 9). The **owner** does not change — only the path. Update this
+register in the same commit as any rename.
 
 🔴 **A host now owns `main()`, its panels, its own device estate, and nothing else.** The bring-up order,
 the tick prologue, every recovery branch and the teardown belong to `SessionSequence`. A host that writes
@@ -78,6 +79,14 @@ both are being closed:
 2. **Capabilities were unreachable.** `ParametricSketchHost.cpp` held 5 981 lines with 138 local function
    definitions — a library written inside an executable, reachable from no other host. An agent asked to
    reuse it had no way to. Closed by lifting those behaviours into units.
+3. **A shared vocabulary was shared in name only.** `Application/Api/` declared the CAD draft subjects so
+   both hosts could agree on them, and then `ParametricSketchHost` declared its own identical copy and
+   `static_cast` between the two, while `EditorHost` resolved the shared one and immediately discarded the
+   result with `static_cast<void>`. Both hosts satisfied a validator that checked for the include; neither
+   actually consumed the seam. Step 8 deleted the header, the copy and the casts. ⚠️ **A validator that
+   checks for a file name or an include proves nothing about whether the mechanism is used** — check the
+   property. `ValidateHostBuildBudgets` now fails if a host re-declares the enumeration or casts between
+   copies of it, and both of those checks were confirmed to fail on a deliberately reintroduced defect.
 
 📝 `Engine/Application/EditorHost/Source/SkyImage.cpp` sat referenced by **nothing** for long enough that
 it was read, assumed to be unimplemented, and rewritten. Dead source is not free; it actively misleads.

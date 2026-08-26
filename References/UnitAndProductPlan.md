@@ -138,7 +138,7 @@ Application/     AuthoringHost  →  TextureAuthoring.exe, ParametricAuthoring.e
       │
 SlateWorkspace/  ←NEW  TextureWorkspace, ParametricWorkspace — panels, tools and document a discipline binds
       │
-SlateToolset/    ←NEW  brush, line, arc, extrude, constrain — one tool's parameters and pointer behaviour
+SlateToolset/    ✅NEW  brush, line, arc, extrude, constrain — one tool's parameters and pointer behaviour
       │
 SlateRuntime/    ✅NEW  bring-up, tick, teardown, feature gate — SessionSequence, the 26 calls written once
       │
@@ -183,10 +183,10 @@ whole exercise is recovering from.
 | 5 ✅| `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
 | 6 ✅| Fold `SlateFeature` into `SlateShape` per §2.2 (**70 files**). The 5 `Workspace*` modules went to `SlateShape/Record/`, **not** `SlateDocument` — see §2.2 note | 🚩 | `SlateFeature` gone; the word freed |
 | 7 ✅| Create `SlateRuntime`. Lift the shared seam out of `EditorHost` and `PaintHost` into one tick — **26** identical calls, not 27; see §4.2 | 🚩 | One tick loop exists; `PaintHost` holds **zero** `Lifetime.*` calls |
-| 8 | Create `SlateToolset`. Lift tool behaviour from both hosts, one tool per commit                          | 🔴  | Tools reachable from any product              |
+| 8 ✅| Create `SlateToolset`. The draft placement machine lifted; the duplicated 22-member enum and its cast bridge deleted — see §4.3 | 🔴 | One draft vocabulary; `DriveDrawing` 181→76 lines |
 | 9 | Create `SlateWorkspace`. Define `TextureWorkspace` and `ParametricWorkspace` as declarations             | 🚩  | Disciplines are data                          |
 | 10| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
-| 11| **Delete** `PaintHost/`, `ParametricSketchHost/`, the 5 `Application/Api/*Bridge*.h`, and dead `SkyImage.cpp` | ✔️ | The duplication is physically gone       |
+| 11| **Delete** `PaintHost/`, `ParametricSketchHost/`, the **4** `Application/Api/*Bridge*.h`, and dead `SkyImage.cpp` | ✔️ | The duplication is physically gone       |
 | 12| Rename `EditorHost/` → `AuthoringHost/`; both products build from it                                     | ✔️  | Two products, one source                      |
 | 13| Validators warn → **fail**                                                                                | ✔️  | Rules enforced, not documented                |
 
@@ -239,6 +239,53 @@ disposable. Before step 11, its contents split three ways:
 
 🔴 Deleting the file before this split loses the orientation-gizmo hit testing, which nothing else
 implements. Split first, delete second — same discipline as step 10.
+
+### 4.3 What step 8 actually found
+
+Two defects, both invisible to every validator that existed, and both found only by reading the two
+declarations side by side rather than trusting either.
+
+**The duplicated enumeration.** `SharedCadDraftSubject` in `Application/Api/` and `ParametricDraftSubject`
+inside `ParametricSketchHost.cpp` were the same 22 members with the same 22 ordinals, and they were
+reconciled at three call sites by `static_cast<X>(static_cast<std::uint32_t>(Y))`. That cast is correct only
+while both lists stay in the same order. Nothing checked that they did, nothing would have reported it, and
+adding one member to either side would have silently mapped every later subject to its neighbour — a
+polygon tool that drew slots. Both are now one `DraftSubject`, and `ValidateHostBuildBudgets` fails if a
+host re-declares it or if either cast returns.
+
+**The anchor-count table meant two different things at once.** `SharedCadDraftRequiredAnchors` was only ever
+READ for the four terminated curves. For the other seventeen subjects it was decoration, and being unread,
+it had drifted into inconsistency:
+
+| Subject                        | Table said | Anchors stored | Presses | The column meant |
+|--------------------------------|-----------|----------------|---------|------------------|
+| `DiameterCircle`, `Polygon`    | 2         | 2              | 2       | anchors stored   |
+| `Rectangle`, `CenterRectangle` | 2         | 1 + live hover | 2       | presses made     |
+| `Circle`, `Ellipse`            | 1         | 1 + live hover | 2       | neither — wrong  |
+| `Point`                        | 1         | 0 + live hover | 1       | neither          |
+
+🔴 **And that inconsistency was hiding a live bug.** `DiameterCircle` and `Polygon` sat in the pointer branch
+that commits on the second press *without storing it* — the branch written for `Rectangle`, which reads its
+final corner from the live hover. But `CommitDraft` requires **two stored anchors** for both and never reads
+the hover, so both subjects reached `CommitDraft` holding one anchor, failed every guard, and returned a
+refusal the caller discarded. **Both tools did nothing at all when drawn with the mouse.** They worked only
+via Enter, whose branch appends the hover as a real anchor first. The keyboard path masked the pointer path.
+
+The fix is not a special case: `Required` now counts anchors taken, for every subject, and the placement
+stores every point it is given. `Circle` and `Ellipse` are therefore `2`, not the `1` the deleted header
+stated — three rows deliberately disagree with the original, and `DraftPlacementProof` §1 asserts those
+three exceptions individually so the correction stays a checked decision rather than a transcription slip.
+
+**Measured.** `DriveDrawingWithModifiers` 181 → 76 lines; the 7-arm subject branch replaced by one
+`Anchor` → `Seal`. A second copy of the machine, `DriveDrawing` at line 2072, was **never called** and was
+deleted with its 67 lines. `ParametricSketchHost` 5 981 → 5 755. `SlateToolset` is 509 lines.
+
+📝 `SlateToolset` is the first unit that names no device, no window and no vendor header, so it **links and
+runs** in a sandbox with no Vulkan SDK. `Tools/DraftPlacementProof/` executes it — 283 claims across the
+declaration table, every subject's completion count, terminated curves, dimension snapping, sealing,
+idempotent declaration, refusals and snap carriage. It is the only gate in the repository that runs engine
+code rather than parsing it, and it was negative-tested with four separate sabotages before being trusted.
+
 
 ---
 

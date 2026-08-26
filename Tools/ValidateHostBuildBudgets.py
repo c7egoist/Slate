@@ -81,13 +81,25 @@ def main() -> int:
     require("ConsumeSharedCodexActivation" in parametric,
             "ParametricSketchHost activation must use the shared codex activation helper")
 
-    shared_cad = read("Engine/Application/Api/SharedCadDrawingController.h")
-    require("ResolveSharedCadDraftSubject" in shared_cad and "SharedCadDraftRequiredAnchors" in shared_cad,
-            "shared CAD drawing controller must own the tool-to-draft dispatch")
-    require("SharedCadDrawingController.h" in editor and "ResolveSharedCadDraftSubject" in editor,
-            "EditorHost must consume the shared CAD drawing controller dispatch")
-    require("SharedCadDrawingController.h" in parametric and "ResolveSharedCadDraftSubject" in parametric,
-            "ParametricSketchHost must consume the shared CAD drawing controller dispatch")
+    # 🔴 This block used to demand the literal spelling `SharedCadDrawingController.h` in both hosts. That
+    #    asserted a FILE NAME, not a property, so it reported a regression the moment the duplicated
+    #    dispatch was correctly unified into `SlateToolset` — the same defect that made this validator
+    #    demand `static ViewportSequence Viewport;` after the session was lifted. What actually matters is
+    #    that the draft vocabulary is declared ONCE, in a unit, and that no host re-declares it.
+    toolset = read("Engine/SlateToolset/Draft/DraftPlacement/Api/DraftPlacement.h")
+    require("enum class DraftSubject" in toolset and "DeclaredDraft" in toolset,
+            "SlateToolset must own the tool-to-draft dispatch")
+    for host_name, host in (("EditorHost", editor), ("ParametricSketchHost", parametric)):
+        require("enum class ParametricDraftSubject" not in host and
+                "enum class SharedCadDraftSubject" not in host,
+                f"{host_name} must not re-declare the draft subject vocabulary")
+    # 🔴 The cast bridge is the specific defect this replaces: two identical enumerations reconciled by
+    #    casting through the underlying integer, correct only while both stayed in the same order.
+    require("static_cast<SharedCadDraftSubject>" not in parametric and
+            "static_cast<ParametricDraftSubject>" not in parametric,
+            "ParametricSketchHost must not cast between duplicate draft enumerations")
+    require("DraftPlacement" in parametric,
+            "ParametricSketchHost must drive drawing through the SlateToolset placement")
     require("ResolveGizmoHandle" in parametric and "StartTransformSession" in parametric and "UpdateTransformSession" in parametric,
             "ParametricSketchHost transform gizmo handles must remain selectable and movable")
     require("Panel leaves must sample pointer/contact before they record" in parametric and
