@@ -22,6 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 STUB = ROOT / "Tools" / "VulkanParseStub"
@@ -41,6 +42,14 @@ TRANSLATION = [
 ]
 
 
+# 📝 Hosts examined for abandoned file-local functions. One product macro each, deliberately -- see the
+#    note in the loop below.
+ABANDONMENT = [
+    ("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp", "SLATE_PARAMETRIC_AUTHORING"),
+    ("Engine/Application/PaintHost/Source/PaintHost.cpp", "SLATE_TEXTURE_AUTHORING"),
+]
+
+
 def parse(source: str, define: str | None) -> tuple[bool, str]:
     command = [
         "g++", "-std=c++20", "-fsyntax-only", "-Wall", "-Wextra",
@@ -52,6 +61,36 @@ def parse(source: str, define: str | None) -> tuple[bool, str]:
 
     finished = subprocess.run(command, capture_output=True, text=True)
     return finished.returncode == 0, finished.stderr
+
+
+def abandoned(source: str, define: str | None) -> tuple[bool, str]:
+    """Report file-local functions that nothing calls.
+
+    🔴 This must NOT use `-fsyntax-only`. That flag stops the compiler before the analysis that
+       finds unreachable definitions, so `-Wunused-function` under it reports nothing at all --
+       silently, and on a file with known-dead functions in it. Step 10 hit exactly that: the
+       report came back empty on a host that held five abandoned functions. Codegen has to run,
+       which is why this compiles to an object file and throws it away.
+
+    ⚠️ Only functions in the anonymous namespace can be judged here. Anything with external
+       linkage might be called from a translation unit this gate never sees.
+    """
+    with tempfile.TemporaryDirectory() as scratch:
+        command = [
+            "g++", "-std=c++20", "-c", "-Wunused-function",
+            "-I", str(ROOT), "-I", str(ROOT / "Engine"), "-I", str(STUB),
+        ]
+        if define:
+            command.append(f"-D{define}")
+        command += [str(ROOT / source), "-o", str(Path(scratch) / "abandoned.o")]
+
+        finished = subprocess.run(command, capture_output=True, text=True)
+
+    named = [
+        line for line in finished.stderr.splitlines()
+        if "defined but not used" in line
+    ]
+    return not named, "\n".join(named)
 
 
 def main() -> int:
@@ -75,6 +114,21 @@ def main() -> int:
             failures += 1
             for line in [entry for entry in diagnostics.splitlines() if "error" in entry][:8]:
                 print(f"      {line}", file=sys.stderr)
+
+    # 🔴 Abandoned file-local functions, reported by the compiler rather than by grep. Step 10 removed
+    #    195 lines of them from ParametricSketchHost; this keeps them from growing back. Only the hosts
+    #    are examined, and only under one product macro each -- a function used solely by the OTHER
+    #    product's branch is live, not abandoned, so checking every macro would report false deaths.
+    for source, define in ABANDONMENT:
+        clean, named = abandoned(source, define)
+        leaf = Path(source).name
+        if clean:
+            print(f"  {leaf:<42} {'nothing abandoned':<30} CLEAN")
+            continue
+        failures += 1
+        print(f"  {leaf:<42} {'abandoned functions':<30} {len(named.splitlines())} FOUND")
+        for line in named.splitlines()[:10]:
+            print(f"      {line}", file=sys.stderr)
 
     # 🔴 The one product arrangement that must NOT compile. HostFeature.h refuses a build with no product
     #    macro, and a header that stopped refusing would let a featureless host ship in silence -- which is
