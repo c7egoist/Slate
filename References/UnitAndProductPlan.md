@@ -31,16 +31,21 @@ What is actually in there is two different things:
 
 | Today               | Is                                                              | Better name  |
 |---------------------|-------------------------------------------------------------------|--------------|
-| `Engine/Foundation/`| 7 headers of contracts — `DeliveryGuarantee`, `NumericTolerance`, `PrecisionGuarantee`, `Identity` | `Contract/`  |
+| `Engine/Foundation/`| 7 headers of declared guarantees — `DeliveryGuarantee`, `NumericTolerance`, `PrecisionGuarantee`, `Identity` | `Guarantee/` |
 | `Engine/Shared/`    | 18 `.slang.h` predicates compiled by **both** toolchains          | `Shared/`    |
 
 🔴 Neither is a link unit — no `Module.toml`, no archive. They are reached by every unit through the engine
 root. Naming them `SlateFramework` would imply an archive that does not exist, and `VerifyPartition`
-reasons about units by manifest. My recommendation: **rename `Foundation/` → `Contract/`** (which your own
-CAD architecture document already calls for by name) and leave `Shared/` alone. Both stay header-only and
-outside the unit graph.
+reasons about units by manifest. My recommendation: **rename `Foundation/` → `Guarantee/`** and leave
+`Shared/` alone. Both stay header-only and outside the unit graph.
 
-⚠️ If you want the `Slate*` prefix for consistency, `SlateContract` as a real header-only unit works — but
+🔴 The CAD architecture document calls this folder `Contract/`, and that spelling is now **banned** — it
+names a programming-language concept rather than a mechanism, since a contract is what every declaration
+in this engine already is. `Guarantee` is the replacement and is already engine vocabulary:
+`PrecisionGuarantee.h` carries it, as do 223 `tag guarantee` annotations. Where the CAD document says
+`GeometryContract.h` / `TopologyContract.h` / `ReferenceContract.h`, read `…Guarantee.h`.
+
+⚠️ If you want the `Slate*` prefix for consistency, `SlateGuarantee` as a real header-only unit works — but
 it is a bigger change than it looks, because `Construct.ps1` special-cases `Foundation` and `Shared` by
 name in its shader-freshness pass (lines 343, 705, 723). Your call; nothing else in this plan depends on it.
 
@@ -136,7 +141,7 @@ SlateDocument/         occupants, revisions, selection, formats
 SlateShape/      ←REN  (was SlateGeometry + SlateFeature) exact shape, topology, sketch, history
 SlateMath/             numerics, exact predicates
       │
-Contract/        ←REN  (was Foundation/) header-only contracts        ⚠️ §1.1
+Guarantee/       ←REN  (was Foundation/) header-only declared guarantees   ⚠️ §1.1
 Shared/                dual-toolchain predicates                       header-only, unchanged
 ```
 
@@ -162,11 +167,11 @@ whole exercise is recovering from.
 
 | # | Step                                                                                                     | Risk | Leaves                                        |
 |---|--------------------------------------------------------------------------------------------------------|------|-----------------------------------------------|
-| 1 | Publish the capability-ownership table into `AgenticInstuctions/` — camera, sky, grid, sketch already have owners | ✔️ | The next agent cannot claim ignorance     |
-| 2 | Wire the build seam: `[variant]` in `Module.toml`, `/D$Define` in `Construct.ps1`, `#error` on the missing-macro branch | ✔️ | The `#ifdef` mechanism is live for the first time |
-| 3 | Add `VerifyHostPartition.py` in **warn-only** mode                                                       | ✔️  | The debt measured, nothing changed            |
-| 4 | `git mv SlateScene SlateWorld` + include rewrite — smallest rename, proves the procedure                 | ✔️  | 9 modules moved                               |
-| 5 | `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
+| 1 ✅| Publish the capability-ownership table into `AgenticInstuctions/` — camera, sky, grid, sketch already have owners | ✔️ | The next agent cannot claim ignorance     |
+| 2 ✅| Wire the build seam: `[variant]` in `Module.toml`, `/D$Define` in `Construct.ps1`, `#error` on the missing-macro branch | ✔️ | The `#ifdef` mechanism is live for the first time |
+| 3 ✅| Add `VerifyHostPartition.py` in **warn-only** mode                                                       | ✔️  | The debt measured, nothing changed            |
+| 4 ✅| `git mv SlateScene SlateWorld` + include rewrite — smallest rename, proves the procedure                 | ✔️  | 9 modules moved                               |
+| 5 ✅| `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
 | 6 | Fold `SlateFeature` into `SlateShape` per §2.2; move the 5 `Workspace*` modules to `SlateDocument` (**75 files**) | 🚩 | `SlateFeature` gone; the word freed       |
 | 7 | Create `SlateRuntime`. Lift the 27 identical seam calls out of `EditorHost` into one tick                | 🚩  | One tick loop exists                          |
 | 8 | Create `SlateToolset`. Lift tool behaviour from both hosts, one tool per commit                          | 🔴  | Tools reachable from any product              |
@@ -219,7 +224,7 @@ long enough that an agent read it, assumed sky was unimplemented, and wrote a se
 
 | Question                                                                       | Blocks        |
 |--------------------------------------------------------------------------------|---------------|
-| `SlateFramework` vs `Contract/` + `Shared/` staying header-only — §1.1          | Step 4 only   |
+| `SlateFramework` vs `Guarantee/` + `Shared/` staying header-only — §1.1         | Not started   |
 | Whether a combined both-disciplines variant ships as a third product            | Nothing       |
 | Whether `InterfaceValidationHost` becomes a variant or stays a subject          | Nothing       |
 | Whether direct polygon authoring gets its own workspace or extends parametric   | Step 9        |
