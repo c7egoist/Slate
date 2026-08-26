@@ -16,12 +16,12 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 
 | Capability                     | Owner                                                                    |
 |--------------------------------|--------------------------------------------------------------------------|
-| Editor camera, orbit, fly      | `SlateScene/Scene/EditorCameraComponent`                                 |
-| Player / spectator camera      | `SlateScene/Scene/{PlayerCameraComponent,SpectatorCameraComponent}`       |
+| Editor camera, orbit, fly      | `SlateWorld/World/EditorCameraComponent`                                 |
+| Player / spectator camera      | `SlateWorld/World/{PlayerCameraComponent,SpectatorCameraComponent}`       |
 | Camera projection matrices     | `SlateDocument/Document/CameraProjection`                                |
-| Sky, atmosphere, sun           | `SlateScene/Scene/AtmosphereComponent` + `SlateCompute/Compute/AtmosphereIntegrator` |
+| Sky, atmosphere, sun           | `SlateWorld/World/AtmosphereComponent` + `SlateCompute/Compute/AtmosphereIntegrator` |
 | Sky presentation on the device | `SlateVulkan/Device/AtmospherePresentationSurface`                       |
-| Directional light              | `SlateScene/Scene/DirectionalLightComponent`                             |
+| Directional light              | `SlateWorld/World/DirectionalLightComponent`                             |
 | Ground grid, lattice, overlay  | `SlateVulkan/Device/WorkspaceOverlayPass`                                |
 | Scene pass, CAD pass           | `SlateVulkan/Device/{WorkspaceScenePass,WorkspaceCadPass}`               |
 | Window, device, chain, tick    | `SlateVulkan/Device/HostLifecycle`                                       |
@@ -36,9 +36,9 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Sketch geometry and solving    | `SlateFeature/Sketch/*` — 20 modules, incl. `SketchStructure`, `ConstraintSolver`, `ProfileSolver` |
 | Feature history, recompute     | `SlateFeature/Feature/{FeatureStructure,RecomputeScheduler}`             |
 | Pick classification, provenance| `SlateFeature/Reference/{PickClassifier,ProvenanceIndex}`                |
-| Exact curves, surfaces, solids | `SlateGeometry/{Geometry,Topology}`                                      |
-| Boolean, fillet, extrude, loft | `SlateGeometry/Operation/*`                                              |
-| Tessellation                   | `SlateGeometry/Discrete/TessellationSpecification`                       |
+| Exact curves, surfaces, solids | `SlateShape/{Geometry,Topology}`                                      |
+| Boolean, fillet, extrude, loft | `SlateShape/Operation/*`                                              |
+| Tessellation                   | `SlateShape/Discrete/TessellationSpecification`                       |
 | Brush intent                   | `SlateDocument/Document/BrushSpecification`                              |
 | Layer sequence                 | `SlateDocument/Document/SurfaceLayerSequence`                            |
 | Stroke execution               | `SlateCompute/Compute/{ImpressionSequence,StrokeSpace}`                  |
@@ -50,9 +50,11 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Exact predicates (both toolchains) | `Engine/Shared/*.slang.h`                                            |
 | Refusal and delivery contracts | `Engine/Foundation/DeliveryOutcome.h`                                    |
 
-⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`
-(`SlateScene` → `SlateWorld`, `SlateGeometry` → `SlateShape`, `SlateFeature` folded in). The **owner**
-does not change — only the path. Update this register in the same commit as any rename.
+⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
+far: `SlateScene` → `SlateWorld` (step 4) and `SlateGeometry` → `SlateShape` (step 5). Still to come:
+`SlateFeature` folds into `SlateShape` (step 6), and `SlateRuntime` / `SlateWorkspace` / `SlateToolset`
+are created (steps 7–9). The **owner** does not change — only the path. Update this register in the same
+commit as any rename.
 
 ## What went wrong, so it is not repeated
 
