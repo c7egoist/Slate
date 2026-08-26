@@ -6,7 +6,7 @@
 #pragma once
 
 #include "SlateDocument/Format/CodexInterchange/Api/WorkspaceCodex.h"
-#include "SlateFeature/Feature/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
+#include "SlateShape/Record/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectoryPanel.h"
 
 #include <algorithm>

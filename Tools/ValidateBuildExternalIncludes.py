@@ -28,9 +28,9 @@ def main() -> int:
     slate_compute = read("Engine/SlateCompute/Module.toml")
     require("ExternalPackages/earcut/include" in slate_compute, "SlateCompute must declare the earcut include root")
 
-    slate_feature = read("Engine/SlateFeature/Module.toml")
-    require("ExternalPackages/earcut/include" in slate_feature, "SlateFeature must declare the earcut include root for profile area fills")
-    require("ExternalPackages/clipper2/CPP/Clipper2Lib/include" in slate_feature, "SlateFeature must declare the clipper2 include root for robust profile area operations")
+    slate_shape = read("Engine/SlateShape/Module.toml")
+    require("ExternalPackages/earcut/include" in slate_shape, "SlateShape must declare the earcut include root for profile area fills")
+    require("ExternalPackages/clipper2/CPP/Clipper2Lib/include" in slate_shape, "SlateShape must declare the clipper2 include root for robust profile area operations")
 
     vertex = read("Engine/SlateVulkan/Device/WorkspaceScenePass/Shader/WorkspaceSceneVertex.slang")
     fragment = read("Engine/SlateVulkan/Device/WorkspaceScenePass/Shader/WorkspaceSceneFragment.slang")

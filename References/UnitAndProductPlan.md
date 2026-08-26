@@ -111,9 +111,18 @@ active workspaces is the empty shell that `InterfaceExchange::VacantPressed` alr
 | Today                                    | Moves to                        | Because                                     |
 |------------------------------------------|---------------------------------|---------------------------------------------|
 | `Sketch/*` (20 modules)                  | `SlateShape/Sketch/`            | Exact 2D geometry and constraint solving — no device, no author, no undo |
-| `Feature/{FeatureStructure,RecomputeScheduler,OccurrenceStructure}` | `SlateShape/History/` | Parametric feature history is shape provenance |
+| `Feature/{FeatureStructure,RecomputeScheduler,OccurrenceStructure}` | `SlateShape/Sequence/` | The feature DAG and its recompute order — an ordered workflow |
 | `Reference/*` (5 modules)                | `SlateShape/Reference/`         | Provenance and pick classification are shape identity |
-| `Feature/Workspace*` (5 modules)         | `SlateDocument/Document/`       | These are document projections, misfiled     |
+| `Feature/Workspace*` (5 modules)         | `SlateShape/Record/`            | 🔴 Corrected during step 6 — see below       |
+
+🔴 **Two corrections made when step 6 was executed, both found by reading the source rather than the plan.**
+First, `History` is a banned structural word, so the feature-order folder is `Sequence/` — an ordered
+workflow, which is what the role means. Second, the `Workspace*` modules could **not** move to
+`SlateDocument`: `WorkspaceRecordStructure` names `ConstraintSpecification`, `DimensionSpecification` and
+`ReferenceSpecification`, so promoting it above `SlateShape` would point that edge backwards and make the
+unit graph cyclic. They live in `SlateShape/Record/` instead. The three groups were mutually entangled —
+Feature named Reference and Sketch, Reference named Feature, Sketch named both — so no cut through them
+was acyclic, which is itself the evidence that the boundary they were separated by did not exist.
 
 ⚠️ Note `Sketch/*` lands in `SlateShape`, **not** `SlateWorkspace`. A constraint solver is exact geometry;
 it would still be correct in a file with no undo stack and no panels. The *sketching workspace* — which
@@ -172,7 +181,7 @@ whole exercise is recovering from.
 | 3 ✅| Add `VerifyHostPartition.py` in **warn-only** mode                                                       | ✔️  | The debt measured, nothing changed            |
 | 4 ✅| `git mv SlateScene SlateWorld` + include rewrite — smallest rename, proves the procedure                 | ✔️  | 9 modules moved                               |
 | 5 ✅| `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
-| 6 | Fold `SlateFeature` into `SlateShape` per §2.2; move the 5 `Workspace*` modules to `SlateDocument` (**75 files**) | 🚩 | `SlateFeature` gone; the word freed       |
+| 6 ✅| Fold `SlateFeature` into `SlateShape` per §2.2 (**70 files**). The 5 `Workspace*` modules went to `SlateShape/Record/`, **not** `SlateDocument` — see §2.2 note | 🚩 | `SlateFeature` gone; the word freed |
 | 7 | Create `SlateRuntime`. Lift the 27 identical seam calls out of `EditorHost` into one tick                | 🚩  | One tick loop exists                          |
 | 8 | Create `SlateToolset`. Lift tool behaviour from both hosts, one tool per commit                          | 🔴  | Tools reachable from any product              |
 | 9 | Create `SlateWorkspace`. Define `TextureWorkspace` and `ParametricWorkspace` as declarations             | 🚩  | Disciplines are data                          |

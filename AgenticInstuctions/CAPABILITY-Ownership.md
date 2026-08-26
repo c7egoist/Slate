@@ -33,9 +33,9 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Scene outliner / directory     | `SlateUI/Interface/SceneDirectoryPanel`                                  |
 | Texture paint layer stack      | `SlateUI/Interface/TexturePaintPanel`                                    |
 | Sketch tool interface          | `SlateUI/Interface/ParametricTools`                                      |
-| Sketch geometry and solving    | `SlateFeature/Sketch/*` — 20 modules, incl. `SketchStructure`, `ConstraintSolver`, `ProfileSolver` |
-| Feature history, recompute     | `SlateFeature/Feature/{FeatureStructure,RecomputeScheduler}`             |
-| Pick classification, provenance| `SlateFeature/Reference/{PickClassifier,ProvenanceIndex}`                |
+| Sketch geometry and solving    | `SlateShape/Sketch/*` — 20 modules, incl. `SketchStructure`, `ConstraintSolver`, `ProfileSolver` |
+| Feature history, recompute     | `SlateShape/Sequence/{FeatureStructure,RecomputeScheduler}`             |
+| Pick classification, provenance| `SlateShape/Reference/{PickClassifier,ProvenanceIndex}`                |
 | Exact curves, surfaces, solids | `SlateShape/{Geometry,Topology}`                                      |
 | Boolean, fillet, extrude, loft | `SlateShape/Operation/*`                                              |
 | Tessellation                   | `SlateShape/Discrete/TessellationSpecification`                       |
@@ -51,8 +51,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Refusal and delivery contracts | `Engine/Foundation/DeliveryGuarantee.h`                                    |
 
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
-far: `SlateScene` → `SlateWorld` (step 4) and `SlateGeometry` → `SlateShape` (step 5). Still to come:
-`SlateFeature` folds into `SlateShape` (step 6), and `SlateRuntime` / `SlateWorkspace` / `SlateToolset`
+far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), and `SlateFeature`
+folded into `SlateShape` (step 6). Still to come: `SlateRuntime` / `SlateWorkspace` / `SlateToolset`
 are created (steps 7–9). The **owner** does not change — only the path. Update this register in the same
 commit as any rename.
 

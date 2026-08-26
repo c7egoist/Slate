@@ -1,16 +1,16 @@
 //============================================================================================================================================
 //                                                     PARAMETRICWORKSPACEBRIDGE.H
 //============================================================================================================================================
-// 🧩 Host-side bridge from SlateFeature's exact CAD workspace projections to SlateUI's parametric-workspace
+// 🧩 Host-side bridge from SlateShape's exact CAD workspace projections to SlateUI's parametric-workspace
 //    presentation guarantee. The bridge lives in Application on purpose: the host is the only layer allowed to
 //    see both the exact backend and the UI guarantee at once.
 
 #pragma once
 
 #include "Foundation/DeliveryGuarantee.h"
-#include "SlateFeature/Feature/WorkspaceDirectoryProjection/Api/WorkspaceDirectoryProjection.h"
-#include "SlateFeature/Feature/WorkspacePropertyProjection/Api/WorkspacePropertyProjection.h"
-#include "SlateFeature/Feature/WorkspaceRevisionSequence/Api/WorkspaceRevisionSequence.h"
+#include "SlateShape/Record/WorkspaceDirectoryProjection/Api/WorkspaceDirectoryProjection.h"
+#include "SlateShape/Record/WorkspacePropertyProjection/Api/WorkspacePropertyProjection.h"
+#include "SlateShape/Record/WorkspaceRevisionSequence/Api/WorkspaceRevisionSequence.h"
 #include "SlateUI/Interface/ParametricWorkspace/Api/ParametricWorkspaceSpecification.h"
 
 #include <array>

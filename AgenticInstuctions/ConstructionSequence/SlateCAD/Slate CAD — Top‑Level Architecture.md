@@ -346,7 +346,7 @@ Termination cause, per Contract/DeliveryContract.h's existing TerminationCause �
 Under‑constrained is normal and is presented, not refused; a sketch with DOF > 0 still extrudes.
 
 7. Selection — the failure that started this
-PickClassifier and PickSpecification in SlateFeature/Reference/.
+PickClassifier and PickSpecification in SlateShape/Reference/.
 
 Picking is host‑side, against ProximitySpace, for the reason 74 §1 already gives Slate: a device readback is latent by the recording slot count while a pointer reports at hundreds of samples per second, so a pick resolved from a target is a pick at where the cursor used to be. Slate already made this decision; the CAD workspace inherits it rather than re‑deciding it.
 

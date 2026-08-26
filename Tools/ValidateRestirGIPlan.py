@@ -60,7 +60,7 @@ def main() -> int:
             "overlay shaders still reference the old push field")
 
     require_text(
-        "Engine/SlateFeature/Sketch/ProfileReshape/Source/ProfileReshape.cpp",
+        "Engine/SlateShape/Sketch/ProfileReshape/Source/ProfileReshape.cpp",
         "return Deliver<SketchCurveName>::Refuse({ RefusalReason::ContentUnsupported, \"the curve cannot be trimmed\" });",
     )
 
