@@ -1,4 +1,4 @@
-﻿# Construct.ps1 — builds every Slate unit with cl.exe, lib.exe and link.exe directly.
+# Construct.ps1 — builds every Slate unit with cl.exe, lib.exe and link.exe directly.
 #
 # 🔴 /MD in every configuration, including Debug. SLATE_DEBUG selects the debug path; _DEBUG is never
 #    defined, because it selects the debug CRT and mixing that with /MD is a link failure at best.
@@ -123,10 +123,57 @@ function Read-UnitGraph
             $ExternalInclude = [regex]::Matches($Matches[1], '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value }
         }
 
+        # 📝 A [product] entry is one subject compiled with one feature macro, producing an executable named
+        #    for the product rather than for the subject. Several products may name the SAME subject — that
+        #    is the whole arrangement: one host source, several products, separated by what they were
+        #    compiled with rather than by which folder they were copied into.
+        #
+        # 🔴 The macro is not optional. `Application/Api/HostFeature.h` refuses to compile without one, so a
+        #    product declared here without a define fails at its first translation rather than producing a
+        #    host with no features — which is precisely what the previous arrangement did in silence.
+        $ProductVariant = New-Object System.Collections.Generic.List[hashtable]
+
+        if ($Content -match '(?ms)^\[product\]\s*$(.*?)(?=^\[|\z)')
+        {
+            # 🔴 Each capture is read into a named variable on the line that produced it. `$Matches` is
+            #    overwritten by the NEXT -match in the same scope, so reading it two comparisons later
+            #    returns the other pattern's groups — a defect that reads as a manifest typo.
+            foreach ($Line in ($Matches[1] -split "`r?`n"))
+            {
+                if (-not ($Line -match '^\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*\{(.*)\}\s*$'))
+                {
+                    continue
+                }
+
+                $ProductName = $Matches[1]
+                $Field       = $Matches[2]
+
+                $ProductSubject = if ($Field -match 'subject\s*=\s*"([^"]+)"') { $Matches[1] } else { '' }
+                $ProductDefine  = if ($Field -match 'define\s*=\s*"([^"]+)"')  { $Matches[1] } else { '' }
+
+                if (-not $ProductSubject)
+                {
+                    throw "$UnitName declares product $ProductName without a subject"
+                }
+
+                if (-not $ProductDefine)
+                {
+                    throw "$UnitName declares product $ProductName without a define; HostFeature.h requires one"
+                }
+
+                $ProductVariant.Add(@{
+                    Name    = $ProductName
+                    Subject = $ProductSubject
+                    Define  = $ProductDefine
+                })
+            }
+        }
+
         $Declared[$UnitName] = @{
             Name            = $UnitName
             Product         = $Product
             Subject         = @($Subject)
+            Variant         = @($ProductVariant)
             Requires        = @($Linked)
             Carry           = @($Carried)
             ExternalInclude = @($ExternalInclude)
@@ -524,17 +571,27 @@ function Test-ObjectFresh([string] $ObjectPath, [string] $SourcePath, [string] $
     return $true
 }
 
-function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string] $VulkanRoot, [string] $Subject = '')
+function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string] $VulkanRoot, [string] $Subject = '', [string] $ProductName = '', [string] $Define = '')
 {
     $UnitName    = $UnitEntry.Name
 
     # 📝 Objects are kept in a per-subject folder. Two subjects may carry a file of the same stem, and a shared
     #    object folder would have one overwrite the other's — silently, since both compile.
-    $ObjectRoot  = if ($Subject) { Join-Path $OutputRoot "Object\$UnitName\$Subject" }
-                   else          { Join-Path $OutputRoot "Object\$UnitName" }
+    # 🔴 A product goes one level deeper still. Several products compile the SAME subject with different
+    #    feature macros, so sharing an object folder would have the second product read the first's objects
+    #    as fresh — producing an executable built from another product's features, which compiles, links,
+    #    and is wrong in a way nothing reports.
+    $ObjectRoot  = if ($ProductName) { Join-Path $OutputRoot "Object\$UnitName\$Subject\$ProductName" }
+                   elseif ($Subject) { Join-Path $OutputRoot "Object\$UnitName\$Subject" }
+                   else              { Join-Path $OutputRoot "Object\$UnitName" }
     $Sources     = Get-UnitSource $UnitEntry $Subject
     $IncludePath = Get-IncludePath $UnitEntry $VulkanRoot
     $Flags       = Get-CompilationFlags $Selection
+
+    if ($Define)
+    {
+        $Flags += "/D$Define=1"
+    }
 
     if ($Sources.Count -eq 0)
     {
@@ -546,7 +603,11 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
         New-Item -ItemType Directory -Force -Path $ObjectRoot | Out-Null
     }
 
-    Write-Building "$UnitName — $($Sources.Count) translation units"
+    # 📝 The label names the product when there is one, so three compilations of one subject are told apart
+    #    in the log rather than appearing as the same unit translated three times.
+    $Label = if ($ProductName) { "$UnitName / $ProductName" } elseif ($Subject) { "$UnitName / $Subject" } else { $UnitName }
+
+    Write-Building "$Label — $($Sources.Count) translation units"
 
     $Produced = New-Object System.Collections.Generic.List[string]
     $Stale    = New-Object System.Collections.Generic.List[string]
@@ -566,7 +627,7 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
 
     if ($Stale.Count -eq 0)
     {
-        Write-Skipped "$UnitName unchanged"
+        Write-Skipped "$Label unchanged"
         return $Produced.ToArray()
     }
 
@@ -602,7 +663,7 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
     $ResponsePath = Join-Path $ObjectRoot "$UnitName.rsp"
     Write-ResponseFile $ResponsePath $Arguments
 
-    Write-Building "$UnitName — translating $($Stale.Count) of $($Sources.Count)"
+    Write-Building "$Label — translating $($Stale.Count) of $($Sources.Count)"
 
     $Diagnostics = & cl.exe '/nologo' "@$ResponsePath"
     $Rejected     = $LASTEXITCODE -ne 0
@@ -841,7 +902,7 @@ function Invoke-Archive([hashtable] $UnitEntry, [string[]] $ObjectPath)
 #                                          HOST LINKING
 #---
 
-function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string] $VulkanRoot, [string] $Subject)
+function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string] $VulkanRoot, [string] $Subject, [string] $ProductName = '')
 {
     $BinaryRoot  = Join-Path $OutputRoot 'Binary'
     $LibraryRoot = Join-Path $OutputRoot 'Library'
@@ -895,14 +956,18 @@ function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string
 
     # 📝 The executable is named for its subject folder. `Engine/Application/PaintHost/` becomes PaintHost.exe with
     #    nothing in this script naming a host — adding one is a folder and one array entry.
-    $ExecutablePath = Join-Path $BinaryRoot "$Subject.exe"
+    # 🔴 A product overrides that name. Several products compile one subject, so naming the executable for
+    #    the subject would have each product overwrite the last and leave one binary carrying whichever
+    #    feature macro happened to be built final.
+    $TargetName     = if ($ProductName) { $ProductName } else { $Subject }
+    $ExecutablePath = Join-Path $BinaryRoot "$TargetName.exe"
 
     $Arguments = @(
         '/nologo'
         '/DEBUG'
         '/SUBSYSTEM:CONSOLE'
         "/OUT:$ExecutablePath"
-        "/PDB:$(Join-Path $BinaryRoot "$Subject.pdb")"
+        "/PDB:$(Join-Path $BinaryRoot "$TargetName.pdb")"
     ) + $ObjectPath + $Linked
 
     # 📝 🔴 A host still running holds its executable open, and link.exe refuses the write as LNK1168 — a
@@ -911,12 +976,12 @@ function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string
     {
         try { Remove-Item $ExecutablePath -Force -ErrorAction Stop } catch
         {
-            Get-Process -Name $Subject -ErrorAction SilentlyContinue | Stop-Process -Force
+            Get-Process -Name $TargetName -ErrorAction SilentlyContinue | Stop-Process -Force
             Start-Sleep -Milliseconds 200
             try { Remove-Item $ExecutablePath -Force -ErrorAction Stop } catch
             {
-                Write-Rejected "$Subject is still running and holds its executable open"
-                throw "$Subject held its executable open"
+                Write-Rejected "$TargetName is still running and holds its executable open"
+                throw "$TargetName held its executable open"
             }
         }
     }
@@ -926,8 +991,8 @@ function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string
     if ($LASTEXITCODE -ne 0)
     {
         $Diagnostics | ForEach-Object { Write-Host "    $_" }
-        Write-Rejected "link.exe rejected $Subject"
-        throw "link.exe rejected $Subject"
+        Write-Rejected "link.exe rejected $TargetName"
+        throw "link.exe rejected $TargetName"
     }
 
     # 📝 🔴 Every file `[link].carry` names is placed beside the executable. glfw3dll.lib is an import
@@ -1112,10 +1177,34 @@ foreach ($UnitEntry in $Selected)
         #    lowering them per subject would lower each of them as many times as there are hosts.
         Invoke-ShaderTranslation $UnitEntry $VulkanRoot
 
+        # 📝 A subject named by a [product] entry is built once per product and NOT once bare. Building it
+        #    bare as well would compile it with no feature macro, which `HostFeature.h` refuses — correctly,
+        #    since a featureless host is the arrangement this table replaced.
+        $Producted = @($UnitEntry.Variant | ForEach-Object { $_.Subject } | Select-Object -Unique)
+
         foreach ($Subject in $UnitEntry.Subject)
         {
+            if ($Producted -contains $Subject)
+            {
+                continue
+            }
+
             $Produced = Invoke-Translation $UnitEntry $Configuration $VulkanRoot $Subject
             Invoke-HostLink $UnitEntry $Produced $VulkanRoot $Subject
+        }
+
+        # 🔴 One subject, several products, each with its own feature macro, its own object folder and its
+        #    own executable. This is the whole of the separation between Texture and Parametric authoring —
+        #    they are not two programs, they are one program compiled twice.
+        foreach ($Variant in $UnitEntry.Variant)
+        {
+            if ($UnitEntry.Subject -notcontains $Variant.Subject)
+            {
+                throw "$($UnitEntry.Name) declares product $($Variant.Name) over subject $($Variant.Subject), which is not a declared subject"
+            }
+
+            $Produced = Invoke-Translation $UnitEntry $Configuration $VulkanRoot $Variant.Subject $Variant.Name $Variant.Define
+            Invoke-HostLink $UnitEntry $Produced $VulkanRoot $Variant.Subject $Variant.Name
         }
     }
 }
