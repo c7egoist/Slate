@@ -136,7 +136,7 @@ panels, which tools, which snap configuration — is what goes in `SlateWorkspac
 Application/     AuthoringHost  →  TextureAuthoring.exe, ParametricAuthoring.exe   (one source, two products)
       │          ConsoleHost, InterfaceValidationHost
       │
-SlateWorkspace/  ←NEW  TextureWorkspace, ParametricWorkspace — panels, tools and document a discipline binds
+SlateWorkspace/  ✅NEW  Texturing, Sketching, Combined, Vacant — the panels and tools a discipline declares
       │
 SketchToolset/   ✅NEW  line, arc, rectangle, circle — one shape and how it is placed
 TextureToolset/  ✅NEW  deposit, erase, smudge, clone — skeleton; the impression machinery already exists
@@ -185,7 +185,7 @@ whole exercise is recovering from.
 | 6 ✅| Fold `SlateFeature` into `SlateShape` per §2.2 (**70 files**). The 5 `Workspace*` modules went to `SlateShape/Record/`, **not** `SlateDocument` — see §2.2 note | 🚩 | `SlateFeature` gone; the word freed |
 | 7 ✅| Create `SlateRuntime`. Lift the shared seam out of `EditorHost` and `PaintHost` into one tick — **26** identical calls, not 27; see §4.2 | 🚩 | One tick loop exists; `PaintHost` holds **zero** `Lifetime.*` calls |
 | 8 ✅| Create `SketchToolset` + `TextureToolset`. Placement machine lifted; duplicated enum and cast bridge deleted; 22 subjects split into 13 shapes × 5 methods — see §4.3 | 🔴 | One vocabulary, no redundant tools |
-| 9 | Create `SlateWorkspace`. Define `TextureWorkspace` and `ParametricWorkspace` as declarations             | 🚩  | Disciplines are data                          |
+| 9 ✅| Create `SlateWorkspace`. Four declarations replace three arrangement procedures — see §4.4 | 🚩 | Disciplines are data |
 | 10| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
 | 11| **Delete** `PaintHost/`, `ParametricSketchHost/`, the **4** `Application/Api/*Bridge*.h`, and dead `SkyImage.cpp` | ✔️ | The duplication is physically gone       |
 | 12| Rename `EditorHost/` → `AuthoringHost/`; both products build from it                                     | ✔️  | Two products, one source                      |
@@ -336,3 +336,34 @@ long enough that an agent read it, assumed sky was unimplemented, and wrote a se
 | Whether a combined both-disciplines variant ships as a third product            | Nothing       |
 | Whether `InterfaceValidationHost` becomes a variant or stays a subject          | Nothing       |
 | Whether direct polygon authoring gets its own workspace or extends parametric   | Step 9        |
+
+### 4.4 What step 9 actually found
+
+A workspace was never written down. Each host CONSTRUCTED its arrangement in code:
+`ConstructParametricLayout` ran eleven statements against `PanelStructure` — divide, read back the record,
+seat, divide again, seat, seat, proportion, proportion — with a `Deliver` check between each pair and every
+call wrapped in `Discard`. The texturing host seated a bare viewport. The combined editor seated a bare
+viewport and grew the rest one panel at a time. Three procedures, no declaration, and no way to answer
+"what does the sketching discipline seat?" without running one of them.
+
+🔴 **Every one of those calls was `Discard`ed**, so a step that refused was skipped in silence. A partition
+that came out with one panel missing looked exactly like one that came out right. `ApplyWorkspace` returns
+the first refusal instead, naming the step that failed.
+
+**The arrangement is now data** — `WorkspaceDeclaration` is a fixed array of `ArrangementStep`, sized
+against `PanelStructure::RecordLimit` rather than a number chosen locally, so the two cannot drift. Four
+declarations: Texturing, Sketching, Combined, Vacant. The combined product **reuses the sketching
+arrangement** and only sets a second tool flag, which is §3's "third product at zero additional code" made
+real — and `WorkspaceDeclarationProof` §3 fails if anyone later gives it its own arrangement.
+
+⚠️ **The risk of this step was entirely in the slot ordinals.** A declaration says "seat the directory at
+slot 1", and slot 1 is the right slot only if `PanelStructure::Divide` allocates the way the declaration
+assumes — which is unprovable by reading, because the allocator belongs to a class this unit does not own.
+So the proof links the **real** `PanelStructure`, applies the declaration, and compares the result slot for
+slot against the transcribed procedure: same panels, same divisions, same 0.27 and 0.33. If `Divide` ever
+changes how it hands out ordinals, every arrangement fails at once, which is the correct blast radius.
+
+📝 The proof earned its keep immediately: the first texturing declaration divided the root but never seated
+the layer stack, so it produced `[Vacant, Viewport]`. Reading the declaration, that looks right — the bug is
+that `Divide` leaves the vacant side where the declaration expected the panel. Only running it showed the
+`Vacant`.

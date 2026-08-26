@@ -30,6 +30,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Interface tick and recording   | `SlateUI/Interface/{InterfaceExchange,ViewportSequence}`                 |
 | Immediate-mode drawing         | `SlateUI/Interface/RecordingSurface` (inside `InterfaceExchange`)         |
 | Panels, drawers, docking       | `SlateUI/Interface/{EditorPanel,WorkspacePanel,PanelStructure,DrawerSpace}` |
+| Which panels a discipline seats| `SlateWorkspace/Discipline/WorkspaceDeclaration` — the arrangement as data, not a procedure |
 | Theme, appearance, typography  | `SlateUI/Interface/{ThemeInterchange,ThemeSpecification,AppearanceSpecification}` |
 | Content browser                | `SlateUI/Interface/ContentBrowserPanel`                                  |
 | Scene outliner / directory     | `SlateUI/Interface/SceneDirectoryPanel`                                  |
@@ -57,7 +58,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
 far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), `SlateFeature` folded
 into `SlateShape` (step 6), **`SlateRuntime` created (step 7)**, and **`SketchToolset` + `TextureToolset`
-created (step 8)**. Still to come: `SlateWorkspace` (step 9). The **owner** does not change — only the path. Update this
+created (step 8)**, and **`SlateWorkspace` created (step 9)**. Steps 10–11 remain. The **owner** does not change — only the path. Update this
 register in the same commit as any rename.
 
 🔴 **A host now owns `main()`, its panels, its own device estate, and nothing else.** The bring-up order,
