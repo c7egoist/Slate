@@ -24,6 +24,7 @@
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateWorld/World/AtmosphereComponent/Api/AtmosphereComponent.h"
 #include "SlateWorld/World/DirectionalLightComponent/Api/DirectionalLightComponent.h"
+#include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
 #include "SlateUI/Interface/ControlCentrePanel/Api/ControlCentrePanel.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"
@@ -832,7 +833,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         std::printf("%s \u2014 the default workspace could not be opened\n", HostName);
         return 1;
     }
-    PanelPartitions[DefaultWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+    Discard(ApplyWorkspace(DeclaredWorkspaceFor(DefaultSubject), PanelPartitions[DefaultWorkspace.Resolve()]));
 
     std::printf("%s \u2014 opened %s\n", HostName, Workspaces.ActiveTitle());
 
@@ -1348,7 +1349,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 RegisterIntoNode = AskingNode;
                 const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
-                    PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+                    Discard(ApplyWorkspace(DeclaredWorkspaceFor(DefaultSubject), PanelPartitions[RegisteredWorkspace.Resolve()]));
             }
 
             // 🔴 With nothing open there is no tab bar to seat a `+` in, so the empty shell carries the
@@ -1358,7 +1359,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             {
                 const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
-                    PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+                    Discard(ApplyWorkspace(DeclaredWorkspaceFor(DefaultSubject), PanelPartitions[RegisteredWorkspace.Resolve()]));
             }
 
             // 📝 The drawers last, so they sit ABOVE the workspace as the sheet lays them.

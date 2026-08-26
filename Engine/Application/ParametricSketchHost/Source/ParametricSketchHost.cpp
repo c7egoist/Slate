@@ -10,6 +10,7 @@
 #include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
+#include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "Application/Api/ParametricWorkspaceBridge.h"
 #include "Application/Api/SketchSceneDirectoryBridge.h"
 #include "SlateShape/Record/WorkspaceDirectoryProjection/Api/WorkspaceDirectoryProjection.h"
@@ -4268,34 +4269,6 @@ void SeedParametricWorkspace(WorkspaceNameIndex& Naming,
 }
 
 
-void ConstructParametricLayout(PanelStructure& Partition)
-{
-    Partition.ConstructPanelPartition(PanelSubject::Viewport);
-
-    if (!Partition.Divide(PanelStructure::RootIndex, PanelDivisionAxis::X,
-                          PanelDivisionSide::Minimum).Resolved)
-        return;
-
-    const Deliver<PanelRecord> Root = Partition.Current(PanelStructure::RootIndex);
-    if (!Root.Resolved)
-        return;
-
-    Discard(Partition.Assign(Root.Resolve().Minimum, PanelSubject::SketchDirectory));
-
-    const std::uint32_t Right = Root.Resolve().Maximum;
-    if (!Partition.Divide(Right, PanelDivisionAxis::X, PanelDivisionSide::Minimum).Resolved)
-        return;
-
-    const Deliver<PanelRecord> RightBranch = Partition.Current(Right);
-    if (!RightBranch.Resolved)
-        return;
-
-    Discard(Partition.Assign(RightBranch.Resolve().Minimum, PanelSubject::ParametricTools));
-    Discard(Partition.Assign(RightBranch.Resolve().Maximum, PanelSubject::Viewport));
-    Discard(Partition.Proportion(PanelStructure::RootIndex, 0.27f));
-    Discard(Partition.Proportion(Right, 0.33f));
-}
-
 bool AnySelectedRow(const ParametricWorkspaceContext& Applied, std::uint32_t RowCount)
 {
     for (std::uint32_t Index = 0u; Index < RowCount; ++Index)
@@ -4755,7 +4728,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         std::printf("%s — the default workspace could not be opened\n", HostName);
         return 1;
     }
-    ConstructParametricLayout(PanelPartitions[DefaultWorkspace.Resolve()]);
+    Discard(ApplyWorkspace(DeclaredSketchWorkspace(), PanelPartitions[DefaultWorkspace.Resolve()]));
     std::printf("%s — opened %s\n", HostName, Workspaces.ActiveTitle());
 
     while (Lifetime.Active())
@@ -5162,14 +5135,14 @@ int main(int ArgumentCount, char** ArgumentValues)
             RegisterIntoNode = AskingNode;
             const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
             if (RegisteredWorkspace.Resolved)
-                ConstructParametricLayout(PanelPartitions[RegisteredWorkspace.Resolve()]);
+                Discard(ApplyWorkspace(DeclaredSketchWorkspace(), PanelPartitions[RegisteredWorkspace.Resolve()]));
         }
 
         if (OpenCount == 0u && Viewport.Seam().VacantPressed(Whole))
         {
             const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(WorkspaceSubject::Parametric);
             if (RegisteredWorkspace.Resolved)
-                ConstructParametricLayout(PanelPartitions[RegisteredWorkspace.Resolve()]);
+                Discard(ApplyWorkspace(DeclaredSketchWorkspace(), PanelPartitions[RegisteredWorkspace.Resolve()]));
         }
 
         Viewport.RecordDrawers();

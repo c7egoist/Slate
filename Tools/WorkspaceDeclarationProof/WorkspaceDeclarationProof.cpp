@@ -265,6 +265,49 @@ void ProveDisciplinesDiffer()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
+//                            3b. THE SUBJECT A WORKSPACE IS REGISTERED UNDER SELECTS ITS ARRANGEMENT
+//------------------------------------------------------------------------------------------------------------------------
+
+void ProveSubjectSelects()
+{
+    std::printf("3b. Every workspace subject selects a declaration, and it builds\n");
+
+    // 🔴 Registering a workspace under a subject and building its panels were two separate statements in
+    //    every host, with nothing tying them together — a host could register one discipline and seat
+    //    another's panels and still compile. `DeclaredWorkspaceFor` is that join, so every subject must
+    //    reach a declaration that actually builds.
+    for (std::uint32_t Ordinal = 0u;
+         Ordinal < static_cast<std::uint32_t>(WorkspaceSubject::SubjectCount);
+         ++Ordinal)
+    {
+        const WorkspaceSubject Subject  = static_cast<WorkspaceSubject>(Ordinal);
+        const WorkspaceDeclaration Held = DeclaredWorkspaceFor(Subject);
+
+        PanelStructure Partition;
+        const Deliver<bool> Applied = ApplyWorkspace(Held, Partition);
+        Claim(Applied.Resolved,
+              "subject " + std::to_string(Ordinal) + " selects a declaration that refuses to build");
+        Claim(Seats(SeatedPanels(Partition), PanelSubject::Viewport),
+              "subject " + std::to_string(Ordinal) + " must reach a workspace seating a viewport");
+
+        std::printf("   %u -> %-12s [%s]\n", Ordinal, Held.Naming,
+                    Listed(SeatedPanels(Partition)).c_str());
+    }
+
+    // The two disciplines that HAVE an arrangement must select their own, not fall through to blank.
+    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Parametric).SketchTools,
+          "the parametric subject must select the sketching workspace");
+    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Painting).TextureTools,
+          "the texturing subject must select the texturing workspace");
+    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Vacant).StepCount == 0u,
+          "the blank subject must select the blank workspace");
+
+    // 📝 A subject with no arrangement of its own opens bare rather than borrowing another discipline's.
+    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Modelling).StepCount == 0u,
+          "a discipline with no arrangement must open bare, not borrow one");
+}
+
+//------------------------------------------------------------------------------------------------------------------------
 //                                     4. A BAD DECLARATION REFUSES RATHER THAN MISBUILDS
 //------------------------------------------------------------------------------------------------------------------------
 
@@ -309,6 +352,7 @@ int main()
     ProveSketchMatchesRetired();
     ProveEveryDeclaration();
     ProveDisciplinesDiffer();
+    ProveSubjectSelects();
     ProveRefusals();
 
     std::printf("\n%d claims, %d failures\n", Checks, Failures);

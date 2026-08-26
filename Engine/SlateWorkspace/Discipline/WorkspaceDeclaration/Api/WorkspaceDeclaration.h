@@ -167,6 +167,35 @@ inline WorkspaceDeclaration DeclaredCombinedWorkspace()
     return Declared;
 }
 
+/// 🧩 The workspace a discipline declares.
+/// in    Subject   [-]  the discipline a workspace was registered under
+/// out   Declared  [-]  that discipline's arrangement and toolsets
+/// note  🔴 Registering a workspace under a subject and then building its panels are two statements that
+///        must agree, and every host previously made them separately — `Register(Parametric)` on one line
+///        and a hand-built partition on another, with nothing tying the two together. A host that
+///        registered one discipline and seated another's panels would compile and run. This is the join:
+///        the subject alone now decides the arrangement.
+/// note  ⚠️ `Painting` is the retired spelling still carried by `WorkspaceSubject`; it is swept with the
+///        other 527 uses in its own step. The declaration it selects is already named `Texturing`.
+/// cost  ✔️
+/// tag   api, nonallocating, nonthrowing
+inline WorkspaceDeclaration DeclaredWorkspaceFor(WorkspaceSubject Subject)
+{
+    switch (Subject)
+    {
+        case WorkspaceSubject::Painting:   return DeclaredTextureWorkspace();
+        case WorkspaceSubject::Parametric: return DeclaredSketchWorkspace();
+
+        // 📝 The modelling discipline has no arrangement of its own yet, so it opens on a bare viewport
+        //    rather than borrowing another discipline's panels.
+        case WorkspaceSubject::Modelling:
+        case WorkspaceSubject::Vacant:
+        case WorkspaceSubject::SubjectCount:
+            break;
+    }
+    return DeclaredVacantWorkspace();
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     APPLYING ONE
 //------------------------------------------------------------------------------------------------------------------------

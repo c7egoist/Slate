@@ -7,6 +7,7 @@
 #include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
+#include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
 #include "SlateUI/Interface/ControlCentrePanel/Api/ControlCentrePanel.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"
@@ -286,6 +287,13 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    are two components here rather than one.
     // 📝 The subject this host opens by default, named once so the startup registration and the strip's `+`
     //    cannot disagree about what a new workspace is.
+    // 🔴 This host seats a BARE VIEWPORT, not the texturing discipline's declared arrangement, and so it
+    //    applies `DeclaredVacantWorkspace` rather than the declaration its own subject selects. That is
+    //    not an oversight: the texturing arrangement seats a layer-stack panel, and the only panel subject
+    //    this host renders is `Viewport` (see the two `LeafSubject` comparisons below). Seating a panel it
+    //    cannot draw would leave a blank hole where the layer stack belongs.
+    // 📝 `EditorHost` renders every panel subject, so it takes the declaration its subject selects. This
+    //    host is deleted at step 11 and the discrepancy goes with it.
     constexpr WorkspaceSubject DefaultSubject = WorkspaceSubject::Painting;
 
     WorkspaceIndex          Workspaces;
@@ -396,7 +404,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         std::printf("%s \u2014 the default workspace could not be opened\n", HostName);
         return 1;
     }
-    PanelPartitions[DefaultWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+    Discard(ApplyWorkspace(DeclaredVacantWorkspace(), PanelPartitions[DefaultWorkspace.Resolve()]));
 
     std::printf("%s \u2014 opened %s\n", HostName, Workspaces.ActiveTitle());
 
@@ -569,7 +577,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 RegisterIntoNode = AskingNode;
                 const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
-                    PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+                    Discard(ApplyWorkspace(DeclaredVacantWorkspace(), PanelPartitions[RegisteredWorkspace.Resolve()]));
             }
 
             // 🔴 With nothing open there is no tab bar to seat a `+` in, so the empty shell carries the
@@ -579,7 +587,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             {
                 const Deliver<std::uint32_t> RegisteredWorkspace = Workspaces.Register(DefaultSubject);
                 if (RegisteredWorkspace.Resolved)
-                    PanelPartitions[RegisteredWorkspace.Resolve()].ConstructPanelPartition(PanelSubject::Viewport);
+                    Discard(ApplyWorkspace(DeclaredVacantWorkspace(), PanelPartitions[RegisteredWorkspace.Resolve()]));
             }
 
             // 📝 The drawers last, so they sit ABOVE the workspace as the sheet lays them.
