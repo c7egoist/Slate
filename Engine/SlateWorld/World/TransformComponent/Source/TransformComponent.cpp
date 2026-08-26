@@ -2,7 +2,7 @@
 //                                                      TRANSFORMCOMPONENT.CPP
 //============================================================================================================================================
 
-#include "SlateScene/Scene/TransformComponent/Api/TransformComponent.h"
+#include "SlateWorld/World/TransformComponent/Api/TransformComponent.h"
 
 #include <cmath>
 

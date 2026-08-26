@@ -2,7 +2,7 @@
 //                                                  DIRECTIONALLIGHTCOMPONENT.CPP
 //============================================================================================================================================
 
-#include "SlateScene/Scene/DirectionalLightComponent/Api/DirectionalLightComponent.h"
+#include "SlateWorld/World/DirectionalLightComponent/Api/DirectionalLightComponent.h"
 
 #include <cmath>
 

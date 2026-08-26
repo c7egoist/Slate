@@ -1,7 +1,7 @@
-# SlateScene — host-independent scene behaviour shared by editor, player and spectator applications.
+# SlateWorld — host-independent scene behaviour shared by editor, player and spectator applications.
 
 [unit]
-name    = "SlateScene"
+name    = "SlateWorld"
 product = "StaticLibrary"
 subject = [ "Scene" ]
 

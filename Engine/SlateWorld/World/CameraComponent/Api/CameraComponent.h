@@ -18,7 +18,7 @@
 #pragma once
 
 #include "Foundation/CameraCondition.h"
-#include "SlateScene/Scene/TransformComponent/Api/TransformComponent.h"
+#include "SlateWorld/World/TransformComponent/Api/TransformComponent.h"
 
 namespace Slate
 {

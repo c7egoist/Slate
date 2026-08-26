@@ -2,7 +2,7 @@
 //                                                    EDITORCAMERACOMPONENT.CPP
 //============================================================================================================================================
 
-#include "SlateScene/Scene/EditorCameraComponent/Api/EditorCameraComponent.h"
+#include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 
 #include <algorithm>
 #include <cmath>

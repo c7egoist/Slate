@@ -6,7 +6,7 @@
 #define SLATE_PAINT_HOST 1
 #include "Foundation/DeliveryOutcome.h"
 #include "Application/Api/SharedViewportHostBridge.h"
-#include "SlateScene/Scene/EditorCameraComponent/Api/EditorCameraComponent.h"
+#include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
 #include "SlateUI/Interface/ControlCentrePanel/Api/ControlCentrePanel.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"

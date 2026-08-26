@@ -55,9 +55,9 @@
 //          Engine/SlateUI/Interface/ThemeSpecification/Source/ThemeSpecification.cpp \
 //          Engine/SlateUI/Interface/SymbolSpecification/Source/SymbolSpecification.cpp \
 //          Engine/SlateUI/Interface/TextComponent/Source/FontLoader.cpp \
-//          Engine/SlateScene/Scene/CameraComponent/Source/CameraComponent.cpp \
-//          Engine/SlateScene/Scene/EditorCameraComponent/Source/EditorCameraComponent.cpp \
-//          Engine/SlateScene/Scene/TransformComponent/Source/TransformComponent.cpp \
+//          Engine/SlateWorld/World/CameraComponent/Source/CameraComponent.cpp \
+//          Engine/SlateWorld/World/EditorCameraComponent/Source/EditorCameraComponent.cpp \
+//          Engine/SlateWorld/World/TransformComponent/Source/TransformComponent.cpp \
 //          Engine/Application/EditorHost/Source/SkyImage.cpp \
 //          Engine/SlateCompute/Compute/AtmosphereIntegrator/Source/AtmosphereIntegrator.cpp \
 //          Engine/SlateMath/Numeric/QuadratureIntegrator/Source/QuadratureIntegrator.cpp \
@@ -77,7 +77,7 @@
 
 #include "Shared/OverlayGeometry.slang.h"
 #include "Shared/OverlayTransform.slang.h"
-#include "SlateScene/Scene/EditorCameraComponent/Api/EditorCameraComponent.h"
+#include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "Application/EditorHost/Api/SkyImage.h"
 #include "Foundation/DeliveryOutcome.h"
 #include "SlateCompute/Compute/AtmosphereIntegrator/Api/AtmosphereIntegrator.h"

@@ -2,7 +2,7 @@
 //                                                     ATMOSPHERECOMPONENT.CPP
 //============================================================================================================================================
 
-#include "SlateScene/Scene/AtmosphereComponent/Api/AtmosphereComponent.h"
+#include "SlateWorld/World/AtmosphereComponent/Api/AtmosphereComponent.h"
 
 #include <cmath>
 

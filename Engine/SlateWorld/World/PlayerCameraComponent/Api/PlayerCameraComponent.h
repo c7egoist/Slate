@@ -1,5 +1,5 @@
 #pragma once
-#include "SlateScene/Scene/CameraComponent/Api/CameraComponent.h"
+#include "SlateWorld/World/CameraComponent/Api/CameraComponent.h"
 namespace Slate
 {
 class PlayerCameraComponent : public CameraComponent

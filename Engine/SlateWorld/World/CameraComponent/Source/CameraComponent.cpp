@@ -2,7 +2,7 @@
 //                                                         CAMERACOMPONENT.CPP
 //============================================================================================================================================
 
-#include "SlateScene/Scene/CameraComponent/Api/CameraComponent.h"
+#include "SlateWorld/World/CameraComponent/Api/CameraComponent.h"
 
 #include <algorithm>
 #include <cstdint>
