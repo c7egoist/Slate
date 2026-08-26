@@ -175,7 +175,31 @@ first, ahead of the rest — which is true of every header and therefore disting
 names are rejected on the same ground as categorical ones. Neighbouring spellings carry the same defect and
 are rejected with it: `Preamble`, `Epilogue`, `Header`, `Common`, `Global`, `Misc`.
 
-Banned addendum words — Cadence, Binding, Submission, Footprint, Region, Tree, Vacancy, Ordinates.
+Banned addendum words — Cadence, Binding, Submission, Footprint, Region, Tree, Vacancy, Ordinates,
+Draft, Draught, Paint.
+
+⚠️ `Draft` and `Draught` are banned as **imprecise state words**, not as spellings of each other. Both mean
+"provisional" — a thing that is not finished yet — which describes the moment a mechanism is observed rather
+than the mechanism. Every placement in progress is provisional; saying so distinguishes nothing, exactly as
+`state` and `Kind` distinguish nothing. State what is being placed and how far it has got: a `SketchTool`
+takes anchors until its `PlacementMethod` is satisfied, and then it seals.
+
+⚠️ `Paint` is banned because it names the artist's gesture, not the mechanism that carries it. The engine
+writes texels into a layer of a texture through an impression; whether the artist thinks of that as
+painting, stencilling, stamping or masking is presentation. `Texture` names the content and `Texturing` the
+discipline — and `SymbolDiscipline` already spells it that way, so the vocabulary exists.
+
+| Retired         | Replacement                        | Mechanism the replacement states                     |
+|-----------------|------------------------------------|--------------------------------------------------------|
+| `Draft…`        | `SketchTool…` / `…Placement`       | A tool taking anchors, and how far it has got          |
+| `DraftSubject`  | `SketchSubject`                    | Which shape is being placed                            |
+| `Paint…`        | `Texture…` / `Texturing…`          | Texels written into a layer, and the discipline        |
+| `PaintStroke`   | `TextureStroke`                    | One continuous impression across a surface             |
+
+🔴 `Modelling` is **already** unavailable and this is not a new ban: `Model` is a banned structural word and
+the ban has no carve-out for the participle, which `SymbolSpecification.h:18` records. The polygonal
+discipline is `Geometry`; the constrained-2D discipline is `Sketch`. A `ModellingToolset` cannot be spelled,
+so the units are `SketchToolset` and `TextureToolset`.
 
 `Ordinates` is banned because it means a mathematical coordinate, not a general UI state or UI configuration. Use
 `Configuration` for user and panel configuration, `Context` for live interaction data, `LayoutProfile` for shared

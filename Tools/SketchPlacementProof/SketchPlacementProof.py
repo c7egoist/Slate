@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""DraftPlacementProof — compiles, links and RUNS the draft placement machine.
+"""SketchPlacementProof — compiles, links and RUNS the sketch placement machine.
 
-Usage: python3 Tools/DraftPlacementProof/DraftPlacementProof.py
+Usage: python3 Tools/SketchPlacementProof/SketchPlacementProof.py
 
-This is the only gate in the repository that executes engine code. `SlateToolset` names no
+This is the only gate in the repository that executes engine code. `SketchToolset` names no
 device, no window and no vendor header, so it links and runs on any toolchain — which is the
-property that made the draft machine worth lifting out of a 5981-line host. Every other tool
+property that made the placement machine worth lifting out of a 5981-line host. Every other tool
 here either parses source or samples a rendered image; this one calls the component.
 
-What it proves, from `DraftPlacementProof.cpp`:
+What it proves, from `SketchPlacementProof.cpp`:
 
   1. The one declaration table answers exactly as the four switch statements it replaced,
-     across all 22 draft subjects and all 61 catalogue tiles. The originals are transcribed
+     across all 22 retired subjects and all 61 catalogue tiles. The originals are transcribed
      verbatim into the proof so the comparison is against what shipped, not against a tidied
      restatement of it.
   2. Every subject completes at its declared anchor count and not one anchor before.
@@ -35,8 +35,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 SOURCES = [
-    ROOT / "Tools/DraftPlacementProof/DraftPlacementProof.cpp",
-    ROOT / "Engine/SlateToolset/Draft/DraftPlacement/Source/DraftPlacement.cpp",
+    ROOT / "Tools/SketchPlacementProof/SketchPlacementProof.cpp",
+    ROOT / "Engine/SketchToolset/SketchTool/SketchPlacement/Source/SketchPlacement.cpp",
 ]
 
 INCLUDES = [ROOT / "Engine", ROOT / "Tools/VulkanParseStub"]
@@ -45,11 +45,11 @@ INCLUDES = [ROOT / "Engine", ROOT / "Tools/VulkanParseStub"]
 def Main():
     for Source in SOURCES:
         if not Source.exists():
-            print(f"DraftPlacementProof: missing {Source.relative_to(ROOT)}")
+            print(f"SketchPlacementProof: missing {Source.relative_to(ROOT)}")
             raise SystemExit(1)
 
     with tempfile.TemporaryDirectory() as Scratch:
-        Binary = Path(Scratch) / "DraftPlacementProof"
+        Binary = Path(Scratch) / "SketchPlacementProof"
 
         Command = ["g++", "-std=c++20", "-Wall", "-Wextra", "-Werror"]
         for Include in INCLUDES:
@@ -59,10 +59,10 @@ def Main():
 
         Built = subprocess.run(Command, capture_output=True, text=True)
         if Built.returncode != 0:
-            # -Werror is deliberate: an unhandled enumerator in any switch over DraftSubject is a
+            # -Werror is deliberate: an unhandled enumerator in any switch over SketchSubject is a
             # -Wswitch warning, and that warning is exactly how a newly added tool announces every
             # table it has not yet been added to. Letting it through as a warning would waste it.
-            print("DraftPlacementProof: the toolset does not compile clean")
+            print("SketchPlacementProof: the toolset does not compile clean")
             print(Built.stderr.strip()[:4000])
             raise SystemExit(1)
 
@@ -72,10 +72,10 @@ def Main():
             sys.stderr.write(Ran.stderr)
 
         if Ran.returncode != 0:
-            print("DraftPlacementProof: REFUTED")
+            print("SketchPlacementProof: REFUTED")
             raise SystemExit(1)
 
-    print("DraftPlacementProof: the draft machine stands")
+    print("SketchPlacementProof: the placement machine stands")
     raise SystemExit(0)
 
 

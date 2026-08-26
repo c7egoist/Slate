@@ -1,4 +1,4 @@
-# SlateToolset — what one tool is: its parameters, its pointer behaviour, and what it commits.
+# SketchToolset — what one sketch tool is: its parameters, its pointer behaviour, and what it commits.
 # A tool knows no panel and no tick.
 
 # 🔴 This unit exists because the tool vocabulary was declared twice. `Application/Api/*` held one copy
@@ -7,19 +7,24 @@
 #    That cast is only correct while both lists stay in the same order, and nothing checked that they did.
 #
 # 📝 The boundary, from `References/UnitAndProductPlan.md` §2.1: if the artist picks it up and puts it
-#    down, it is Toolset. A draft in progress — which tool, which anchors placed so far, how many it still
-#    needs — is exactly that, and it is the same mechanism whether the anchors come from a sketch plane or
-#    a canvas.
+#    down, it is Toolset. A placement in progress — which shape, which anchors taken so far, how many it
+#    still needs — is exactly that, and it is the same mechanism whether the anchors come from a sketch
+#    plane or a canvas.
 
 [unit]
-name    = "SlateToolset"
+name    = "SketchToolset"
 product = "StaticLibrary"
-subject = [ "Draft" ]
+subject = [ "SketchTool" ]
 
-# 📝 A draft is a tool placement in progress: begun, fed anchors, and then either committed or abandoned.
-#    It is the one concern this unit holds today; a second subject is added when a second one is lifted.
+# 📝 A sketch tool places one shape by taking anchors. `Sketch` alone is unavailable as a subject name —
+#    `SlateShape` already declares it, and Construct.ps1 requires subjects to be globally unique because a
+#    repeated one would have two units' objects overwrite each other in a shared folder.
+#
+# 🔴 The shape and the WAY it is placed are two axes, not one. The retired vocabulary spelled
+#    `CenterRectangle`, `ThreePointRectangle` and `Rectangle` as three tools that all called the same
+#    `DeclareRectangle`; here they are one shape and three `PlacementMethod`s, so they cannot disagree.
 
-# 🔴 SlateToolset names geometry and nothing above it. It requires `SlateShape` for the anchor and snap
+# 🔴 SketchToolset names geometry and nothing above it. It requires `SlateShape` for the anchor and snap
 #    types a placement carries, and `SlateUI` for the catalogue enumeration the artist's tool choice
 #    arrives as. It names no panel type, no document, no device and no tick — a tool that knew when it was
 #    recorded would be a tick concern wearing a tool's name.

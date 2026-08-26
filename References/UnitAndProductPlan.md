@@ -138,7 +138,8 @@ Application/     AuthoringHost  →  TextureAuthoring.exe, ParametricAuthoring.e
       │
 SlateWorkspace/  ←NEW  TextureWorkspace, ParametricWorkspace — panels, tools and document a discipline binds
       │
-SlateToolset/    ✅NEW  brush, line, arc, extrude, constrain — one tool's parameters and pointer behaviour
+SketchToolset/   ✅NEW  line, arc, rectangle, circle — one shape and how it is placed
+TextureToolset/  ✅NEW  deposit, erase, smudge, clone — skeleton; the impression machinery already exists
       │
 SlateRuntime/    ✅NEW  bring-up, tick, teardown, feature gate — SessionSequence, the 26 calls written once
       │
@@ -183,7 +184,7 @@ whole exercise is recovering from.
 | 5 ✅| `git mv SlateGeometry SlateShape` + include rewrite (**34 files**)                                        | ✔️  | Nothing depended on the name                  |
 | 6 ✅| Fold `SlateFeature` into `SlateShape` per §2.2 (**70 files**). The 5 `Workspace*` modules went to `SlateShape/Record/`, **not** `SlateDocument` — see §2.2 note | 🚩 | `SlateFeature` gone; the word freed |
 | 7 ✅| Create `SlateRuntime`. Lift the shared seam out of `EditorHost` and `PaintHost` into one tick — **26** identical calls, not 27; see §4.2 | 🚩 | One tick loop exists; `PaintHost` holds **zero** `Lifetime.*` calls |
-| 8 ✅| Create `SlateToolset`. The draft placement machine lifted; the duplicated 22-member enum and its cast bridge deleted — see §4.3 | 🔴 | One draft vocabulary; `DriveDrawing` 181→76 lines |
+| 8 ✅| Create `SketchToolset` + `TextureToolset`. Placement machine lifted; duplicated enum and cast bridge deleted; 22 subjects split into 13 shapes × 5 methods — see §4.3 | 🔴 | One vocabulary, no redundant tools |
 | 9 | Create `SlateWorkspace`. Define `TextureWorkspace` and `ParametricWorkspace` as declarations             | 🚩  | Disciplines are data                          |
 | 10| Lift what remains of `ParametricSketchHost`'s 138 locals — **one behaviour per commit**, `ConsoleHost` covering each | 🔴 | Nothing is left in the host but `main()` |
 | 11| **Delete** `PaintHost/`, `ParametricSketchHost/`, the **4** `Application/Api/*Bridge*.h`, and dead `SkyImage.cpp` | ✔️ | The duplication is physically gone       |
@@ -276,14 +277,33 @@ stores every point it is given. `Circle` and `Ellipse` are therefore `2`, not th
 stated — three rows deliberately disagree with the original, and `DraftPlacementProof` §1 asserts those
 three exceptions individually so the correction stays a checked decision rather than a transcription slip.
 
+**The third defect: nine tools that were four shapes.** `CenterRectangle`, `ThreePointRectangle` and
+`Rectangle` were three separate tools that all ended in the same `DeclareRectangle`; the three circle
+spellings all ended in `DeclareCircle`. The geometry layer only ever knew four shapes where the tool layer
+claimed nine. They were never different shapes — they were different ways of POINTING at one, and the
+enumeration had no axis for that, so it grew a member per combination.
+
+The fix is two axes: `SketchSubject` (13 shapes, each one something `SketchStructure` can declare) and
+`PlacementMethod` (Extent, Centred, ThreePoint, Diameter, Tangent), with `AcceptedBy` stating which pairs
+exist. 21 retired subjects become 27 distinct, individually named placements — and `SketchPlacementProof`
+§2 **fails if any two placements share a name**, which is the redundancy rule made executable. It caught a
+real one during the split: `Polygon` was reachable under both `Extent` and `Centred`, and a polygon is a
+centre and a circumradius with no spanned form, so `Extent` now refuses it.
+
+⚠️ `Parabola` and `Hyperbola` were considered and **rejected**: `CurveSpecification` models no conic beyond
+the ellipse, so offering them would be a tile the geometry cannot honour — the same defect as the retired
+`DiameterCircle`. They arrive when `SlateShape` grows `DeclareParabola`, not before.
+
 **Measured.** `DriveDrawingWithModifiers` 181 → 76 lines; the 7-arm subject branch replaced by one
 `Anchor` → `Seal`. A second copy of the machine, `DriveDrawing` at line 2072, was **never called** and was
-deleted with its 67 lines. `ParametricSketchHost` 5 981 → 5 755. `SlateToolset` is 509 lines.
+deleted with its 67 lines. `ParametricSketchHost` 5 981 → 5 757. `SketchToolset` is 533 lines;
+`TextureToolset` is a 155-line skeleton that declares the texturing tool vocabulary and no behaviour, so
+that the second copy the sketch side suffered is never written.
 
 📝 `SlateToolset` is the first unit that names no device, no window and no vendor header, so it **links and
-runs** in a sandbox with no Vulkan SDK. `Tools/DraftPlacementProof/` executes it — 283 claims across the
-declaration table, every subject's completion count, terminated curves, dimension snapping, sealing,
-idempotent declaration, refusals and snap carriage. It is the only gate in the repository that runs engine
+runs** in a sandbox with no Vulkan SDK. `Tools/SketchPlacementProof/` executes it — 880 claims across the
+split equivalence, name-uniqueness across every legal pair, per-pair completion counts, refusal of
+impossible pairs, method carriage through sealing, terminated curves, dimension snapping and refusals. It is the only gate in the repository that runs engine
 code rather than parsing it, and it was negative-tested with four separate sabotages before being trusted.
 
 

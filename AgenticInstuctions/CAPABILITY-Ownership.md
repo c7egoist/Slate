@@ -35,7 +35,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Scene outliner / directory     | `SlateUI/Interface/SceneDirectoryPanel`                                  |
 | Texture paint layer stack      | `SlateUI/Interface/TexturePaintPanel`                                    |
 | Sketch tool interface          | `SlateUI/Interface/ParametricTools` — the CATALOGUE the artist presses    |
-| Draft placement, anchor counts | `SlateToolset/Draft/DraftPlacement` — what is placed, how many anchors, when it seals |
+| Shape placement, anchor counts | `SketchToolset/SketchTool/SketchPlacement` — which shape, placed how, how many anchors, when it seals |
+| Texturing tool vocabulary      | `TextureToolset/TextureTool/TextureToolDeclaration` — skeleton; impressions stay in `SlateCompute` |
 | Sketch geometry and solving    | `SlateShape/Sketch/*` — 20 modules, incl. `SketchStructure`, `ConstraintSolver`, `ProfileSolver` |
 | Feature history, recompute     | `SlateShape/Sequence/{FeatureStructure,RecomputeScheduler}`             |
 | Pick classification, provenance| `SlateShape/Reference/{PickClassifier,ProvenanceIndex}`                |
@@ -55,8 +56,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 
 ⚠️ Unit names change during the refactor described in `References/UnitAndProductPlan.md`. Applied so
 far: `SlateScene` → `SlateWorld` (step 4), `SlateGeometry` → `SlateShape` (step 5), `SlateFeature` folded
-into `SlateShape` (step 6), **`SlateRuntime` created (step 7)**, and **`SlateToolset` created (step 8)**.
-Still to come: `SlateWorkspace` (step 9). The **owner** does not change — only the path. Update this
+into `SlateShape` (step 6), **`SlateRuntime` created (step 7)**, and **`SketchToolset` + `TextureToolset`
+created (step 8)**. Still to come: `SlateWorkspace` (step 9). The **owner** does not change — only the path. Update this
 register in the same commit as any rename.
 
 🔴 **A host now owns `main()`, its panels, its own device estate, and nothing else.** The bring-up order,
