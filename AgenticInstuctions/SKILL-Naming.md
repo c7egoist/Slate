@@ -157,9 +157,9 @@ Banned structural words — Table, Map, Block, Digest, Model, Handle, Store, Bri
 Fabric, Cache, Evaluator, Evaluate, Journal, Resolver, Mesh, Pool, Registry, Catalog, Repository,
 Directory, Vault, Arena, Inventory, Ledger, Plan, Filter, Grid, Array, Dispatcher, Memory, Buffer,
 Pipeline, Flow, Composite, Compose, Composition, Allocation, Shell, Tier, Nesting, Stratum, Mip,
-Messenger, Probe, Blend, History, Bake, Stamp, Contract, Deliver.
+Messenger, Probe, Blend, History, Bake, Stamp, Contract, Outcome, Prelude.
 
-⚠️ `Contract` and `Deliver` are banned for the same reason as `Handle` and `Store`: each names a
+⚠️ `Contract` and `Outcome` are banned for the same reason as `Handle` and `Store`: each names a
 programming-language concept rather than a mechanism. A contract is what every declaration in this engine
 already is, so the word distinguishes nothing; an outcome is what every call already returns. State what
 crosses instead — a `Guarantee` is declared, and a `Deliver<Content>` either delivers or refuses.
@@ -167,7 +167,13 @@ crosses instead — a `Guarantee` is declared, and a `Deliver<Content>` either d
 | Retired      | Replacement            | Mechanism the replacement states                          |
 |--------------|------------------------|------------------------------------------------------------|
 | `…Contract`  | `…Guarantee`           | What the declaration promises, in the caller's terms       |
-| `Deliver<T>` | `Deliver<T>`           | Content delivered across one fallible call, or a refusal   |
+| `Outcome<T>` | `Deliver<T>`           | Content delivered across one fallible call, or a refusal   |
+| `Prelude`    | `ToolchainInterchange` | One source translated for the host and shader toolchains   |
+
+⚠️ `Prelude` is banned for a reason distinct from the two above: it states only **where** a file sits —
+first, ahead of the rest — which is true of every header and therefore distinguishes nothing. Positional
+names are rejected on the same ground as categorical ones. Neighbouring spellings carry the same defect and
+are rejected with it: `Preamble`, `Epilogue`, `Header`, `Common`, `Global`, `Misc`.
 
 Banned addendum words — Cadence, Binding, Submission, Footprint, Region, Tree, Vacancy, Ordinates.
 

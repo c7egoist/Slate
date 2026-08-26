@@ -11,7 +11,7 @@
 //    Ground-grid kind is different in kind: it receives ONE quad and solves the ground
 //    lattice analytically, per pixel. See `ResolveGround` below.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 namespace Slate
 {

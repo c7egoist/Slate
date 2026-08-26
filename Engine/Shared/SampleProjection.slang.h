@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 Every sample in the engine is placed by projecting a **sample ordinal** into a domain, and never by drawing

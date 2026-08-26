@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 The predicate answers: walking Alpha → Beta → Gamma, does the path turn left, turn right, or stay

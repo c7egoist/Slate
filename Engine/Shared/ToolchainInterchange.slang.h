@@ -1,5 +1,5 @@
 //============================================================================================================================================
-//                                                             PRELUDE.SLANG.H
+//                                                      TOOLCHAININTERCHANGE.SLANG.H
 //============================================================================================================================================
 // 🧩 Supplies the type, parameter-direction and intrinsic spellings each toolchain lacks.
 
@@ -10,6 +10,14 @@
 // 📝 Everything under Shared/ is compiled once by the C++ toolchain and once by the shader toolchain. This
 //    file is the only place the two spellings are reconciled. A Shared/ entry point that reaches for a
 //    toolchain-specific spelling directly has stopped being shared source, and ParityRunner cannot cover it.
+//
+// 📝 🔴 Named `Prelude` until it was read rather than assumed. A prelude states only WHERE a file sits — first,
+//    ahead of the rest — which is true of any header and distinguishes nothing; `SKILL-Naming` §① asks for the
+//    mechanism instead. The mechanism is a **standardised translation across two toolchains**, which is exactly
+//    what the `Interchange` role names, on the same terms as `PlatformInterchange` translating one surface over
+//    three operating systems. `Exchange` was the near miss: it names transfer across a system, vendor or hardware
+//    edge, and nothing is transferred here — no bytes cross at run time, because both sides are compiled from
+//    this one source and the file has ceased to exist by the time either runs.
 //
 // 📝 🔴 The scalar widths and the constant spelling are **not** declared here. `Foundation/` declares its capacities
 //    in those widths and depends on nothing, so it cannot read them from this file; they live in

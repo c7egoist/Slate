@@ -15,7 +15,7 @@
 //    record is two points per line and one per dot, so a dense lattice or a
 //    high-poly wireframe never reaches the CPU's tessellator.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OverlayTransform.slang.h"
 
 namespace Slate

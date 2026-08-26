@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 🔴 `66` §3: the scene carries radiance without an upper bound — `18` §2's emissive channels are unbounded —

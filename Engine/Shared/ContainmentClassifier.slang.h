@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 // 📐 `12` §2.1 answers "is A enclosed by B, at any depth" by comparing two interval labels rather than by walking
 //    a relation, and `12` §3 compresses every subset into runs of ordinals for the same reason. Both reduce to

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 🔴 `62` §3 collects transmissive fragments into `TransmissionIndex` with atomic sorted insertion on the

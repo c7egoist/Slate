@@ -4,7 +4,7 @@
 // 🧩 The parametric workspace CAD pass's fragment stage: writes display-referred straight-alpha CAD colour,
 //    masking marker quads into discs.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 namespace Slate
 {

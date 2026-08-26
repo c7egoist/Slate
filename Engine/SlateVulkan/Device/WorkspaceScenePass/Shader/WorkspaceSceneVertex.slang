@@ -4,7 +4,7 @@
 // 🧩 Scene mesh vertex expansion for imported polygon objects. Triangles read document-resolved material slots;
 //    points mode expands each source vertex into a small viewport-space marker.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OverlayTransform.slang.h"
 
 namespace Slate

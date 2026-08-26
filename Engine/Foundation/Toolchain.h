@@ -5,15 +5,15 @@
 //
 // 📝 The **scalar** widths alone live here, because a capacity is what `Foundation/` declares and a capacity is a
 //    scalar. The component and ordinal widths a device surface is declared, sampled and addressed through are
-//    `Shared/Prelude.slang.h`'s — nothing in `Foundation/` reaches for one, and declaring them here would place a
+//    `Shared/ToolchainInterchange.slang.h`'s — nothing in `Foundation/` reaches for one, and declaring them here would place a
 //    device-only spelling in the file that depends on nothing.
 
 #pragma once
 
 // 📝 🔴 `00` §2 places a spelling two readers both need at the root of the dependency order, and this one has two:
 //    `Foundation/`, which declares the capacities in the scalar widths, and `Shared/`, which computes against them.
-//    It cannot live in `Shared/Prelude.slang.h` — `Shared/` already depends on `Foundation/`, so a guarantee header
-//    reading a spelling from there is that edge pointing backwards. It lives here instead, and `Prelude.slang.h`
+//    It cannot live in `Shared/ToolchainInterchange.slang.h` — `Shared/` already depends on `Foundation/`, so a guarantee header
+//    reading a spelling from there is that edge pointing backwards. It lives here instead, and `ToolchainInterchange.slang.h`
 //    reads it from here rather than declaring a second copy that would agree with this one only until one of the
 //    two was amended.
 //

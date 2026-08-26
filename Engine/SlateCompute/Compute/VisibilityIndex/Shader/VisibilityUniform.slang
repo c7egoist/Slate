@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 // 📝 🔴 The block, the carried word and the projection are declared **once**, here, and included by both entry
 //    points. The vertex entry point resolves a position and the fragment entry point writes what it carried; a

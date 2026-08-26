@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/SampleProjection.slang.h"
 #include "Foundation/NumericTolerance.h"
 

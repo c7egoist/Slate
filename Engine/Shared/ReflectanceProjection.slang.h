@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 🔴 Every routine below is read by `18`'s shading dispatch on the device and by `82`'s host preview of the

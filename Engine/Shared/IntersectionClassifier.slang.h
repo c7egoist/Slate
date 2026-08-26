@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OrientationClassifier.slang.h"
 
 // 📐 Two segments intersect in one of four ways: their interiors cross, they share exactly one endpoint, they

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Foundation/NumericTolerance.h"
 
 // 📐 🔴 `60` §3.1 packs one visibility per illuminant per pixel into one RGBA8 word, **by `OcclusionIndex`

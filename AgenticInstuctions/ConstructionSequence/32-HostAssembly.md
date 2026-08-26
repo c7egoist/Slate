@@ -71,13 +71,13 @@ That export path is a host affordance and is not a seam between units — see `0
 
 ### 4.1 The shader toolchain
 
-🚧 Partially completed — stage A is done: `Shared/` compiles as C++ into `SlateMath` through `Prelude.slang.h`.
+🚧 Partially completed — stage A is done: `Shared/` compiles as C++ into `SlateMath` through `ToolchainInterchange.slang.h`.
 Stages B, C and D are unbuilt — no shader toolchain runs, and registration is checked at run time by
 `ParityRunner` rather than at build time.
 
 | Stage | Produces                                                                    |
 |-------|------------------------------------------------------------------------------|
-| B     | `Shared/` compiled by the shader toolchain, with `Prelude.slang.h` supplying the differences |
+| B     | `Shared/` compiled by the shader toolchain, with `ToolchainInterchange.slang.h` supplying the differences |
 | C     | Every shader entry point compiled to its stream layout for `ShaderCodec`     |
 | D     | `ParityRunner` registration checked — every `Shared/` entry point is registered |
 

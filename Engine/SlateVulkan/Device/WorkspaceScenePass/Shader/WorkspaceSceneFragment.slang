@@ -4,7 +4,7 @@
 // 🧩 Constant/fill material preview for imported scene meshes: lit, matcap, wire, points and diagnostic channels
 //    route through the same material packet instead of hard-coded row colours.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 namespace Slate
 {

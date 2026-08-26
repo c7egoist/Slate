@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OrientationClassifier.slang.h"
 
 // 📐 The classifier answers containment by accumulating, over every edge of a closed polyline, both the winding

@@ -67,7 +67,7 @@ under `SLATE_DECLARES_PRECISION` rather than a review item.
 
 🚧 Partially completed.
 
-- ✔️ `Shared/` and `Prelude.slang.h` done — the predicates compile under both toolchains from one source.
+- ✔️ `Shared/` and `ToolchainInterchange.slang.h` done — the predicates compile under both toolchains from one source.
 - ✔️ `ParityRunner` registers entry points and reports agreement per registration.
 - 🚧 The shader form is not yet executed; it waits on the device `06` brings up. Until then a registration
   proves the host form self-consistent and nothing more, which is weaker than this section claims.

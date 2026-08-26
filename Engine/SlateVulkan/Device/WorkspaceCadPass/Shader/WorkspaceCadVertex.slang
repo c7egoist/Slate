@@ -4,7 +4,7 @@
 // 🧩 The parametric workspace CAD pass's vertex stage: expands the bounded CPU CAD packet into triangles on the
 //    GPU and fits the exact sketch plane into the current viewport leaf.
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OverlayTransform.slang.h"
 
 namespace Slate

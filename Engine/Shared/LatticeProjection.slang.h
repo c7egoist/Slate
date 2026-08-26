@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 
 // 📐 `02` §5 places this at Tier A and `54` §2 gives the reason from the consuming side: `82` classifies a
 //    position on the host and `70` classifies it on the device, and a cell boundary the two disagree about

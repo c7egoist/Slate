@@ -100,7 +100,7 @@ that all share the error rather than a set whose errors cancel.
 point has coverage at its declared tier, and `00` §4 notes that an entry point in `Shared/` with no registration
 is duplicated source that has not diverged yet.
 
-⚠️ `ReversedBits` already exists in `Prelude.slang.h` in both forms, host and device, branch-free, with a note
+⚠️ `ReversedBits` already exists in `ToolchainInterchange.slang.h` in both forms, host and device, branch-free, with a note
 explaining that the host form reverses in constant-width exchanges precisely so neither form can diverge. The
 scramble is built on it and reaches for no toolchain-specific spelling of its own.
 
@@ -109,7 +109,7 @@ scramble is built on it and reaches for no toolchain-specific spelling of its ow
 - **Gate:** No existing entry point in `SampleProjection.slang.h` is amended.
 - **Gate:** `64`'s sub-pixel offset sequence is untouched.
 - **Gate:** Both new entry points live in `Shared/` and are registered with `ParityRunner` at Tier A.
-- **Gate:** The scramble is built on `Prelude.slang.h`'s intrinsics and reaches for no toolchain spelling.
+- **Gate:** The scramble is built on `ToolchainInterchange.slang.h`'s intrinsics and reaches for no toolchain spelling.
 - **Gate:** The spatial property is over the screen neighbourhood, never the compacted pixel list.
 - **Gate:** The offset varies per rotation on a declared cycle.
 - **Gate:** No consumer draws from a sequence declared outside this document or `02` §6.

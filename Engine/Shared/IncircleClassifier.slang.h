@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Shared/Prelude.slang.h"
+#include "Shared/ToolchainInterchange.slang.h"
 #include "Shared/OrientationClassifier.slang.h"
 
 // 📐 The predicate answers: is Delta inside, on, or outside the circle through Alpha, Beta and Gamma. Taking
