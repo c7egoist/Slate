@@ -10,6 +10,7 @@
 #include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
+#include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
 #include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "Application/Api/ParametricWorkspaceBridge.h"
 #include "Application/Api/SketchSceneDirectoryBridge.h"
@@ -121,21 +122,12 @@ enum class ParametricSelectionSubject : std::uint32_t
     Record = 4u
 };
 
-enum class ParametricTransformMode : std::uint32_t
-{
-    Move = 0u,
-    Rotate = 1u,
-    Scale = 2u
-};
+// 📝 The grammar and its vocabulary now live in `SlateWorkspace/Discipline/TransformSequence`. These
+//    aliases keep the host's 93 existing use sites reading as they did, so the lift is visible in the
+//    diff as a lift rather than as a rename of everything it touches.
+using ParametricTransformMode = TransformManner;
 
-enum class ParametricTransformConstraint : std::uint32_t
-{
-    Free = 0u,
-    AxisX = 1u,
-    AxisZ = 2u,
-    Screen = 3u,
-    Curve = 4u
-};
+using ParametricTransformConstraint = TransformRestriction;
 
 struct ParametricViewportSelection
 {
@@ -160,14 +152,15 @@ struct ParametricTransformPlacement
     SpatialPoint Position = {};
 };
 
+// 🔴 The five members the grammar owns — Mode, Engaged, SlideAlongCurve, Constraint and Numeric — are now
+//    one `TransformStanding`, reached through the accessors below. They are NOT duplicated here: a host
+//    copy and a unit copy would drift the first time one was written and the other was not, which is
+//    exactly the defect this step exists to remove.
 struct ParametricTransformState
 {
-    ParametricTransformMode Mode = ParametricTransformMode::Move;
-    bool Engaged = false;
+    TransformStanding Standing = {};
     bool AwaitingRelease = false;
     bool Changed = false;
-    bool SlideAlongCurve = false;
-    ParametricTransformConstraint Constraint = ParametricTransformConstraint::Free;
     ParametricViewportSelection Target = {};
     WorkspaceRecordName Record = {};
     std::vector<ParametricTransformPlacement> Placements = {};
@@ -181,19 +174,24 @@ struct ParametricTransformState
     double StartDistance = 1.0;
     double StartAngle = 0.0;
     SpatialDirection CurveDirection = { 1.0, 0.0, 0.0 };
-    char Numeric[32] = {};
     double PreviewValue = 0.0;
+
+    // 📝 The host reads and writes these by their old names at 93 sites. Rather than rename all of them
+    //    in the same commit that moves the code, the names are kept as accessors onto the one standing
+    //    grammar. There is no second copy of anything.
+    TransformManner&      Mode()            { return Standing.Manner; }
+    TransformManner       Mode() const      { return Standing.Manner; }
+    bool&                 Engaged()         { return Standing.Engaged; }
+    bool                  Engaged() const   { return Standing.Engaged; }
+    bool&                 SlideAlongCurve() { return Standing.SlideAlongCurve; }
+    bool          SlideAlongCurve() const   { return Standing.SlideAlongCurve; }
+    TransformRestriction& Constraint()      { return Standing.Restriction; }
+    TransformRestriction  Constraint() const{ return Standing.Restriction; }
+    char*                 Numeric()         { return Standing.Numeric; }
+    const char*           Numeric() const   { return Standing.Numeric; }
 };
 
-struct ParametricTransformCommandInput
-{
-    std::uint32_t MoveTapCount = 0u;
-    bool StartRequested = false;
-    ParametricTransformMode StartMode = ParametricTransformMode::Move;
-    bool ConstraintRequested = false;
-    ParametricTransformConstraint Constraint = ParametricTransformConstraint::Free;
-    char NumericAppend[32] = {};
-};
+using ParametricTransformCommandInput = TransformCommandIntake;
 
 std::string ShaderStreamDirectory()
 {
@@ -1920,210 +1918,6 @@ ThemeToken TokenFromPacked(std::uint32_t Packed)
     };
 }
 
-const char* TransformModeText(ParametricTransformMode Mode)
-{
-    switch (Mode)
-    {
-        case ParametricTransformMode::Move:   return "Move";
-        case ParametricTransformMode::Rotate: return "Rotate";
-        case ParametricTransformMode::Scale:  return "Scale";
-    }
-    return "Move";
-}
-
-const char* TransformConstraintText(ParametricTransformConstraint Constraint)
-{
-    switch (Constraint)
-    {
-        case ParametricTransformConstraint::Free:   return "Free";
-        case ParametricTransformConstraint::AxisX:  return "X";
-        case ParametricTransformConstraint::AxisZ:  return "Z";
-        case ParametricTransformConstraint::Screen: return "Screen";
-        case ParametricTransformConstraint::Curve:  return "Curve";
-    }
-    return "Free";
-}
-
-const char* TransformCommandToken(ParametricTransformMode Mode)
-{
-    switch (Mode)
-    {
-        case ParametricTransformMode::Move:   return "G";
-        case ParametricTransformMode::Rotate: return "R";
-        case ParametricTransformMode::Scale:  return "S";
-    }
-    return "G";
-}
-
-bool NumericCharacter(char Character)
-{
-    return (Character >= '0' && Character <= '9') || Character == '.' || Character == '-';
-}
-
-void AppendTransformNumericRun(char* Target,
-                               std::size_t Capacity,
-                               const char* Source)
-{
-    std::size_t Occupied = 0u;
-    while (Occupied + 1u < Capacity && Target[Occupied] != '\0')
-        ++Occupied;
-
-    for (std::size_t Index = 0u; Source[Index] != '\0' && Occupied + 1u < Capacity; ++Index)
-        if (NumericCharacter(Source[Index]))
-            Target[Occupied++] = Source[Index];
-    Target[Occupied] = '\0';
-}
-
-ParametricTransformCommandInput ResolveTransformCommandInput(const TextInputCondition& Input,
-                                                             bool Engaged,
-                                                             ParametricTransformMode CurrentMode)
-{
-    ParametricTransformCommandInput Resolved = {};
-    ParametricTransformMode WorkingMode = Engaged ? CurrentMode : ParametricTransformMode::Move;
-    bool ModeStanding = Engaged;
-    std::size_t NumericTaken = 0u;
-
-    for (std::uint32_t Index = 0u; Index < Input.IntakeCount; ++Index)
-    {
-        const char Character = Input.Intake[Index];
-        if (Character == 'g' || Character == 'G')
-        {
-            ++Resolved.MoveTapCount;
-            if (!Engaged && !Resolved.StartRequested)
-            {
-                Resolved.StartRequested = true;
-                Resolved.StartMode = ParametricTransformMode::Move;
-                WorkingMode = ParametricTransformMode::Move;
-                ModeStanding = true;
-            }
-            continue;
-        }
-
-        if ((Character == 'r' || Character == 'R') && !Engaged && !Resolved.StartRequested)
-        {
-            Resolved.StartRequested = true;
-            Resolved.StartMode = ParametricTransformMode::Rotate;
-            WorkingMode = ParametricTransformMode::Rotate;
-            ModeStanding = true;
-            continue;
-        }
-
-        if ((Character == 's' || Character == 'S') && !Engaged && !Resolved.StartRequested)
-        {
-            Resolved.StartRequested = true;
-            Resolved.StartMode = ParametricTransformMode::Scale;
-            WorkingMode = ParametricTransformMode::Scale;
-            ModeStanding = true;
-            continue;
-        }
-
-        if ((Character == 'x' || Character == 'X') && ModeStanding &&
-            (WorkingMode == ParametricTransformMode::Move || WorkingMode == ParametricTransformMode::Scale))
-        {
-            Resolved.ConstraintRequested = true;
-            Resolved.Constraint = ParametricTransformConstraint::AxisX;
-            continue;
-        }
-
-        if ((Character == 'z' || Character == 'Z') && ModeStanding &&
-            (WorkingMode == ParametricTransformMode::Move || WorkingMode == ParametricTransformMode::Scale))
-        {
-            Resolved.ConstraintRequested = true;
-            Resolved.Constraint = ParametricTransformConstraint::AxisZ;
-            continue;
-        }
-
-        if (NumericCharacter(Character) && NumericTaken + 1u < sizeof(Resolved.NumericAppend))
-            Resolved.NumericAppend[NumericTaken++] = Character;
-    }
-
-    Resolved.NumericAppend[NumericTaken] = '\0';
-    return Resolved;
-}
-
-void RetractTransformCommand(ParametricTransformState& Transform)
-{
-    std::size_t Occupied = 0u;
-    while (Occupied + 1u < sizeof(Transform.Numeric) && Transform.Numeric[Occupied] != '\0')
-        ++Occupied;
-
-    if (Occupied > 0u)
-    {
-        Transform.Numeric[Occupied - 1u] = '\0';
-        return;
-    }
-
-    if (Transform.Constraint != ParametricTransformConstraint::Free &&
-        Transform.Constraint != ParametricTransformConstraint::Screen)
-    {
-        Transform.Constraint = ParametricTransformConstraint::Free;
-        Transform.SlideAlongCurve = false;
-    }
-}
-
-void ClearTransformNumeric(ParametricTransformState& Transform)
-{
-    Transform.Numeric[0] = '\0';
-}
-
-bool ResolveNumericOverride(const ParametricTransformState& Transform,
-                            double& Value)
-{
-    if (Transform.Numeric[0] == '\0')
-        return false;
-
-    char* End = nullptr;
-    Value = std::strtod(Transform.Numeric, &End);
-    return End != Transform.Numeric;
-}
-
-bool ResolveMoveSlideRequested(std::uint32_t MoveTapCount,
-                              double SessionMilliseconds,
-                              double LastGPressedMilliseconds,
-                              bool CurveAvailable)
-{
-    return CurveAvailable
-        && (MoveTapCount >= 2u
-         || (MoveTapCount > 0u && (SessionMilliseconds - LastGPressedMilliseconds) <= 350.0));
-}
-
-void FormatTransformCommand(const ParametricTransformState& Transform,
-                            char* Delivered,
-                            std::size_t Capacity)
-{
-    if (Capacity == 0u)
-        return;
-    Delivered[0] = '\0';
-
-    const bool ShowAxisConstraint = Transform.Constraint == ParametricTransformConstraint::AxisX
-                                 || Transform.Constraint == ParametricTransformConstraint::AxisZ;
-    if (Transform.Mode == ParametricTransformMode::Move && Transform.SlideAlongCurve)
-    {
-        if (Transform.Numeric[0] != '\0')
-            std::snprintf(Delivered, Capacity, "G G %s", Transform.Numeric);
-        else
-            std::snprintf(Delivered, Capacity, "G G");
-        return;
-    }
-
-    if (Transform.Numeric[0] != '\0' && ShowAxisConstraint)
-        std::snprintf(Delivered, Capacity, "%s %s %s",
-                      TransformCommandToken(Transform.Mode),
-                      TransformConstraintText(Transform.Constraint),
-                      Transform.Numeric);
-    else if (Transform.Numeric[0] != '\0')
-        std::snprintf(Delivered, Capacity, "%s %s",
-                      TransformCommandToken(Transform.Mode),
-                      Transform.Numeric);
-    else if (ShowAxisConstraint)
-        std::snprintf(Delivered, Capacity, "%s %s",
-                      TransformCommandToken(Transform.Mode),
-                      TransformConstraintText(Transform.Constraint));
-    else
-        std::snprintf(Delivered, Capacity, "%s",
-                      TransformCommandToken(Transform.Mode));
-}
-
 bool ResolvePlanarCoordinates(const SpatialBasis& Basis,
                               const SpatialPoint& Position,
                               double& Along,
@@ -2618,12 +2412,12 @@ void ApplyTransformPlacements(SketchStructure& Sketch,
         double Across = 0.0;
         ResolvePlanarCoordinates(Basis, Origin, Along, Across);
 
-        if (Transform.Mode == ParametricTransformMode::Move)
+        if (Transform.Mode() == ParametricTransformMode::Move)
         {
             Along += AlongOffset;
             Across += AcrossOffset;
         }
-        else if (Transform.Mode == ParametricTransformMode::Rotate)
+        else if (Transform.Mode() == ParametricTransformMode::Rotate)
         {
             const double LocalAlong = Along - Transform.PivotAlong;
             const double LocalAcross = Across - Transform.PivotAcross;
@@ -2632,11 +2426,11 @@ void ApplyTransformPlacements(SketchStructure& Sketch,
             Along = Transform.PivotAlong + LocalAlong * Cosine - LocalAcross * Sine;
             Across = Transform.PivotAcross + LocalAlong * Sine + LocalAcross * Cosine;
         }
-        else if (Transform.Mode == ParametricTransformMode::Scale)
+        else if (Transform.Mode() == ParametricTransformMode::Scale)
         {
-            if (Transform.Constraint == ParametricTransformConstraint::AxisX)
+            if (Transform.Constraint() == ParametricTransformConstraint::AxisX)
                 Along = Transform.PivotAlong + (Along - Transform.PivotAlong) * ScaleFactor;
-            else if (Transform.Constraint == ParametricTransformConstraint::AxisZ)
+            else if (Transform.Constraint() == ParametricTransformConstraint::AxisZ)
                 Across = Transform.PivotAcross + (Across - Transform.PivotAcross) * ScaleFactor;
             else
             {
@@ -2670,16 +2464,16 @@ void RestoreTransformPlacements(SketchStructure& Sketch,
 
 void ClearTransformSession(ParametricTransformState& Transform)
 {
-    Transform.Engaged = false;
+    Transform.Engaged() = false;
     Transform.AwaitingRelease = false;
     Transform.Changed = false;
-    Transform.SlideAlongCurve = false;
-    Transform.Constraint = ParametricTransformConstraint::Free;
+    Transform.SlideAlongCurve() = false;
+    Transform.Constraint() = ParametricTransformConstraint::Free;
     Transform.Target = {};
     Transform.Record = {};
     Transform.Placements.clear();
     Transform.Origins.clear();
-    Transform.Numeric[0] = '\0';
+    Transform.Numeric()[0] = '\0';
     Transform.PreviewValue = 0.0;
 }
 
@@ -2704,11 +2498,11 @@ bool StartTransformSession(const PlaneExtent& Extent,
         return false;
 
     ClearTransformSession(Transform);
-    Transform.Mode = Mode;
-    Transform.Engaged = true;
+    Transform.Mode() = Mode;
+    Transform.Engaged() = true;
     Transform.AwaitingRelease = MouseDriven;
-    Transform.Constraint = Constraint;
-    Transform.SlideAlongCurve = SlideAlongCurve;
+    Transform.Constraint() = Constraint;
+    Transform.SlideAlongCurve() = SlideAlongCurve;
     Transform.Target = Target;
     Transform.Record = RecordName;
     Transform.Pivot = Pivot;
@@ -2749,7 +2543,7 @@ void UpdateTransformSession(const PlaneExtent& Extent,
                             SketchStructure& Sketch,
                             ParametricTransformState& Transform)
 {
-    if (!Transform.Engaged)
+    if (!Transform.Engaged())
         return;
 
     SpatialPoint Probe = Transform.Pivot;
@@ -2763,11 +2557,11 @@ void UpdateTransformSession(const PlaneExtent& Extent,
 
     double AlongOffset = Along - Transform.StartAlong;
     double AcrossOffset = Across - Transform.StartAcross;
-    if (Transform.Constraint == ParametricTransformConstraint::AxisX)
+    if (Transform.Constraint() == ParametricTransformConstraint::AxisX)
         AcrossOffset = 0.0;
-    else if (Transform.Constraint == ParametricTransformConstraint::AxisZ)
+    else if (Transform.Constraint() == ParametricTransformConstraint::AxisZ)
         AlongOffset = 0.0;
-    else if (Transform.Constraint == ParametricTransformConstraint::Curve)
+    else if (Transform.Constraint() == ParametricTransformConstraint::Curve)
     {
         const double AlongDirection = Dot(Transform.CurveDirection, Basis.Along);
         const double AcrossDirection = Dot(Transform.CurveDirection, Basis.Across);
@@ -2785,25 +2579,25 @@ void UpdateTransformSession(const PlaneExtent& Extent,
         Scale = 0.05;
 
     double Numeric = 0.0;
-    const bool HasNumeric = ResolveNumericOverride(Transform, Numeric);
+    const bool HasNumeric = ResolveNumericOverride(Transform.Standing, Numeric);
 
-    if (Transform.Mode == ParametricTransformMode::Move)
+    if (Transform.Mode() == ParametricTransformMode::Move)
     {
         if (HasNumeric)
         {
-            if (Transform.Constraint == ParametricTransformConstraint::AxisZ)
+            if (Transform.Constraint() == ParametricTransformConstraint::AxisZ)
             {
                 AlongOffset = 0.0;
                 AcrossOffset = Numeric;
             }
-            else if (Transform.Constraint == ParametricTransformConstraint::Curve)
+            else if (Transform.Constraint() == ParametricTransformConstraint::Curve)
             {
                 AlongOffset = Dot(Transform.CurveDirection, Basis.Along) * Numeric;
                 AcrossOffset = Dot(Transform.CurveDirection, Basis.Across) * Numeric;
             }
             else
             {
-                Transform.Constraint = ParametricTransformConstraint::AxisX;
+                Transform.Constraint() = ParametricTransformConstraint::AxisX;
                 AlongOffset = Numeric;
                 AcrossOffset = 0.0;
             }
@@ -2826,7 +2620,7 @@ void UpdateTransformSession(const PlaneExtent& Extent,
         }
         Transform.PreviewValue = std::sqrt(AlongOffset * AlongOffset + AcrossOffset * AcrossOffset);
     }
-    else if (Transform.Mode == ParametricTransformMode::Rotate)
+    else if (Transform.Mode() == ParametricTransformMode::Rotate)
     {
         if (HasNumeric)
             Angle = Numeric * Pi / 180.0;
@@ -2855,7 +2649,7 @@ void CommitTransformSession(const WorkspaceRecordStructure& Records,
     {
         const WorkspaceRecord* Record = Records.Resolve(Transform.Record);
         if (Record != nullptr)
-            Revisions.Seal(std::string(TransformModeText(Transform.Mode)) + " " + Record->Naming,
+            Revisions.Seal(std::string(TransformMannerText(Transform.Mode())) + " " + Record->Naming,
                            "Edit Sketch", { Transform.Record }, Revisions.DeclaredCount() + 1u);
     }
     ClearTransformSession(Transform);
@@ -3648,7 +3442,7 @@ void RecordViewportGizmo(OverlayGeometry& Overlay,
         }
     };
 
-    if (Transform.Mode == ParametricTransformMode::Move)
+    if (Transform.Mode() == ParametricTransformMode::Move)
     {
         const std::uint32_t XColour = HoveredHandle == ParametricGizmoHandle::MoveX ? Highlight : XPacked;
         const std::uint32_t ZColour = HoveredHandle == ParametricGizmoHandle::MoveZ ? Highlight : ZPacked;
@@ -3665,7 +3459,7 @@ void RecordViewportGizmo(OverlayGeometry& Overlay,
                      PlaneFill, PlaneColour);
         AddScreenHandle(18.0, HoveredHandle == ParametricGizmoHandle::MoveFree ? Highlight : White);
     }
-    else if (Transform.Mode == ParametricTransformMode::Rotate)
+    else if (Transform.Mode() == ParametricTransformMode::Rotate)
     {
         AddRing(AxisZ, AxisY, 64.0, HoveredHandle == ParametricGizmoHandle::Rotate ? Highlight : XPacked, 2.2f);
         AddRing(AxisX, AxisZ, 70.0, HoveredHandle == ParametricGizmoHandle::Rotate ? Highlight : ZPacked, 2.2f);
@@ -3690,21 +3484,21 @@ void RecordViewportGizmo(OverlayGeometry& Overlay,
                      PlaneFill, FreeColour);
     }
 
-    if (Transform.Engaged)
+    if (Transform.Engaged())
     {
         SpatialDirection GuideAxis = {};
         bool Guided = false;
-        if (Transform.Constraint == ParametricTransformConstraint::AxisX)
+        if (Transform.Constraint() == ParametricTransformConstraint::AxisX)
         {
             GuideAxis = AxisX;
             Guided = true;
         }
-        else if (Transform.Constraint == ParametricTransformConstraint::AxisZ)
+        else if (Transform.Constraint() == ParametricTransformConstraint::AxisZ)
         {
             GuideAxis = AxisZ;
             Guided = true;
         }
-        else if (Transform.Constraint == ParametricTransformConstraint::Curve)
+        else if (Transform.Constraint() == ParametricTransformConstraint::Curve)
         {
             GuideAxis = Transform.CurveDirection;
             Guided = true;
@@ -3718,28 +3512,28 @@ void RecordViewportTransformReadout(RecordingSurface& Surface,
                                     const PlaneExtent& Extent,
                                     const ParametricTransformState& Transform)
 {
-    if (!Transform.Engaged)
+    if (!Transform.Engaged())
         return;
 
     char Detail[160] = {};
     char Command[64] = {};
-    FormatTransformCommand(Transform, Command, sizeof(Command));
+    FormatTransformCommand(Transform.Standing, Command, sizeof(Command));
 
-    if (Transform.Mode == ParametricTransformMode::Rotate)
+    if (Transform.Mode() == ParametricTransformMode::Rotate)
         std::snprintf(Detail, sizeof(Detail), "%s • %.1f° • %s",
                       Command,
                       Transform.PreviewValue,
-                      Transform.SlideAlongCurve ? "curve slide" : TransformModeText(Transform.Mode));
-    else if (Transform.Mode == ParametricTransformMode::Scale)
+                      Transform.SlideAlongCurve() ? "curve slide" : TransformMannerText(Transform.Mode()));
+    else if (Transform.Mode() == ParametricTransformMode::Scale)
         std::snprintf(Detail, sizeof(Detail), "%s • %.3fx • %s",
                       Command,
                       Transform.PreviewValue,
-                      TransformModeText(Transform.Mode));
+                      TransformMannerText(Transform.Mode()));
     else
         std::snprintf(Detail, sizeof(Detail), "%s • %.2f • %s",
                       Command,
                       Transform.PreviewValue,
-                      Transform.SlideAlongCurve ? "curve slide" : TransformModeText(Transform.Mode));
+                      Transform.SlideAlongCurve() ? "curve slide" : TransformMannerText(Transform.Mode()));
 
     const float Width = Surface.MeasureRun(Detail, 11.0f, 0.0f);
     Surface.TextRun(Extent.MinimumX + (Extent.Width() - Width) * 0.5f,
@@ -4077,7 +3871,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     }
 
     ConstraintSubject ActiveConstraintSubject = ConstraintSubject::Fixed;
-    if (!Transform.Engaged && Pointer.ContactPressed && ConstraintToolSubject(ActiveTool, ActiveConstraintSubject))
+    if (!Transform.Engaged() && Pointer.ContactPressed && ConstraintToolSubject(ActiveTool, ActiveConstraintSubject))
     {
         if (ApplyViewportConstraintTool(ActiveTool, Naming, Sketch, Records, Revisions,
                                         ActiveSelection, HoveredSelection, PendingSelection))
@@ -4087,7 +3881,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
         }
     }
 
-    if (!PointerTaken && !Transform.Engaged && Probed && Pointer.ContactPressed &&
+    if (!PointerTaken && !Transform.Engaged() && Probed && Pointer.ContactPressed &&
         (ActiveTool == ParametricToolSubject::Trim || ActiveTool == ParametricToolSubject::Extend ||
          ActiveTool == ParametricToolSubject::Offset || ActiveTool == ParametricToolSubject::Fillet ||
          ActiveTool == ParametricToolSubject::Chamfer || ActiveTool == ParametricToolSubject::LinearArray ||
@@ -4102,14 +3896,14 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     }
 
     ParametricGizmoHandle HoveredHandle = ParametricGizmoHandle::None;
-    if (!Transform.Engaged && ActiveSelection.Standing() && SelectedTool(ActiveTool).Subject == SketchSubject::None)
+    if (!Transform.Engaged() && ActiveSelection.Standing() && SelectedTool(ActiveTool).Subject == SketchSubject::None)
     {
         GizmoScreenBasis Screen = {};
         if (ResolveGizmoScreenBasis(Basis, View, Perspective, Extent, ActiveSelection.Position, Screen))
-            HoveredHandle = ResolveGizmoHandle(Pointer, Screen, Transform.Mode);
+            HoveredHandle = ResolveGizmoHandle(Pointer, Screen, Transform.Mode());
     }
 
-    if (!PointerTaken && !Transform.Engaged && SelectedTool(ActiveTool).Subject == SketchSubject::None &&
+    if (!PointerTaken && !Transform.Engaged() && SelectedTool(ActiveTool).Subject == SketchSubject::None &&
         Pointer.ContactPressed && HoveredHandle == ParametricGizmoHandle::None && HoveredSelection.Standing())
     {
         SemanticSelection = HoveredSelection;
@@ -4118,9 +3912,9 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     }
 
     const ParametricTransformCommandInput Command =
-        ResolveTransformCommandInput(TextInput, Transform.Engaged, Transform.Mode);
+        ResolveTransformCommand(TextInput.Intake, TextInput.IntakeCount, Transform.Engaged(), Transform.Mode());
 
-    if (!Transform.Engaged && ActiveSelection.Standing() && Extent.Encloses(Pointer.PositionX, Pointer.PositionY))
+    if (!Transform.Engaged() && ActiveSelection.Standing() && Extent.Encloses(Pointer.PositionX, Pointer.PositionY))
     {
         if (HoveredHandle != ParametricGizmoHandle::None && Pointer.ContactPressed)
         {
@@ -4167,8 +3961,8 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
         }
         else if (Command.StartRequested)
         {
-            const bool Slide = Command.StartMode == ParametricTransformMode::Move
-                            && ResolveMoveSlideRequested(Command.MoveTapCount,
+            const bool Slide = Command.StartManner == ParametricTransformMode::Move
+                            && ResolveSlideRequested(Command.MoveTapCount,
                                                          SessionMilliseconds,
                                                          LastGPressedMilliseconds,
                                                          ActiveSelection.Curve.Assigned());
@@ -4176,42 +3970,42 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
                 LastGPressedMilliseconds = SessionMilliseconds;
             PointerTaken = StartTransformSession(Extent, Pointer, Basis, View, Perspective,
                                                  Sketch, Records, ActiveSelection,
-                                                 Command.StartMode,
+                                                 Command.StartManner,
                                                  Slide ? ParametricTransformConstraint::Curve
-                                                       : (Command.StartMode == ParametricTransformMode::Rotate
+                                                       : (Command.StartManner == ParametricTransformMode::Rotate
                                                             ? ParametricTransformConstraint::Screen
                                                             : ParametricTransformConstraint::Free),
                                                  Slide, false, Transform);
         }
     }
 
-    if (Transform.Engaged)
+    if (Transform.Engaged())
     {
-        const bool SlideRequested = Transform.Mode == ParametricTransformMode::Move
-                                 && ResolveMoveSlideRequested(Command.MoveTapCount,
+        const bool SlideRequested = Transform.Mode() == ParametricTransformMode::Move
+                                 && ResolveSlideRequested(Command.MoveTapCount,
                                                               SessionMilliseconds,
                                                               LastGPressedMilliseconds,
                                                               Transform.Target.Curve.Assigned());
-        if (Transform.Mode == ParametricTransformMode::Move && Command.MoveTapCount > 0u)
+        if (Transform.Mode() == ParametricTransformMode::Move && Command.MoveTapCount > 0u)
             LastGPressedMilliseconds = SessionMilliseconds;
 
         if (SlideRequested)
         {
-            Transform.Constraint = ParametricTransformConstraint::Curve;
-            Transform.SlideAlongCurve = true;
+            Transform.Constraint() = ParametricTransformConstraint::Curve;
+            Transform.SlideAlongCurve() = true;
         }
-        else if (Command.ConstraintRequested)
+        else if (Command.RestrictionRequested)
         {
-            Transform.Constraint = Command.Constraint;
-            Transform.SlideAlongCurve = false;
+            Transform.Constraint() = Command.Restriction;
+            Transform.SlideAlongCurve() = false;
         }
 
         if (Command.NumericAppend[0] != '\0')
-            AppendTransformNumericRun(Transform.Numeric, sizeof(Transform.Numeric), Command.NumericAppend);
+            AppendTransformNumericRun(Transform.Numeric(), TransformNumericLimit, Command.NumericAppend);
         if (TextInput.BackspacePressed)
-            RetractTransformCommand(Transform);
+            RetractTransformCommand(Transform.Standing);
         if (TextInput.DeletePressed)
-            ClearTransformNumeric(Transform);
+            ClearTransformNumeric(Transform.Standing);
 
         if (TextInput.CancelPressed)
         {
@@ -5010,7 +4804,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                             RecordViewportOrientationHud(Viewport.Surface(), LeafBody, BackgroundPointer,
                                                          View, PanelConfiguration[Index],
                                                          PointerTaken);
-                            if (!PointerTaken && !Transform.Engaged)
+                            if (!PointerTaken && !Transform.Engaged())
                                 DriveViewport(LeafBody, BackgroundPointer, Modifiers,
                                               View, PanelConfiguration[Index].Perspective);
 
@@ -5036,7 +4830,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                                SessionMilliseconds,
                                                                LastGPressedMilliseconds);
 
-                            if (!Transform.Engaged)
+                            if (!Transform.Engaged())
                                 DriveDrawingWithModifiers(LeafBody, BackgroundPointer,
                                                          Viewport.Surface().TextInput(), Modifiers,
                                                          Basis, View,
@@ -5401,7 +5195,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         }
         else if (Viewport.Seam().KeyPressed(KeySubject::Withdraw))
         {
-            if (Transform.Engaged)
+            if (Transform.Engaged())
                 CancelTransformSession(Sketch, Transform);
             else
                 Tool.Abandon();

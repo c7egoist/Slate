@@ -400,3 +400,40 @@ name — it scales a figure by display scale. And `Difference(Left, Right)` retu
 The fold has a wide blast radius by design: a wrong sign is now wrong everywhere at once rather than in one
 file. `SpatialArithmeticProof` therefore states the arithmetic independently of the implementation — `Cross`
 is checked by perpendicularity as well as by components — and is negative-tested with three sabotages.
+
+**10c — the hosts stop building arrangements.** `ConstructParametricLayout` is deleted and its three call
+sites apply `DeclaredSketchWorkspace`. The other two hosts had a quieter version of the same defect: each ran
+`Register(subject)` on one line and hand-built a partition on another, with **nothing tying the two
+together** — a host could register one discipline and seat another's panels and still compile.
+`DeclaredWorkspaceFor` is that join.
+
+🔴 **`PaintHost` is deliberately NOT wired to its own subject.** Routing it through
+`DeclaredWorkspaceFor(Painting)` would seat the texturing arrangement, which includes a layer-stack panel —
+and the only panel subject that host renders is `Viewport`. It would have drawn a blank hole. It applies the
+blank workspace explicitly, with the reason recorded at the declaration. That is the **second** time this
+refactor that moving a host onto shared code would have silently changed what the artist sees; checking
+which panel subjects a host can actually render is now part of the procedure.
+
+**10d — the transform keyboard grammar, lifted and tested for the first time.** G/R/S start a move, rotate
+or scale, X and Z restrict to an axis, digits type an exact amount, backspace walks back out, and a second G
+slides along the curve. Eleven file-local functions, ~200 lines, now
+`SlateWorkspace/Discipline/TransformSequence`.
+
+🔴 **It had never been tested, because it could not be.** Interleaved with viewport drawing, it needed a
+Vulkan device to reach. `TransformSequenceProof` is the 60 claims that were owed, and it found three
+behaviours worth pinning rather than correcting: a minus sign is taken mid-run (so `strtod` truncates rather
+than the keystroke being refused); two G in one frame count as a double tap (a slow frame must not break the
+gesture); and **the reader sees characters, not words — a stray `r` in ordinary text starts a rotate**. That
+last one is safe only because the viewport and a text field never both receive a frame, a constraint the
+host stated nowhere.
+
+⚠️ The host keeps its 93 use sites by holding ONE `TransformStanding` and exposing the five old names as
+accessors onto it. There is no second copy — a host copy and a unit copy would drift the first time one was
+written and the other was not. Folding the fields caught a real defect in the process:
+`sizeof(Transform.Numeric())` on an accessor is `sizeof(char*)`, so the extent now comes from the grammar's
+own `TransformNumericLimit`.
+
+Negative-tested with four sabotages: retracting the restriction before the digits, letting X restrict a
+rotation, widening the tap window, and letting a bare X restrict with no manner standing.
+
+`ParametricSketchHost` 5 757 → **5 268** across step 10 so far.

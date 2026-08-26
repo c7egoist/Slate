@@ -31,6 +31,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Immediate-mode drawing         | `SlateUI/Interface/RecordingSurface` (inside `InterfaceExchange`)         |
 | Panels, drawers, docking       | `SlateUI/Interface/{EditorPanel,WorkspacePanel,PanelStructure,DrawerSpace}` |
 | Which panels a discipline seats| `SlateWorkspace/Discipline/WorkspaceDeclaration` — the arrangement as data, not a procedure |
+| Transform keyboard grammar     | `SlateWorkspace/Discipline/TransformSequence` — G/R/S, axis letters, typed amounts, the curve-slide double tap. **Not the arithmetic**, which stays with the geometry |
 | Vector arithmetic on `Spatial*`| `SlateShape/Geometry/CurveSpecification` — `Dot`, `Cross`, `Normalize`, `Added`, `Difference`, `Scaled`, `Negated`, `LengthSquared`. **Never re-copy these into a translation unit**; a local copy plus the header makes every call ambiguous |
 | Theme, appearance, typography  | `SlateUI/Interface/{ThemeInterchange,ThemeSpecification,AppearanceSpecification}` |
 | Content browser                | `SlateUI/Interface/ContentBrowserPanel`                                  |
