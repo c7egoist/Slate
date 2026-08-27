@@ -11,6 +11,8 @@
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 #include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "Application/Api/ParametricWorkspaceBridge.h"
 #include "Application/Api/SketchSceneDirectoryBridge.h"
@@ -84,34 +86,13 @@ constexpr ThemeToken Faded(ThemeToken Declared, float Fraction)
     return Declared;
 }
 
-struct SpatialBasis
-{
-    SpatialPoint Origin = {};
-    SpatialDirection Along = { 1.0, 0.0, 0.0 };
-    SpatialDirection Across = { 0.0, 0.0, 1.0 };
-    SpatialDirection Normal = { 0.0, 1.0, 0.0 };
-};
 
-enum class ParametricViewOrientation : std::uint32_t
-{
-    Top = 0u,
-    Bottom = 1u,
-    Front = 2u,
-    Back = 3u,
-    Left = 4u,
-    Right = 5u,
-    Isometric = 6u
-};
+// 📝 The plane, the view and the projection now live in
+//    `SlateWorkspace/Discipline/ViewportProjection`. These aliases keep the host's existing spellings so
+//    the lift reads as a lift in the diff rather than as a rename of everything it touches.
+using ParametricViewOrientation = ViewportOrientation;
 
-struct ParametricViewportState
-{
-    ParametricViewOrientation Orientation = ParametricViewOrientation::Top;
-    SpatialPoint Focus = {};
-    double Distance = 240.0;
-    double OrthoScale = 3.0;
-    double OrbitYaw = 45.0;
-    double OrbitPitch = 30.0;
-};
+using ParametricViewportState = ViewportStanding;
 
 enum class ParametricSelectionSubject : std::uint32_t
 {
@@ -300,165 +281,6 @@ void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::fi
                             SceneMeshFormatSupported(Current.path().string()) ||
                             MaterialImageFormatSupported(Current.path().string());
     }
-}
-
-SpatialBasis ResolveSketchBasis(const SketchStructure& Sketch)
-{
-    if (!Sketch.Declared())
-        return { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
-
-    const SketchPlane& Plane = Sketch.HeldPlane();
-    const SpatialDirection Along = Normalize(Plane.AlongDirection);
-    const SpatialDirection Normal = Normalize(Plane.Normal);
-    const SpatialDirection Across = Normalize(Cross(Normal, Along));
-    return { Plane.Origin, Along, Across, Normal };
-}
-
-SpatialPoint ResolvePlanarPoint(const SpatialBasis& Basis, double Along, double Across)
-{
-    return Added(Basis.Origin,
-                 Added(Scaled(Basis.Along, Along),
-                       Scaled(Basis.Across, Across)));
-}
-
-void ApplyViewportOrientation(ParametricViewportState& View,
-                              ParametricViewOrientation Orientation,
-                              bool Perspective)
-{
-    View.Orientation = Orientation;
-    if (Perspective)
-    {
-        if (Orientation == ParametricViewOrientation::Isometric)
-        {
-            View.OrbitYaw = 45.0;
-            View.OrbitPitch = 30.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Top)
-        {
-            View.OrbitYaw = 0.0;
-            View.OrbitPitch = 89.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Bottom)
-        {
-            View.OrbitYaw = 0.0;
-            View.OrbitPitch = -89.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Front)
-        {
-            View.OrbitYaw = 0.0;
-            View.OrbitPitch = 0.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Back)
-        {
-            View.OrbitYaw = 180.0;
-            View.OrbitPitch = 0.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Left)
-        {
-            View.OrbitYaw = -90.0;
-            View.OrbitPitch = 0.0;
-        }
-        else if (Orientation == ParametricViewOrientation::Right)
-        {
-            View.OrbitYaw = 90.0;
-            View.OrbitPitch = 0.0;
-        }
-    }
-}
-
-const char* OrientationText(ParametricViewOrientation Orientation)
-{
-    switch (Orientation)
-    {
-        case ParametricViewOrientation::Top:       return "Top";
-        case ParametricViewOrientation::Bottom:    return "Bottom";
-        case ParametricViewOrientation::Front:     return "Front";
-        case ParametricViewOrientation::Back:      return "Back";
-        case ParametricViewOrientation::Left:      return "Left";
-        case ParametricViewOrientation::Right:     return "Right";
-        case ParametricViewOrientation::Isometric: return "Perspective";
-    }
-    return "Top";
-}
-
-struct ViewFrame
-{
-    SpatialPoint Eye = {};
-    SpatialDirection Right = { 1.0, 0.0, 0.0 };
-    SpatialDirection Up = { 0.0, 0.0, 1.0 };
-    SpatialDirection Forward = { 0.0, -1.0, 0.0 };
-};
-
-ViewFrame ResolveViewportFrame(const SpatialBasis& Basis,
-                               const ParametricViewportState& View,
-                               bool Perspective)
-{
-    if (!Perspective)
-    {
-        switch (View.Orientation)
-        {
-            case ParametricViewOrientation::Top:
-                return { Added(View.Focus, Scaled(Basis.Normal, 100.0)), Basis.Along, Basis.Across, Negated(Basis.Normal) };
-            case ParametricViewOrientation::Bottom:
-                return { Added(View.Focus, Scaled(Basis.Normal, -100.0)), Basis.Along, Negated(Basis.Across), Basis.Normal };
-            case ParametricViewOrientation::Front:
-                return { Added(View.Focus, Scaled(Basis.Across, -100.0)), Basis.Along, Basis.Normal, Basis.Across };
-            case ParametricViewOrientation::Back:
-                return { Added(View.Focus, Scaled(Basis.Across, 100.0)), Basis.Along, Negated(Basis.Normal), Negated(Basis.Across) };
-            case ParametricViewOrientation::Left:
-                return { Added(View.Focus, Scaled(Basis.Along, -100.0)), Basis.Across, Basis.Normal, Basis.Along };
-            case ParametricViewOrientation::Right:
-                return { Added(View.Focus, Scaled(Basis.Along, 100.0)), Negated(Basis.Across), Basis.Normal, Negated(Basis.Along) };
-            case ParametricViewOrientation::Isometric:
-                break;
-        }
-    }
-
-    const double Yaw = View.OrbitYaw * Pi / 180.0;
-    const double Pitch = View.OrbitPitch * Pi / 180.0;
-    const SpatialDirection Forward = Normalize(Added(
-        Added(Scaled(Basis.Along, std::sin(Yaw) * std::cos(Pitch)),
-              Scaled(Basis.Normal, std::sin(Pitch))),
-        Scaled(Negated(Basis.Across), std::cos(Yaw) * std::cos(Pitch))));
-    const SpatialDirection Right = Normalize(Cross(Forward, Basis.Normal));
-    const SpatialDirection Up = Normalize(Cross(Right, Forward));
-    return { Added(View.Focus, Scaled(Forward, -View.Distance)), Right, Up, Forward };
-}
-
-bool ProjectViewportPoint(const SpatialBasis& Basis,
-                          const ParametricViewportState& View,
-                          bool Perspective,
-                          const PlaneExtent& Extent,
-                          double Along,
-                          double Across,
-                          float& ScreenX,
-                          float& ScreenY)
-{
-    const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
-    const SpatialPoint Position = ResolvePlanarPoint(Basis, Along, Across);
-
-    if (!Perspective)
-    {
-        const SpatialDirection Offset = Difference(View.Focus, Position);
-        const double X = Dot(Offset, Frame.Right);
-        const double Y = Dot(Offset, Frame.Up);
-        ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + X * View.OrthoScale);
-        ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5 - Y * View.OrthoScale);
-        return true;
-    }
-
-    const SpatialDirection EyeToPoint = Difference(Frame.Eye, Position);
-    const double CameraX = Dot(EyeToPoint, Frame.Right);
-    const double CameraY = Dot(EyeToPoint, Frame.Up);
-    const double CameraZ = Dot(EyeToPoint, Frame.Forward);
-    if (CameraZ <= 0.01)
-        return false;
-
-    const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * Pi / 180.0);
-    const double Focal = (Extent.Height() * 0.5) / TanHalf;
-    ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + CameraX / CameraZ * Focal);
-    ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5 - CameraY / CameraZ * Focal);
-    return true;
 }
 
 WorkspaceCadProjection ResolveCadProjection(const SpatialBasis& Basis,
@@ -932,58 +754,6 @@ void AdoptCommittedShape(SketchSubject Subject,
     }
 }
 
-bool ResolveViewportPlaneIntersection(const SpatialBasis& Basis,
-                                      const ParametricViewportState& View,
-                                      bool Perspective,
-                                      const PlaneExtent& Extent,
-                                      float ScreenX,
-                                      float ScreenY,
-                                      SpatialPoint& Position)
-{
-    const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
-    const double NdcX = (static_cast<double>(ScreenX) - (Extent.MinimumX + Extent.Width() * 0.5)) / (Extent.Width() * 0.5);
-    const double NdcY = ((Extent.MinimumY + Extent.Height() * 0.5) - static_cast<double>(ScreenY)) / (Extent.Height() * 0.5);
-
-    SpatialPoint RayOrigin = {};
-    SpatialDirection RayDirection = {};
-
-    if (!Perspective)
-    {
-        const double Along = NdcX * (Extent.Width() * 0.5) / View.OrthoScale;
-        const double Across = NdcY * (Extent.Height() * 0.5) / View.OrthoScale;
-        RayOrigin = Added(View.Focus, Added(Scaled(Frame.Right, Along), Scaled(Frame.Up, Across)));
-        RayDirection = Frame.Forward;
-    }
-    else
-    {
-        const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * Pi / 180.0);
-        const double Aspect = Extent.Width() / Extent.Height();
-        RayOrigin = Frame.Eye;
-        RayDirection = Normalize(Added(Added(Scaled(Frame.Right, NdcX * TanHalf * Aspect),
-                                              Scaled(Frame.Up, NdcY * TanHalf)),
-                                        Frame.Forward));
-    }
-
-    const SpatialDirection EyeToPlane = Difference(RayOrigin, Basis.Origin);
-    const double Denominator = Dot(RayDirection, Basis.Normal);
-    if (std::fabs(Denominator) <= 1.0e-6)
-        return false;
-
-    const double Distance = -Dot(EyeToPlane, Basis.Normal) / Denominator;
-    if (Distance < 0.0)
-        return false;
-
-    Position = Added(RayOrigin, Scaled(RayDirection, Distance));
-    return true;
-}
-
-double ResolveSnapTolerance(const ParametricViewportState& View,
-                            bool Perspective)
-{
-    return Perspective ? std::max(View.Distance * 0.02, 2.0)
-                       : std::max(10.0 / std::max(View.OrthoScale, 0.001), 0.25);
-}
-
 WorkspaceRecordName ResolveCategoryFolder(const WorkspaceRecordStructure& Records,
                                           WorkspaceCategory Category)
 {
@@ -1150,9 +920,6 @@ bool ResolveThreePointCircle(const SpatialPoint& A,
     return Radius > 1.0e-6;
 }
 
-void ResolvePlaneCoordinates(const SpatialBasis& Basis, const SpatialPoint& Position,
-                             double& Along, double& Across);
-
 void SealConstraintRecord(WorkspaceNameIndex& Naming,
                           WorkspaceRecordStructure& Records,
                           WorkspaceRevisionSequence& Revisions,
@@ -1222,14 +989,6 @@ void AddLineAutoConstraints(WorkspaceNameIndex& Naming,
 SpatialPoint ResolvePlanePosition(const SpatialBasis& Basis, double Along, double Across)
 {
     return ResolvePlanarPoint(Basis, Along, Across);
-}
-
-void ResolvePlaneCoordinates(const SpatialBasis& Basis, const SpatialPoint& Position,
-                             double& Along, double& Across)
-{
-    const SpatialDirection Offset = Difference(Basis.Origin, Position);
-    Along = Dot(Offset, Basis.Along);
-    Across = Dot(Offset, Basis.Across);
 }
 
 SketchSnapPlacement ResolveGridSnap(const SpatialBasis& Basis,
@@ -1934,20 +1693,6 @@ SpatialPoint ResolvePlanarPointLocal(const SpatialBasis& Basis,
                                      double Across)
 {
     return ResolvePlanarPoint(Basis, Along, Across);
-}
-
-bool ProjectSpatialPoint(const SpatialBasis& Basis,
-                         const ParametricViewportState& View,
-                         bool Perspective,
-                         const PlaneExtent& Extent,
-                         const SpatialPoint& Position,
-                         float& ScreenX,
-                         float& ScreenY)
-{
-    double Along = 0.0;
-    double Across = 0.0;
-    ResolvePlanarCoordinates(Basis, Position, Along, Across);
-    return ProjectViewportPoint(Basis, View, Perspective, Extent, Along, Across, ScreenX, ScreenY);
 }
 
 bool ProjectWorldPoint(const SpatialBasis& Basis,

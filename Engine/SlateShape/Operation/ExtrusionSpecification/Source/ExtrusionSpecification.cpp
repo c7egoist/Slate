@@ -52,19 +52,6 @@ namespace
         return LengthSquared(Offset) <= 1.0e-18;
     }
 
-    SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
-                                      const SpatialDirection& Axis,
-                                      double Radians)
-    {
-        const SpatialDirection UnitAxis = Normalize(Axis);
-        const double Cosine = std::cos(Radians);
-        const double Sine = std::sin(Radians);
-        const SpatialDirection Parallel = Scaled(UnitAxis, Dot(UnitAxis, Subject));
-        const SpatialDirection Perpendicular = Added(Subject, Negated(Parallel));
-        const SpatialDirection Crossed = Cross(UnitAxis, Subject);
-        return Added(Added(Scaled(Perpendicular, Cosine), Scaled(Crossed, Sine)), Parallel);
-    }
-
     SpatialPoint PointAlong(const SpatialPoint& Origin,
                             const SpatialDirection& Direction,
                             double Distance)

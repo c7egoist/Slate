@@ -17,24 +17,6 @@ namespace Slate
 
 namespace
 {
-    SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
-                                      const SpatialDirection& Axis,
-                                      double Radians)
-    {
-        const SpatialDirection UnitAxis = Normalize(Axis);
-        const double Cosine = std::cos(Radians);
-        const double Sine = std::sin(Radians);
-        const double Projection = Dot(UnitAxis, Subject);
-        const SpatialDirection Parallel = Scaled(UnitAxis, Projection);
-        const SpatialDirection Perpendicular = { Subject.Left - Parallel.Left,
-                                                 Subject.Up - Parallel.Up,
-                                                 Subject.Forward - Parallel.Forward };
-        const SpatialDirection Crossed = Cross(UnitAxis, Subject);
-        return { Perpendicular.Left * Cosine + Crossed.Left * Sine + Parallel.Left,
-                 Perpendicular.Up * Cosine + Crossed.Up * Sine + Parallel.Up,
-                 Perpendicular.Forward * Cosine + Crossed.Forward * Sine + Parallel.Forward };
-    }
-
     PlanarPoint Flatten(const SketchPlane& Plane,
                         const SpatialPoint& Position)
     {
@@ -205,34 +187,6 @@ namespace
         return false;
     }
 
-    bool ResolveCircularTarget(const SketchStructure& Declared,
-                               SketchCurveName Subject,
-                               SpatialPoint& Centre,
-                               SpatialDirection& Normal,
-                               double& Radius)
-    {
-        if (!Subject.Assigned() || Subject.IssuedIndex > Declared.Curves().size())
-            return false;
-        const CurveSpecification& Geometry = Declared.Curves()[Subject.IssuedIndex - 1u].Geometry;
-        if (!Geometry.Declared())
-            return false;
-
-        switch (Geometry.Subject())
-        {
-            case CurveSubject::Circle:
-                Centre = Geometry.HeldCircle().Centre;
-                Normal = Geometry.HeldCircle().Normal;
-                Radius = Geometry.HeldCircle().Radius;
-                return true;
-            case CurveSubject::CircularArc:
-                Centre = Geometry.HeldCircularArc().Centre;
-                Normal = Geometry.HeldCircularArc().Normal;
-                Radius = Geometry.HeldCircularArc().Radius;
-                return true;
-            default:
-                return false;
-        }
-    }
 }
 
 DimensionDisposition EvaluateDimensions(const SketchStructure& Declared)

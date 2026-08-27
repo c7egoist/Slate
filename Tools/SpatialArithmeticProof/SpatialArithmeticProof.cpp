@@ -18,7 +18,7 @@
 using namespace Slate;
 int F=0,C=0;
 void K(bool h,const char*w){++C; if(!h){++F;printf("  FAIL %s\n",w);} }
-bool Near(double a,double b){return std::fabs(a-b)<1e-12;}
+bool Near(double a,double b,double t=1e-12){return std::fabs(a-b)<t;}
 int main(){
   const SpatialDirection A{1.0,2.0,3.0}, B{-4.0,5.0,-6.0};
   const SpatialPoint P{7.0,8.0,9.0}, Q{1.0,1.0,1.0};
@@ -42,6 +42,27 @@ int main(){
   const SpatialDirection Z=Normalize(SpatialDirection{0.0,0.0,0.0});
   K(Near(Z.Left,1.0)&&Near(Z.Up,0.0)&&Near(Z.Forward,0.0),"Normalize of nothing gives the left axis");
   static_assert(LengthSquared(SpatialDirection{1.0,2.0,2.0})==9.0,"constexpr");
+
+  // Rodrigues' rotation, folded from TEN copies in FIVE different spellings.
+  const SpatialDirection Axis{0.0,1.0,0.0}, Ref{1.0,0.0,0.0};
+  const double Quarter = 1.5707963267948966;
+  const SpatialDirection Turned = RotateAroundAxis(Ref, Axis, Quarter);
+  K(Near(LengthSquared(Turned),1.0),"rotation preserves length");
+  K(Near(Dot(Turned,Ref),0.0),"a quarter turn is perpendicular to where it started");
+  K(Near(RotateAroundAxis(Ref,Axis,0.0).Left,1.0),"no rotation changes nothing");
+  // 🔴 The component along the axis is untouched; only the perpendicular part turns.
+  const SpatialDirection AlongAxis = RotateAroundAxis(Axis, Axis, 1.234);
+  K(Near(AlongAxis.Left,0.0)&&Near(AlongAxis.Up,1.0)&&Near(AlongAxis.Forward,0.0),
+    "a direction along the axis is unchanged by rotating about it");
+  // Four quarter turns return to the start.
+  SpatialDirection Round = Ref;
+  for (int i=0;i<4;++i) Round = RotateAroundAxis(Round, Axis, Quarter);
+  K(Near(Round.Left,1.0,1e-9)&&Near(Round.Up,0.0,1e-9)&&Near(Round.Forward,0.0,1e-9),
+    "four quarter turns come back to the start");
+  // ⚠️ The axis need not arrive unit — it is normalised inside.
+  const SpatialDirection Long = RotateAroundAxis(Ref, SpatialDirection{0.0,7.0,0.0}, Quarter);
+  K(Near(Long.Left,Turned.Left,1e-12)&&Near(Long.Forward,Turned.Forward,1e-12),
+    "a non-unit axis gives the same rotation");
   printf("%d claims, %d failures\n%s\n",C,F,F?"REFUTED":"PROVEN");
   return F?1:0;
 }

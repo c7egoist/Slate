@@ -11,18 +11,6 @@ namespace Slate
 
 namespace
 {
-    SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
-                                      const SpatialDirection& Axis,
-                                      double Radians)
-    {
-        const SpatialDirection UnitAxis = Normalize(Axis);
-        const double Cosine = std::cos(Radians);
-        const double Sine = std::sin(Radians);
-        const SpatialDirection Parallel = Scaled(UnitAxis, Dot(UnitAxis, Subject));
-        const SpatialDirection Perpendicular = Added(Subject, Scaled(Parallel, -1.0));
-        const SpatialDirection Crossed = Cross(UnitAxis, Subject);
-        return Added(Added(Scaled(Perpendicular, Cosine), Scaled(Crossed, Sine)), Parallel);
-    }
 }
 
 CurveSpecification CurveSpecification::DeclareLine(const SpatialPoint& Origin,

@@ -12,23 +12,6 @@ namespace Slate
 
 namespace
 {
-    SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
-                                      const SpatialDirection& Axis,
-                                      double Radians)
-    {
-        const SpatialDirection UnitAxis = Normalize(Axis);
-        const double Cosine = std::cos(Radians);
-        const double Sine = std::sin(Radians);
-        const SpatialDirection Parallel = Scaled(UnitAxis, Dot(UnitAxis, Subject));
-        const SpatialDirection Perpendicular = { Subject.Left - Parallel.Left,
-                                                 Subject.Up - Parallel.Up,
-                                                 Subject.Forward - Parallel.Forward };
-        const SpatialDirection Crossed = Cross(UnitAxis, Subject);
-        return { Perpendicular.Left * Cosine + Crossed.Left * Sine + Parallel.Left,
-                 Perpendicular.Up * Cosine + Crossed.Up * Sine + Parallel.Up,
-                 Perpendicular.Forward * Cosine + Crossed.Forward * Sine + Parallel.Forward };
-    }
-
     SpatialPoint MirrorPoint(const SpatialPoint& Subject,
                              const SpatialPoint& AxisStart,
                              const SpatialPoint& AxisEnd)

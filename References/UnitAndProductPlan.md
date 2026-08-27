@@ -437,3 +437,44 @@ Negative-tested with four sabotages: retracting the restriction before the digit
 rotation, widening the tap window, and letting a bare X restrict with no manner standing.
 
 `ParametricSketchHost` 5 757 → **5 268** across step 10 so far.
+
+**10e — the viewport projection, and TWO SHIPPED DEFECTS it exposed.** Where a point on the sketch plane
+lands on screen, and which point a screen position names: nine functions and four types, now
+`SlateWorkspace/Discipline/ViewportProjection`.
+
+🔴 **A projection can only be checked against its own inverse.** Screen coordinates are meaningless on their
+own — no reader can say whether 412.7 is the right pixel — but *project this point, unproject the result,
+get the point back* is checkable without knowing the formula, and it fails the moment either direction
+disagrees. The round trip immediately reported **107 failures**, and two of them were real:
+
+1. **The ray-plane distance was negated.** `Difference(A, B)` returns the direction FROM A TO B, so it
+   already points from the eye towards the plane; the shipped `-Dot(...)` inverted every distance. A plane
+   240 units in *front* resolved to −240 and was refused as behind the viewer. **Clicking anywhere in a
+   perspective viewport could not place a point.**
+2. **An orthographic view was refused on a negative distance** — but only a perspective view has an eye for
+   something to be behind. A parallel projection's ray runs both ways. This rejected roughly half the
+   isometric orthographic viewport.
+
+⚠️ **Both hid for the same reason.** The six axis-aligned orthographic views build their ray origin from the
+focus, which lies ON the sketch plane, so the numerator is exactly zero and the sign cannot show. Only the
+perspective and isometric views put the origin genuinely off the plane. A defect that is invisible in 6 of 8
+cases is exactly what a round-trip catches and inspection does not.
+
+📝 The other 102 failures were **my test being wrong, not the code**: Front, Back, Left and Right look ALONG
+the sketch plane, so their rays are parallel to it and there is no inverse to check. Refusing is correct, and
+the claim now asserts the refusal is confined to views that are actually edge-on.
+
+⚠️ `ResolveSketchBasis` is the one function here that reads a `SketchStructure`, and it lives in a separate
+`SketchBasis.h`. Declaring it beside the projection would make everything that projects a point drag in the
+whole sketch kernel to link — which is exactly what happened, and cost a round of chasing undefined
+references before the seam was drawn properly.
+
+Negative-tested with five sabotages, including reinstating both original defects. A sixth attempt was caught
+by `-Werror=unused-parameter` before the proof could even run.
+
+**A tenth duplicate surfaced while doing this:** `RotateAroundAxis` existed in **ten copies across five
+different spellings** — some calling `Negated`, some subtracting members by hand, some inlining the dot
+product — all computing the same Rodrigues rotation. Folded into `CurveSpecification.h` beside the others and
+pinned by six new claims. `DimensionSolver` also gave up a 28-line function that nothing had ever called.
+
+`ParametricSketchHost` 5 757 → **5 022** across step 10.

@@ -113,6 +113,31 @@ inline SpatialDirection Normalize(const SpatialDirection& Direction)
                         : SpatialDirection{ 1.0, 0.0, 0.0 };
 }
 
+/// 🧩 Rotates a direction about an axis, by Rodrigues' formula.
+/// in    Subject  [-]  the direction turned
+/// in    Axis     [-]  what it turns about; normalised here, so it need not arrive unit
+/// in    Radians  [-]  how far, right-handed about the axis
+/// note 🔴 Ten copies of this existed in FIVE different spellings — some calling `Negated`, some
+///    subtracting members by hand, some inlining the dot product — and all ten computed the same thing.
+///    The component that lies along the axis is unchanged; the part perpendicular to it turns in the
+///    plane spanned by itself and its cross with the axis.
+/// note ⚠️ An axis of no length normalises to the left-hand axis rather than refusing, following
+///    `Normalize` above. A rotation about nothing is a defect in the caller, not something to resolve here.
+
+inline SpatialDirection RotateAroundAxis(const SpatialDirection& Subject,
+                                         const SpatialDirection& Axis,
+                                         double Radians)
+{
+    const SpatialDirection UnitAxis      = Normalize(Axis);
+    const double           Cosine        = std::cos(Radians);
+    const double           Sine          = std::sin(Radians);
+    const SpatialDirection Parallel      = Scaled(UnitAxis, Dot(UnitAxis, Subject));
+    const SpatialDirection Perpendicular = Added(Subject, Negated(Parallel));
+    const SpatialDirection Crossed       = Cross(UnitAxis, Subject);
+    return Added(Added(Scaled(Perpendicular, Cosine), Scaled(Crossed, Sine)), Parallel);
+}
+
+
 struct ParameterInterval
 {
     double Minimum = 0.0;
