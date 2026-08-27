@@ -512,3 +512,52 @@ listing every profile it wrote. One revision per profile would make the artist p
 back one gesture.
 
 `ParametricSketchHost` **5 022 → 4 915**. 90 claims. Thirteen gates.
+
+**10g — the mouse drew in the wrong place, and it was a unit mismatch.** Reported as "in the parametric
+sketcher the mouse was inverted or something, so when I drew it drew in the wrong place".
+
+🔴 **A viewport lives in two kinds of pixel and they are not the same number.** *Logical points* are what
+ImGui reports — `io.MousePos`, every `PlaneExtent` a panel hands back — and are the space the artist points
+in. *Physical pixels* are what the swapchain is made of, and are the space the image is drawn in. On an
+unscaled display the two are equal and every confusion between them is invisible.
+
+`ResolveCadProjection` built its screen mapping from a `PlaneExtent` in **logical** points and handed the
+shader a `DisplayWidth` in **physical** pixels. The shader divides one by the other to reach clip space, so
+at any display scaling other than 100% the drawn geometry is out by exactly the scale factor. At 150% a
+point the picker placed at x=1200 was drawn at **x=800** — four hundred points from the cursor that placed
+it. The scissor had the same mismatch from the other side: a logical rectangle clamped against a physical
+width, a clamp that never fires and silently clips the wrong region.
+
+⚠️ **This is not the same defect as step 10e's two.** Those made the viewport *refuse* a click; this one
+*accepts* it and draws the result somewhere else. Fixing the first pair would not have fixed this, which is
+why the report was worth re-diagnosing from scratch rather than assuming it was already covered.
+
+The new `DrawableScale` exists so the conversion cannot be forgotten — a bare `float` width carries no
+indication of which pixel it is, which is exactly how the two got mixed.
+
+**Workplanes, and why drawing worked without one.** The `Workplane` tool button has existed in the panel
+since the toolset was written; the host never handled it, so pressing it did nothing. `ParametricToolSubject`
+already reserved both `Workplane` and `DatumPlane`.
+
+📝 A workplane is an origin plus an orientation — which is exactly "put an empty somewhere and draw on the
+grid through it". That is not a workaround, it IS what a workplane is, and the new
+`SlateWorkspace/Discipline/WorkplaneStanding` says so directly.
+
+🔴 **A sketch with no workplane still draws.** The ground plane through the world origin is the standing
+default and is adopted on the first placement. Demanding a declared plane before anything can be tried is
+the most common complaint about parametric sketchers, and the default is now a proved claim rather than an
+accident of one `if`.
+
+🔴 **A placed plane faces the viewer**, which is what makes drawing in screen space work — a plane seen
+edge-on projects to a line and anything drawn on it lands nowhere near where it was drawn. Which direction
+becomes "along" matters too: the world axis that survives projection onto the plane best, so the grid does
+not arrive rolled and does not swing as the view turns.
+
+⚠️ **Negative testing found a hole in the workplane proof.** Seven sabotages, six caught. The survivor
+reversed the cross product deriving `Across` and all 286 claims stayed green — a round trip uses the same
+flipped axis in both directions and cannot see the flip, even though the sketch would be **mirrored**
+against the world. Handedness has to be asserted against a direction written out by hand. Exactly the class
+of bug originally reported, and the proof would have missed it.
+
+`ParametricSketchHost` 4 915 → **5 014** — this step ADDS a feature rather than lifting one. 37 + 293 new
+claims. Fifteen gates.

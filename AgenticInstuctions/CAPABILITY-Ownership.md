@@ -31,6 +31,8 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Immediate-mode drawing         | `SlateUI/Interface/RecordingSurface` (inside `InterfaceExchange`)         |
 | Panels, drawers, docking       | `SlateUI/Interface/{EditorPanel,WorkspacePanel,PanelStructure,DrawerSpace}` |
 | Which panels a discipline seats| `SlateWorkspace/Discipline/WorkspaceDeclaration` — the arrangement as data, not a procedure |
+| Logical/physical pixels        | `SlateWorkspace/Discipline/ViewportProjection` (`DrawableScale.h`) — the one place that converts between what ImGui reports and what the swapchain is made of |
+| The surface a sketch sits on   | `SlateWorkspace/Discipline/WorkplaneStanding` — standing planes, offsets, and a plane named by pointing at the viewport |
 | Record declaration             | `SlateWorkspace/Discipline/RecordDeclaration` — filing a curve, profile, dimension, constraint or point under its category folder, and declaring every enclosed area as one undo step |
 | Plane/screen projection        | `SlateWorkspace/Discipline/ViewportProjection` — the frame, the projection and its inverse. `ResolveSketchBasis` is in the neighbouring `SketchBasis.h` so consumers need not link the sketch kernel |
 | Transform keyboard grammar     | `SlateWorkspace/Discipline/TransformSequence` — G/R/S, axis letters, typed amounts, the curve-slide double tap. **Not the arithmetic**, which stays with the geometry |

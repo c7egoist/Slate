@@ -11,6 +11,8 @@
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 #include "SlateWorkspace/Discipline/RecordDeclaration/Api/RecordDeclaration.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/DrawableScale.h"
+#include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
@@ -284,14 +286,29 @@ void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::fi
     }
 }
 
+// 🔴 TAKES THE LEAF IN LOGICAL POINTS AND THE SWAPCHAIN IN PHYSICAL PIXELS, AND CONVERTS.
+//    The shipped version did not. It built `CentreX`, `CentreY` and `Focal` from the logical leaf extent
+//    and handed the shader a `DisplayWidth` in physical pixels; the shader divides one by the other to
+//    reach clip space, so at any display scaling other than 100% the two disagree by exactly the scale
+//    factor. A point the picker placed at logical x=1200 was drawn at x=800 on a 150% display — the
+//    geometry landed hundreds of pixels from the cursor that placed it.
+//
+// ⚠️ `OrthoScale` and the perspective `Focal` are scaled too, not just the origin. Converting only the
+//    centre would put the geometry in the right place at the wrong size.
 WorkspaceCadProjection ResolveCadProjection(const SpatialBasis& Basis,
                                             const ParametricViewportState& View,
                                             bool Perspective,
-                                            const PlaneExtent& Extent,
+                                            const PlaneExtent& LogicalExtent,
+                                            const DrawableScale& Drawable,
                                             std::uint32_t DisplayWidth,
                                             std::uint32_t DisplayHeight)
 {
     const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
+
+    // Everything below is in PHYSICAL pixels, matching the DisplayWidth the shader divides by.
+    const PlaneExtent Extent = Drawable.ToPhysical(LogicalExtent);
+    const double      OrthoScale = View.OrthoScale * Drawable.Factor;
+
     const float CentreX = Extent.MinimumX + Extent.Width() * 0.5f;
     const float CentreY = Extent.MinimumY + Extent.Height() * 0.5f;
 
@@ -312,18 +329,18 @@ WorkspaceCadProjection ResolveCadProjection(const SpatialBasis& Basis,
             const double AcrossX = Dot(Across, Frame.Right);
             const double AcrossY = Dot(Across, Frame.Up);
 
-            Projection0[0] = CentreX + static_cast<float>(BaseX * View.OrthoScale);
-            Projection0[1] = CentreY - static_cast<float>(BaseY * View.OrthoScale);
+            Projection0[0] = CentreX + static_cast<float>(BaseX * OrthoScale);
+            Projection0[1] = CentreY - static_cast<float>(BaseY * OrthoScale);
             Projection0[2] = 0.0f;
             Projection0[3] = 1.0f;
 
-            Projection1[0] = static_cast<float>(AlongX * View.OrthoScale);
-            Projection1[1] = static_cast<float>(-AlongY * View.OrthoScale);
+            Projection1[0] = static_cast<float>(AlongX * OrthoScale);
+            Projection1[1] = static_cast<float>(-AlongY * OrthoScale);
             Projection1[2] = 0.0f;
             Projection1[3] = 0.0f;
 
-            Projection2[0] = static_cast<float>(AcrossX * View.OrthoScale);
-            Projection2[1] = static_cast<float>(-AcrossY * View.OrthoScale);
+            Projection2[0] = static_cast<float>(AcrossX * OrthoScale);
+            Projection2[1] = static_cast<float>(-AcrossY * OrthoScale);
             Projection2[2] = 0.0f;
             Projection2[3] = 0.0f;
             return;
@@ -3189,6 +3206,63 @@ void RecordViewportTransformReadout(RecordingSurface& Surface,
                     Detail, 11.0f, 0.0f, true);
 }
 
+/// 🧩 The Workplane tool: names the surface the artist will draw on by pointing at the viewport.
+/// out   Taken  [-]  true when the tool consumed the press, so no sketch tool also acts on it
+/// note 🔴 SCREEN SPACE IS THE POINT. The new plane faces the viewer, so what the artist draws next lands
+///       where they draw it instead of skewed across a plane seen edge-on. This is the same thing as
+///       putting an empty somewhere and drawing on the grid through it — origin plus orientation — with
+///       the orientation taken from where the camera is rather than left as the world's.
+/// note ⚠️ Only fires on a press. Hovering must not move the plane out from under a half-drawn curve.
+/// note 📝 A plane is a document-level decision, so it seals a revision and can be walked back.
+bool ApplyWorkplaneTool(const PlaneExtent& Extent,
+                        const PointerCondition& Pointer,
+                        const SpatialBasis& Basis,
+                        const ParametricViewportState& View,
+                        bool Perspective,
+                        const ParametricToolsContext& ToolContext,
+                        WorkspaceNameIndex& Naming,
+                        SketchStructure& Sketch,
+                        WorkspaceRecordStructure& Records,
+                        WorkspaceRevisionSequence& Revisions)
+{
+    if (ToolContext.ActiveSubject != ParametricToolSubject::Workplane &&
+        ToolContext.ActiveSubject != ParametricToolSubject::DatumPlane)
+        return false;
+
+    if (!Pointer.ContactPressed || !Extent.Encloses(Pointer.PositionX, Pointer.PositionY))
+        return false;
+
+    // Where the artist pointed, resolved onto whatever plane is standing now.
+    SpatialPoint Pointed = {};
+    if (!ResolveViewportPlaneIntersection(Basis, View, Perspective, Extent,
+                                          Pointer.PositionX, Pointer.PositionY, Pointed))
+        return false;
+
+    // 🔴 The direction the viewer is looking. `ResolveViewportFrame` gives the frame the viewport is
+    //    drawn with, and its Forward runs from the eye into the display — exactly the normal a plane
+    //    square to the display needs.
+    const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
+    const Workplane Placed = ResolvePlacedWorkplane(Pointed, Frame.Forward);
+
+    if (!Placed.Declared())
+        return false;
+
+    Sketch.DeclarePlane({ Placed.Origin, Placed.Normal, Placed.Along });
+
+    // 📝 Written into the directory so the artist can see it, select it and walk it back, rather than
+    //    silently changing the surface under them.
+    WorkspaceRecord Record = {};
+    Record.Subject      = WorkspaceRecordSubject::Folder;
+    Record.FolderCategory = WorkspaceCategory::Geometry;
+    Record.ParentFolder = ResolveCategoryFolder(Records, WorkspaceCategory::Geometry);
+    Record.Naming       = std::string("Workplane ") + Naming.Issue(WorkspaceRecordSubject::Folder);
+    const WorkspaceRecordName Written = Records.Declare(Record);
+
+    Revisions.Seal("Placed a workplane facing the view", "Place Workplane", { Written },
+                   Revisions.DeclaredCount() + 1u);
+    return true;
+}
+
 void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                                const PointerCondition& Pointer,
                                const TextInputCondition& Text,
@@ -3210,6 +3284,15 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     //    subject needs, whether a double-press ends it, and whether an unsnapped contact counts are all
     //    `SketchPlacement`'s to answer — they were a chain of `else if` branches over twenty-two subjects
     //    here, and the branch a subject fell into was the only thing that decided when it committed.
+    // 🔴 The workplane tool changes the surface rather than drawing on it, so it is answered BEFORE the
+    //    sketch tools and consumes the press when it fires.
+    if (ApplyWorkplaneTool(Extent, Pointer, Basis, View, Perspective, ToolContext,
+                           Naming, Sketch, Records, Revisions))
+    {
+        PointerTaken = true;
+        return;
+    }
+
     const SketchToolSelection Desired = SelectedTool(ToolContext.ActiveSubject);
 
     const bool Construction = ToolContext.ConstructionGeometry ||
@@ -4341,6 +4424,9 @@ int main(int ArgumentCount, char** ArgumentValues)
         RegisterIntoNode = 0u;
 
         PlaneExtent ViewportLeafRects[PanelStructure::RecordLimit] = {};
+
+        // 📝 The leaf rectangles above are LOGICAL points; this is what converts them for the scissor.
+        DrawableScale ViewportLeafScale = {};
         WorkspaceCadProjection ViewportCadProjections[PanelStructure::RecordLimit] = {};
         std::uint32_t ViewportLeafTally = 0u;
         PlaneExtent ToolLeafRects[PanelStructure::RecordLimit] = {};
@@ -4532,10 +4618,19 @@ int main(int ArgumentCount, char** ArgumentValues)
 
                             if (ViewportLeafTally < PanelStructure::RecordLimit)
                             {
+                                // 🔴 Read from the two extents that were actually measured this frame,
+                                //    rather than a scale reported separately: a reported value can be a
+                                //    frame stale after the window moves between monitors, and a stale
+                                //    scale is precisely the mismatch this is here to prevent.
+                                const DrawableScale Drawable = DrawableScale::Between(
+                                    Viewport.Surface().Display().Width,
+                                    static_cast<double>(Pass.Width));
+
                                 ViewportCadProjections[ViewportLeafTally] = ResolveCadProjection(
                                     Basis, View,
                                     PanelConfiguration[Index].Perspective,
-                                    LeafBody, Pass.Width, Pass.Height);
+                                    LeafBody, Drawable, Pass.Width, Pass.Height);
+                                ViewportLeafScale = Drawable;
                                 ++ViewportLeafTally;
                             }
                             break;
@@ -4864,7 +4959,11 @@ int main(int ArgumentCount, char** ArgumentValues)
 
                 for (std::uint32_t ViewportIndex = 0u; ViewportIndex < ViewportLeafTally; ++ViewportIndex)
                 {
-                    const PlaneExtent& LeafRect = ViewportLeafRects[ViewportIndex];
+                    // 🔴 The scissor is a PHYSICAL rectangle. `LeafRect` is logical, and the pass clamps
+                    //    it against a physical DisplayWidth — a clamp that never fires and silently
+                    //    leaves logical numbers in a physical field, clipping the wrong region.
+                    const PlaneExtent LeafRect =
+                        ViewportLeafScale.ToPhysical(ViewportLeafRects[ViewportIndex]);
                     CadPass.Record(Pass.Recording, ViewportCadProjections[ViewportIndex],
                                    LeafRect.MinimumX, LeafRect.MinimumY,
                                    LeafRect.MaximumX, LeafRect.MaximumY);
