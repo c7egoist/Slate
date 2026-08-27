@@ -604,3 +604,43 @@ standing the line off-origin at 10..50, one beginning a scale exactly *on* the p
 divides by zero — and all eight sabotages are now caught.
 
 `ParametricSketchHost` 4 675 → **4 296**. 53 claims.
+
+**10j — the handles.** `SlateWorkspace/Discipline/TransformGizmo`.
+
+🔴 **A real defect, the same class as the placement bug: the hit test and the drawing were measured in
+different units.** `ResolveGizmoHandle` tested a **44-pixel** axis; `RecordViewportGizmo` drew a
+**78-world-unit** shaft with a cone at 102 and scale boxes at 94, then projected them. Those agree at one
+zoom level and nowhere else — measured:
+
+| OrthoScale | drawn shaft | hit-test reach |
+|---|---|---|
+| 0.5 | 39 px | 44 px |
+| 1.0 | 78 px | 44 px |
+| 4.0 | 312 px | 44 px |
+| 32.0 | 2 496 px | 44 px |
+
+Zoomed in the arrow ran seven times past its own hit box, so the artist pointed at the arrowhead and
+grabbed nothing; zoomed out the arrow was smaller than its hit box and clicking beside it still grabbed.
+A gizmo is a **screen-space control** and must be a constant size in pixels however far the camera stands
+off. There is now one table of pixel measurements that both halves read, and the drawing converts through
+`GizmoWorld` at the pivot.
+
+🔴 **The reaches were made disjoint, which is a stronger arrangement than an ordering.** The host resolved
+overlaps by test order — the nub's reach covered both arrow roots, so which handle the artist got depended
+on which `if` came first. The proof walks 25 921 positions and checks that none satisfies two handles *and*
+that the unit answers what the table predicts at every one of them. Contrast `SketchPicking`, where a curve
+genuinely passes through its own endpoints and the priority order therefore **is** the design; separate the
+geometry when you can, order it when you cannot.
+
+📝 **Two things the proof taught me.** Measuring the world-per-pixel ruler over a fixed 24 units and then
+drawing a 44-pixel arrow gave an arrow 79% of the length asked for at close camera range — perspective is
+not linear, so the ruler must be read over the span it will be used for. And the error must fall on the
+**short** side: an arm drawn longer than the hit test reaches has its arrowhead outside its own hit box.
+
+⚠️ **A guard I wrote against a degeneracy that cannot occur.** I defended against an axis pointing at the
+camera projecting to nothing — but `ResolveViewportFrame` derives the camera *from* the basis, so the view
+is never edge-on to the plane. Tilting from 90° to 0.01° leaves both probes at exactly 96 px. The real
+reason to take the smallest world-per-pixel is oblique foreshortening (~13% apart under isometric), which
+is what the corrected note and sabotage S3 now pin.
+
+`ParametricSketchHost` 4 296 → **4 146**. 125 claims, eight sabotages caught.
