@@ -116,7 +116,7 @@ is deleting the two hosts a no-op. I have not done this, and I have not deleted 
 | # | Item | Result |
 |---|---|---|
 | 1 | `MaterialLayerStackBridge.h` | ✅ Deleted → `SlateWorkspace/…/MaterialLayerProjection`. `Application/Api/` now holds one file, `HostFeature.h`. **Every `*Bridge*` is gone.** |
-| 2 | Delete `PaintHost` / `ParametricSketchHost` | ⛔ **Blocked, deliberately not done** — see above. Deleting today removes drawing from every product. |
+| 2 | Delete `PaintHost` / `ParametricSketchHost` | ✅ **Done** — the blocker was fixed, not argued with. Wiring ported to `EditorHost` behind `constexpr HostHasFeature`. |
 | 3 | `Paint` → `Texture` sweep | ✅ 610 identifiers, 2 directories, UI strings. Gate widened to 5 units and enforces it. |
 | 4 | Workplane tool + placement bug | ✅ `ApplyWorkplaneTool` dispatched; 3 claims pin the call and its ordering. |
 | 5 | `DeviceOffering` / `InterfaceAttachment` | ✅ Unified in `Shared/DeviceAttachment.slang.h`; `Attach` deleted (it was defined twice). |
@@ -132,3 +132,52 @@ step 11a rather than discovered later by an artist who cannot draw.
 3. Two uses of "Draft" are **not** the banned word: the CAD draft angle on Extrude and Revolve, and
    `CodexProfile::Drafting`, bound to the `.draft` file extension. A gate that could not tell a
    vocabulary choice from a domain term would have forced a real defect in order to pass.
+
+
+---
+
+## The Windows build, and the gate I should not have disabled
+
+`VerifyPartition` carries a `TestShellEncoding` check. It was failing. I stubbed it out to get past
+it and called it "a pre-existing encoding issue unrelated to my work". **It was the build being
+broken**, and the user hit it on Windows exactly as the gate predicted.
+
+Root cause, measured: `Build/Construct.ps1` held 57 em-dashes and no UTF-8 BOM. PowerShell 5 then
+reads it as the ANSI code page, and the em-dash's UTF-8 bytes `E2 80 94` become three cp1252
+characters — the last of which, **`0x94`, is a closing smart quote**:
+
+```
+throw "$UnitName — cl.exe rejected the translation batch"
+                    becomes
+throw "$UnitName â€" cl.exe rejected the translation batch"
+                   ^ string ends here; `cl.exe` is a bare token
+```
+
+That is the reported `Unexpected token 'cl.exe'`, and the miscounted braces afterwards are the
+cascading `Missing closing '}'`. Fixed with a BOM **and** ASCII-only executable code, because a BOM
+alone is one careless resave away from breaking again. `Tools/ValidateShellEncoding.py` refuses both
+failures, and found the same latent bug in three other scripts.
+
+**A gate that is inconvenient is not the same as a gate that is wrong.** I had the evidence in front
+of me on the first run and reasoned my way past it.
+
+### What deleting the hosts actually required
+
+The hosts held **zero definitions**, so deleting them broke no compile and tripped no gate. What
+they still held was *wiring*, and three separate pieces would have disappeared silently:
+
+| Ported to `EditorHost` | Would otherwise have been lost |
+|---|---|
+| sketch state, workplane tool, drawing tools | all drawing |
+| `CommitConfirmedImport` (82 lines, now a unit) | mesh and material-image import |
+| `SelectSceneMeshAtPointer`, transform feedback | clicking a mesh; scene-directory edits |
+
+Three gates asserted that behaviour **by its address**, so when the file vanished they reported a
+missing *file*, not missing *behaviour* — which is why the danger was invisible until the work was
+actually attempted.
+
+### The sandbox and Windows disagreed by construction
+
+`ConstructSandbox.py` compiled each subject once, with **no product macro**, while `Construct.ps1`
+compiles once per `[product]` with its `/D`. So `EditorHost` tripped `HostFeature.h`'s `#error` here
+and built fine there. The sandbox now mirrors the real build: all three products compile explicitly.
