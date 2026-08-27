@@ -67,7 +67,7 @@ void AcceptColour(ResolvedSample& Writing, const ColourSpecification& Declared, 
 // 📐 Bilinear over a painted entry's interleaved run, clamped at the edges. Nearest would preserve every texel
 //    exactly and would also shear every diagonal the artist painted, which reads as a defect rather than as a
 //    resampling — `56` §3.1 chooses bilinear for the same reason and this is the same choice one layer down.
-double SamplePainted(const PaintedContent& Held,
+double SampleTextured(const TexturedContent& Held,
                      double                PositionX,
                      double                PositionY,
                      std::uint32_t         Component)
@@ -560,18 +560,18 @@ Deliver<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
     switch (Held.Source)
     {
-        case LayerContentSource::PaintedImpressions:
+        case LayerContentSource::TexturedImpressions:
         {
-            // 🔴 Painted entries are resolved here, in the same walk, per the class note. `20` §2.1 lists three
+            // 🔴 Textured entries are resolved here, in the same walk, per the class note. `20` §2.1 lists three
             //    reconstruction sources and a mixed sequence needs all three composed; a resolver that skipped
             //    painted entries would hand `20` a partial tile it has no route to complete.
-            if (Held.Painted.ExtentTexels == 0u || Held.Painted.Texels.empty())
+            if (Held.Textured.ExtentTexels == 0u || Held.Textured.Texels.empty())
                 return Deliver<ResolvedSample>::Result(Resolved);
 
             for (std::uint32_t Component = 0u; Component < ComponentCount; ++Component)
             {
                 Resolved.Component[Component] =
-                    SamplePainted(Held.Painted, PositionX, PositionY, Component);
+                    SampleTextured(Held.Textured, PositionX, PositionY, Component);
             }
 
             Resolved.Coverage       = 1.0;
@@ -640,11 +640,11 @@ Deliver<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
 
     switch (Held.Coverage.Source)
     {
-        case LayerContentSource::PaintedImpressions:
+        case LayerContentSource::TexturedImpressions:
         {
-            Covered *= Held.Coverage.Painted.ExtentTexels == 0u || Held.Coverage.Painted.Texels.empty()
+            Covered *= Held.Coverage.Textured.ExtentTexels == 0u || Held.Coverage.Textured.Texels.empty()
                      ? 1.0
-                     : SamplePainted(Held.Coverage.Painted, PositionX, PositionY, 0u);
+                     : SampleTextured(Held.Coverage.Textured, PositionX, PositionY, 0u);
             break;
         }
 
@@ -799,8 +799,8 @@ Deliver<ResolvedSample> AnalyticProjection::ResolveAt(const SurfaceLayerSequence
             if (Held.Coverage.CoverageDeclared)
             {
                 LayerSpecification Enclosing = Held;
-                Enclosing.Source             = LayerContentSource::PaintedImpressions;
-                Enclosing.Painted            = PaintedContent{};
+                Enclosing.Source             = LayerContentSource::TexturedImpressions;
+                Enclosing.Textured            = TexturedContent{};
 
                 // 📝 The enclosing coverage is resolved through the entry path with the nested content's own
                 //    source stood down, so one routine resolves coverage for every entry rather than two.
@@ -922,7 +922,7 @@ Deliver<ResolvedTile> AnalyticProjection::ResolveTile(const SurfaceLayerSequence
     //    the budget bound one number and the resolution spend another.
     for (const LayerSpecification& Held : Content.Entries())
     {
-        if (!Held.PresenceEnabled || Held.Source == LayerContentSource::PaintedImpressions)
+        if (!Held.PresenceEnabled || Held.Source == LayerContentSource::TexturedImpressions)
             continue;
 
         Produced.EvaluationUnits += EvaluationUnitsPerEntry;
@@ -1030,7 +1030,7 @@ bool AnalyticProjection::SourcesPresent(const SurfaceLayerSequence& Content) con
                 break;
             }
 
-            case LayerContentSource::PaintedImpressions:
+            case LayerContentSource::TexturedImpressions:
             case LayerContentSource::SourceCount:
                 break;
         }

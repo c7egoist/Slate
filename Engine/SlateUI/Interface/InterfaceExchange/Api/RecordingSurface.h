@@ -145,7 +145,7 @@ enum class KeySubject : std::uint32_t
 
     // 📐 The layer stack's own roster, from `LayerstackV1`'s KEYBOARD section. Every one is edge-triggered
     //    and unrepeated on the same terms as the three above.
-    DeclarePaint      =  3u,   // [-] - P
+    DeclareTexturing      =  3u,   // [-] - P
     DeclareFill       =  4u,   // [-] - F
     DeclareAdjustment =  5u,   // [-] - A
     DeclareRetention  =  6u,   // [-] - R; the reference's `filter`

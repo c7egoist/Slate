@@ -349,7 +349,7 @@ constexpr StrokeStep LayerMergeSteps[] =
 };
 
 // 📝 lucide `brush` — the paint-layer glyph, from the LayerstackV1 reference's own `brush` path.
-constexpr StrokeStep PaintBristleSteps[] =
+constexpr StrokeStep BristleSteps[] =
 {
     {  StrokeCommand::Origin,   9.5f, 14.5f },
     {  StrokeCommand::Segment,  3.8f, 20.2f },
@@ -659,7 +659,7 @@ constexpr SymbolFigure Roster[static_cast<std::uint32_t>(SymbolSubject::SubjectC
     /* RetopologyDensity       */ Unresolved(SymbolDiscipline::Sculpting),
 
     /* UnwrapSeam          */ Unresolved(SymbolDiscipline::Texturing),
-    /* PaintBristle        */ { PaintBristleSteps,   13u, SymbolDiscipline::Texturing, DeclaredWeight, true },
+    /* Bristle        */ { BristleSteps,   13u, SymbolDiscipline::Texturing, DeclaredWeight, true },
     /* MaterialSphere      */ { MaterialSphereSteps, 13u, SymbolDiscipline::Texturing, DeclaredWeight, true },
     /* ChannelSelect       */ { ChannelSelectSteps, 18u, SymbolDiscipline::Texturing, DeclaredWeight, true },
     /* StencilProjection   */ { StencilProjectionSteps, 5u, SymbolDiscipline::Texturing, DeclaredWeight, true },
@@ -734,7 +734,7 @@ constexpr SymbolSubject DisciplineOrder[] =
     SymbolSubject::RevolveAxis,         SymbolSubject::LoftProfile,
     SymbolSubject::BristleTip,          SymbolSubject::InflatePush,         SymbolSubject::SmoothRelax,
     SymbolSubject::MaskStencil,         SymbolSubject::RetopologyDensity,
-    SymbolSubject::UnwrapSeam,          SymbolSubject::PaintBristle,        SymbolSubject::MaterialSphere,
+    SymbolSubject::UnwrapSeam,          SymbolSubject::Bristle,        SymbolSubject::MaterialSphere,
     SymbolSubject::ChannelSelect,       SymbolSubject::StencilProjection,
     SymbolSubject::SunDirectional,      SymbolSubject::LampPoint,           SymbolSubject::AreaEmitter,
     SymbolSubject::SkyDome,

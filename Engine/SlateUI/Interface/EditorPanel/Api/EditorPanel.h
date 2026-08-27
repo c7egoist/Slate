@@ -194,7 +194,7 @@ private:
         //    the control identities, so deleting one renumbers every role after
         //    it and moves the hover and contact state of unrelated controls.
         ChooseProperties,
-        ChooseTexturePaint,
+        ChooseTexturing,
         ChooseParametricTools,
         ChooseSketchDirectory,
         LatticeMenu,

@@ -87,7 +87,7 @@ inline WorkspaceDeclaration DeclaredTextureWorkspace()
 {
     WorkspaceDeclaration Declared = {};
     Declared.Naming       = "Texturing";
-    Declared.Subject      = WorkspaceSubject::Painting;
+    Declared.Subject      = WorkspaceSubject::Texturing;
     Declared.Initial      = PanelSubject::Viewport;
     Declared.TextureTools = true;
 
@@ -100,7 +100,7 @@ inline WorkspaceDeclaration DeclaredTextureWorkspace()
     Declared.Steps[1] = { ArrangementStep::Action::Seat, 1u,
                           PanelSubject::Viewport, PanelDivisionAxis::X, PanelDivisionSide::Minimum, 0.5f };
     Declared.Steps[2] = { ArrangementStep::Action::Seat, 2u,
-                          PanelSubject::TexturePaint, PanelDivisionAxis::X, PanelDivisionSide::Minimum, 0.5f };
+                          PanelSubject::Texturing, PanelDivisionAxis::X, PanelDivisionSide::Minimum, 0.5f };
     Declared.Steps[3] = { ArrangementStep::Action::Proportion, PanelStructure::RootIndex,
                           PanelSubject::Viewport, PanelDivisionAxis::X, PanelDivisionSide::Minimum, 0.78f };
     Declared.StepCount = 4u;
@@ -175,7 +175,7 @@ inline WorkspaceDeclaration DeclaredCombinedWorkspace()
 ///        and a hand-built partition on another, with nothing tying the two together. A host that
 ///        registered one discipline and seated another's panels would compile and run. This is the join:
 ///        the subject alone now decides the arrangement.
-/// note  ⚠️ `Painting` is the retired spelling still carried by `WorkspaceSubject`; it is swept with the
+/// note  ⚠️ `Texturing` is the retired spelling still carried by `WorkspaceSubject`; it is swept with the
 ///        other 527 uses in its own step. The declaration it selects is already named `Texturing`.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
@@ -183,7 +183,7 @@ inline WorkspaceDeclaration DeclaredWorkspaceFor(WorkspaceSubject Subject)
 {
     switch (Subject)
     {
-        case WorkspaceSubject::Painting:   return DeclaredTextureWorkspace();
+        case WorkspaceSubject::Texturing:   return DeclaredTextureWorkspace();
         case WorkspaceSubject::Parametric: return DeclaredSketchWorkspace();
 
         // 📝 The modelling discipline has no arrangement of its own yet, so it opens on a bare viewport

@@ -18,7 +18,7 @@
 #include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialProcessingExchange.h"
 #include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
 #include "SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h"
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintPanel.h"
+#include "SlateUI/Interface/TexturingPanel/Api/TexturingPanel.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -41,17 +41,17 @@ ChannelSubject TextureChannelToMaterialChannel(std::uint32_t ChannelIndex);
 
 std::uint32_t MaterialChannelBit(ChannelSubject Channel);
 
-std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowChannelMask(const TexturingContext& Context,
                                            std::uint32_t RowIndex,
                                            const TextureLayerRow& Row);
 
-std::uint32_t TextureRowMaskChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowMaskChannelMask(const TexturingContext& Context,
                                                std::uint32_t RowIndex,
                                                std::uint32_t LayerChannelMask);
 
 LayerContentSource TextureLayerSource(TextureLayerClassification Classified);
 
-CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
+CoverageSpecification TextureRowCoverage(const TexturingContext& Context,
                                                 std::uint32_t RowIndex,
                                                 const TextureLayerRow& Row,
                                                 std::uint32_t LayerChannelMask);
@@ -59,8 +59,8 @@ CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
 MaterialLayerProjectionReport ProjectMaterialLayersFromTextureStack(
     MaterialSpecification& Material,
     SurfaceLayerSequence& Layers,
-    const TexturePaintStack& Stack,
-    const TexturePaintContext& Context,
+    const TexturingStack& Stack,
+    const TexturingContext& Context,
     const MaterialProcessingExchange& Exchange,
     const MaterialProcessingSnapshot* PreviousSnapshot);
 

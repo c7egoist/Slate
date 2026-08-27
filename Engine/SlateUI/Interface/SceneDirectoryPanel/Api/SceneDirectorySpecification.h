@@ -85,7 +85,7 @@ struct ShellMetric
     float  RunSmall        =  10.5f;   // [px] - text-[10.5px]
     float  RunFine         =  10.0f;   // [px] - text-[10px]
 
-    // 📐 The Layer Stack, from `components/TexturePaint.tsx`.
+    // 📐 The Layer Stack, from `components/Texturing.tsx`.
     float  LayerHeadHeight =  44.0f;   // [px] - h-[44px], the row's top half
     float  LayerSpineX =  30.0f;   // [px] - w-[30px], the spine gutter
     float  LayerSpineWidth =   3.0f;   // [px] - w-[3px], the spine itself

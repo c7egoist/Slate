@@ -41,21 +41,21 @@ Deliver<LayerIdentity> SurfaceLayerSequence::Append(const LayerSpecification& De
         return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "no such nested sequence" });
     }
 
-    // 📝 Painted content is validated against its own declared extent here rather than trusted. A span that does
+    // 📝 Textured content is validated against its own declared extent here rather than trusted. A span that does
     //    not match is a span every later sample reads past the end of, and the read is not detectable afterwards.
-    if (Declaring.Source == LayerContentSource::PaintedImpressions)
+    if (Declaring.Source == LayerContentSource::TexturedImpressions)
     {
-        const std::size_t Required = static_cast<std::size_t>(Declaring.Painted.ExtentTexels)
-                                   * static_cast<std::size_t>(Declaring.Painted.ExtentTexels)
-                                   * static_cast<std::size_t>(Declaring.Painted.ComponentCount);
+        const std::size_t Required = static_cast<std::size_t>(Declaring.Textured.ExtentTexels)
+                                   * static_cast<std::size_t>(Declaring.Textured.ExtentTexels)
+                                   * static_cast<std::size_t>(Declaring.Textured.ComponentCount);
 
-        if (Declaring.Painted.ExtentTexels == 0u || Declaring.Painted.Texels.size() != Required)
+        if (Declaring.Textured.ExtentTexels == 0u || Declaring.Textured.Texels.size() != Required)
         {
             return Deliver<LayerIdentity>::Refuse(
                 { RefusalReason::ContentUnsupported, "the painted span does not match its declared extent" });
         }
 
-        if (Declaring.Painted.ExtentTexels > MaximumWorkingEdge)
+        if (Declaring.Textured.ExtentTexels > MaximumWorkingEdge)
         {
             return Deliver<LayerIdentity>::Refuse(
                 { RefusalReason::ExtentExhausted, "the working extent exceeds the declared maximum" });
@@ -211,8 +211,8 @@ Deliver<LayerSpecification> SurfaceLayerSequence::Withdraw(LayerIdentity Subject
     //    the inverse is a derivation, which is what keeps the inverse bounded by what the amendment touched.
     if (SourceReconstructible(Departing.Source))
     {
-        Departing.Painted.Texels.clear();
-        Departing.Coverage.Painted.Texels.clear();
+        Departing.Textured.Texels.clear();
+        Departing.Coverage.Textured.Texels.clear();
     }
 
     Sequenced.erase(Sequenced.begin() + static_cast<std::ptrdiff_t>(Located_));
@@ -250,7 +250,7 @@ namespace
 // 📐 Bilinear over the interleaved span, clamped at the edges. Nearest would preserve every texel exactly and
 //    would also shear every diagonal the artist painted; bilinear softens uniformly, which is the failure mode
 //    that reads as a resampling rather than as a defect.
-float SampleBilinear(const PaintedContent& Held,
+float SampleBilinear(const TexturedContent& Held,
                      double                PositionX,
                      double                PositionY,
                      std::uint32_t         Component)
@@ -288,7 +288,7 @@ float SampleBilinear(const PaintedContent& Held,
     return static_cast<float>(Lower * (1.0 - FractionY) + Upper * FractionY);
 }
 
-void ResampleContent(PaintedContent&                                               Held,
+void ResampleContent(TexturedContent&                                               Held,
                      const std::function<bool(double, double, double&, double&)>&  Remapping)
 {
     if (Held.ExtentTexels == 0u || Held.Texels.empty())
@@ -343,17 +343,17 @@ Deliver<bool> SurfaceLayerSequence::Resample(
 
     for (LayerSpecification& Held : Sequenced)
     {
-        if (Held.Source == LayerContentSource::PaintedImpressions)
+        if (Held.Source == LayerContentSource::TexturedImpressions)
         {
-            ResampleContent(Held.Painted, Remapping);
+            ResampleContent(Held.Textured, Remapping);
             Held.ResampleOwed = false;
             ++ResampledCount;
         }
 
         if (Held.Coverage.CoverageDeclared
-         && Held.Coverage.Source == LayerContentSource::PaintedImpressions)
+         && Held.Coverage.Source == LayerContentSource::TexturedImpressions)
         {
-            ResampleContent(Held.Coverage.Painted, Remapping);
+            ResampleContent(Held.Coverage.Textured, Remapping);
             ++ResampledCount;
         }
     }
@@ -375,7 +375,7 @@ Deliver<bool> SurfaceLayerSequence::Resample(
     {
         ReportSpecification Amended;
         Amended.Origin         = "56 §3.1 SurfaceLayerSequence";
-        Amended.Subject        = "PaintedResampling";
+        Amended.Subject        = "TexturedResampling";
         Amended.Detail         = "a re-partition moved the domain; painted texels were resampled into it";
         Amended.SubjectIndex = IncomingRevision;
         Amended.Verdict    = ReportVerdict::Amended;
@@ -404,13 +404,13 @@ Deliver<const LayerSpecification*> SurfaceLayerSequence::Resolve(LayerIdentity S
     return Deliver<const LayerSpecification*>::Result(&Sequenced[Located_]);
 }
 
-Deliver<PaintedContent*> SurfaceLayerSequence::AmendPainted(LayerIdentity Subject)
+Deliver<TexturedContent*> SurfaceLayerSequence::AmendTextured(LayerIdentity Subject)
 {
     const std::size_t Located_ = Located(Subject);
 
     if (Located_ == Sequenced.size())
     {
-        return Deliver<PaintedContent*>::Refuse(
+        return Deliver<TexturedContent*>::Refuse(
             { RefusalReason::IdentityStale, "the entry no longer resolves" });
     }
 
@@ -419,11 +419,11 @@ Deliver<PaintedContent*> SurfaceLayerSequence::AmendPainted(LayerIdentity Subjec
     //    and the two would diverge at the first re-resolution.
     if (SourceReconstructible(Sequenced[Located_].Source))
     {
-        return Deliver<PaintedContent*>::Refuse(
+        return Deliver<TexturedContent*>::Refuse(
             { RefusalReason::ContentUnsupported, "the entry stores a description, not texels" });
     }
 
-    return Deliver<PaintedContent*>::Result(&Sequenced[Located_].Painted);
+    return Deliver<TexturedContent*>::Result(&Sequenced[Located_].Textured);
 }
 
 const std::vector<LayerSpecification>& SurfaceLayerSequence::Entries() const

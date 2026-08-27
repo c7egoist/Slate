@@ -81,7 +81,7 @@ const char* ArchiveNaming(ContentArchive Archive)
     switch (Archive)
     {
         case ContentArchive::Topology:    return "Meshes";
-        case ContentArchive::Draughting:  return "CAD";
+        case ContentArchive::Parametric:  return "CAD";
         case ContentArchive::Arrangement: return "Scenes";
         case ContentArchive::Material:    return "Materials";
         case ContentArchive::Generator:   return "Generators";
@@ -99,7 +99,7 @@ SymbolSubject ArchiveCrest(ContentArchive Archive)
     switch (Archive)
     {
         case ContentArchive::Topology:    return SymbolSubject::CubeSolid;
-        case ContentArchive::Draughting:  return SymbolSubject::SketchPlane;
+        case ContentArchive::Parametric:  return SymbolSubject::SketchPlane;
         case ContentArchive::Arrangement: return SymbolSubject::PanelSplit;
         case ContentArchive::Material:    return SymbolSubject::MaterialSphere;
         case ContentArchive::Generator:   return SymbolSubject::PlaceholderMark;

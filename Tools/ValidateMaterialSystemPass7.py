@@ -111,7 +111,7 @@ def main() -> int:
         "MaterialTextureExport/Api/MaterialTextureExport.h",
         "BuildMaterialExportPackage",
         "MaterialTextureExport().WritePackage",
-        "TexturePaintApplied.ExportLocation",
+        "TexturingApplied.ExportLocation",
     )
 
     subprocess.run([

@@ -35,7 +35,7 @@ std::uint32_t MaterialChannelBit(ChannelSubject Channel)
     return Channel == ChannelSubject::ChannelCount ? 0u : (1u << static_cast<std::uint32_t>(Channel));
 }
 
-std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowChannelMask(const TexturingContext& Context,
                                            std::uint32_t RowIndex,
                                            const TextureLayerRow& Row)
 {
@@ -57,7 +57,7 @@ std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
     return Mask == 0u ? MaterialChannelBit(ChannelSubject::AlbedoColour) : Mask;
 }
 
-std::uint32_t TextureRowMaskChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowMaskChannelMask(const TexturingContext& Context,
                                                std::uint32_t RowIndex,
                                                std::uint32_t LayerChannelMask)
 {
@@ -80,8 +80,8 @@ LayerContentSource TextureLayerSource(TextureLayerClassification Classified)
         case TextureLayerClassification::Material:
         case TextureLayerClassification::Fill:
             return LayerContentSource::MaterialConstants;
-        case TextureLayerClassification::Paint:
-            return LayerContentSource::PaintedImpressions;
+        case TextureLayerClassification::Brushed:
+            return LayerContentSource::TexturedImpressions;
         case TextureLayerClassification::Folder:
             return LayerContentSource::NestedSequence;
         case TextureLayerClassification::Pattern:
@@ -94,7 +94,7 @@ LayerContentSource TextureLayerSource(TextureLayerClassification Classified)
     }
 }
 
-CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
+CoverageSpecification TextureRowCoverage(const TexturingContext& Context,
                                                 std::uint32_t RowIndex,
                                                 const TextureLayerRow& Row,
                                                 std::uint32_t LayerChannelMask)
@@ -114,8 +114,8 @@ CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
 MaterialLayerProjectionReport ProjectMaterialLayersFromTextureStack(
     MaterialSpecification& Material,
     SurfaceLayerSequence& Layers,
-    const TexturePaintStack& Stack,
-    const TexturePaintContext& Context,
+    const TexturingStack& Stack,
+    const TexturingContext& Context,
     const MaterialProcessingExchange& Exchange,
     const MaterialProcessingSnapshot* PreviousSnapshot)
 {

@@ -2,7 +2,7 @@
 //                                                         TEXTUREPAINTGUARANTEE.H
 //============================================================================================================================================
 // 🧩 The editor's texture-paint layer stack — the shared guarantee between the
-//    host's data and the TexturePaintPanel's presentation: what a layer is,
+//    host's data and the TexturingPanel's presentation: what a layer is,
 //    what a mask is, and which filter category each belongs to.
 //
 //    This is the EDITOR's layer stack (the LayerstackV1 / ChannelPropertyPanel
@@ -39,7 +39,9 @@ namespace Slate
 /// tag   guarantee
 enum class TextureLayerClassification : std::uint32_t
 {
-    Paint       = 0u,   // [-] - brush strokes over the atlas
+    Brushed     = 0u,   // [-] - brush strokes over the atlas
+                        // ⚠️ The NAME changed with the Paint ban; the VALUE 0u must not,
+                        //    because saved documents store the number, not the name.
     Fill        = 1u,   // [-] - a solid or gradient fill
     Decal       = 2u,   // [-] - a 3D-placed decal entity
     Pattern     = 3u,   // [-] - a tiled procedural pattern
@@ -161,10 +163,10 @@ const TextureGeneratorEntry& TextureGeneratorAt(std::uint32_t Index);
 struct TextureLayerRow
 {
     const char*         Naming       = "";                     // [-] - borrowed; outlives the tick
-    TextureLayerClassification Classified = TextureLayerClassification::Paint;
+    TextureLayerClassification Classified = TextureLayerClassification::Brushed;
     const char*         Blend        = "Normal";               // [-] - borrowed
     std::uint32_t       Opacity      = 100u;                   // [%] - 0…100
-    std::uint32_t       PaintHue     = 0xF97316u;              // [-] - the swatch, 0xRRGGBB
+    std::uint32_t       TexturingHue     = 0xF97316u;              // [-] - the swatch, 0xRRGGBB
     std::uint32_t       TagHue       = 0xF97316u;              // [-] - the spine and its badge
     bool                MaskDeclared = false;                  // [-] - a mask row is attached
     std::uint32_t       MaskStrength = 100u;                   // [%] - the mask's density
@@ -229,7 +231,7 @@ inline constexpr const char* const TextureBlendNames[TextureBlendCount] =
 /// tag   guarantee
 inline constexpr const char* const TextureMaskSourceNames[5] =
 {
-    "Paint", "Bitmap", "Baked Map", "Polygon Fill", "Generator"
+    "Brushed", "Bitmap", "Baked Map", "Polygon Fill", "Generator"
 };
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -237,14 +239,14 @@ inline constexpr const char* const TextureMaskSourceNames[5] =
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 What one structural operation the stack page's buttons asked for — a request slot the panel writes and
-///    the host drains once per tick through `TexturePaintStack::ApplyRequest`. Only operations that CHANGE the
+///    the host drains once per tick through `TexturingStack::ApplyRequest`. Only operations that CHANGE the
 ///    row set travel here; everything per-row (presence, lock, mask, opacity, blend, tag hue) is context-owned
 ///    and never needs the host.
 /// tag   guarantee
-enum class TexturePaintRequest : std::uint32_t
+enum class TexturingRequest : std::uint32_t
 {
     None          = 0u,   // [-] - nothing stood pressed
-    AddPaint      = 1u,   // [-] - a paint layer
+    AddTexturing      = 1u,   // [-] - a paint layer
     AddFill       = 2u,   // [-] - a fill layer
     AddAdjustment = 3u,   // [-] - an adjustment layer
     AddFilter     = 4u,   // [-] - a filter layer
@@ -263,9 +265,9 @@ enum class TexturePaintRequest : std::uint32_t
 ///    from its data at bring-up and drains one structural request per tick through `ApplyRequest`; the
 ///    harness drives the very same helper so the two can never drift.
 /// note  📐 Names of inserted rows are kept in `Names` (the seed rows keep their own borrowed runs). The
-///        helper is declared here and defined beside the panel, where `TexturePaintContext` is visible.
+///        helper is declared here and defined beside the panel, where `TexturingContext` is visible.
 /// tag   guarantee, nonallocating, nonthrowing
-struct TexturePaintStack
+struct TexturingStack
 {
     TextureLayerRow   Rows[TextureLayerLimit]  = {};
     char              Names[TextureLayerLimit][48] = {};
@@ -281,7 +283,7 @@ struct TexturePaintStack
     ///    working copy (opacity, blend, lock, mask, tag hue) back into the rows so the model never drifts.
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing
-    void ApplyRequest(struct TexturePaintContext& Applied);
+    void ApplyRequest(struct TexturingContext& Applied);
 };
 
 /// 🧩 Seeds every per-row working copy of the context from the rows — the host and the harness both call
@@ -291,7 +293,7 @@ struct TexturePaintStack
 /// in    RowCount   [-]  how many rows stand; the working copies beyond it reset to defaults
 /// cost  🚩
 /// tag   api, nonallocating, nonthrowing
-void SeedPaintContextFromRows(struct TexturePaintContext& Applied,
+void SeedTexturingContextFromRows(struct TexturingContext& Applied,
                               const TextureLayerRow* Rows, std::uint32_t RowCount);
 
 } // namespace Slate

@@ -27,7 +27,7 @@ namespace Slate
 /// tag   guarantee
 enum class ReferenceSubject : std::uint32_t
 {
-    PaintedContent  = 0u,   // [-] - authored here, per `56`; nothing else holds it
+    TexturedContent  = 0u,   // [-] - authored here, per `56`; nothing else holds it
     ImportedImagery = 1u,   // [-] - often large, often shared across documents — `50`
     ImportedTopology = 2u,  // [-] - Slate does not own it; `38`'s non-mutation rule
     VectorContent   = 3u,   // [-] - small, and pasted source has no file to refer to — `52`
@@ -64,7 +64,7 @@ enum class ReferenceCondition : std::uint32_t
 /// tag   api, constexpr, nonallocating, nonthrowing
 constexpr ReferenceRetention ResolveRetention(ReferenceSubject Subject)
 {
-    return Subject == ReferenceSubject::PaintedContent || Subject == ReferenceSubject::VectorContent
+    return Subject == ReferenceSubject::TexturedContent || Subject == ReferenceSubject::VectorContent
          ? ReferenceRetention::Embedded
          : ReferenceRetention::Referenced;
 }
@@ -82,7 +82,7 @@ struct DeclaredReference
 {
     OwnerIdentity    Registered      = {};                                // [-] - the owner that depends on it
     std::string         OriginPath    = {};                                // [-] - UTF-8; empty for embedded content
-    ReferenceSubject    Subject       = ReferenceSubject::PaintedContent;  // [-] - which of `48` §5's five rows
+    ReferenceSubject    Subject       = ReferenceSubject::TexturedContent;  // [-] - which of `48` §5's five rows
     ReferenceRetention  Retention     = ReferenceRetention::Embedded;      // [-] - declared per document, per `48` §5
     ReferenceCondition   Condition      = ReferenceCondition::Unresolved;     // [-] - whether it was found
     std::uint64_t       SpannedBytes  = 0u;                                // [B] - as last resolved; zero when absent

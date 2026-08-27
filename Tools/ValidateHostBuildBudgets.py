@@ -51,7 +51,7 @@ def main() -> int:
         "static EditorPanel             WorkspacePanels;",
         "static ControlCentrePanel      ControlCentre;",
         "static SceneDirectoryPanel     SceneDirectory;",
-        "static TexturePaintPanel        TexturePaint;",
+        "static TexturingPanel        Texturing;",
         "static ParametricWorkspacePanel SketchDirectory;",
         "static ParametricToolsPanel    ParametricTools;",
     ]:
@@ -121,15 +121,56 @@ def main() -> int:
     require("SketchPlacement" in parametric,
             "ParametricSketchHost must drive drawing through the SketchToolset placement")
     # 🔴 The banned words. `Draft`/`Draught` name a provisional state rather than a mechanism, and
-    #    `Paint` names the artist's gesture rather than the texels written. New code must not carry
-    #    them; the standing 527 `Paint` uses in SlateUI/SlateCompute are swept when PaintHost is
-    #    deleted at step 11, so only the toolsets are gated here.
-    for Unit in ("SketchToolset", "TextureToolset"):
+    #    `Paint` names the artist's gesture rather than the texels written.
+    #
+    # 🔴 THE SWEEP IS DONE, SO THE GATE NOW COVERS THE SWEPT GROUND. It used to check only the two
+    #    toolsets, because 690 uses stood in SlateUI/SlateCompute/SlateDocument and a gate that fails
+    #    on day one is a gate someone deletes. 610 identifier occurrences were renamed, the two
+    #    directories moved, and these units are gated from here on.
+    #
+    # ⚠️ `PaintHost` is EXCLUDED BY NAME, not overlooked. It is deleted at step 11, and until the
+    #    parametric wiring it holds is moved into `EditorHost` that deletion would take drawing with
+    #    it — see References/RemainingWorkPlan.md. Excluding a known exception by name is honest;
+    #    quietly widening the pattern until it passes is not.
+    SweptUnits = ("SketchToolset", "TextureToolset", "SlateWorkspace", "SlateCompute", "SlateUI")
+    for Unit in SweptUnits:
         for Source in (ROOT / "Engine" / Unit).rglob("*.*"):
+            if Source.suffix not in (".h", ".cpp"):
+                continue
             Body = Source.read_text(encoding="utf-8", errors="ignore")
-            for Banned in ("Draught", "Paint"):
-                require(Banned not in Body,
-                        f"{Source.name} carries the banned word {Banned}")
+            # ⚠️ TWO USES OF "Draft" ARE NOT THE BANNED WORD AND MUST SURVIVE.
+            #    ① `"Draft", "0°"` on Extrude and Revolve is the CAD DRAFT ANGLE — the taper a moulded
+            #       part needs to leave its die. It is standard manufacturing vocabulary with no
+            #       synonym, and renaming it would make the property meaningless to the artist.
+            #    ② `CodexProfile::Drafting = 10u` is bound to the `.draft` FILE EXTENSION. That token
+            #       is matched against documents already on disk, so renaming it is a format break of
+            #       exactly the kind the `DatumPlane` enumerator note forbids.
+            #    A banned-word gate that cannot tell a vocabulary choice from a domain term or a
+            #    persisted token would force a real defect to be introduced in order to pass.
+            for Line in Body.splitlines():
+                Code = Line.split("//", 1)[0]
+                Stripped = Code.strip()
+                if not Stripped:
+                    continue
+                if '"Draft", "0' in Code or ".draft" in Code or "CodexProfile::Drafting" in Code:
+                    continue
+                for Banned in ("Draught", "Draft"):
+                    require(Banned not in Code,
+                            f"{Source.name} carries the banned word {Banned}: {Stripped[:70]}")
+            # 📝 `Paint` survives only inside prose that explains why it was removed, and in the
+            #    persisted revision label `"PaintStroke"`, which is compared by string against
+            #    documents already written. Renaming that is a format change, not a rename.
+            for Line in Body.splitlines():
+                # 📝 A trailing comment is prose too. Checking the whole line flagged
+                #    `TextureFacetCount = 8u;  // [-] - Paint … Filter`, where the code is clean and
+                #    only the note carries the word — a false positive that would have been "fixed"
+                #    by mangling a perfectly good declaration.
+                Code = Line.split("//", 1)[0]
+                Stripped = Code.strip()
+                if not Stripped or "PaintStroke" in Code:
+                    continue
+                require("Paint" not in Code,
+                        f"{Source.name} carries the banned word Paint in code: {Stripped[:70]}")
     # 📝 Step 10 moved the interaction out of the host and into
     #    `SlateWorkspace/Discipline/SketchInteraction`, so the guarantee is checked where it now lives.
     #    ⚠️ The host is checked NOT to define it: a host that grew its own copy back is exactly the

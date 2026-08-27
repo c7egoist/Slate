@@ -140,7 +140,7 @@ enum class InvalidationSubject : std::uint32_t
     OwnerMoved      = 1u,   // [-] - every projection whose extent reaches it
     CameraMoved        = 2u,   // [-] - the directional subdivision, and nothing else
     RadiantIntensity   = 3u,   // [-] - nothing; the extent is declared, not derived from it
-    OwnerPainted    = 4u,   // [-] - nothing; occlusion reads topology, not channels
+    OwnerTextured    = 4u,   // [-] - nothing; occlusion reads topology, not channels
     CutoutCoverage     = 5u,   // [-] - the exception `62` §2 declares; projections reaching it
     SubjectCount       = 6u    // [-] - the closed count, never a subject
 };
@@ -335,7 +335,7 @@ public:
     /// in    Subject   [-]  the illuminant that changed, or the moved owner's identity; may be undeclared
     /// in    Extent    [mm] what the change reaches, for the rows that test reach
     /// out   Result   [-]  refuses with ContentUnsupported for a subject outside the declared set
-    /// note  🔴 `RadiantIntensity` and `OwnerPainted` invalidate **nothing**, and both are accepted rather
+    /// note  🔴 `RadiantIntensity` and `OwnerTextured` invalidate **nothing**, and both are accepted rather
     ///        than rejected. They are the two rows an artist triggers constantly, and accepting them here is what
     ///        lets a caller declare every change it makes without knowing which ones matter — which is the only
     ///        arrangement where the ones that do not matter stay free.

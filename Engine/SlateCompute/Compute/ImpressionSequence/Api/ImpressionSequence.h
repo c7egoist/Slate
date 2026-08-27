@@ -38,9 +38,9 @@ namespace Slate
 ///        that is not one of the seven is rejected rather than rounded to the nearest.
 /// cost  ✔️
 /// tag   api, nonallocating, nonthrowing
-Deliver<std::uint32_t> PaintingLevelOf(std::uint32_t WorkingExtent);
+Deliver<std::uint32_t> TexturingLevelOf(std::uint32_t WorkingExtent);
 
-// 📝 `ChannelPlacement` is `56`'s, declared beside `PaintedContent` because it describes that content's layout
+// 📝 `ChannelPlacement` is `56`'s, declared beside `TexturedContent` because it describes that content's layout
 //    and `70` reads the same declaration from below. It arrives through `SurfaceLayerSequence.h`.
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ struct SealedStroke
     std::vector<float>          PriorTexels     = {};   // [-]  - one whole tile per touched cell, interleaved
     StrokeBrushRecord           Recorded        = {};   // [-]  - `58` §7's parameters, seed included
     LayerIdentity               Subject         = {};   // [-]  - the entry the stroke wrote
-    std::uint32_t               PaintingLevel   = 0u;   // [-]  - the level the extents address
+    std::uint32_t               TexturingLevel   = 0u;   // [-]  - the level the extents address
     std::uint32_t               ComponentCount  = 1u;   // [-]  - components per texel
     std::uint32_t               ImpressionCount = 0u;   // [-]  - impressions the stroke committed
 };
@@ -269,7 +269,7 @@ public:
 
     std::uint32_t ImpressionCount() const;
     std::uint32_t PendingCount() const;
-    std::uint32_t PaintingLevel() const;
+    std::uint32_t TexturingLevel() const;
     double        PathLength() const;
     bool          StrokeOpen() const;
     bool          SpeculativeDeclared() const;

@@ -446,7 +446,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     TooltipDeclaration TooltipDark = TooltipLight;
     TooltipDark.Appearance         = TooltipAppearance::Dark;
 
-    const char* WorkspaceCaptions[] = { "Drafting", "Texture Paint", "Game Editor" };
+    const char* WorkspaceCaptions[] = { "Drafting", "Texturing", "Game Editor" };
     const char* InspectorCaptions[] = { "Properties", "History" };
 
     SwitchDeclaration InspectorDock;

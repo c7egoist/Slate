@@ -21,7 +21,7 @@ const char* SubjectTitle(PanelSubject Subject)
         case PanelSubject::Uv:             return "UV Editor";
         case PanelSubject::Outliner:       return "Scene Directory";
         case PanelSubject::Properties:     return "Properties";
-        case PanelSubject::TexturePaint:   return "Layer Stack";
+        case PanelSubject::Texturing:   return "Layer Stack";
         case PanelSubject::ParametricTools:return "Parametric Tools";
         case PanelSubject::SketchDirectory:return "Sketch Directory";
         case PanelSubject::Vacant:         return "Choose Panel Type";
@@ -522,7 +522,7 @@ void EditorPanel::RecordFooter(std::uint32_t RecordIndex,
         return;
     }
 
-    if (Subject == PanelSubject::TexturePaint)
+    if (Subject == PanelSubject::Texturing)
     {
         const PlaneExtent Flatten = Pill("Export Flattened", 146.0f);
         const PlaneExtent Export = Pill("Export", 88.0f);
@@ -701,10 +701,10 @@ void EditorPanel::RecordVacant(std::uint32_t RecordIndex,
     //    Properties and never listed the Layer Stack, while the menu listed both.
     const PanelSubject Subjects[6] = { PanelSubject::Viewport, PanelSubject::Uv,
                                        PanelSubject::Outliner, PanelSubject::SketchDirectory,
-                                       PanelSubject::ParametricTools, PanelSubject::TexturePaint };
+                                       PanelSubject::ParametricTools, PanelSubject::Texturing };
     const ControlRole Roles[6] = { ControlRole::ChooseViewport, ControlRole::ChooseUv,
                                    ControlRole::ChooseOutliner, ControlRole::ChooseSketchDirectory,
-                                   ControlRole::ChooseParametricTools, ControlRole::ChooseTexturePaint };
+                                   ControlRole::ChooseParametricTools, ControlRole::ChooseTexturing };
 
     for (std::uint32_t Index = 0u; Index < 6u; ++Index)
     {
@@ -816,18 +816,18 @@ void EditorPanel::RecordSubjectMenu(std::uint32_t RecordIndex,
 
     // 📐 Ordered as the workspace reads: the two viewers, the scene tree, then
     //    the paint stack.
-    // 🔴 Properties is NOT offered here. It records the Drafting record
+    // 🔴 Properties is NOT offered here. It records the Properties record
     //    inspector, which belongs to the shell's Scene Directory and not to an
-    //    editor leaf; choosing it in the editor put a Drafting pane inside a
+    //    editor leaf; choosing it in the editor put a Properties pane inside a
     //    Texture Paint workspace. The subject and its host case remain so an
     //    existing layout that already holds one still draws, but it can no
     //    longer be newly chosen.
     const PanelSubject Subjects[6] = { PanelSubject::Viewport, PanelSubject::Uv,
                                        PanelSubject::Outliner, PanelSubject::SketchDirectory,
-                                       PanelSubject::ParametricTools, PanelSubject::TexturePaint };
+                                       PanelSubject::ParametricTools, PanelSubject::Texturing };
     const ControlRole Roles[6] = { ControlRole::ChooseViewport, ControlRole::ChooseUv,
                                    ControlRole::ChooseOutliner, ControlRole::ChooseSketchDirectory,
-                                   ControlRole::ChooseParametricTools, ControlRole::ChooseTexturePaint };
+                                   ControlRole::ChooseParametricTools, ControlRole::ChooseTexturing };
 
     for (std::uint32_t Index = 0u; Index < 6u; ++Index)
     {

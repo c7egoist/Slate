@@ -1474,7 +1474,7 @@ void VerifyMaterials()
 
     Slate::MaterialIndex Materials;
 
-    const Slate::Deliver<std::uint32_t> Declared = Materials.Declare("Painted metal");
+    const Slate::Deliver<std::uint32_t> Declared = Materials.Declare("Textured metal");
 
     Report("A material is declared", Declared.Resolved, "[-] addressed by identity");
 
@@ -2621,7 +2621,7 @@ void VerifyIntake()
 
     Slate::MaterialIndex Materials;
 
-    const std::uint32_t MaterialIndex = Materials.Declare("Painted metal").Resolve();
+    const std::uint32_t MaterialIndex = Materials.Declare("Textured metal").Resolve();
 
     Slate::ChannelSpecification Albedo;
     Albedo.Source                       = Slate::ChannelSource::Layered;
@@ -2726,10 +2726,10 @@ void VerifyStroke()
     std::printf("ImpressionSequence\n");
 
     Report("A working extent that is no level is rejected",
-           !Slate::PaintingLevelOf(100u).Resolved,
+           !Slate::TexturingLevelOf(100u).Resolved,
            "[-] refuses rather than rounding to the nearest");
 
-    const Slate::Deliver<std::uint32_t> Coarsest = Slate::PaintingLevelOf(Slate::CoverageTileTexels);
+    const Slate::Deliver<std::uint32_t> Coarsest = Slate::TexturingLevelOf(Slate::CoverageTileTexels);
 
     Report("The coarsest extent resolves its level",
            Coarsest.Resolved && Coarsest.Resolve() == Slate::ReductionLevelCount - 1u,
@@ -2745,14 +2745,14 @@ void VerifyStroke()
     //    placement is supplied rather than derived, per `00` §12's open packing row.
     Slate::SurfaceLayerSequence Content;
 
-    Slate::LayerSpecification Painting;
-    Painting.Source                 = Slate::LayerContentSource::PaintedImpressions;
-    Painting.Painted.ExtentTexels   = Slate::CoverageTileTexels;
-    Painting.Painted.ComponentCount = 3u;
-    Painting.Painted.Texels.assign(static_cast<std::size_t>(Slate::CoverageTileTexels)
+    Slate::LayerSpecification Texturing;
+    Texturing.Source                 = Slate::LayerContentSource::TexturedImpressions;
+    Texturing.Textured.ExtentTexels   = Slate::CoverageTileTexels;
+    Texturing.Textured.ComponentCount = 3u;
+    Texturing.Textured.Texels.assign(static_cast<std::size_t>(Slate::CoverageTileTexels)
                                  * Slate::CoverageTileTexels * 3u, 0.0f);
 
-    const Slate::Deliver<Slate::LayerIdentity> Appended = Content.Append(Painting);
+    const Slate::Deliver<Slate::LayerIdentity> Appended = Content.Append(Texturing);
 
     Report("A painted entry appends", Appended.Resolved, "[-] at the declared extent");
 
@@ -2766,7 +2766,7 @@ void VerifyStroke()
     const Slate::Deliver<Slate::LayerIdentity> Described = Content.Append(Analytic);
 
     Report("A described entry refuses amendment",
-           Described.Resolved && !Content.AmendPainted(Described.Resolve()).Resolved,
+           Described.Resolved && !Content.AmendTextured(Described.Resolve()).Resolved,
            "[-] `56` §3: it stores a description, not texels");
 
     Slate::BrushSpecification Brush;
@@ -2915,17 +2915,17 @@ void VerifyStroke()
     const std::size_t Centre = (static_cast<std::size_t>(64) * Slate::CoverageTileTexels + 38u) * 3u;
 
     Report("The accumulated coverage reached the entry",
-           Written.Resolved && Written.Resolve()->Painted.Texels[Centre] > 0.99f,
+           Written.Resolved && Written.Resolve()->Textured.Texels[Centre] > 0.99f,
            "[-] applied once, at the stroke's own combination");
 
     Report("A texel the stroke never reached is untouched",
-           Written.Resolved && Written.Resolve()->Painted.Texels[0] == 0.0f,
+           Written.Resolved && Written.Resolve()->Textured.Texels[0] == 0.0f,
            "[-] bounded by the impressions, not by the surface");
 
     Report("The inverse restores what stood before",
            Sealed.Resolved
         && Slate::Restore(Sealed.Resolve(), Content).Resolved
-        && Content.Resolve(Appended.Resolve()).Resolve()->Painted.Texels[Centre] == 0.0f,
+        && Content.Resolve(Appended.Resolve()).Resolve()->Textured.Texels[Centre] == 0.0f,
            "[-] extent-bounded, and replayed rather than snapshotted");
 
     // 🔴 `22` §2's other half: an impression whose cells are not resident at the painting level demands and
@@ -2933,9 +2933,9 @@ void VerifyStroke()
     Slate::SurfaceLayerSequence FineContent;
 
     Slate::LayerSpecification Fine;
-    Fine.Source                 = Slate::LayerContentSource::PaintedImpressions;
-    Fine.Painted.ExtentTexels   = Slate::MaximumWorkingEdge;
-    Fine.Painted.ComponentCount = 1u;
+    Fine.Source                 = Slate::LayerContentSource::TexturedImpressions;
+    Fine.Textured.ExtentTexels   = Slate::MaximumWorkingEdge;
+    Fine.Textured.ComponentCount = 1u;
 
     Slate::StrokeDeclaration Deferring = Declaring;
     Deferring.WorkingExtent  = Slate::MaximumWorkingEdge;
@@ -3203,12 +3203,12 @@ void VerifyTools()
 
     Slate::ToolSequence Held;
 
-    Slate::ToolSpecification Painting;
-    Painting.Identity  = "Paint";
-    Painting.Current = "Paint";
-    Painting.Reserved   = Slate::PointerPrecedence::Stroke;
-    Painting.Previewed = Slate::PreviewSubject::Impression;
-    Painting.Recorded  = Slate::TransactionSubject::Dragged;
+    Slate::ToolSpecification Texturing;
+    Texturing.Identity  = "Brushed";
+    Texturing.Current = "Brushed";
+    Texturing.Reserved   = Slate::PointerPrecedence::Stroke;
+    Texturing.Previewed = Slate::PreviewSubject::Impression;
+    Texturing.Recorded  = Slate::TransactionSubject::Dragged;
 
     Slate::PropertyDeclaration Strength;
     Strength.Identity                 = "Strength";
@@ -3220,9 +3220,9 @@ void VerifyTools()
     Strength.Defaulted.Measured       = Slate::PropertyMeasure::Magnitude;
     Strength.Defaulted.MagnitudeHeld  = 1.0;
 
-    Discard(Painting.Parameters.Declare(Strength));
+    Discard(Texturing.Parameters.Declare(Strength));
 
-    const Slate::Deliver<std::uint32_t> Declared = Held.Tools().Declare(Painting);
+    const Slate::Deliver<std::uint32_t> Declared = Held.Tools().Declare(Texturing);
 
     Report("A tool is declared", Declared.Resolved, "[-] with its parameters");
 
@@ -3232,7 +3232,7 @@ void VerifyTools()
            "[-] `76` §4: any tool presents without the panel knowing which");
 
     Report("A repeated identity is rejected",
-           !Held.Tools().Declare(Painting).Resolved,
+           !Held.Tools().Declare(Texturing).Resolved,
            "[-] resolution by identity must answer one tool");
 
     Report("Nothing is active before a tool is declared active",

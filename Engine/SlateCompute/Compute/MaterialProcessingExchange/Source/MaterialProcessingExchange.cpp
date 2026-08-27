@@ -93,14 +93,14 @@ void HashPhysicalDeclaration(std::uint64_t& Hash, const PhysicalSurfaceDeclarati
     HashValue(Hash, Declaration.TwoSided);
 }
 
-void HashPainted(std::uint64_t& Hash, const PaintedContent& Painted)
+void HashTextured(std::uint64_t& Hash, const TexturedContent& Textured)
 {
-    HashValue(Hash, Painted.ExtentTexels);
-    HashValue(Hash, Painted.ComponentCount);
-    const std::uint64_t TexelCount = static_cast<std::uint64_t>(Painted.Texels.size());
+    HashValue(Hash, Textured.ExtentTexels);
+    HashValue(Hash, Textured.ComponentCount);
+    const std::uint64_t TexelCount = static_cast<std::uint64_t>(Textured.Texels.size());
     HashValue(Hash, TexelCount);
-    if (!Painted.Texels.empty())
-        HashBytes(Hash, Painted.Texels.data(), Painted.Texels.size() * sizeof(float));
+    if (!Textured.Texels.empty())
+        HashBytes(Hash, Textured.Texels.data(), Textured.Texels.size() * sizeof(float));
 }
 
 void HashLayer(std::uint64_t& Hash, const MaterialProcessingLayerSnapshot& Snapshot)
@@ -117,12 +117,12 @@ void HashLayer(std::uint64_t& Hash, const MaterialProcessingLayerSnapshot& Snaps
     HashValue(Hash, Layer.Combination);
     HashValue(Hash, Layer.Coverage.Source);
     HashValue(Hash, Layer.Coverage.SourceIndex);
-    HashPainted(Hash, Layer.Coverage.Painted);
+    HashTextured(Hash, Layer.Coverage.Textured);
     HashValue(Hash, Layer.Coverage.UniformStrength);
     HashValue(Hash, Layer.Coverage.ChannelMask);
     HashValue(Hash, Layer.Coverage.Inverted);
     HashValue(Hash, Layer.Coverage.CoverageDeclared);
-    HashPainted(Hash, Layer.Painted);
+    HashTextured(Hash, Layer.Textured);
     const std::uint64_t NameLength = static_cast<std::uint64_t>(Layer.Name.size());
     HashValue(Hash, NameLength);
     HashBytes(Hash, Layer.Name.data(), Layer.Name.size());
@@ -253,7 +253,7 @@ Deliver<MaterialLayerCommandResult> MaterialProcessingExchange::ApplyLayerComman
         {
             LayerSpecification Layer = Command.Layer;
             if (Layer.Name.empty()) Layer.Name = "Layer";
-            if (Layer.Source == LayerContentSource::PaintedImpressions && Layer.Painted.Texels.empty())
+            if (Layer.Source == LayerContentSource::TexturedImpressions && Layer.Textured.Texels.empty())
                 Layer.Source = LayerContentSource::MaterialConstants;
             const Deliver<LayerIdentity> Added = Layers.Append(Layer);
             if (!Added.Resolved) return Deliver<MaterialLayerCommandResult>::Refuse(Added.Error);

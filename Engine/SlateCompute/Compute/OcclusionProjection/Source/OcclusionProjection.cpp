@@ -520,7 +520,7 @@ Deliver<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
         }
 
         case InvalidationSubject::RadiantIntensity:
-        case InvalidationSubject::OwnerPainted:
+        case InvalidationSubject::OwnerTextured:
         {
             // 🔴 Nothing. `44` §2's extent is **declared** rather than derived from the magnitude, so brightening
             //    an illuminant cannot enlarge what it reaches; and occlusion reads topology rather than channels,

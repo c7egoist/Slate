@@ -44,7 +44,7 @@
 //          Engine/SlateUI/Interface/FacetPanel/Source/FacetPanel.cpp \
 //          Engine/SlateUI/Interface/PanelStructure/Source/PanelStructure.cpp \
 //          Engine/SlateUI/Interface/SceneDirectoryPanel/Source/SceneDirectoryPanel.cpp \
-//          Engine/SlateUI/Interface/TexturePaintPanel/Source/TexturePaintPanel.cpp \
+//          Engine/SlateUI/Interface/TexturingPanel/Source/TexturingPanel.cpp \
 //          Engine/SlateUI/Interface/ControlPanel/Source/ControlPanel.cpp \
 //          Engine/SlateUI/Interface/ComponentSpecification/Source/ComponentSpecification.cpp \
 //          Engine/SlateUI/Interface/ComponentSpecification/Source/MagnitudeExpression.cpp \
@@ -86,7 +86,7 @@
 #include "SlateUI/Interface/ControlPanel/Api/ControlPanel.h"
 #include "SlateUI/Interface/EditorPanel/Api/EditorPanel.h"
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintPanel.h"
+#include "SlateUI/Interface/TexturingPanel/Api/TexturingPanel.h"
 #include "SlateUI/Interface/PanelStructure/Api/PanelStructure.h"
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectoryPanel.h"
 #include "SlateUI/Interface/WorkspacePanel/Api/WorkspacePanel.h"
@@ -428,8 +428,8 @@ struct SceneDriver
     EditorPanelConfiguration Configuration;
     SceneDirectoryPanel SceneDirectory;
     SceneDirectoryContext Applied;
-    TexturePaintPanel TexturePaint;
-    TexturePaintContext TexturePaintApplied;
+    TexturingPanel Texturing;
+    TexturingContext TexturingApplied;
     FontLoader Fonts;
 
     // 🔴 The panels BORROW the appearance and read it on every tick — it must outlive them all, so
@@ -497,9 +497,9 @@ struct SceneDriver
     };
 
     // 📝 The mutable row set the host owns: seeded from the reference tree at bring-up, and mutated
-    //    only through the shared `TexturePaintStack` helper when the panel raises a structural
+    //    only through the shared `TexturingStack` helper when the panel raises a structural
     //    request — the harness drives exactly what the editor host drives.
-    TexturePaintStack StackRows;
+    TexturingStack StackRows;
 
     // 📝 The sky texture the host would upload: generated from the environment, registered in the
     //    rasterizer under a fixed identity, and handed to the scene directory as its texture identity.
@@ -554,7 +554,7 @@ struct SceneDriver
             return false;
         if (!SceneDirectory.ConstructSceneDirectoryPanel(Interaction, Motion, Surface, Appearance).Resolved)
             return false;
-        if (!TexturePaint.ConstructTexturePaintPanel(Interaction, Motion, Surface, Appearance).Resolved)
+        if (!Texturing.ConstructTexturingPanel(Interaction, Motion, Surface, Appearance).Resolved)
             return false;
         if (!Editor.ConstructEditorPanel(Motion, Surface, Appearance).Resolved)
             return false;
@@ -579,16 +579,16 @@ struct SceneDriver
         // 📝 The layer stack's seed — the same mock tree the host carries, through the shared stack
         //    helper and its context seeding, exactly as the editor host does it.
         StackRows.Seed(StackSeed, 12u);
-        TexturePaintApplied.LayerTaken = 1u;
-        SeedPaintContextFromRows(TexturePaintApplied, StackRows.Rows, StackRows.Count);
+        TexturingApplied.LayerTaken = 1u;
+        SeedTexturingContextFromRows(TexturingApplied, StackRows.Rows, StackRows.Count);
 
         for (std::uint32_t Index = 0u; Index < TextureLayerLimit; ++Index)
         {
-            TexturePaintApplied.MaskSourceTaken[Index] =
+            TexturingApplied.MaskSourceTaken[Index] =
                 (Index == 2u || Index == 3u || Index == 4u) ? 4u : 0u;
-            TexturePaintApplied.MaskDensity[Index] =
+            TexturingApplied.MaskDensity[Index] =
                 (Index == 3u) ? 88u : 100u;
-            TexturePaintApplied.MaskInverted[Index] = (Index == 9u);
+            TexturingApplied.MaskInverted[Index] = (Index == 9u);
         }
         EditorCamera.YawDegrees   = Applied.Environment.SunAzimuth - 20.0;
         EditorCamera.PitchDegrees = 15.0;
@@ -630,7 +630,7 @@ struct SceneDriver
         const bool TabArrived = SimTabPressed || SimLayersTab;
         SceneDirectory.Advance(Surface.Pointer(), TickMilliseconds, Applied,
                                TabArrived && !SimLayersTab);
-        TexturePaint.Advance(Surface.Pointer(), TickMilliseconds, TexturePaintApplied,
+        Texturing.Advance(Surface.Pointer(), TickMilliseconds, TexturingApplied,
                              StackRows.Rows, StackRows.Count, TabArrived && SimLayersTab);
         SimTabPressed = false;
         SimLayersTab = false;
@@ -638,23 +638,23 @@ struct SceneDriver
 
         // 📝 The host's search feed, simulated: while the field is taken, append the queued typed
         //    characters exactly as the seam's AcceptTyped would.
-        if (TexturePaintApplied.SearchTaken && SimTyped[0] != '\0')
+        if (TexturingApplied.SearchTaken && SimTyped[0] != '\0')
         {
             std::uint32_t Occupied = 0u;
 
-            while (Occupied + 1u < TexturePaintContext::TextureRetentionLimit &&
-                   TexturePaintApplied.Retention[Occupied] != '\0')
+            while (Occupied + 1u < TexturingContext::TextureRetentionLimit &&
+                   TexturingApplied.Retention[Occupied] != '\0')
             {
                 ++Occupied;
             }
 
             for (std::uint32_t Index = 0u; SimTyped[Index] != '\0' &&
-                 Occupied + 1u < TexturePaintContext::TextureRetentionLimit; ++Index)
+                 Occupied + 1u < TexturingContext::TextureRetentionLimit; ++Index)
             {
-                TexturePaintApplied.Retention[Occupied++] = SimTyped[Index];
+                TexturingApplied.Retention[Occupied++] = SimTyped[Index];
             }
 
-            TexturePaintApplied.Retention[Occupied] = '\0';
+            TexturingApplied.Retention[Occupied] = '\0';
             SimTyped[0] = '\0';
         }
 
@@ -782,16 +782,16 @@ struct SceneDriver
                     SceneDirectory.RecordProperties(LeafBody, Applied, EditorEntities, 7u,
                                                     Applied.InspectorTab);
                     break;
-                case PanelSubject::TexturePaint:
+                case PanelSubject::Texturing:
                     if (Configuration.FooterDemand == EditorFooterDemand::ExportFlattened ||
                         Configuration.FooterDemand == EditorFooterDemand::LayerExport)
                     {
-                        TexturePaintApplied.ExportMode =
+                        TexturingApplied.ExportMode =
                             Configuration.FooterDemand == EditorFooterDemand::LayerExport ? 1u : 0u;
-                        TexturePaintApplied.StackPage = 2u;
+                        TexturingApplied.StackPage = 2u;
                         Configuration.FooterDemand = EditorFooterDemand::None;
                     }
-                    TexturePaint.Record(LeafBody, TexturePaintApplied, StackRows.Rows,
+                    Texturing.Record(LeafBody, TexturingApplied, StackRows.Rows,
                                         StackRows.Count);
                     break;
                 default:
@@ -803,7 +803,7 @@ struct SceneDriver
 
         // 📝 The host drains the layer stack's structural requests exactly once per tick, through the
         //    same shared helper the editor host calls.
-        StackRows.ApplyRequest(TexturePaintApplied);
+        StackRows.ApplyRequest(TexturingApplied);
 
         Surface.Retire();
 
@@ -1692,7 +1692,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
             std::fprintf(stderr, "[FAIL] Scene Directory Import footer did not open its outer dialogue\n");
             return false;
         }
-        if (Driver.TexturePaintApplied.StackPage != 0u)
+        if (Driver.TexturingApplied.StackPage != 0u)
         {
             std::fprintf(stderr, "[FAIL] Scene transfer changed Layer Stack navigation\n");
             return false;
@@ -1757,12 +1757,12 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
     }
     else if (std::strcmp(Scenario, "editor-layer-export") == 0)
     {
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
         Driver.Settle(20);
         const PlaneExtent Body = Driver.Editor.LeafBody(0u);
         Driver.Tap(Body.MinimumX + 218.0f, Body.MaximumY + 19.0f); // real Export footer pill
         Driver.Settle(28);
-        if (Driver.TexturePaintApplied.StackPage != 2u || Driver.TexturePaintApplied.ExportMode != 1u)
+        if (Driver.TexturingApplied.StackPage != 2u || Driver.TexturingApplied.ExportMode != 1u)
         {
             std::fprintf(stderr, "[FAIL] Layer Stack Export footer did not open texture-set mode\n");
             return false;
@@ -1773,23 +1773,23 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(20);
         Driver.Tap(Body.MaximumX - 28.0f, Body.MinimumY + 355.0f);
         Driver.Settle(20);
-        if (Driver.TexturePaintApplied.ExportFormat != 1u ||
-            Driver.TexturePaintApplied.ExportResolution != 5u ||
-            Driver.TexturePaintApplied.ExportPreset != 1u)
+        if (Driver.TexturingApplied.ExportFormat != 1u ||
+            Driver.TexturingApplied.ExportResolution != 5u ||
+            Driver.TexturingApplied.ExportPreset != 1u)
         {
             std::fprintf(stderr, "[FAIL] one of the Layer Stack export carousels did not advance\n");
             return false;
         }
         Driver.Tap(Body.MinimumX + 275.0f, Body.MinimumY + 177.0f); // visible TGA option tile
         Driver.Settle(20);
-        if (Driver.TexturePaintApplied.ExportFormat != 2u)
+        if (Driver.TexturingApplied.ExportFormat != 2u)
         {
             std::fprintf(stderr, "[FAIL] Layer Stack export format tile did not select TGA\n");
             return false;
         }
         Driver.Tap(Body.MinimumX + 48.0f, Body.MinimumY + 68.0f); // dedicated Back control
         Driver.Settle(20);
-        if (Driver.TexturePaintApplied.StackPage != 0u)
+        if (Driver.TexturingApplied.StackPage != 0u)
         {
             std::fprintf(stderr, "[FAIL] Layer Stack export Back did not return to the stack\n");
             return false;
@@ -1800,17 +1800,17 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
     }
     else if (std::strcmp(Scenario, "editor-layer-flatten") == 0)
     {
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
         Driver.Settle(20);
         const PlaneExtent Body = Driver.Editor.LeafBody(0u);
         Driver.Tap(Body.MinimumX + 73.0f, Body.MaximumY + 19.0f); // real Export Flattened footer pill
         Driver.Settle(28);
-        if (Driver.TexturePaintApplied.StackPage != 2u)
+        if (Driver.TexturingApplied.StackPage != 2u)
         {
             std::fprintf(stderr, "[FAIL] Export Flattened footer did not open its outer dialogue\n");
             return false;
         }
-        if (Driver.TexturePaintApplied.PropertyTab != 0u)
+        if (Driver.TexturingApplied.PropertyTab != 0u)
         {
             std::fprintf(stderr, "[FAIL] flattened export conflated outer and property navigation\n");
             return false;
@@ -1819,7 +1819,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
     }
     else if (std::strcmp(Scenario, "editor-layerstack-card") == 0)
     {
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
         Driver.Settle(20);
 
         ThemeSelection Selection;
@@ -1827,7 +1827,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         const ThemeProfile Profile = ResolveTinted(1.0, 1.0, ViewportWidth, Selection);
         const ShellMetric Metric = ScaleShellLengths(static_cast<float>(Profile.Measure.DisplayScale)
                                                      * Profile.ControlMeasure.ArtistFactor);
-        const PlaneExtent Row = Driver.TexturePaint.RowExtent(1u);
+        const PlaneExtent Row = Driver.Texturing.RowExtent(1u);
         const float Action = Metric.LayerToolHeight - 5.0f;
         const float DisclosureX = Row.MaximumX - 14.0f - Action * 1.5f - 4.0f;
         const float DisclosureY = Row.MinimumY + Metric.LayerRowY * 0.5f;
@@ -1835,13 +1835,13 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tap(DisclosureX, DisclosureY);
         Driver.Settle(28);
 
-        if (!Driver.TexturePaintApplied.LayerCardExpanded[1u])
+        if (!Driver.TexturingApplied.LayerCardExpanded[1u])
         {
             std::fprintf(stderr, "[FAIL] the layer disclosure V did not open its inline card\n");
             return false;
         }
 
-        if (Driver.TexturePaintApplied.StackPage != 0u)
+        if (Driver.TexturingApplied.StackPage != 0u)
         {
             std::fprintf(stderr, "[FAIL] inline disclosure changed the carousel page\n");
             return false;
@@ -1854,7 +1854,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         const float EffectsY = CardTop + 8.0f + OpenSection * 2.0f + 14.5f;
         Driver.Tap(Row.MinimumX + 100.0f, EffectsY);
         Driver.Settle(8);
-        if (Driver.TexturePaintApplied.LayerCardSection[1u][2u])
+        if (Driver.TexturingApplied.LayerCardSection[1u][2u])
         {
             std::fprintf(stderr, "[FAIL] the Effects section header did not collapse\n");
             return false;
@@ -1869,7 +1869,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tap(BodyX, DisclosureY);
         Driver.Settle(4);
 
-        if (Driver.TexturePaintApplied.StackPage != 1u)
+        if (Driver.TexturingApplied.StackPage != 1u)
         {
             std::fprintf(stderr, "[FAIL] a double contact did not open the layer properties carousel\n");
             return false;
@@ -1879,14 +1879,14 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(BodyX, DisclosureY, false, false, false);
         Driver.Settle(20);
 
-        const PlaneExtent Returned = Driver.TexturePaint.RowExtent(1u);
+        const PlaneExtent Returned = Driver.Texturing.RowExtent(1u);
         const float ReturnedX = Returned.MaximumX - 14.0f - Action * 1.5f - 4.0f;
         const float ReturnedY = Returned.MinimumY + Metric.LayerRowY * 0.5f;
         Driver.Tap(ReturnedX, ReturnedY);
         Driver.Settle(28);
 
-        if (!Driver.TexturePaintApplied.LayerCardExpanded[1u] ||
-            Driver.TexturePaintApplied.StackPage != 0u)
+        if (!Driver.TexturingApplied.LayerCardExpanded[1u] ||
+            Driver.TexturingApplied.StackPage != 0u)
         {
             std::fprintf(stderr, "[FAIL] the inline card did not reopen independently after carousel travel\n");
             return false;
@@ -1910,10 +1910,10 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
 
         Driver.Partition.ConstructPanelPartition(PanelSubject::Viewport);
         Driver.Settle(8);
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
 
         for (std::uint32_t Index = 0u; Index < 8u; ++Index)
-            Driver.TexturePaintApplied.LayerCardExpanded[Index] = true;
+            Driver.TexturingApplied.LayerCardExpanded[Index] = true;
 
         Driver.Settle(28);
         const PlaneExtent Body = Driver.Editor.LeafBody(0u);
@@ -1922,7 +1922,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
                     false, false, false, -1.0f);
         Driver.Settle(12);
 
-        if (Driver.TexturePaintApplied.StackListWanted <= 0.0f)
+        if (Driver.TexturingApplied.StackListWanted <= 0.0f)
         {
             std::fprintf(stderr, "[FAIL] Layer Stack wheel remained blocked after panel return\n");
             return false;
@@ -1937,20 +1937,20 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
     }
     else if (std::strcmp(Scenario, "editor-layer-multiselect") == 0)
     {
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
         for (std::uint32_t Index = 0u; Index < TextureLayerLimit; ++Index)
-            Driver.TexturePaintApplied.LayerSelected[Index] = false;
-        Driver.TexturePaintApplied.LayerSelected[1u] = true;
-        Driver.TexturePaintApplied.LayerSelected[2u] = true;
-        Driver.TexturePaintApplied.LayerSelected[4u] = true;
-        Driver.TexturePaintApplied.LayerTaken = 4u;
-        Driver.TexturePaintApplied.LayerSelectionAnchor = 1u;
+            Driver.TexturingApplied.LayerSelected[Index] = false;
+        Driver.TexturingApplied.LayerSelected[1u] = true;
+        Driver.TexturingApplied.LayerSelected[2u] = true;
+        Driver.TexturingApplied.LayerSelected[4u] = true;
+        Driver.TexturingApplied.LayerTaken = 4u;
+        Driver.TexturingApplied.LayerSelectionAnchor = 1u;
         Driver.Settle(20);
     }
     else if (std::strcmp(Scenario, "editor-layerstack") == 0)
     {
-        // 📐 A single TexturePaint leaf: the whole workspace body is the layer stack.
-        Driver.Partition.ConstructPanelPartition(PanelSubject::TexturePaint);
+        // 📐 A single Texturing leaf: the whole workspace body is the layer stack.
+        Driver.Partition.ConstructPanelPartition(PanelSubject::Texturing);
         Driver.Settle(20);
 
         const PlaneExtent LeafBody = Driver.Editor.LeafBody(0u);
@@ -1982,7 +1982,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         const float FooterY0 = StripY0 + Scaled.ComponentY;
 
         // 📐 The rows band: exactly the extents the panel reported.
-        const float BandY0 = Driver.TexturePaint.RowExtent(0u).MinimumY;
+        const float BandY0 = Driver.Texturing.RowExtent(0u).MinimumY;
         const float BandY1 = StripY0;
 
         const auto Ink = [&](const char* Path) -> std::uint32_t
@@ -2052,7 +2052,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
             };
 
             // 📐 The 3 px colour tag of the Surface Detail folder — 0x9B8CF0 at 0.9 over the row.
-            const PlaneExtent TagRow0 = Driver.TexturePaint.RowExtent(0u);
+            const PlaneExtent TagRow0 = Driver.Texturing.RowExtent(0u);
             int TagR = 0, TagG = 0, TagB = 0;
             Pixel(static_cast<int>(TagRow0.MinimumX + 1.0f),
                   static_cast<int>(TagRow0.MinimumY + 22.0f), TagR, TagG, TagB);
@@ -2067,7 +2067,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
 
             // 📐 The mask row under Warning Stencil: a dashed border, not a solid one — bright
             //     segments alternating with gaps along the mask row's top edge.
-            const PlaneExtent Stencil = Driver.TexturePaint.RowExtent(2u);
+            const PlaneExtent Stencil = Driver.Texturing.RowExtent(2u);
             const PlaneExtent MaskRow2 = Spanning(Stencil.MinimumX,
                                                   Stencil.MinimumY + Scaled.LayerRowY,
                                                   Stencil.Width(), Scaled.LayerMaskY);
@@ -2122,7 +2122,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
             stbi_image_free(ReadPixels);
         }
 
-        if (Driver.TexturePaint.DrawnRows() < 3u)
+        if (Driver.Texturing.DrawnRows() < 3u)
         {
             std::fprintf(stderr, "[FAIL] the layer stack did not draw enough rows\n");
             return false;
@@ -2130,9 +2130,9 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
 
         // 📐 Rows 0, 1, 2 are the folder, Levels and Warning Stencil; the mask row beneath Warning
         //    Stencil sits inside row 2's own extent, one row-height down.
-        const PlaneExtent Row0 = Driver.TexturePaint.RowExtent(0u);
-        const PlaneExtent Row1 = Driver.TexturePaint.RowExtent(1u);
-        const PlaneExtent Row2 = Driver.TexturePaint.RowExtent(2u);
+        const PlaneExtent Row0 = Driver.Texturing.RowExtent(0u);
+        const PlaneExtent Row1 = Driver.Texturing.RowExtent(1u);
+        const PlaneExtent Row2 = Driver.Texturing.RowExtent(2u);
 
         const float RowY[3] =
         {
@@ -2156,8 +2156,8 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] layer retention after 'decal': '%s'\n",
-                     Driver.TexturePaintApplied.Retention);
-        if (std::strcmp(Driver.TexturePaintApplied.Retention, "decal") != 0)
+                     Driver.TexturingApplied.Retention);
+        if (std::strcmp(Driver.TexturingApplied.Retention, "decal") != 0)
         {
             std::fprintf(stderr, "[FAIL] the layer search pill did not accept the run\n");
             return false;
@@ -2176,8 +2176,8 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         }
 
         // ③ The Fill facet: only the fills remain.
-        Driver.TexturePaintApplied.Retention[0] = '\0';
-        Driver.TexturePaintApplied.FacetEnabled[1u] = true;
+        Driver.TexturingApplied.Retention[0] = '\0';
+        Driver.TexturingApplied.FacetEnabled[1u] = true;
         Driver.Settle(2);
 
         const std::string FillPath = "_AgentScratch/layer-fill.png";
@@ -2193,7 +2193,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
             return false;
         }
 
-        Driver.TexturePaintApplied.FacetEnabled[1u] = false;
+        Driver.TexturingApplied.FacetEnabled[1u] = false;
 
         // ④ A layer row + Tab -> the channel properties page.
         Driver.Tick(LeafX, RowY[1], true, true, false);
@@ -2204,11 +2204,11 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] after Tab: page=%u tab=%u taken=%u\n",
-                     Driver.TexturePaintApplied.StackPage, Driver.TexturePaintApplied.PropertyTab,
-                     Driver.TexturePaintApplied.LayerTaken);
+                     Driver.TexturingApplied.StackPage, Driver.TexturingApplied.PropertyTab,
+                     Driver.TexturingApplied.LayerTaken);
 
-        if (Driver.TexturePaintApplied.StackPage != 1u || Driver.TexturePaintApplied.PropertyTab != 0u ||
-            Driver.TexturePaintApplied.LayerTaken != 1u)
+        if (Driver.TexturingApplied.StackPage != 1u || Driver.TexturingApplied.PropertyTab != 0u ||
+            Driver.TexturingApplied.LayerTaken != 1u)
         {
             std::fprintf(stderr, "[FAIL] Tab did not open the channel properties\n");
             return false;
@@ -2263,7 +2263,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(LeafX, MaskRowY, false, false, true);
         Driver.Settle(2);
 
-        if (!Driver.TexturePaintApplied.MaskTaken)
+        if (!Driver.TexturingApplied.MaskTaken)
         {
             std::fprintf(stderr, "[FAIL] the mask row click did not take\n");
             return false;
@@ -2275,10 +2275,10 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
 
         std::fprintf(stderr, "[assert] after mask+Tab: mask=%d page=%u tab=%u (the mask panel is the\n"
                              "         selection's single tab, clamped to 0)\n",
-                     Driver.TexturePaintApplied.MaskTaken ? 1 : 0,
-                     Driver.TexturePaintApplied.StackPage, Driver.TexturePaintApplied.PropertyTab);
+                     Driver.TexturingApplied.MaskTaken ? 1 : 0,
+                     Driver.TexturingApplied.StackPage, Driver.TexturingApplied.PropertyTab);
 
-        if (!Driver.TexturePaintApplied.MaskTaken || Driver.TexturePaintApplied.StackPage != 1u)
+        if (!Driver.TexturingApplied.MaskTaken || Driver.TexturingApplied.StackPage != 1u)
         {
             std::fprintf(stderr, "[FAIL] the mask did not open its own mask panel\n");
             return false;
@@ -2340,11 +2340,11 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] details chevron: page=%u tab=%u taken=%u\n",
-                     Driver.TexturePaintApplied.StackPage, Driver.TexturePaintApplied.PropertyTab,
-                     Driver.TexturePaintApplied.LayerTaken);
+                     Driver.TexturingApplied.StackPage, Driver.TexturingApplied.PropertyTab,
+                     Driver.TexturingApplied.LayerTaken);
 
-        if (Driver.TexturePaintApplied.StackPage != 1u ||
-            Driver.TexturePaintApplied.LayerTaken != 1u)
+        if (Driver.TexturingApplied.StackPage != 1u ||
+            Driver.TexturingApplied.LayerTaken != 1u)
         {
             std::fprintf(stderr, "[FAIL] the details chevron did not travel to the properties\n");
             return false;
@@ -2360,7 +2360,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(MoreX, LayerMidY(Row1), false, false, true);
         Driver.Settle(2);
 
-        if (Driver.TexturePaintApplied.MenuOpen != 2u)
+        if (Driver.TexturingApplied.MenuOpen != 2u)
         {
             std::fprintf(stderr, "[FAIL] the more button did not open the layer menu\n");
             return false;
@@ -2422,10 +2422,10 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] after duplicate: rows=%u taken=%u menu=%u\n",
-                     Driver.StackRows.Count, Driver.TexturePaintApplied.LayerTaken,
-                     Driver.TexturePaintApplied.MenuOpen);
+                     Driver.StackRows.Count, Driver.TexturingApplied.LayerTaken,
+                     Driver.TexturingApplied.MenuOpen);
 
-        if (Driver.StackRows.Count != 13u || Driver.TexturePaintApplied.MenuOpen != 0u)
+        if (Driver.StackRows.Count != 13u || Driver.TexturingApplied.MenuOpen != 0u)
         {
             std::fprintf(stderr, "[FAIL] the layer menu's Duplicate did not insert a row\n");
             return false;
@@ -2453,7 +2453,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
 
         // ⑥c The layer menu's Solo dims every row outside the solo set and stands the SOLO chip —
         //     asserted on the yellow chip's pixels in the header band.
-        const PlaneExtent Row1Again = Driver.TexturePaint.RowExtent(1u);
+        const PlaneExtent Row1Again = Driver.Texturing.RowExtent(1u);
         const float MoreX2 = Row1Again.MaximumX - 29.0f + 11.5f;
         const float LayerMenuY2 = Row1Again.MinimumY + Scaled.LayerRowY + 6.0f;
         const float ItemTop2 = LayerMenuY2 + Scaled.PanePad + 20.0f;
@@ -2468,7 +2468,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(LayerMenuX + MenuCardW * 0.5f, SoloY, false, false, true);
         Driver.Settle(2);
 
-        if (Driver.TexturePaintApplied.SoloTaken != 1u)
+        if (Driver.TexturingApplied.SoloTaken != 1u)
         {
             std::fprintf(stderr, "[FAIL] the layer menu's Solo did not stand the solo\n");
             return false;
@@ -2523,7 +2523,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(LayerMenuX + MenuCardW * 0.5f, SoloY, false, false, true);
         Driver.Settle(2);
 
-        if (Driver.TexturePaintApplied.SoloTaken != 0xFFFFFFFFu)
+        if (Driver.TexturingApplied.SoloTaken != 0xFFFFFFFFu)
         {
             std::fprintf(stderr, "[FAIL] the layer menu's Clear solo did not stand down\n");
             return false;
@@ -2539,7 +2539,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(PillX + PillW * 0.5f, PillMidY, false, false, true);
         Driver.Settle(2);
 
-        if (Driver.TexturePaintApplied.MenuOpen != 4u)
+        if (Driver.TexturingApplied.MenuOpen != 4u)
         {
             std::fprintf(stderr, "[FAIL] the blend pill did not open the blend menu\n");
             return false;
@@ -2558,11 +2558,11 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] blend picked: %u (Screen=4) menu=%u\n",
-                     Driver.TexturePaintApplied.LayerBlendTaken[1u],
-                     Driver.TexturePaintApplied.MenuOpen);
+                     Driver.TexturingApplied.LayerBlendTaken[1u],
+                     Driver.TexturingApplied.MenuOpen);
 
-        if (Driver.TexturePaintApplied.LayerBlendTaken[1u] != 4u ||
-            Driver.TexturePaintApplied.MenuOpen != 0u)
+        if (Driver.TexturingApplied.LayerBlendTaken[1u] != 4u ||
+            Driver.TexturingApplied.MenuOpen != 0u)
         {
             std::fprintf(stderr, "[FAIL] the blend menu did not take Screen\n");
             return false;
@@ -2579,10 +2579,10 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] opacity after drag: %u\n",
-                     Driver.TexturePaintApplied.LayerOpacity[1u]);
+                     Driver.TexturingApplied.LayerOpacity[1u]);
 
-        if (Driver.TexturePaintApplied.LayerOpacity[1u] < 55u ||
-            Driver.TexturePaintApplied.LayerOpacity[1u] > 65u)
+        if (Driver.TexturingApplied.LayerOpacity[1u] < 55u ||
+            Driver.TexturingApplied.LayerOpacity[1u] > 65u)
         {
             std::fprintf(stderr, "[FAIL] the footer opacity slider did not write the drag\n");
             return false;
@@ -2596,9 +2596,9 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] locked: %d\n",
-                     Driver.TexturePaintApplied.LayerLocked[1u] ? 1 : 0);
+                     Driver.TexturingApplied.LayerLocked[1u] ? 1 : 0);
 
-        if (!Driver.TexturePaintApplied.LayerLocked[1u])
+        if (!Driver.TexturingApplied.LayerLocked[1u])
         {
             std::fprintf(stderr, "[FAIL] the lock button did not lock the taken row\n");
             return false;
@@ -2614,9 +2614,9 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] wide rows after expand: %d\n",
-                     Driver.TexturePaintApplied.WideRows ? 1 : 0);
+                     Driver.TexturingApplied.WideRows ? 1 : 0);
 
-        if (!Driver.TexturePaintApplied.WideRows)
+        if (!Driver.TexturingApplied.WideRows)
         {
             std::fprintf(stderr, "[FAIL] the expand toggle did not stand the wide columns\n");
             return false;
@@ -2626,7 +2626,7 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Tick(ExpandX, HeaderMidY, false, false, true);
         Driver.Settle(2);
 
-        if (Driver.TexturePaintApplied.WideRows)
+        if (Driver.TexturingApplied.WideRows)
         {
             std::fprintf(stderr, "[FAIL] the expand toggle did not retire the wide columns\n");
             return false;
@@ -2642,11 +2642,11 @@ bool RunShot(SceneDriver& Driver, const char* OutputPath, const char* Scenario,
         Driver.Settle(2);
 
         std::fprintf(stderr, "[assert] folder+Tab: taken=%u page=%u tab=%u\n",
-                     Driver.TexturePaintApplied.LayerTaken, Driver.TexturePaintApplied.StackPage,
-                     Driver.TexturePaintApplied.PropertyTab);
+                     Driver.TexturingApplied.LayerTaken, Driver.TexturingApplied.StackPage,
+                     Driver.TexturingApplied.PropertyTab);
 
-        if (Driver.TexturePaintApplied.LayerTaken != 0u || Driver.TexturePaintApplied.StackPage != 1u ||
-            Driver.TexturePaintApplied.PropertyTab != 0u)
+        if (Driver.TexturingApplied.LayerTaken != 0u || Driver.TexturingApplied.StackPage != 1u ||
+            Driver.TexturingApplied.PropertyTab != 0u)
         {
             std::fprintf(stderr, "[FAIL] the folder did not open its combined stack properties\n");
             return false;

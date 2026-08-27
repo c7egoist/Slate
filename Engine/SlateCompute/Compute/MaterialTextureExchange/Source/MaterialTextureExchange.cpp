@@ -2,7 +2,7 @@
 //                                                       MATERIALPAINTEXCHANGE.CPP
 //============================================================================================================================================
 
-#include "SlateCompute/Compute/MaterialPaintExchange/Api/MaterialPaintExchange.h"
+#include "SlateCompute/Compute/MaterialTextureExchange/Api/MaterialTextureExchange.h"
 
 #include <algorithm>
 
@@ -31,9 +31,9 @@ std::uint32_t SpanFor(const BrushChannelValue& Channel)
 
 } // namespace
 
-Deliver<LayerIdentity> MaterialPaintExchange::CreatePaintedLayer(
+Deliver<LayerIdentity> MaterialTextureExchange::CreateTexturedLayer(
     SurfaceLayerSequence& Layers,
-    const MaterialPaintLayerDeclaration& Declaring) const
+    const MaterialTextureLayerDeclaration& Declaring) const
 {
     if (Declaring.ChannelMask == 0u)
         return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer writes no channel" });
@@ -43,20 +43,20 @@ Deliver<LayerIdentity> MaterialPaintExchange::CreatePaintedLayer(
         return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer has no components" });
 
     LayerSpecification Layer;
-    Layer.Name = Declaring.Name.empty() ? "Paint Layer" : Declaring.Name;
-    Layer.Source = LayerContentSource::PaintedImpressions;
+    Layer.Name = Declaring.Name.empty() ? "Texture Layer" : Declaring.Name;
+    Layer.Source = LayerContentSource::TexturedImpressions;
     Layer.ChannelMask = Declaring.ChannelMask;
     Layer.PresenceEnabled = true;
-    Layer.Painted.ExtentTexels = Declaring.WorkingExtent;
-    Layer.Painted.ComponentCount = Declaring.ComponentCount;
-    Layer.Painted.Texels.assign(static_cast<std::size_t>(Declaring.WorkingExtent)
+    Layer.Textured.ExtentTexels = Declaring.WorkingExtent;
+    Layer.Textured.ComponentCount = Declaring.ComponentCount;
+    Layer.Textured.Texels.assign(static_cast<std::size_t>(Declaring.WorkingExtent)
                               * Declaring.WorkingExtent
                               * Declaring.ComponentCount, 0.0f);
 
     return Layers.Append(Layer);
 }
 
-Deliver<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLayerSequence& Layers,
+Deliver<StrokeDeclaration> MaterialTextureExchange::DeclareStroke(const SurfaceLayerSequence& Layers,
                                                                 LayerIdentity Subject,
                                                                 const BrushSpecification& Brush,
                                                                 std::uint32_t WorkingExtent,
@@ -66,9 +66,9 @@ Deliver<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLay
 {
     const Deliver<const LayerSpecification*> Layer = Layers.Resolve(Subject);
     if (!Layer.Resolved) return Deliver<StrokeDeclaration>::Refuse(Layer.Error);
-    if (Layer.Resolve()->Source != LayerContentSource::PaintedImpressions)
+    if (Layer.Resolve()->Source != LayerContentSource::TexturedImpressions)
         return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke target is not a painted layer" });
-    if (Layer.Resolve()->Painted.ExtentTexels != WorkingExtent || Layer.Resolve()->Painted.ComponentCount != ComponentCount)
+    if (Layer.Resolve()->Textured.ExtentTexels != WorkingExtent || Layer.Resolve()->Textured.ComponentCount != ComponentCount)
         return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke declaration does not match the painted layer extent" });
 
     StrokeDeclaration Declared;
@@ -102,18 +102,18 @@ Deliver<StrokeDeclaration> MaterialPaintExchange::DeclareStroke(const SurfaceLay
     return Deliver<StrokeDeclaration>::Result(Declared);
 }
 
-std::vector<MaterialPaintDirtyTile> MaterialPaintExchange::DirtyTilesOf(const SealedStroke& Stroke,
+std::vector<MaterialTextureDirtyTile> MaterialTextureExchange::DirtyTilesOf(const SealedStroke& Stroke,
                                                                         std::uint32_t ChannelMask) const
 {
-    std::vector<MaterialPaintDirtyTile> Tiles;
+    std::vector<MaterialTextureDirtyTile> Tiles;
     Tiles.reserve(Stroke.TouchedCells.size());
     for (const std::uint32_t CellIndex : Stroke.TouchedCells)
     {
         const Deliver<CellAddress> Addressed = AddressOf(CellIndex);
         if (!Addressed.Resolved) continue;
-        MaterialPaintDirtyTile Tile;
+        MaterialTextureDirtyTile Tile;
         Tile.CellIndex = CellIndex;
-        Tile.Level = Stroke.PaintingLevel;
+        Tile.Level = Stroke.TexturingLevel;
         Tile.OriginX = Addressed.Resolve().X * CoverageTileTexels;
         Tile.OriginY = Addressed.Resolve().Y * CoverageTileTexels;
         Tile.Extent = CoverageTileTexels;
@@ -123,7 +123,7 @@ std::vector<MaterialPaintDirtyTile> MaterialPaintExchange::DirtyTilesOf(const Se
     return Tiles;
 }
 
-Deliver<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
+Deliver<MaterialTextureCommitReport> MaterialTextureExchange::CommitResolvedStroke(
     ImpressionSequence& Stroke,
     MaterialSpecification& Material,
     SurfaceLayerSequence& Layers,
@@ -133,12 +133,12 @@ Deliver<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
     const MaterialProcessingSnapshot* Previous) const
 {
     if (!Stroke.StrokeOpen())
-        return Deliver<MaterialPaintCommitReport>::Refuse({ RefusalReason::HostDenied, "no material paint stroke is open" });
+        return Deliver<MaterialTextureCommitReport>::Refuse({ RefusalReason::HostDenied, "no material paint stroke is open" });
 
     const Deliver<SealedStroke> Sealed = Stroke.Seal(Layers, Revisions, Residency, SealedAt);
-    if (!Sealed.Resolved) return Deliver<MaterialPaintCommitReport>::Refuse(Sealed.Error);
+    if (!Sealed.Resolved) return Deliver<MaterialTextureCommitReport>::Refuse(Sealed.Error);
 
-    MaterialPaintCommitReport Report;
+    MaterialTextureCommitReport Report;
     Report.Stroke = Sealed.Resolve();
     std::uint32_t DirtyChannels = 0u;
     for (const BrushChannelValue& Channel : Report.Stroke.Recorded.Channels)
@@ -160,7 +160,7 @@ Deliver<MaterialPaintCommitReport> MaterialPaintExchange::CommitResolvedStroke(
         Report.Dirty.LayersChanged = true;
     }
 
-    return Deliver<MaterialPaintCommitReport>::Result(Report);
+    return Deliver<MaterialTextureCommitReport>::Result(Report);
 }
 
 } // namespace Slate

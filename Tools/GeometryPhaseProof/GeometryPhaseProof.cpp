@@ -148,8 +148,8 @@ int main()
                       !RoughDirty.LayersChanged && !RoughDirty.ReflectanceChanged,
                       "per-channel dirty keys isolate a roughness edit without rebuilding layer structure");
 
-    Passed &= Require(Layers.DeclareName(Base.Resolve(), "Painted Steel").Resolved &&
-                      Layers.Resolve(Base.Resolve()).Resolve()->Name == "Painted Steel",
+    Passed &= Require(Layers.DeclareName(Base.Resolve(), "Textured Steel").Resolved &&
+                      Layers.Resolve(Base.Resolve()).Resolve()->Name == "Textured Steel",
                       "material layer names are editable document data");
     const MaterialProcessingSnapshot NamedMaterial = Processing.Capture(Material, Layers);
     const MaterialProcessingDirtySet NameDirty = Processing.Compare(RoughMaterial, NamedMaterial);

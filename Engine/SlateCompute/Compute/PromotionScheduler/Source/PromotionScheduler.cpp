@@ -52,16 +52,16 @@ PromotionCost Estimate(const SurfaceLayerSequence& Sequence, std::uint64_t TileB
         return Costing;
     }
 
-    bool PaintedHeld = false;
+    bool TexturedHeld = false;
 
     for (const LayerSpecification& Held : Sequence.Entries())
     {
         if (!Held.PresenceEnabled)
             continue;
 
-        if (Held.Source == LayerContentSource::PaintedImpressions)
+        if (Held.Source == LayerContentSource::TexturedImpressions)
         {
-            PaintedHeld = true;
+            TexturedHeld = true;
             continue;
         }
 
@@ -74,7 +74,7 @@ PromotionCost Estimate(const SurfaceLayerSequence& Sequence, std::uint64_t TileB
     // 📝 The painted layers of one tile transfer one tile's worth however many of them there are, because they
     //    accumulate into the same texels. Charging per painted entry would make a surface with thirty painted
     //    layers unpromotable, which is the case `18` §8's resolved-channel rule exists to keep affordable.
-    if (PaintedHeld)
+    if (TexturedHeld)
         Costing.TransferBytes = TileBytes;
 
     return Costing;

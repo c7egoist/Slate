@@ -65,7 +65,7 @@ struct ContentBrowserMetric
 enum class ContentArchive : std::uint32_t
 {
     Topology     = 0u,   // [-] - CAT_INFO.topology, "Geometry"
-    Draughting   = 1u,   // [-] - CAT_INFO.cad, "CAD"
+    Parametric   = 1u,   // [-] - CAT_INFO.cad, "CAD"
     Arrangement  = 2u,   // [-] - CAT_INFO.scene, "Scenes"
     Material     = 3u,   // [-] - CAT_INFO.material, "Materials"
     Generator    = 4u,   // [-] - CAT_INFO.generator, "Generators"

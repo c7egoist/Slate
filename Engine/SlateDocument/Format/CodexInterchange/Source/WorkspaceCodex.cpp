@@ -182,12 +182,12 @@ bool ExtractColour(const std::vector<std::uint8_t>& Content, std::size_t& Positi
         && Extract32(Content, Position, Colour.SpaceIdentity);
 }
 
-void InscribePainted(std::vector<std::uint8_t>& Content, const PaintedContent& Painted)
+void InscribeTextured(std::vector<std::uint8_t>& Content, const TexturedContent& Textured)
 {
-    Inscribe32(Content, Painted.ExtentTexels);
-    Inscribe32(Content, Painted.ComponentCount);
-    Inscribe32(Content, static_cast<std::uint32_t>(Painted.Texels.size()));
-    for (float Texel : Painted.Texels)
+    Inscribe32(Content, Textured.ExtentTexels);
+    Inscribe32(Content, Textured.ComponentCount);
+    Inscribe32(Content, static_cast<std::uint32_t>(Textured.Texels.size()));
+    for (float Texel : Textured.Texels)
     {
         std::uint32_t Bits = 0u;
         static_assert(sizeof(Bits) == sizeof(Texel));
@@ -196,19 +196,19 @@ void InscribePainted(std::vector<std::uint8_t>& Content, const PaintedContent& P
     }
 }
 
-bool ExtractPainted(const std::vector<std::uint8_t>& Content, std::size_t& Position, PaintedContent& Painted)
+bool ExtractTextured(const std::vector<std::uint8_t>& Content, std::size_t& Position, TexturedContent& Textured)
 {
     std::uint32_t TexelCount = 0u;
-    if (!Extract32(Content, Position, Painted.ExtentTexels)
-     || !Extract32(Content, Position, Painted.ComponentCount)
+    if (!Extract32(Content, Position, Textured.ExtentTexels)
+     || !Extract32(Content, Position, Textured.ComponentCount)
      || !Extract32(Content, Position, TexelCount))
         return false;
 
     if (TexelCount > (Content.size() - Position) / 4u)
         return false;
 
-    Painted.Texels.clear();
-    Painted.Texels.reserve(TexelCount);
+    Textured.Texels.clear();
+    Textured.Texels.reserve(TexelCount);
     for (std::uint32_t Index = 0u; Index < TexelCount; ++Index)
     {
         std::uint32_t Bits = 0u;
@@ -216,7 +216,7 @@ bool ExtractPainted(const std::vector<std::uint8_t>& Content, std::size_t& Posit
         if (!Extract32(Content, Position, Bits))
             return false;
         std::memcpy(&Texel, &Bits, sizeof(Texel));
-        Painted.Texels.push_back(Texel);
+        Textured.Texels.push_back(Texel);
     }
     return true;
 }
@@ -260,7 +260,7 @@ void InscribeCoverage(std::vector<std::uint8_t>& Content, const CoverageSpecific
 {
     Inscribe32(Content, static_cast<std::uint32_t>(Coverage.Source));
     Inscribe32(Content, Coverage.SourceIndex);
-    InscribePainted(Content, Coverage.Painted);
+    InscribeTextured(Content, Coverage.Textured);
     InscribeReal(Content, Coverage.UniformStrength);
     Inscribe32(Content, Coverage.ChannelMask);
     InscribeBool(Content, Coverage.Inverted);
@@ -272,7 +272,7 @@ bool ExtractCoverage(const std::vector<std::uint8_t>& Content, std::size_t& Posi
     std::uint32_t Source = 0u;
     if (!Extract32(Content, Position, Source) || Source >= static_cast<std::uint32_t>(LayerContentSource::SourceCount)
      || !Extract32(Content, Position, Coverage.SourceIndex)
-     || !ExtractPainted(Content, Position, Coverage.Painted)
+     || !ExtractTextured(Content, Position, Coverage.Textured)
      || !ExtractReal(Content, Position, Coverage.UniformStrength)
      || !Extract32(Content, Position, Coverage.ChannelMask)
      || !ExtractBool(Content, Position, Coverage.Inverted)
@@ -293,7 +293,7 @@ void InscribeLayer(std::vector<std::uint8_t>& Content, const LayerSpecification&
     Inscribe32(Content, Layer.ChannelMask);
     Inscribe32(Content, static_cast<std::uint32_t>(Layer.Combination));
     InscribeCoverage(Content, Layer.Coverage);
-    InscribePainted(Content, Layer.Painted);
+    InscribeTextured(Content, Layer.Textured);
     InscribeRun(Content, Layer.Name);
     InscribeBool(Content, Layer.PresenceEnabled);
     InscribeBool(Content, Layer.Mandatory);
@@ -312,7 +312,7 @@ bool ExtractLayer(const std::vector<std::uint8_t>& Content, std::size_t& Positio
      || !Extract32(Content, Position, Layer.ChannelMask)
      || !Extract32(Content, Position, Combination) || Combination >= static_cast<std::uint32_t>(CombineSpecification::CombineCount)
      || !ExtractCoverage(Content, Position, Layer.Coverage)
-     || !ExtractPainted(Content, Position, Layer.Painted)
+     || !ExtractTextured(Content, Position, Layer.Textured)
      || !ExtractRun(Content, Position, Layer.Name)
      || !ExtractBool(Content, Position, Layer.PresenceEnabled)
      || !ExtractBool(Content, Position, Layer.Mandatory)
@@ -758,7 +758,7 @@ Deliver<WorkspaceCodex> WorkspaceCodexInterchange::DecodeWorkspace(const CodexDo
                 if (!ExtractLayer(Materials->Content, Position, Layer))
                     return Deliver<WorkspaceCodex>::Refuse(
                         { RefusalReason::ContentUnsupported, "a workspace material layer is incomplete" });
-                if (Layer.Source == LayerContentSource::PaintedImpressions && Layer.Painted.Texels.empty())
+                if (Layer.Source == LayerContentSource::TexturedImpressions && Layer.Textured.Texels.empty())
                     Layer.Source = LayerContentSource::MaterialConstants;
                 const Deliver<LayerIdentity> Added = Current.Layers.Append(Layer);
                 if (!Added.Resolved)

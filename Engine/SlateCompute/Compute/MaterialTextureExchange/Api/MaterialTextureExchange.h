@@ -19,15 +19,15 @@
 namespace Slate
 {
 
-struct MaterialPaintLayerDeclaration
+struct MaterialTextureLayerDeclaration
 {
-    std::string Name = "Paint Layer";
+    std::string Name = "Texture Layer";
     std::uint32_t ChannelMask = 0u;
     std::uint32_t WorkingExtent = MaximumWorkingEdge;
     std::uint32_t ComponentCount = 4u;
 };
 
-struct MaterialPaintDirtyTile
+struct MaterialTextureDirtyTile
 {
     std::uint32_t CellIndex = 0u;
     std::uint32_t Level = 0u;
@@ -37,22 +37,22 @@ struct MaterialPaintDirtyTile
     std::uint32_t ChannelMask = 0u;
 };
 
-struct MaterialPaintCommitReport
+struct MaterialTextureCommitReport
 {
     SealedStroke Stroke = {};
     MaterialProcessingDirtySet Dirty = {};
-    std::vector<MaterialPaintDirtyTile> DirtyTiles = {};
+    std::vector<MaterialTextureDirtyTile> DirtyTiles = {};
     std::uint32_t DirtyChannelMask = 0u;
     std::uint64_t BeforeFingerprint = 0u;
     std::uint64_t AfterFingerprint = 0u;
 };
 
-class MaterialPaintExchange
+class MaterialTextureExchange
 {
 public:
     /// 🧩 Creates a document-owned painted layer with a full authored texel span and stable layer identity.
-    Deliver<LayerIdentity> CreatePaintedLayer(SurfaceLayerSequence& Layers,
-                                              const MaterialPaintLayerDeclaration& Declaring) const;
+    Deliver<LayerIdentity> CreateTexturedLayer(SurfaceLayerSequence& Layers,
+                                              const MaterialTextureLayerDeclaration& Declaring) const;
 
     /// 🧩 Builds the stroke declaration for a painted material layer without reading UI state.
     Deliver<StrokeDeclaration> DeclareStroke(const SurfaceLayerSequence& Layers,
@@ -64,7 +64,7 @@ public:
                                              bool Speculative = false) const;
 
     /// 🧩 Commits an already-resolved stroke and reports precise tile/channel dirtiness.
-    Deliver<MaterialPaintCommitReport> CommitResolvedStroke(ImpressionSequence& Stroke,
+    Deliver<MaterialTextureCommitReport> CommitResolvedStroke(ImpressionSequence& Stroke,
                                                             MaterialSpecification& Material,
                                                             SurfaceLayerSequence& Layers,
                                                             RevisionSequence& Revisions,
@@ -73,7 +73,7 @@ public:
                                                             const MaterialProcessingSnapshot* Previous = nullptr) const;
 
     /// 🧩 Converts a sealed stroke into dirty tile records without replaying the stroke.
-    std::vector<MaterialPaintDirtyTile> DirtyTilesOf(const SealedStroke& Stroke,
+    std::vector<MaterialTextureDirtyTile> DirtyTilesOf(const SealedStroke& Stroke,
                                                      std::uint32_t ChannelMask) const;
 };
 

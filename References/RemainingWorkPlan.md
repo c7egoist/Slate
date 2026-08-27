@@ -73,3 +73,38 @@ plainly at the end rather than half-doing it.
 
 Every step ends the same way: 33/33 gates, `make sequence` clears the unit graph, and any new
 claim is sabotaged before it is believed.
+
+---
+
+## Item 2 is blocked, and deleting now would remove drawing from the product
+
+Measured before touching anything:
+
+```
+=== all three products build from which subject? ===
+TextureAuthoring    = { subject = "EditorHost", ... }
+ParametricAuthoring = { subject = "EditorHost", ... }
+SlateAuthoring      = { subject = "EditorHost", ... }
+
+=== sketch interaction present in each host? ===
+  EditorHost             DriveDrawing:0  ApplyWorkplane:0  SketchStructure:0
+  ParametricSketchHost   DriveDrawing:1  ApplyWorkplane:1  SketchStructure:2
+```
+
+**Every shipping product builds from `EditorHost`, and `EditorHost` contains no sketch interaction
+whatsoever.** Six pieces of wiring live only in `ParametricSketchHost`:
+`DriveDrawingWithModifiers`, `ApplyWorkplaneTool`, `RecordCadFallback`,
+`RecordPlacementPreview`, `ProjectSketchRendering`, `SynchroniseParametricPresentation`.
+
+The hosts hold **zero definitions** — that was the whole point of steps A–G — so nothing would fail
+to compile if they were deleted today. The gates would stay green. The products would simply stop
+being able to draw.
+
+> **Zero definitions is not the same as zero responsibility.** A host that defines nothing can still
+> be the only place where the parts are connected, and wiring is invisible to every gate that counts
+> definitions. This is the same shape as `ApplyWorkplaneTool` being written but never called: the
+> tree said "present", the artist saw "absent".
+
+**Item 2 needs a step 11a first: move the parametric viewport wiring into `EditorHost` under
+`SLATE_PARAMETRIC_AUTHORING`, with a claim that the product dispatches the sketch tools.** Only then
+is deleting the two hosts a no-op. I have not done this, and I have not deleted the hosts.

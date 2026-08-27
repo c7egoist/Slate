@@ -20,7 +20,7 @@ const char* WorkspaceStem(WorkspaceSubject Subject)
 {
     switch (Subject)
     {
-        case WorkspaceSubject::Painting:   return "Canvas";
+        case WorkspaceSubject::Texturing:   return "Canvas";
         case WorkspaceSubject::Modelling:  return "Sketch";
         case WorkspaceSubject::Parametric: return "Parametric";
         case WorkspaceSubject::Vacant:     return "Workspace";

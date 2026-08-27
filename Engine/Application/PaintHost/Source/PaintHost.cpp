@@ -222,7 +222,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    cannot draw would leave a blank hole where the layer stack belongs.
     // 📝 `EditorHost` renders every panel subject, so it takes the declaration its subject selects. This
     //    host is deleted at step 11 and the discrepancy goes with it.
-    constexpr WorkspaceSubject DefaultSubject = WorkspaceSubject::Painting;
+    constexpr WorkspaceSubject DefaultSubject = WorkspaceSubject::Texturing;
 
     WorkspaceIndex          Workspaces;
     WorkspacePanel          Workspace;

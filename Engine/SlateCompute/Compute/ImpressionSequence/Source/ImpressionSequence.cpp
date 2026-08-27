@@ -14,7 +14,7 @@ namespace Slate
 //                                                   THE PAINTING LEVEL
 //------------------------------------------------------------------------------------------------------------------------
 
-Deliver<std::uint32_t> PaintingLevelOf(std::uint32_t WorkingExtent)
+Deliver<std::uint32_t> TexturingLevelOf(std::uint32_t WorkingExtent)
 {
     for (std::uint32_t Candidate = 0u; Candidate < ReductionLevelCount; ++Candidate)
     {
@@ -82,7 +82,7 @@ Deliver<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const
     if (OpenDeclared)
         return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "a stroke is already open" });
 
-    const Deliver<std::uint32_t> Levelled = PaintingLevelOf(Declaring.WorkingExtent);
+    const Deliver<std::uint32_t> Levelled = TexturingLevelOf(Declaring.WorkingExtent);
 
     if (!Levelled.Resolved)
         return Deliver<bool>::Refuse(Levelled.Error);
@@ -618,14 +618,14 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
             { RefusalReason::HostDenied, "a speculative extent never enters the revision sequence" });
     }
 
-    const Deliver<PaintedContent*> Amending = Content.AmendPainted(Declared.Subject);
+    const Deliver<TexturedContent*> Amending = Content.AmendTextured(Declared.Subject);
 
     if (!Amending.Resolved)
         return Deliver<SealedStroke>::Refuse(Amending.Error);
 
-    PaintedContent& Painted = *Amending.Resolve();
+    TexturedContent& Textured = *Amending.Resolve();
 
-    if (Painted.ExtentTexels != Declared.WorkingExtent || Painted.ComponentCount != Declared.ComponentCount)
+    if (Textured.ExtentTexels != Declared.WorkingExtent || Textured.ComponentCount != Declared.ComponentCount)
     {
         return Deliver<SealedStroke>::Refuse(
             { RefusalReason::ContentUnsupported, "the entry's extent no longer matches the stroke's" });
@@ -642,7 +642,7 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
     Sealing.TouchedCells    = Accumulated.TouchedCells();
     Sealing.Recorded        = Recorded;
     Sealing.Subject         = Declared.Subject;
-    Sealing.PaintingLevel   = Level;
+    Sealing.TexturingLevel   = Level;
     Sealing.ComponentCount  = Declared.ComponentCount;
     Sealing.ImpressionCount = static_cast<std::uint32_t>(Sequenced.size());
 
@@ -669,7 +669,7 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
         {
             for (std::uint32_t X = 0u; X < CoverageTileTexels; ++X)
             {
-                const std::size_t Reading = (static_cast<std::size_t>(OriginY + Y) * Painted.ExtentTexels
+                const std::size_t Reading = (static_cast<std::size_t>(OriginY + Y) * Textured.ExtentTexels
                                            + (OriginX + X)) * Stride;
 
                 const std::size_t Writing = ((Passed * TileTexels)
@@ -679,7 +679,7 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
                 //    covered texels would need a mask, and at any realistic coverage the mask costs more than
                 //    the texels it excludes.
                 for (std::size_t Component = 0u; Component < Stride; ++Component)
-                    Sealing.PriorTexels[Writing + Component] = Painted.Texels[Reading + Component];
+                    Sealing.PriorTexels[Writing + Component] = Textured.Texels[Reading + Component];
 
                 const double Coverage = Accumulated.Coverage(TileIndex.Resolve(), X, Y);
 
@@ -709,9 +709,9 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
                             {
                                 const std::size_t Slot = Reading + Placing.ComponentIndex + Component;
 
-                                Painted.Texels[Slot] = static_cast<float>(
+                                Textured.Texels[Slot] = static_cast<float>(
                                     CombineValue(Combination,
-                                                 static_cast<double>(Painted.Texels[Slot]),
+                                                 static_cast<double>(Textured.Texels[Slot]),
                                                  Incoming[Component],
                                                  Coverage));
                             }
@@ -720,9 +720,9 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
                         {
                             const std::size_t Slot = Reading + Placing.ComponentIndex;
 
-                            Painted.Texels[Slot] = static_cast<float>(
+                            Textured.Texels[Slot] = static_cast<float>(
                                 CombineValue(Combination,
-                                             static_cast<double>(Painted.Texels[Slot]),
+                                             static_cast<double>(Textured.Texels[Slot]),
                                              Writing_.ScalarValue,
                                              Coverage));
                         }
@@ -760,16 +760,16 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
 
 Deliver<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
 {
-    const Deliver<PaintedContent*> Amending = Content.AmendPainted(Sealed.Subject);
+    const Deliver<TexturedContent*> Amending = Content.AmendTextured(Sealed.Subject);
 
     if (!Amending.Resolved)
         return Deliver<bool>::Refuse(Amending.Error);
 
-    PaintedContent& Painted = *Amending.Resolve();
+    TexturedContent& Textured = *Amending.Resolve();
 
-    const std::uint32_t WorkingExtent = CellsPerEdgeAt(Sealed.PaintingLevel) * CoverageTileTexels;
+    const std::uint32_t WorkingExtent = CellsPerEdgeAt(Sealed.TexturingLevel) * CoverageTileTexels;
 
-    if (Painted.ExtentTexels != WorkingExtent || Painted.ComponentCount != Sealed.ComponentCount)
+    if (Textured.ExtentTexels != WorkingExtent || Textured.ComponentCount != Sealed.ComponentCount)
     {
         return Deliver<bool>::Refuse(
             { RefusalReason::ContentUnsupported, "the entry's extent no longer matches the recorded inverse" });
@@ -785,7 +785,7 @@ Deliver<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
     {
         const Deliver<CellAddress> Addressed = AddressOf(Sealed.TouchedCells[Passed]);
 
-        if (!Addressed.Resolved || Addressed.Resolve().Level != Sealed.PaintingLevel)
+        if (!Addressed.Resolved || Addressed.Resolve().Level != Sealed.TexturingLevel)
         {
             return Deliver<bool>::Refuse(
                 { RefusalReason::ContentUnsupported, "a recorded cell does not address the recorded level" });
@@ -805,7 +805,7 @@ Deliver<bool> Restore(const SealedStroke& Sealed, SurfaceLayerSequence& Content)
                                            + static_cast<std::size_t>(Y) * CoverageTileTexels + X) * Stride;
 
                 for (std::size_t Component = 0u; Component < Stride; ++Component)
-                    Painted.Texels[Writing + Component] = Sealed.PriorTexels[Reading + Component];
+                    Textured.Texels[Writing + Component] = Sealed.PriorTexels[Reading + Component];
             }
         }
     }
@@ -838,7 +838,7 @@ std::uint32_t ImpressionSequence::PendingCount() const
     return Pending;
 }
 
-std::uint32_t ImpressionSequence::PaintingLevel() const        { return Level;               }
+std::uint32_t ImpressionSequence::TexturingLevel() const        { return Level;               }
 double        ImpressionSequence::PathLength() const           { return TravelledDistance;   }
 bool          ImpressionSequence::StrokeOpen() const           { return OpenDeclared;        }
 bool          ImpressionSequence::SpeculativeDeclared() const  { return Declared.Speculative; }

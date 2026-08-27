@@ -25,7 +25,7 @@ enum class PanelSubject : std::uint32_t
     Outliner       = 2u,   // [-] - editor scene outline
     Properties     = 3u,   // [-] - selected record's properties
     Vacant         = 4u,   // [-] - panel chooser
-    TexturePaint   = 5u,   // [-] - the texture-paint layer stack (appended, so 0-4 never move)
+    Texturing   = 5u,   // [-] - the texture-paint layer stack (appended, so 0-4 never move)
     ParametricTools = 6u,  // [-] - the CAD construction catalogue and its settings
     SketchDirectory = 7u, // [-] - the CAD/sketch semantic directory
     SubjectCount   = 8u    // [-] - closed count, never a subject

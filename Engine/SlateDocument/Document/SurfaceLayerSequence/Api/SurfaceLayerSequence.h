@@ -31,7 +31,7 @@ namespace Slate
 /// tag   guarantee
 enum class LayerContentSource : std::uint32_t
 {
-    PaintedImpressions = 0u,   // [-] - the texels are the authored thing — `22`
+    TexturedImpressions = 0u,   // [-] - the texels are the authored thing — `22`
     PlacedContent      = 1u,   // [-] - a source plus a transform — `72`
     Tiling             = 2u,   // [-] - the pattern declaration — `54`
     AnalyticResolution = 3u,   // [-] - an outline or an analytic source — `70`
@@ -47,7 +47,7 @@ enum class LayerContentSource : std::uint32_t
 /// tag   api, nonallocating, nonthrowing
 constexpr bool SourceReconstructible(LayerContentSource Source)
 {
-    return Source != LayerContentSource::PaintedImpressions;
+    return Source != LayerContentSource::TexturedImpressions;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ constexpr bool SourceReconstructible(LayerContentSource Source)
 /// note  💾 Held interleaved, one span per entry, so that a surface with thirty painted layers is thirty
 ///        allocations rather than thirty times the channel count.
 /// tag   owning
-struct PaintedContent
+struct TexturedContent
 {
     std::vector<float>  Texels         = {};   // [-] - interleaved, ComponentCount per texel
     std::uint32_t       ExtentTexels   = 0u;   // [px] - per edge; the surface's working extent
@@ -73,7 +73,7 @@ struct PaintedContent
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 Which components of one painted entry a channel occupies.
-/// note  🔴 Declared here rather than in `22`, because it describes the layout of a `PaintedContent` and `22` is
+/// note  🔴 Declared here rather than in `22`, because it describes the layout of a `TexturedContent` and `22` is
 ///        not the only reader. `70` resolves into the same components and sits below `22` in `00` §9.1's strata,
 ///        so a declaration held there would be a back edge from stratum 7 to stratum 9.
 /// note  🚧 Supplied by the caller rather than derived from `42`. `00` §12 carries the channel packing layout as
@@ -95,7 +95,7 @@ struct ChannelPlacement
 
 /// 🧩 Where an entry applies, and how strongly.
 /// note  🔴 `56` §5: coverage is **content**, and is revised through `RevisionSequence` like any other content.
-///        Painting coverage is a stroke, undone by `22` §4's extent-bounded inverse, and nothing about it is a
+///        Texturing coverage is a stroke, undone by `22` §4's extent-bounded inverse, and nothing about it is a
 ///        separate mechanism.
 /// note  📝 It carries the same four sources §3 declares, because it may be painted, placed, tiled or resolved
 ///        analytically. A coverage that could only be painted would make a tiled mask impossible.
@@ -104,7 +104,7 @@ struct CoverageSpecification
 {
     LayerContentSource  Source          = LayerContentSource::AnalyticResolution;
     std::uint32_t       SourceIndex   = 0u;      // [-] - into `54`, `52` or `50`
-    PaintedContent      Painted         = {};      // [-] - read at PaintedImpressions
+    TexturedContent      Textured         = {};      // [-] - read at TexturedImpressions
     double              UniformStrength = 1.0;     // [-] - applied to whatever the source resolves
     std::uint32_t       ChannelMask     = 0u;      // [-] - zero means every channel the layer writes
     bool                Inverted        = false;   // [-] - true maps resolved coverage to one-minus-coverage
@@ -128,13 +128,13 @@ struct CoverageSpecification
 struct LayerSpecification
 {
     LayerIdentity         Identity        = {};                            // [-] - `10` §2.1's integer pair
-    LayerContentSource    Source          = LayerContentSource::PaintedImpressions;
+    LayerContentSource    Source          = LayerContentSource::TexturedImpressions;
     std::uint32_t         SourceIndex   = 0u;                            // [-] - into `54`, `72`, `52` or `50`
     std::uint32_t         NestedIndex   = 0u;                            // [-] - read at NestedSequence
     std::uint32_t         ChannelMask     = 0u;                            // [-] - one bit per `42` channel
     CombineSpecification  Combination     = CombineSpecification::Over;    // [-] - `22` §3's, unamended
     CoverageSpecification Coverage        = {};                            // [-]
-    PaintedContent        Painted         = {};                            // [-] - read at PaintedImpressions
+    TexturedContent        Textured         = {};                            // [-] - read at TexturedImpressions
     std::string           Name            = {};                            // [-] - editable and used by export naming
     bool                  PresenceEnabled = true;                          // [-] - hiding is a recorded amendment
     bool                  Mandatory       = false;                         // [-] - base material cannot be removed
@@ -277,8 +277,8 @@ public:
 
     /// 🧩 One entry's painted texels, for the one mechanism permitted to amend them.
     /// out   Result  [-]  refuses with IdentityStale when the entry no longer resolves, and with
-    ///                     ContentUnsupported when its source is not PaintedImpressions
-    /// note  🔴 `22` is the only caller. Painted texels are the one content this sequence stores rather than
+    ///                     ContentUnsupported when its source is not TexturedImpressions
+    /// note  🔴 `22` is the only caller. Textured texels are the one content this sequence stores rather than
     ///        describes — §3 — so this is the one route by which authored content is written at all, and every
     ///        write through it is inside a transaction whose inverse is bounded by the extents it touched.
     /// note  ⚠️ A reconstructible entry refuses. Writing texels into a placed or tiled entry would make the
@@ -286,7 +286,7 @@ public:
     ///        would then evict the artist's edit at the first memory pressure.
     /// cost  🚩
     /// tag   api, nonthrowing
-    Deliver<PaintedContent*> AmendPainted(LayerIdentity Subject);
+    Deliver<TexturedContent*> AmendTextured(LayerIdentity Subject);
 
     /// 🧩 The entries, in sequence order — bottom first.
     /// cost  ✔️

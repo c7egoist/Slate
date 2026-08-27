@@ -34,23 +34,23 @@ def main() -> int:
     )
 
     header = require_text(
-        "Engine/SlateCompute/Compute/MaterialPaintExchange/Api/MaterialPaintExchange.h",
-        "MaterialPaintLayerDeclaration",
-        "MaterialPaintDirtyTile",
-        "MaterialPaintCommitReport",
-        "CreatePaintedLayer",
+        "Engine/SlateCompute/Compute/MaterialTextureExchange/Api/MaterialTextureExchange.h",
+        "MaterialTextureLayerDeclaration",
+        "MaterialTextureDirtyTile",
+        "MaterialTextureCommitReport",
+        "CreateTexturedLayer",
         "DeclareStroke",
         "CommitResolvedStroke",
         "DirtyTilesOf",
     )
-    require("ParametricSketchHost" not in header and "TexturePaintPanel" not in header,
+    require("ParametricSketchHost" not in header and "TexturingPanel" not in header,
             "paint exchange must not depend on parametric host or texture-paint UI")
     require("Asset" not in header, "paint exchange must avoid banned Asset naming")
 
     source = require_text(
-        "Engine/SlateCompute/Compute/MaterialPaintExchange/Source/MaterialPaintExchange.cpp",
-        "LayerContentSource::PaintedImpressions",
-        "Layer.Painted.Texels.assign",
+        "Engine/SlateCompute/Compute/MaterialTextureExchange/Source/MaterialTextureExchange.cpp",
+        "LayerContentSource::TexturedImpressions",
+        "Layer.Textured.Texels.assign",
         "ChannelPlacement Placement",
         "the brush writes a channel the layer does not own",
         "Stroke.Seal(Layers, Revisions, Residency, SealedAt)",
@@ -58,7 +58,7 @@ def main() -> int:
         "MaterialProcessingExchange Processing",
         "Processing.Compare(*Previous, Current)",
     )
-    require("ParametricSketchHost" not in source and "TexturePaintPanel" not in source,
+    require("ParametricSketchHost" not in source and "TexturingPanel" not in source,
             "paint exchange source must stay host/UI independent")
 
     # The existing stroke path must still enforce one transaction, speculative refusal, and inverse extents.
@@ -72,7 +72,7 @@ def main() -> int:
 
     subprocess.run([
         "g++", "-std=c++20", "-fsyntax-only", "-IEngine",
-        "Engine/SlateCompute/Compute/MaterialPaintExchange/Source/MaterialPaintExchange.cpp",
+        "Engine/SlateCompute/Compute/MaterialTextureExchange/Source/MaterialTextureExchange.cpp",
         "Engine/SlateCompute/Compute/ImpressionSequence/Source/ImpressionSequence.cpp",
         "Engine/SlateCompute/Compute/StrokeSpace/Source/StrokeSpace.cpp",
         "Engine/SlateDocument/Document/SurfaceLayerSequence/Source/SurfaceLayerSequence.cpp",

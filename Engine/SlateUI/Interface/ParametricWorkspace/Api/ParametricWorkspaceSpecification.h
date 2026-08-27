@@ -3,7 +3,7 @@
 //============================================================================================================================================
 // 🧩 The parametric workspace's shared guarantee between a future dedicated CAD panel and the host-owned
 //    presentation state it will draw: directory rows, Properties | Revision presentation, and category/
-//    subject classification. This is the CAD sibling of SceneDirectorySpecification and TexturePaintSpecification.
+//    subject classification. This is the CAD sibling of SceneDirectorySpecification and TexturingSpecification.
 
 #pragma once
 

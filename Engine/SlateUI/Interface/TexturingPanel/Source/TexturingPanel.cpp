@@ -4,12 +4,12 @@
 // 🧩 The editor's texture-paint layer stack — the LayerstackV1 reference's own
 //    header, tools, rows, mask rows, folders and footer inside the workspace
 //    leaf, with the selection-driven properties page behind the carousel.
-//    See TexturePaintPanel.h for the flow: a layer row + Tab → channel
+//    See TexturingPanel.h for the flow: a layer row + Tab → channel
 //    properties, a mask + Tab → the mask panel, a decal/pattern/generator +
 //    Tab → its settings, a folder + Tab → the combined stack properties.
 //    No history panel.
 
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintPanel.h"
+#include "SlateUI/Interface/TexturingPanel/Api/TexturingPanel.h"
 #include "SlateUI/Interface/TreeMechanics/Api/TreeMechanics.h"
 
 #include <algorithm>
@@ -90,19 +90,19 @@ std::uint32_t EffectCount(const char* Effects)
 }
 
 /// 🧩 The reference's `COLORS` swatch run, for the layer menu's colour tags.
-constexpr std::uint32_t SwatchColours[TexturePaintContext::TextureSwatchCount] =
+constexpr std::uint32_t SwatchColours[TexturingContext::TextureSwatchCount] =
 {
     0xE5484Du, 0xF76B15u, 0xFFC53Du, 0x46A758u, 0x12A594u,
     0x8AB4D8u, 0x9B8CF0u, 0xE93D82u, 0x8B8D98u, 0xB0E64Cu
 };
 
 // 📐 The stack's filter categories — the editor's layer kinds, in the FacetPanel's option order.
-const char* const StackFacetOptions[TexturePaintContext::TextureFacetCount] =
+const char* const StackFacetOptions[TexturingContext::TextureFacetCount] =
 {
-    "Paint", "Fill", "Decal", "Pattern", "Generator", "Adjustment", "Filter", "Folder"
+    "Brushed", "Fill", "Decal", "Pattern", "Generator", "Adjustment", "Filter", "Folder"
 };
 
-const ThemeToken StackFacetColours[TexturePaintContext::TextureFacetCount] =
+const ThemeToken StackFacetColours[TexturingContext::TextureFacetCount] =
 {
     Covering(0xF97316u),   // [-] - Paint
     Covering(0x3B82F6u),   // [-] - Fill
@@ -171,7 +171,7 @@ const ThemeToken* ChannelFacetColours()
 }
 
 /// 🧩 Whether the search and the layer facets jointly retain one row.
-bool RowRetained(const TexturePaintContext& Applied, const TextureLayerRow& Row)
+bool RowRetained(const TexturingContext& Applied, const TextureLayerRow& Row)
 {
     const bool Searching = Applied.Retention[0] != '\0';
 
@@ -181,7 +181,7 @@ bool RowRetained(const TexturePaintContext& Applied, const TextureLayerRow& Row)
             return false;
     }
 
-    for (std::uint32_t Facet = 0u; Facet < TexturePaintContext::TextureFacetCount; ++Facet)
+    for (std::uint32_t Facet = 0u; Facet < TexturingContext::TextureFacetCount; ++Facet)
     {
         if (Applied.FacetEnabled[Facet])
             return Applied.FacetEnabled[TextureLayerFacetOf(Row.Classified)];
@@ -191,12 +191,12 @@ bool RowRetained(const TexturePaintContext& Applied, const TextureLayerRow& Row)
 }
 
 /// 🧩 Whether the search or any stack facet is active at all.
-bool RetentionActive(const TexturePaintContext& Applied)
+bool RetentionActive(const TexturingContext& Applied)
 {
     if (Applied.Retention[0] != '\0')
         return true;
 
-    for (std::uint32_t Facet = 0u; Facet < TexturePaintContext::TextureFacetCount; ++Facet)
+    for (std::uint32_t Facet = 0u; Facet < TexturingContext::TextureFacetCount; ++Facet)
     {
         if (Applied.FacetEnabled[Facet])
             return true;
@@ -213,13 +213,13 @@ bool RetentionActive(const TexturePaintContext& Applied)
 //    region and the search do different work now and are asked separately: the
 //    chips say which channels the layer HAS, the search narrows which of them the
 //    card lists.
-bool ChannelRetentionActive(const TexturePaintContext& Applied)
+bool ChannelRetentionActive(const TexturingContext& Applied)
 {
     return Applied.Retention[0] != '\0';
 }
 
 /// 🧩 Whether one row belongs to the solo's set: the solo row, its ancestors and its descendants.
-bool RowInSolo(const TexturePaintContext& Applied, const TextureLayerRow* Rows,
+bool RowInSolo(const TexturingContext& Applied, const TextureLayerRow* Rows,
                std::uint32_t RowCount, std::uint32_t Index)
 {
     if (Applied.SoloTaken >= RowCount)
@@ -268,7 +268,7 @@ SymbolSubject TextureLayerGlyph(TextureLayerClassification Classified)
     //    spark, folder.
     switch (Classified)
     {
-        case TextureLayerClassification::Paint:      return SymbolSubject::PaintBristle;
+        case TextureLayerClassification::Brushed:      return SymbolSubject::Bristle;
         case TextureLayerClassification::Fill:       return SymbolSubject::DropletDrop;
         case TextureLayerClassification::Decal:      return SymbolSubject::StencilDecal;
         case TextureLayerClassification::Pattern:    return SymbolSubject::TiledPattern;
@@ -285,7 +285,7 @@ ThemeToken TextureLayerHue(TextureLayerClassification Classified)
 {
     switch (Classified)
     {
-        case TextureLayerClassification::Paint:      return Covering(0xF97316u);
+        case TextureLayerClassification::Brushed:      return Covering(0xF97316u);
         case TextureLayerClassification::Fill:       return Covering(0x3B82F6u);
         case TextureLayerClassification::Decal:      return Covering(0xEF4444u);
         case TextureLayerClassification::Pattern:    return Covering(0x10B981u);
@@ -302,7 +302,7 @@ const char* TextureLayerText(TextureLayerClassification Classified)
 {
     switch (Classified)
     {
-        case TextureLayerClassification::Paint:      return "Paint";
+        case TextureLayerClassification::Brushed:      return "Brushed";
         case TextureLayerClassification::Fill:       return "Fill";
         case TextureLayerClassification::Decal:      return "Decal";
         case TextureLayerClassification::Pattern:    return "Pattern";
@@ -319,7 +319,7 @@ std::uint32_t TextureLayerFacetOf(TextureLayerClassification Classified)
 {
     switch (Classified)
     {
-        case TextureLayerClassification::Paint:      return 0u;
+        case TextureLayerClassification::Brushed:      return 0u;
         case TextureLayerClassification::Fill:       return 1u;
         case TextureLayerClassification::Decal:      return 2u;
         case TextureLayerClassification::Pattern:    return 3u;
@@ -431,7 +431,7 @@ std::uint32_t TextureChannelGroup(std::uint32_t Index)
 //                                                  THE SHARED STACK
 //------------------------------------------------------------------------------------------------------------------------
 
-void SeedPaintContextFromRows(TexturePaintContext& Applied,
+void SeedTexturingContextFromRows(TexturingContext& Applied,
                               const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     for (std::uint32_t Index = 0u; Index < TextureLayerLimit; ++Index)
@@ -527,7 +527,7 @@ void SeedPaintContextFromRows(TexturePaintContext& Applied,
     }
 }
 
-void TexturePaintStack::Seed(const TextureLayerRow* Source, std::uint32_t SourceCount)
+void TexturingStack::Seed(const TextureLayerRow* Source, std::uint32_t SourceCount)
 {
     Count = (Source != nullptr) ? std::min(SourceCount, TextureLayerLimit) : 0u;
     NextIdentity = 1u;
@@ -547,14 +547,14 @@ namespace
 {
 
 /// 🧩 Writes one row's name into the stack's own storage and borrows it back.
-const char* HoldName(TexturePaintStack& Stack, std::uint32_t Index, const char* Name)
+const char* HoldName(TexturingStack& Stack, std::uint32_t Index, const char* Name)
 {
     std::snprintf(Stack.Names[Index], sizeof(Stack.Names[Index]), "%s", Name);
     return Stack.Names[Index];
 }
 
 /// 🧩 What a freshly added row stands on, from the reference's `add()`.
-TextureLayerRow NewRow(TexturePaintStack& Stack, std::uint32_t Index,
+TextureLayerRow NewRow(TexturingStack& Stack, std::uint32_t Index,
                        TextureLayerClassification Classified, const char* Name,
                        std::uint32_t Depth, std::uint32_t Enclosing)
 {
@@ -563,8 +563,8 @@ TextureLayerRow NewRow(TexturePaintStack& Stack, std::uint32_t Index,
     Row.Classified   = Classified;
     Row.Blend        = (Classified == TextureLayerClassification::Folder) ? "Passthrough" : "Normal";
     Row.Opacity      = 100u;
-    Row.PaintHue     = SwatchColours[Index % TexturePaintContext::TextureSwatchCount];
-    Row.TagHue       = Row.PaintHue;
+    Row.TexturingHue     = SwatchColours[Index % TexturingContext::TextureSwatchCount];
+    Row.TagHue       = Row.TexturingHue;
     Row.MaskDeclared = false;
     Row.MaskStrength = 100u;
     Row.Detail       = "2048px \u00B7 RGBA 8";
@@ -601,7 +601,7 @@ TextureLayerRow NewRow(TexturePaintStack& Stack, std::uint32_t Index,
 }
 
 /// 🧩 The extent of the taken row's whole subtree: the contiguous run of rows nested inside it.
-std::uint32_t SubtreePast(const TexturePaintStack& Stack, std::uint32_t Taken)
+std::uint32_t SubtreePast(const TexturingStack& Stack, std::uint32_t Taken)
 {
     if (Taken >= Stack.Count)
         return Taken + 1u;
@@ -615,7 +615,7 @@ std::uint32_t SubtreePast(const TexturePaintStack& Stack, std::uint32_t Taken)
     return Past;
 }
 
-void RebuildTextureHierarchy(TexturePaintStack& Stack)
+void RebuildTextureHierarchy(TexturingStack& Stack)
 {
     std::uint32_t Ancestors[TextureLayerLimit] = {};
 
@@ -638,12 +638,12 @@ void RebuildTextureHierarchy(TexturePaintStack& Stack)
 
 }   // namespace
 
-void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
+void TexturingStack::ApplyRequest(TexturingContext& Applied)
 {
     const std::uint32_t Request = Applied.Structural;
     Applied.Structural = 0u;
 
-    if (Request == static_cast<std::uint32_t>(TexturePaintRequest::None) || Count == 0u)
+    if (Request == static_cast<std::uint32_t>(TexturingRequest::None) || Count == 0u)
         return;
 
     // ① Write the working copies back into the model so the artist's edits never drift.
@@ -655,7 +655,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
         Row.Locked        = Applied.LayerLocked[Index];
         Row.MaskDeclared  = Applied.MaskAttached[Index];
         Row.TagHue        = Applied.LayerTagHue[Index];
-        Row.PaintHue      = Applied.LayerTagHue[Index];
+        Row.TexturingHue      = Applied.LayerTagHue[Index];
         Row.Expanded      = Applied.LayerExpanded[Index];
         Row.Selected      = Applied.LayerSelected[Index];
     }
@@ -663,9 +663,9 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
     const std::uint32_t Taken = std::min(Applied.LayerTaken, Count - 1u);
 
     // ② Apply the structural change — the reference's own operations.
-    switch (static_cast<TexturePaintRequest>(Request))
+    switch (static_cast<TexturingRequest>(Request))
     {
-        case TexturePaintRequest::Relocate:
+        case TexturingRequest::Relocate:
         {
             const std::uint32_t Source = Applied.DragSource;
             const std::uint32_t Destination = Applied.DragDestination;
@@ -727,7 +727,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
             Applied.MaskTaken = false;
             break;
         }
-        case TexturePaintRequest::Delete:
+        case TexturingRequest::Delete:
         {
             // 📐 A taken mask deletes the mask only, exactly as the reference's `aDel` branches.
             if (Applied.MaskTaken && Rows[Taken].MaskDeclared)
@@ -759,7 +759,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
             Applied.MaskTaken = false;
             break;
         }
-        case TexturePaintRequest::Duplicate:
+        case TexturingRequest::Duplicate:
         {
             const std::uint32_t Past = SubtreePast(*this, Taken);
             const std::uint32_t Span = Past - Taken;
@@ -799,7 +799,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
             Applied.MaskTaken  = false;
             break;
         }
-        case TexturePaintRequest::Group:
+        case TexturingRequest::Group:
         {
             if (Count + 1u > TextureLayerLimit)
                 break;
@@ -814,7 +814,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
 
             Rows[Taken] = NewRow(*this, Taken, TextureLayerClassification::Folder, "Group",
                                  Wrapped.Depth, Wrapped.Enclosing);
-            Rows[Taken].PaintHue  = Wrapped.TagHue;
+            Rows[Taken].TexturingHue  = Wrapped.TagHue;
             Rows[Taken].TagHue    = Wrapped.TagHue;
             Rows[Taken].Detail    = "1 layers";
             Rows[Taken].EnclosedCount = 1u;
@@ -830,10 +830,10 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
             Applied.MaskTaken  = false;
             break;
         }
-        case TexturePaintRequest::MoveUp:
-        case TexturePaintRequest::MoveDown:
+        case TexturingRequest::MoveUp:
+        case TexturingRequest::MoveDown:
         {
-            const std::int32_t Direction = (Request == static_cast<std::uint32_t>(TexturePaintRequest::MoveUp))
+            const std::int32_t Direction = (Request == static_cast<std::uint32_t>(TexturingRequest::MoveUp))
                                          ? -1 : 1;
             const std::int32_t Neighbour = static_cast<std::int32_t>(Taken) + Direction;
 
@@ -898,17 +898,17 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
             if (Count + 1u > TextureLayerLimit)
                 break;
 
-            TextureLayerClassification Classified = TextureLayerClassification::Paint;
-            const char* Name = "Paint Layer";
+            TextureLayerClassification Classified = TextureLayerClassification::Brushed;
+            const char* Name = "Texture Layer";
 
-            switch (static_cast<TexturePaintRequest>(Request))
+            switch (static_cast<TexturingRequest>(Request))
             {
-                case TexturePaintRequest::AddFill:       Classified = TextureLayerClassification::Fill;       Name = "Fill Layer";      break;
-                case TexturePaintRequest::AddAdjustment: Classified = TextureLayerClassification::Adjustment; Name = "Adjustment";     break;
-                case TexturePaintRequest::AddFilter:     Classified = TextureLayerClassification::Filter;     Name = "Filter";          break;
-                case TexturePaintRequest::AddDecal:      Classified = TextureLayerClassification::Decal;      Name = "Decal Layer";     break;
-                case TexturePaintRequest::AddPattern:    Classified = TextureLayerClassification::Pattern;    Name = "Pattern Layer";   break;
-                case TexturePaintRequest::AddFolder:     Classified = TextureLayerClassification::Folder;     Name = "New Folder";      break;
+                case TexturingRequest::AddFill:       Classified = TextureLayerClassification::Fill;       Name = "Fill Layer";      break;
+                case TexturingRequest::AddAdjustment: Classified = TextureLayerClassification::Adjustment; Name = "Adjustment";     break;
+                case TexturingRequest::AddFilter:     Classified = TextureLayerClassification::Filter;     Name = "Filter";          break;
+                case TexturingRequest::AddDecal:      Classified = TextureLayerClassification::Decal;      Name = "Decal Layer";     break;
+                case TexturingRequest::AddPattern:    Classified = TextureLayerClassification::Pattern;    Name = "Pattern Layer";   break;
+                case TexturingRequest::AddFolder:     Classified = TextureLayerClassification::Folder;     Name = "New Folder";      break;
                 default:                                                                                                                  break;
             }
 
@@ -943,7 +943,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
     Applied.DragPlacement = 0u;
 
     // ③ Re-seed the working copies so every index lines up with the changed row set.
-    SeedPaintContextFromRows(Applied, Rows, Count);
+    SeedTexturingContextFromRows(Applied, Rows, Count);
     for (std::uint32_t Index = 0u; Index < TextureLayerLimit; ++Index)
         Applied.LayerSelected[Index] = Index < Count && Rows[Index].Selected;
 
@@ -956,7 +956,7 @@ void TexturePaintStack::ApplyRequest(TexturePaintContext& Applied)
 //                                                       CONSTRUCTION
 //------------------------------------------------------------------------------------------------------------------------
 
-Deliver<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& IncomingInteraction,
+Deliver<bool> TexturingPanel::ConstructTexturingPanel(ControlIndex& IncomingInteraction,
                                            MotionIntegrator& Integrator,
                                            RecordingSurface& IncomingSurface,
                                            const ThemeProfile& Resolved)
@@ -1110,7 +1110,7 @@ Deliver<bool> TexturePaintPanel::ConstructTexturePaintPanel(ControlIndex& Incomi
     return Deliver<bool>::Result(true);
 }
 
-void TexturePaintPanel::Reapply(const ThemeProfile& Resolved)
+void TexturingPanel::Reapply(const ThemeProfile& Resolved)
 {
     Appearance = &Resolved;
     Tinted = Resolved.Shell;
@@ -1121,7 +1121,7 @@ void TexturePaintPanel::Reapply(const ThemeProfile& Resolved)
     Scaled = ScaleShellLengths(Applied);
 }
 
-void TexturePaintPanel::Reset()
+void TexturingPanel::Reset()
 {
     Controls.Reset();
     SharedControls.Reset();
@@ -1146,7 +1146,7 @@ void TexturePaintPanel::Reset()
 //                                                        THE ADVANCE
 //------------------------------------------------------------------------------------------------------------------------
 
-std::uint32_t TexturePaintPanel::PropertyTabCount(const TexturePaintContext& Applied,
+std::uint32_t TexturingPanel::PropertyTabCount(const TexturingContext& Applied,
                                                   const TextureLayerRow& Current) const
 {
     // 📐 The tabs the selection offers: a folder offers the combined stack page alone; a taken mask
@@ -1168,8 +1168,8 @@ std::uint32_t TexturePaintPanel::PropertyTabCount(const TexturePaintContext& App
     return 1u;
 }
 
-void TexturePaintPanel::Advance(const PointerCondition& Contact, double Elapsed,
-                                TexturePaintContext& Applied,
+void TexturingPanel::Advance(const PointerCondition& Contact, double Elapsed,
+                                TexturingContext& Applied,
                                 const TextureLayerRow* Rows, std::uint32_t RowCount,
                                 bool TabPressed, const ModifierCondition& Modifiers)
 {
@@ -1214,7 +1214,7 @@ void TexturePaintPanel::Advance(const PointerCondition& Contact, double Elapsed,
 //                                                     THE WHOLE LEAF
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::Record(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::Record(const PlaneExtent& Extent, TexturingContext& Applied,
                                const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     if (Rows == nullptr)
@@ -1283,7 +1283,7 @@ void TexturePaintPanel::Record(const PlaneExtent& Extent, TexturePaintContext& A
 //                                                   FLATTENED EXPORT
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordFlattenPage(const PlaneExtent& Extent, TexturePaintContext& Applied)
+void TexturingPanel::RecordFlattenPage(const PlaneExtent& Extent, TexturingContext& Applied)
 {
     Surface->Ground(Extent, Tinted.Menu, 0.0f, CornerNone);
     const float Pad = Scaled.PanePad;
@@ -1462,7 +1462,7 @@ void TexturePaintPanel::RecordFlattenPage(const PlaneExtent& Extent, TexturePain
 //                                                     THE STACK PAGE
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordLeafHeader(const PlaneExtent& Extent, SymbolSubject Glyph,
+void TexturingPanel::RecordLeafHeader(const PlaneExtent& Extent, SymbolSubject Glyph,
                                          const ThemeToken& Hue, const char* Titled,
                                          const char* Secondary)
 {
@@ -1497,7 +1497,7 @@ void TexturePaintPanel::RecordLeafHeader(const PlaneExtent& Extent, SymbolSubjec
                               Extent.MaximumX - RunLead - Pad, Hue, Secondary, SecondaryRun, false);
 }
 
-void TexturePaintPanel::RecordSearchPill(const PlaneExtent& Extent, TexturePaintContext& Applied)
+void TexturingPanel::RecordSearchPill(const PlaneExtent& Extent, TexturingContext& Applied)
 {
     const bool Hovered = Extent.Encloses(Sampled.PositionX, Sampled.PositionY);
 
@@ -1537,10 +1537,10 @@ void TexturePaintPanel::RecordSearchPill(const PlaneExtent& Extent, TexturePaint
 /// out   Writes  [-]  every item that resolved a release this tick is marked 1
 /// cost  🚩
 /// tag   api, nonallocating, nonthrowing
-void TexturePaintPanel::RecordMenuOptions(const PlaneExtent& Card, const char* const* Captions,
+void TexturingPanel::RecordMenuOptions(const PlaneExtent& Card, const char* const* Captions,
                                           const SymbolSubject* Glyphs, std::uint32_t OptionCount,
                                           const char* const* Shortcuts, ControlIdentity* Identities,
-                                          TexturePaintContext& Applied, std::uint32_t* Writes,
+                                          TexturingContext& Applied, std::uint32_t* Writes,
                                           bool Interactive)
 {
     const float Pad = Scaled.PanePad;
@@ -1602,7 +1602,7 @@ void TexturePaintPanel::RecordMenuOptions(const PlaneExtent& Card, const char* c
     }
 }
 
-void TexturePaintPanel::RecordStackPage(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordStackPage(const PlaneExtent& Extent, TexturingContext& Applied,
                                         const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     Surface->Ground(Extent, Tinted.Menu, 0.0f, CornerNone);
@@ -1623,7 +1623,7 @@ void TexturePaintPanel::RecordStackPage(const PlaneExtent& Extent, TexturePaintC
     const FacetDeclaration StackFacetCard =
     {
         "Filters", StackFacetOptions, StackFacetColours,
-        TexturePaintContext::TextureFacetCount, 0xFFFFFFFFu
+        TexturingContext::TextureFacetCount, 0xFFFFFFFFu
     };
 
     const float FacetY = StackFacets.MeasureHeight(Extent.Width() - Pad * 2.0f, StackFacetCard,
@@ -1863,7 +1863,7 @@ void TexturePaintPanel::RecordStackPage(const PlaneExtent& Extent, TexturePaintC
             {
                 Applied.DragDestination = PriorDragDestination;
                 Applied.DragPlacement = PriorDragPlacement;
-                Applied.Structural = static_cast<std::uint32_t>(TexturePaintRequest::Relocate);
+                Applied.Structural = static_cast<std::uint32_t>(TexturingRequest::Relocate);
             }
             else
             {
@@ -1898,7 +1898,7 @@ void TexturePaintPanel::RecordStackPage(const PlaneExtent& Extent, TexturePaintC
 // 🧩 How far the folder enclosing one row has opened — 1 for a top-level row, 0
 //    for a row inside a shut folder, and the eased fraction in between. Ancestors
 //    compound, so a row two folders deep is hidden while EITHER is shut.
-float TexturePaintPanel::EnclosureFraction(const TexturePaintContext& Applied,
+float TexturingPanel::EnclosureFraction(const TexturingContext& Applied,
                                            const TextureLayerRow* Rows,
                                            std::uint32_t RowCount, std::uint32_t Index)
 {
@@ -1919,7 +1919,7 @@ float TexturePaintPanel::EnclosureFraction(const TexturePaintContext& Applied,
     return VisibleTree::AncestorOccupancy(Parents, Expansion, RowCount, Index);
 }
 
-void TexturePaintPanel::RecordStackTools(const PlaneExtent& Tools, TexturePaintContext& Applied)
+void TexturingPanel::RecordStackTools(const PlaneExtent& Tools, TexturingContext& Applied)
 {
     const float ToolY = Scaled.LayerToolHeight;
     const float Top = Tools.MinimumY + (Tools.Height() - ToolY) * 0.5f;
@@ -1949,7 +1949,7 @@ void TexturePaintPanel::RecordStackTools(const PlaneExtent& Tools, TexturePaintC
 
     const ToolCell ToolsDeclared[3] =
     {
-        { &ToolFolder,   SymbolSubject::FolderClosed,   static_cast<std::uint32_t>(TexturePaintRequest::AddFolder) },
+        { &ToolFolder,   SymbolSubject::FolderClosed,   static_cast<std::uint32_t>(TexturingRequest::AddFolder) },
         { &ToolMask,     SymbolSubject::HalfMask,       0x80000000u },
         { &ToolCollapse, SymbolSubject::CollapseFold,   0u }
     };
@@ -2026,7 +2026,7 @@ void TexturePaintPanel::RecordStackTools(const PlaneExtent& Tools, TexturePaintC
     }
 }
 
-void TexturePaintPanel::RecordStackRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+void TexturingPanel::RecordStackRow(const PlaneExtent& Row, TexturingContext& Applied,
                                        const TextureLayerRow* Rows, std::uint32_t RowCount,
                                        const TextureLayerRow& Current, std::uint32_t Index)
 {
@@ -2448,13 +2448,13 @@ void TexturePaintPanel::RecordStackRow(const PlaneExtent& Row, TexturePaintConte
                     Faded(Faded(Tinted.Faint, CellCoverage), RowCoverage));
 }
 
-ControlIdentity TexturePaintPanel::NextInlineControl()
+ControlIdentity TexturingPanel::NextInlineControl()
 {
     return (InlineControlsSpent < 40u) ? InlineControls[InlineControlsSpent++] : ControlIdentity{};
 }
 
-float TexturePaintPanel::RecordInlineLayerCard(const PlaneExtent& Extent,
-                                                TexturePaintContext& Applied,
+float TexturingPanel::RecordInlineLayerCard(const PlaneExtent& Extent,
+                                                TexturingContext& Applied,
                                                 const TextureLayerRow& Current,
                                                 std::uint32_t Index, bool Recording)
 {
@@ -2657,7 +2657,7 @@ float TexturePaintPanel::RecordInlineLayerCard(const PlaneExtent& Extent,
     return Sweep - Extent.MinimumY;
 }
 
-void TexturePaintPanel::RecordMaskRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+void TexturingPanel::RecordMaskRow(const PlaneExtent& Row, TexturingContext& Applied,
                                       const TextureLayerRow* Rows, std::uint32_t RowCount,
                                       const TextureLayerRow& Current, std::uint32_t Index)
 {
@@ -2956,8 +2956,8 @@ void TexturePaintPanel::RecordMaskRow(const PlaneExtent& Row, TexturePaintContex
                     Faded(Faded(Tinted.Faint, CellCoverage), Coverage));
 }
 
-void TexturePaintPanel::RecordBarButton(ControlIdentity Target, const PlaneExtent& Cell,
-                                        SymbolSubject Glyph, TexturePaintContext& Applied,
+void TexturingPanel::RecordBarButton(ControlIdentity Target, const PlaneExtent& Cell,
+                                        SymbolSubject Glyph, TexturingContext& Applied,
                                         std::uint32_t Request, bool Dimmed)
 {
     const bool Hovered = Cell.Encloses(Sampled.PositionX, Sampled.PositionY);
@@ -2980,7 +2980,7 @@ void TexturePaintPanel::RecordBarButton(ControlIdentity Target, const PlaneExten
         Applied.Structural = Request;
 }
 
-void TexturePaintPanel::RecordStackFooter(const PlaneExtent& Footer, TexturePaintContext& Applied,
+void TexturingPanel::RecordStackFooter(const PlaneExtent& Footer, TexturingContext& Applied,
                                           const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     Surface->Ground(Footer, Tinted.MenuLower, 0.0f, CornerNone);
@@ -3196,12 +3196,12 @@ void TexturePaintPanel::RecordStackFooter(const PlaneExtent& Footer, TexturePain
     //    it, reorder it, delete it.
     const BarCell Bar[6] =
     {
-        { SymbolSubject::FolderClosed,      static_cast<std::uint32_t>(TexturePaintRequest::Group),         false },
-        { SymbolSubject::CopyDuplicate,     static_cast<std::uint32_t>(TexturePaintRequest::Duplicate),     false },
+        { SymbolSubject::FolderClosed,      static_cast<std::uint32_t>(TexturingRequest::Group),         false },
+        { SymbolSubject::CopyDuplicate,     static_cast<std::uint32_t>(TexturingRequest::Duplicate),     false },
         { SymbolSubject::LockClosed,        0x80000001u,                                                    false },
-        { SymbolSubject::ArrowUpLine,       static_cast<std::uint32_t>(TexturePaintRequest::MoveUp),        false },
-        { SymbolSubject::ArrowDownLine,     static_cast<std::uint32_t>(TexturePaintRequest::MoveDown),      false },
-        { SymbolSubject::TrashBin,          static_cast<std::uint32_t>(TexturePaintRequest::Delete),        false }
+        { SymbolSubject::ArrowUpLine,       static_cast<std::uint32_t>(TexturingRequest::MoveUp),        false },
+        { SymbolSubject::ArrowDownLine,     static_cast<std::uint32_t>(TexturingRequest::MoveDown),      false },
+        { SymbolSubject::TrashBin,          static_cast<std::uint32_t>(TexturingRequest::Delete),        false }
     };
 
     for (std::uint32_t Index = 0u; Index < 6u; ++Index)
@@ -3254,7 +3254,7 @@ void TexturePaintPanel::RecordStackFooter(const PlaneExtent& Footer, TexturePain
     }
 }
 
-void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordMenu(const PlaneExtent& Extent, TexturingContext& Applied,
                                    const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     if (Applied.MenuOpen != 0u)
@@ -3298,12 +3298,12 @@ void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContex
     //    owns (no history spine, no colour wheel).
     static const char* const AddCaptions[7] =
     {
-        "Paint layer", "Fill layer", "Adjustment", "Filter",
+        "Brushed layer", "Fill layer", "Adjustment", "Filter",
         "Decal layer \u00B7 3D", "Pattern layer", "Group"
     };
     static const SymbolSubject AddGlyphs[7] =
     {
-        SymbolSubject::PaintBristle, SymbolSubject::DropletDrop,
+        SymbolSubject::Bristle, SymbolSubject::DropletDrop,
         SymbolSubject::AdjustmentSliders, SymbolSubject::FilterFunnel,
         SymbolSubject::StencilDecal, SymbolSubject::TiledPattern, SymbolSubject::FolderClosed
     };
@@ -3435,7 +3435,7 @@ void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContex
         for (std::uint32_t Index = 0u; Index < OptionCount; ++Index)
         {
             if (WritesLocal[Index] != 0u)
-                Applied.Structural = static_cast<std::uint32_t>(TexturePaintRequest::AddPaint) + Index;
+                Applied.Structural = static_cast<std::uint32_t>(TexturingRequest::AddTexturing) + Index;
         }
     }
     else if (Open == 2u)
@@ -3465,13 +3465,13 @@ void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContex
                               ? 0xFFFFFFFFu : Applied.MenuRow;
 
         if (WritesLocal[4] != 0u)
-            Applied.Structural = static_cast<std::uint32_t>(TexturePaintRequest::Duplicate);
+            Applied.Structural = static_cast<std::uint32_t>(TexturingRequest::Duplicate);
 
         if (WritesLocal[5] != 0u)
-            Applied.Structural = static_cast<std::uint32_t>(TexturePaintRequest::Group);
+            Applied.Structural = static_cast<std::uint32_t>(TexturingRequest::Group);
 
         if (WritesLocal[6] != 0u)
-            Applied.Structural = static_cast<std::uint32_t>(TexturePaintRequest::Delete);
+            Applied.Structural = static_cast<std::uint32_t>(TexturingRequest::Delete);
     }
     else if (Open == 3u)
     {
@@ -3521,7 +3521,7 @@ void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContex
         const float Swatch = 18.0f;
         const float Gap = (CardW - Pad * 2.0f - Swatch * 10.0f) / 9.0f;
 
-        for (std::uint32_t SwatchIndex = 0u; SwatchIndex < TexturePaintContext::TextureSwatchCount;
+        for (std::uint32_t SwatchIndex = 0u; SwatchIndex < TexturingContext::TextureSwatchCount;
              ++SwatchIndex)
         {
             const float X = Card.MinimumX + Pad + static_cast<float>(SwatchIndex) * (Swatch + Gap);
@@ -3555,7 +3555,7 @@ void TexturePaintPanel::RecordMenu(const PlaneExtent& Extent, TexturePaintContex
 //                                                    THE PROPERTIES PAGE
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordPropertiesPage(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordPropertiesPage(const PlaneExtent& Extent, TexturingContext& Applied,
                                              const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     Surface->Ground(Extent, Tinted.MenuLower, 0.0f, CornerNone);
@@ -3663,7 +3663,7 @@ void TexturePaintPanel::RecordPropertiesPage(const PlaneExtent& Extent, TextureP
 //                                                  THE CHANNEL PROPERTIES
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordChannelCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordChannelCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                           const TextureLayerRow& /*Current*/)
 {
     const float Pad = Scaled.PanePad;
@@ -3799,7 +3799,7 @@ void TexturePaintPanel::RecordChannelCard(const PlaneExtent& Extent, TexturePain
     RecordScrollThumb(Body, Content, Rolled);
 }
 
-void TexturePaintPanel::RecordChannelRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+void TexturingPanel::RecordChannelRow(const PlaneExtent& Row, TexturingContext& Applied,
                                          std::uint32_t Channel)
 {
     // 🧩 `.chan-head`: chevron, the classification dot, the title, and the folded
@@ -3872,8 +3872,8 @@ void TexturePaintPanel::RecordChannelRow(const PlaneExtent& Row, TexturePaintCon
 // 🧩 `.chan-prev`: the tile, the mode line, and the atlas lane the deposit lands
 //    in. This is what tells the artist what the channel will actually write, and
 //    the port carried none of it.
-float TexturePaintPanel::RecordChannelPreview(const PlaneExtent& Extent,
-                                              const TexturePaintContext& Applied,
+float TexturingPanel::RecordChannelPreview(const PlaneExtent& Extent,
+                                              const TexturingContext& Applied,
                                               std::uint32_t Channel)
 {
     const std::uint32_t Layer = Applied.LayerTaken;
@@ -3951,7 +3951,7 @@ float TexturePaintPanel::RecordChannelPreview(const PlaneExtent& Extent,
 
 // 🧩 How tall an unfolded channel card stands, so the fold has a figure to
 //    animate toward rather than snapping open.
-float TexturePaintPanel::ChannelBodyHeight(const TexturePaintContext& Applied,
+float TexturingPanel::ChannelBodyHeight(const TexturingContext& Applied,
                                            std::uint32_t Channel) const
 {
     // 🔴 This returned one figure whichever mode stood, so a Generator card with
@@ -3987,7 +3987,7 @@ float TexturePaintPanel::ChannelBodyHeight(const TexturePaintContext& Applied,
             Height += RowY;   // the picker
 
             const std::uint32_t Standing = Applied.ChannelGenerator[Layer][Channel];
-            if (Standing != TexturePaintContext::AbsentGenerator)
+            if (Standing != TexturingContext::AbsentGenerator)
             {
                 // the hairline, the note-and-actions header, then one row a knob
                 Height += 1.0f + Scaled.PanePad + 20.0f;
@@ -4008,7 +4008,7 @@ float TexturePaintPanel::ChannelBodyHeight(const TexturePaintContext& Applied,
 //    The stack runs past its viewport as soon as a folder unfolds and the channels
 //    page is fourteen cards deep, so in both cases the tail of the list was simply
 //    unreachable — not clipped-and-scrollable, but gone.
-float TexturePaintPanel::AdvanceListScroll(float& Shown, float& Wanted, float Content,
+float TexturingPanel::AdvanceListScroll(float& Shown, float& Wanted, float Content,
                                            float Viewport, const PlaneExtent& Over)
 {
     const float Travel = (Content > Viewport) ? (Content - Viewport) : 0.0f;
@@ -4051,7 +4051,7 @@ float TexturePaintPanel::AdvanceListScroll(float& Shown, float& Wanted, float Co
 
 // 🧩 The thumb, drawn only when there is somewhere to travel — it is the only cue
 //    that a list continues past its viewport.
-void TexturePaintPanel::RecordScrollThumb(const PlaneExtent& Viewport, float Content, float Offset)
+void TexturingPanel::RecordScrollThumb(const PlaneExtent& Viewport, float Content, float Offset)
 {
     if (Content <= Viewport.Height() || Viewport.Height() <= 0.0f)
         return;
@@ -4071,7 +4071,7 @@ void TexturePaintPanel::RecordScrollThumb(const PlaneExtent& Viewport, float Con
 //    heading, and the body the caller records inside it. Every card on the mask,
 //    decal and folder pages is one of these, so they cannot drift apart the way
 //    the four hand-rolled headers did.
-PlaneExtent TexturePaintPanel::RecordSectionCard(const PlaneExtent& Extent, const char* Titled,
+PlaneExtent TexturingPanel::RecordSectionCard(const PlaneExtent& Extent, const char* Titled,
                                                  float BodyHeight)
 {
     const float HeadY = Scaled.ComponentY;
@@ -4094,7 +4094,7 @@ PlaneExtent TexturePaintPanel::RecordSectionCard(const PlaneExtent& Extent, cons
 
 // 🧩 The reference's `.iconbtn`: a small bordered square holding one figure,
 //    hovering to a lifted tile and, when it is destructive, to the danger hue.
-bool TexturePaintPanel::RecordIconAction(ControlIdentity Target, const PlaneExtent& Cell,
+bool TexturingPanel::RecordIconAction(ControlIdentity Target, const PlaneExtent& Cell,
                                          SymbolSubject Glyph, bool Destructive)
 {
     const bool Over = Cell.Encloses(Sampled.PositionX, Sampled.PositionY);
@@ -4125,7 +4125,7 @@ bool TexturePaintPanel::RecordIconAction(ControlIdentity Target, const PlaneExte
     return Fired;
 }
 
-float TexturePaintPanel::RecordSlotRow(const PlaneExtent& Extent, ThemeToken Tint,
+float TexturingPanel::RecordSlotRow(const PlaneExtent& Extent, ThemeToken Tint,
                                        SymbolSubject Glyph, const char* Naming,
                                        const char* Meta, bool Filled)
 {
@@ -4157,7 +4157,7 @@ float TexturePaintPanel::RecordSlotRow(const PlaneExtent& Extent, ThemeToken Tin
     return Extent.Height();
 }
 
-float TexturePaintPanel::RecordValueBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+float TexturingPanel::RecordValueBody(const PlaneExtent& Extent, TexturingContext& Applied,
                                          std::uint32_t Channel)
 {
     // 🧩 Value: a colour field for a colour channel, a magnitude row for a scalar
@@ -4217,7 +4217,7 @@ float TexturePaintPanel::RecordValueBody(const PlaneExtent& Extent, TexturePaint
     return RowY;
 }
 
-float TexturePaintPanel::RecordTextureBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+float TexturingPanel::RecordTextureBody(const PlaneExtent& Extent, TexturingContext& Applied,
                                            std::uint32_t Channel)
 {
     // 🧩 Texture: the painted-stroke slot, then the imported base beneath it.
@@ -4225,23 +4225,23 @@ float TexturePaintPanel::RecordTextureBody(const PlaneExtent& Extent, TexturePai
     const TextureChannelSlot& Slot = TextureChannelAt(Channel);
 
     const std::uint32_t Strokes = Applied.ChannelStrokes[Layer][Channel];
-    const bool Painted  = Strokes > 0u;
+    const bool Textured  = Strokes > 0u;
     const bool Imported = Applied.ChannelImported[Layer][Channel];
 
     const float SlotY = Scaled.LayerHeadHeight * 0.9f;
     float Sweep = Extent.MinimumY;
 
-    char PaintMeta[64] = {};
-    if (Painted)
-        std::snprintf(PaintMeta, sizeof(PaintMeta), "%u strokes \xC2\xB7 2048 \xC3\x97 2048 atlas",
+    char TexturingMeta[64] = {};
+    if (Textured)
+        std::snprintf(TexturingMeta, sizeof(TexturingMeta), "%u strokes \xC2\xB7 2048 \xC3\x97 2048 atlas",
                       static_cast<unsigned>(Strokes));
     else
-        std::snprintf(PaintMeta, sizeof(PaintMeta), "Atlas allocates on the first stroke");
+        std::snprintf(TexturingMeta, sizeof(TexturingMeta), "Atlas allocates on the first stroke");
 
     Sweep += RecordSlotRow(Spanning(Extent.MinimumX, Sweep, Extent.Width(), SlotY),
                            Covering(Slot.Hue),
-                           Painted ? SymbolSubject::PaintBristle : SymbolSubject::ExpandFrame,
-                           Painted ? "Painted strokes" : "No strokes yet", PaintMeta, Painted);
+                           Textured ? SymbolSubject::Bristle : SymbolSubject::ExpandFrame,
+                           Textured ? "Textured strokes" : "No strokes yet", TexturingMeta, Textured);
 
     Sweep += Scaled.PanePad * 0.5f;
 
@@ -4259,7 +4259,7 @@ float TexturePaintPanel::RecordTextureBody(const PlaneExtent& Extent, TexturePai
     return Sweep - Extent.MinimumY;
 }
 
-float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+float TexturingPanel::RecordGeneratorBody(const PlaneExtent& Extent, TexturingContext& Applied,
                                              std::uint32_t Channel)
 {
     // 🧩 Generator: the picker, then — once one stands — its note and its own
@@ -4280,7 +4280,7 @@ float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TextureP
     Picker.OptionCount   = TextureGeneratorLimit + 1u;
 
     const std::uint32_t Standing = Applied.ChannelGenerator[Layer][Channel];
-    std::uint32_t Taken = (Standing == TexturePaintContext::AbsentGenerator)
+    std::uint32_t Taken = (Standing == TexturingContext::AbsentGenerator)
                         ? 0u : (Standing + 1u);
 
     if (SharedControls.SelectionField(ChannelGenerators[Channel],
@@ -4289,7 +4289,7 @@ float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TextureP
     {
         if (Taken == 0u)
         {
-            Applied.ChannelGenerator[Layer][Channel] = TexturePaintContext::AbsentGenerator;
+            Applied.ChannelGenerator[Layer][Channel] = TexturingContext::AbsentGenerator;
         }
         else
         {
@@ -4305,7 +4305,7 @@ float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TextureP
 
     Sweep += RowY;
 
-    if (Applied.ChannelGenerator[Layer][Channel] == TexturePaintContext::AbsentGenerator)
+    if (Applied.ChannelGenerator[Layer][Channel] == TexturingContext::AbsentGenerator)
         return Sweep - Extent.MinimumY;
 
     const TextureGeneratorEntry& Entry =
@@ -4336,7 +4336,7 @@ float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TextureP
 
     if (RecordIconAction(ChannelGenDrop[Channel], Drop, SymbolSubject::TrashBin, true))
     {
-        Applied.ChannelGenerator[Layer][Channel] = TexturePaintContext::AbsentGenerator;
+        Applied.ChannelGenerator[Layer][Channel] = TexturingContext::AbsentGenerator;
 
         for (std::uint32_t Each = 0u; Each < TextureGeneratorParamMax; ++Each)
             Applied.ChannelGeneratorParam[Layer][Channel][Each] = 0.0;
@@ -4376,7 +4376,7 @@ float TexturePaintPanel::RecordGeneratorBody(const PlaneExtent& Extent, TextureP
     return Sweep - Extent.MinimumY;
 }
 
-float TexturePaintPanel::RecordChannelBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+float TexturingPanel::RecordChannelBody(const PlaneExtent& Extent, TexturingContext& Applied,
                                            std::uint32_t Channel)
 {
     // 🔴 This used to draw a Source dropdown and, for a scalar, one Amount row —
@@ -4443,7 +4443,7 @@ float TexturePaintPanel::RecordChannelBody(const PlaneExtent& Extent, TexturePai
 //                                                     THE MASK PROPERTIES
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordMaskCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordMaskCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                        const TextureLayerRow& Current)
 {
     // 🔴 The old card was four flat rows — Density, Source, Invert, Applies-to —
@@ -4612,7 +4612,7 @@ void TexturePaintPanel::RecordMaskCard(const PlaneExtent& Extent, TexturePaintCo
         {
             if (Taken == 0u)
             {
-                Applied.MaskGenerator[Layer] = TexturePaintContext::AbsentGenerator;
+                Applied.MaskGenerator[Layer] = TexturingContext::AbsentGenerator;
             }
             else
             {
@@ -4642,7 +4642,7 @@ void TexturePaintPanel::RecordMaskCard(const PlaneExtent& Extent, TexturePaintCo
             }
 
             if (RecordIconAction(MaskRows[8], Drop, SymbolSubject::TrashBin, true))
-                Applied.MaskGenerator[Layer] = TexturePaintContext::AbsentGenerator;
+                Applied.MaskGenerator[Layer] = TexturingContext::AbsentGenerator;
 
             Surface->TextRunCapitalised(Card.MinimumX, Inside + (Icon - Scaled.RunFiner) * 0.5f,
                                         Tinted.Faint, Entry.Note, Scaled.RunFiner, 0.06f, false);
@@ -4701,7 +4701,7 @@ void TexturePaintPanel::RecordMaskCard(const PlaneExtent& Extent, TexturePaintCo
 //                                                  THE SETTINGS PROPERTIES
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordSettingsCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordSettingsCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                            const TextureLayerRow& Current)
 {
     const float Pad = Scaled.PanePad;
@@ -4797,7 +4797,7 @@ void TexturePaintPanel::RecordSettingsCard(const PlaneExtent& Extent, TexturePai
 //                                                     THE DECAL PROPERTIES
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordDecalCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordDecalCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                         const TextureLayerRow& Current)
 {
     // 🔴 This card did not exist. `grep -c RecordDecalCard` returned zero: a decal
@@ -5021,7 +5021,7 @@ void TexturePaintPanel::RecordDecalCard(const PlaneExtent& Extent, TexturePaintC
                            ? Current.Detail : "No stencil imported";
 
         RecordSlotRow(Spanning(Card.MinimumX, Inside, Card.Width(), SlotY),
-                      Covering(Current.PaintHue), SymbolSubject::StencilDecal,
+                      Covering(Current.TexturingHue), SymbolSubject::StencilDecal,
                       Current.Naming, Naming, true);
 
         Sweep += Scaled.ComponentY + Inner + Pad + Scaled.LayerRowGap;
@@ -5080,7 +5080,7 @@ void TexturePaintPanel::RecordDecalCard(const PlaneExtent& Extent, TexturePaintC
 //                                                     THE FOLDER PROPERTIES
 //------------------------------------------------------------------------------------------------------------------------
 
-void TexturePaintPanel::RecordFolderCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+void TexturingPanel::RecordFolderCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                          const TextureLayerRow* Rows, std::uint32_t RowCount)
 {
     // 🔴 This was six flat label/value rows — Stack, Masks, Channel union, Blend,

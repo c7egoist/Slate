@@ -21,7 +21,7 @@ const char* SubjectSpelling(ReferenceSubject Subject)
 {
     switch (Subject)
     {
-        case ReferenceSubject::PaintedContent:   return "painted content";
+        case ReferenceSubject::TexturedContent:   return "painted content";
         case ReferenceSubject::ImportedImagery:  return "imported imagery";
         case ReferenceSubject::ImportedTopology: return "imported topology";
         case ReferenceSubject::VectorContent:    return "vector content";

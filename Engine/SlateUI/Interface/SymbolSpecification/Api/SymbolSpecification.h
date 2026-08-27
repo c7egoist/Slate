@@ -98,7 +98,7 @@ enum class SymbolSubject : std::uint32_t
 
     // Texturing ---------------------------------------------------------------------------------------------
     UnwrapSeam          = 37u,   // 🚧
-    PaintBristle        = 38u,   // 🚧
+    Bristle        = 38u,   // 🚧
     MaterialSphere      = 39u,   // 🚧
     ChannelSelect       = 40u,   // 🚧
     StencilProjection   = 41u,   // 🚧

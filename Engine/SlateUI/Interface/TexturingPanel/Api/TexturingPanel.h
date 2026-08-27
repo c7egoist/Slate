@@ -57,7 +57,7 @@
 #include "SlateUI/Interface/OverflowScroll/Api/OverflowScroll.h"
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectorySpecification.h"
 #include "SlateUI/Interface/SlidingPages/Api/SlidingPages.h"
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintSpecification.h"
+#include "SlateUI/Interface/TexturingPanel/Api/TexturingSpecification.h"
 
 #include <cstdint>
 
@@ -70,9 +70,9 @@ namespace Slate
 
 /// 🧩 Every datum the texture-paint panel presents, owned by the host and written through by the panel.
 ///    The per-row working copies (opacity, blend, lock, mask, tag hue) are seeded from the rows at
-///    bring-up and synchronised back through `TexturePaintStack::ApplyRequest` — the rows stay the model.
+///    bring-up and synchronised back through `TexturingStack::ApplyRequest` — the rows stay the model.
 /// tag   guarantee
-struct TexturePaintContext
+struct TexturingContext
 {
     static constexpr std::uint32_t TextureRetentionLimit = 48u;  // [-] - the search run, terminator included
     static constexpr std::uint32_t TextureFacetCount      = 8u;    // [-] - Paint … Filter
@@ -137,7 +137,7 @@ struct TexturePaintContext
     bool                       SettingFolded = false;       // [-] - the settings panel's sections
 
     // 📝 The per-row working copies — the fields the artist edits on the stack page itself, seeded
-    //    from the rows at bring-up and written back by `TexturePaintStack::ApplyRequest`.
+    //    from the rows at bring-up and written back by `TexturingStack::ApplyRequest`.
     std::uint32_t              LayerOpacity[TextureLayerLimit]   = {};   // [%] - the footer slider
     std::uint32_t              LayerBlendTaken[TextureLayerLimit] = {};  // [-] - into the blend roster
     bool                       LayerLocked[TextureLayerLimit]    = {};
@@ -148,7 +148,7 @@ struct TexturePaintContext
     bool                       WideRows      = false;        // [-] - the expand toggle's wide columns
 
     // 📝 Left-contact row carrying. A short contact still selects; travel beyond the threshold resolves
-    //    before/after placement or enclosure by a folder and is committed by TexturePaintStack.
+    //    before/after placement or enclosure by a folder and is committed by TexturingStack.
     std::uint32_t              DragSource      = TextureLayerLimit;
     std::uint32_t              DragDestination = TextureLayerLimit;
     std::uint32_t              DragPlacement   = 0u;   // 0 absent, 1 before, 2 after, 3 inside folder
@@ -160,8 +160,8 @@ struct TexturePaintContext
     std::uint32_t              MenuRow       = 0u;
 
     // 📝 One structural request per tick — what the action bar asked for; the host drains it through
-    //    `TexturePaintStack::ApplyRequest` after the record.
-    std::uint32_t              Structural    = 0u;           // [-] - TexturePaintRequest
+    //    `TexturingStack::ApplyRequest` after the record.
+    std::uint32_t              Structural    = 0u;           // [-] - TexturingRequest
 
     // 📝 The properties page's editable scratch — the panel writes these, the host seeds them from
     //    the rows at bring-up. Per-layer channel state, mask state and the settings sliders.
@@ -246,7 +246,7 @@ struct TexturePaintContext
 /// 🧩 Records the editor's layer stack — the stack page and the selection-driven properties page —
 ///    inside the extent the editor's panel chrome hands over.
 /// tag   owning
-class TexturePaintPanel
+class TexturingPanel
 {
 public:
 
@@ -261,16 +261,16 @@ public:
         + (FacetPanel::FacetCapacity + 2u) * 3u       // [-] - stack, channel, and mask filter cards
         + 45u;                                         // [-] - three export rails, fields, and output options
 
-    TexturePaintPanel()                                   = default;
-    TexturePaintPanel(const TexturePaintPanel&)           = delete;
-    TexturePaintPanel& operator=(const TexturePaintPanel&) = delete;
-    ~TexturePaintPanel()                                  = default;
+    TexturingPanel()                                   = default;
+    TexturingPanel(const TexturingPanel&)           = delete;
+    TexturingPanel& operator=(const TexturingPanel&) = delete;
+    ~TexturingPanel()                                  = default;
 
     /// 🧩 Borrows the recording facilities and registers every identity and interpolant the panel needs.
     /// out   Result  [-]  refuses with ContentUnsupported when a construction already stands
     /// cost  🚩
     /// tag   api, nonthrowing
-    Deliver<bool> ConstructTexturePaintPanel(ControlIndex&              IncomingInteraction,
+    Deliver<bool> ConstructTexturingPanel(ControlIndex&              IncomingInteraction,
                             MotionIntegrator&              Integrator,
                             RecordingSurface&              Surface,
                             const ThemeProfile& Resolved);
@@ -283,7 +283,7 @@ public:
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
     void Advance(const PointerCondition& Sampled, double Elapsed,
-                 TexturePaintContext& Applied,
+                 TexturingContext& Applied,
                  const TextureLayerRow* Rows, std::uint32_t RowCount,
                  bool TabPressed, const ModifierCondition& Modifiers = {});
 
@@ -297,7 +297,7 @@ public:
     /// in    RowCount [-]  how many stand
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing
-    void Record(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void Record(const PlaneExtent& Extent, TexturingContext& Applied,
                 const TextureLayerRow* Rows, std::uint32_t RowCount);
 
     /// 🧩 Returns the panel to its unconstructed condition.
@@ -323,40 +323,40 @@ public:
 
 private:
 
-    void RecordStackPage(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordStackPage(const PlaneExtent& Extent, TexturingContext& Applied,
                          const TextureLayerRow* Rows, std::uint32_t RowCount);
-    void RecordStackTools(const PlaneExtent& Tools, TexturePaintContext& Applied);
-    void RecordStackRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+    void RecordStackTools(const PlaneExtent& Tools, TexturingContext& Applied);
+    void RecordStackRow(const PlaneExtent& Row, TexturingContext& Applied,
                         const TextureLayerRow* Rows, std::uint32_t RowCount,
                         const TextureLayerRow& Current, std::uint32_t Index);
     /// 🧩 Records the independently disclosed card beneath one layer row and answers its full height.
-    float RecordInlineLayerCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    float RecordInlineLayerCard(const PlaneExtent& Extent, TexturingContext& Applied,
                                 const TextureLayerRow& Current, std::uint32_t Index,
                                 bool Recording);
     ControlIdentity NextInlineControl();
-    void RecordMaskRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+    void RecordMaskRow(const PlaneExtent& Row, TexturingContext& Applied,
                        const TextureLayerRow* Rows, std::uint32_t RowCount,
                        const TextureLayerRow& Current, std::uint32_t Index);
-    void RecordStackFooter(const PlaneExtent& Footer, TexturePaintContext& Applied,
+    void RecordStackFooter(const PlaneExtent& Footer, TexturingContext& Applied,
                            const TextureLayerRow* Rows, std::uint32_t RowCount);
     void RecordBarButton(ControlIdentity Target, const PlaneExtent& Cell, SymbolSubject Glyph,
-                         TexturePaintContext& Applied, std::uint32_t Request,
+                         TexturingContext& Applied, std::uint32_t Request,
                          bool Dimmed = false);
-    void RecordFlattenPage(const PlaneExtent& Extent, TexturePaintContext& Applied);
-    void RecordPropertiesPage(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordFlattenPage(const PlaneExtent& Extent, TexturingContext& Applied);
+    void RecordPropertiesPage(const PlaneExtent& Extent, TexturingContext& Applied,
                               const TextureLayerRow* Rows, std::uint32_t RowCount);
-    void RecordSearchPill(const PlaneExtent& Extent, TexturePaintContext& Applied);
-    void RecordChannelCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordSearchPill(const PlaneExtent& Extent, TexturingContext& Applied);
+    void RecordChannelCard(const PlaneExtent& Extent, TexturingContext& Applied,
                            const TextureLayerRow& Current);
     /// 🧩 How tall an unfolded channel card stands.
-    float ChannelBodyHeight(const TexturePaintContext& Applied, std::uint32_t Channel) const;
+    float ChannelBodyHeight(const TexturingContext& Applied, std::uint32_t Channel) const;
 
     /// 🧩 The three source bodies, one per mode.
-    float RecordValueBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    float RecordValueBody(const PlaneExtent& Extent, TexturingContext& Applied,
                           std::uint32_t Channel);
-    float RecordTextureBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    float RecordTextureBody(const PlaneExtent& Extent, TexturingContext& Applied,
                             std::uint32_t Channel);
-    float RecordGeneratorBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    float RecordGeneratorBody(const PlaneExtent& Extent, TexturingContext& Applied,
                               std::uint32_t Channel);
 public:
     /// 🧩 The action bar's cell extents as the panel actually laid them out this tick,
@@ -373,7 +373,7 @@ public:
 private:
 
     /// 🧩 How far the folder enclosing one row has opened; 1 when nothing encloses it.
-    float EnclosureFraction(const TexturePaintContext& Applied, const TextureLayerRow* Rows,
+    float EnclosureFraction(const TexturingContext& Applied, const TextureLayerRow* Rows,
                             std::uint32_t RowCount, std::uint32_t Index);
 
     /// 🧩 Advances one list's scroll toward where the wheel put it; answers where it stands.
@@ -389,11 +389,11 @@ private:
     PlaneExtent RecordSectionCard(const PlaneExtent& Extent, const char* Titled, float BodyHeight);
 
     /// 🧩 The decal's transform and projection. Did not exist; a decal fell to the channels page.
-    void RecordDecalCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordDecalCard(const PlaneExtent& Extent, TexturingContext& Applied,
                          const TextureLayerRow& Current);
 
     /// 🧩 The reference's `.chan-prev` — the resolved tile, the mode, and the atlas lane.
-    float RecordChannelPreview(const PlaneExtent& Extent, const TexturePaintContext& Applied,
+    float RecordChannelPreview(const PlaneExtent& Extent, const TexturingContext& Applied,
                                std::uint32_t Channel);
 
     /// 🧩 The reference's `.iconbtn`. Answers whether it was pressed this tick.
@@ -405,30 +405,30 @@ private:
                         const char* Naming, const char* Meta, bool Filled);
 
     /// 🧩 Records one unfolded channel card and returns the height it took.
-    float RecordChannelBody(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    float RecordChannelBody(const PlaneExtent& Extent, TexturingContext& Applied,
                             std::uint32_t Channel);
 
-    void RecordChannelRow(const PlaneExtent& Row, TexturePaintContext& Applied,
+    void RecordChannelRow(const PlaneExtent& Row, TexturingContext& Applied,
                           std::uint32_t Channel);
-    void RecordMaskCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordMaskCard(const PlaneExtent& Extent, TexturingContext& Applied,
                         const TextureLayerRow& Current);
-    void RecordSettingsCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordSettingsCard(const PlaneExtent& Extent, TexturingContext& Applied,
                             const TextureLayerRow& Current);
-    void RecordFolderCard(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordFolderCard(const PlaneExtent& Extent, TexturingContext& Applied,
                           const TextureLayerRow* Rows, std::uint32_t RowCount);
     void RecordLeafHeader(const PlaneExtent& Extent, SymbolSubject Glyph,
                           const ThemeToken& Hue, const char* Titled, const char* Secondary);
-    std::uint32_t PropertyTabCount(const TexturePaintContext& Applied,
+    std::uint32_t PropertyTabCount(const TexturingContext& Applied,
                                    const TextureLayerRow& Current) const;
 
     // 📝 The popup menus — the reference's `.pop`: a rounded card of pill items, recorded above the
     //    whole page inside the leaf.
-    void RecordMenu(const PlaneExtent& Extent, TexturePaintContext& Applied,
+    void RecordMenu(const PlaneExtent& Extent, TexturingContext& Applied,
                     const TextureLayerRow* Rows, std::uint32_t RowCount);
     void RecordMenuOptions(const PlaneExtent& Card, const char* const* Captions,
                            const SymbolSubject* Glyphs, std::uint32_t OptionCount,
                            const char* const* Shortcuts, ControlIdentity* Identities,
-                           TexturePaintContext& Applied, std::uint32_t* Writes, bool Interactive);
+                           TexturingContext& Applied, std::uint32_t* Writes, bool Interactive);
 
     ControlIndex*           Interaction = nullptr;        // [-] - borrowed; never owned
     MotionIntegrator*           Motion = nullptr;        // [-] - borrowed; never owned

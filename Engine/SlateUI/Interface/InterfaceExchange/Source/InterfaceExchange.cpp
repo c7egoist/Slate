@@ -818,7 +818,7 @@ bool InterfaceExchange::KeyPressed(KeySubject Subject) const
         case KeySubject::Withdraw: Arbitrated = ImGuiKey_Escape;    break;
         case KeySubject::Retract:  Arbitrated = ImGuiKey_Backspace; break;
 
-        case KeySubject::DeclarePaint:      Arbitrated = ImGuiKey_P;          break;
+        case KeySubject::DeclareTexturing:      Arbitrated = ImGuiKey_P;          break;
         case KeySubject::DeclareFill:       Arbitrated = ImGuiKey_F;          break;
         case KeySubject::DeclareAdjustment: Arbitrated = ImGuiKey_A;          break;
         case KeySubject::DeclareRetention:  Arbitrated = ImGuiKey_R;          break;

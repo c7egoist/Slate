@@ -46,7 +46,7 @@ const char* PanelText(PanelSubject Subject)
         case PanelSubject::Outliner:        return "Outliner";
         case PanelSubject::Properties:      return "Properties";
         case PanelSubject::Vacant:          return "Vacant";
-        case PanelSubject::TexturePaint:    return "LayerStack";
+        case PanelSubject::Texturing:    return "LayerStack";
         case PanelSubject::ParametricTools: return "ToolCatalogue";
         case PanelSubject::SketchDirectory: return "SketchDirectory";
         default:                            return "?";
@@ -210,7 +210,7 @@ void ProveEveryDeclaration()
             Claim(Seats(Seated, PanelSubject::ParametricTools),
                   Where + " offers sketch tools and must seat the tool catalogue");
         if (Declared.TextureTools)
-            Claim(Seats(Seated, PanelSubject::TexturePaint) || Declared.SketchTools,
+            Claim(Seats(Seated, PanelSubject::Texturing) || Declared.SketchTools,
                   Where + " offers texturing tools and must seat the layer stack");
 
         Claim(Declared.StepCount <= WorkspaceDeclaration::StepLimit,
@@ -297,7 +297,7 @@ void ProveSubjectSelects()
     // The two disciplines that HAVE an arrangement must select their own, not fall through to blank.
     Claim(DeclaredWorkspaceFor(WorkspaceSubject::Parametric).SketchTools,
           "the parametric subject must select the sketching workspace");
-    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Painting).TextureTools,
+    Claim(DeclaredWorkspaceFor(WorkspaceSubject::Texturing).TextureTools,
           "the texturing subject must select the texturing workspace");
     Claim(DeclaredWorkspaceFor(WorkspaceSubject::Vacant).StepCount == 0u,
           "the blank subject must select the blank workspace");

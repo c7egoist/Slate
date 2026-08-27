@@ -30,7 +30,7 @@
 #include "SlateUI/Interface/ControlCentrePanel/Api/ControlCentrePanel.h"
 #include "SlateUI/Interface/ThemeInterchange/Api/ThemeInterchange.h"
 #include "SlateUI/Interface/EditorPanel/Api/EditorPanel.h"
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintPanel.h"
+#include "SlateUI/Interface/TexturingPanel/Api/TexturingPanel.h"
 #include "SlateUI/Interface/ParametricWorkspace/Api/ParametricWorkspacePanel.h"
 #include "SlateUI/Interface/ParametricTools/Api/ParametricToolsPanel.h"
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectoryPanel.h"
@@ -101,7 +101,7 @@ constexpr std::uint32_t CentreControls  = ControlCentrePanel::ControlCapacity;
 constexpr std::uint32_t BrowserControls = ContentBrowserPanel::RegistrationDemand;
 constexpr std::uint32_t EditorControls  = PanelStructure::RecordLimit * EditorPanel::ControlsPerRecord;
 constexpr std::uint32_t SceneControls   = SceneDirectoryPanel::RegistrationDemand
-                                        + TexturePaintPanel::RegistrationDemand;
+                                        + TexturingPanel::RegistrationDemand;
 constexpr std::uint32_t ParametricControls = 4u + ParametricWorkspaceContext::RowLimit * 2u
                                            + 1u + ParametricToolsContext::BandLimit
                                            + ParametricToolsContext::TileLimit;
@@ -246,9 +246,9 @@ int main(int ArgumentCount, char** ArgumentValues)
     static ParametricToolsPanel    ParametricTools;
     static ParametricToolsContext  ParametricToolsApplied;
     static ControlIndex            ParametricInteraction;
-    static TexturePaintPanel        TexturePaint;
-    static TexturePaintContext     TexturePaintApplied;
-    TexturePaintStack        StackRows;                 // [-] - the mutable row set; the panel borrows it
+    static TexturingPanel        Texturing;
+    static TexturingContext     TexturingApplied;
+    TexturingStack        StackRows;                 // [-] - the mutable row set; the panel borrows it
     MaterialSpecification     EditorMaterialDocument;
     SurfaceLayerSequence      EditorMaterialLayers;
     MaterialProcessingExchange EditorMaterialExchange;
@@ -419,14 +419,14 @@ int main(int ArgumentCount, char** ArgumentValues)
         { "Warning Stencil", TextureLayerClassification::Decal,   "Normal",    100u, 0xE5484Du, 0xE5484Du,
           true,  100u, false, "Bitmap", "Planar \u00B7 100%", { StackChannels[0] }, 1u,
           1u, 0u, 0u, true, "decal stencil warning", false, "", false, 2003u },
-        { "Scratches",       TextureLayerClassification::Paint,    "Screen",     38u, 0xB0E64Cu, 0xB0E64Cu,
+        { "Scratches",       TextureLayerClassification::Brushed,    "Screen",     38u, 0xB0E64Cu, 0xB0E64Cu,
           true,   88u, false, "Generator", "2048px \u00B7 RGBA 8", { StackChannels[0], StackChannels[2] }, 2u,
           1u, 0u, 0u, true, "paint scratches grunge", false, "Blur", false, 2004u },
         { "Edge Wear",       TextureLayerClassification::Fill,     "Multiply",   82u, 0xF76B15u, 0xF76B15u,
           true,  100u, false, "Generator", "2048px \u00B7 RGBA 8", { StackChannels[1], StackChannels[2] }, 2u,
           1u, 0u, 0u, true, "fill edge wear rust", false, "", false, 2005u },
         { "Emissive Trim",   TextureLayerClassification::Fill,     "Normal",    100u, 0xFFC53Du, 0xFFC53Du,
-          true,  100u, false, "Paint", "2048px \u00B7 RGBA 8", { StackChannels[6] }, 1u,
+          true,  100u, false, "Brushed", "2048px \u00B7 RGBA 8", { StackChannels[6] }, 1u,
           0u, 0xFFFFFFFFu, 0u, true, "fill emissive trim", false, "", false, 2006u },
         { "Hex Panelling",   TextureLayerClassification::Pattern,  "Normal",    100u, 0x8AB4D8u, 0x8AB4D8u,
           true,  100u, false, "Generator", "Hex Grid \u00B7 4\u00D74", { StackChannels[2], StackChannels[4] }, 2u,
@@ -448,23 +448,23 @@ int main(int ArgumentCount, char** ArgumentValues)
           1u, 7u, 0u, false, "material canvas fabric", false, "", false, 2012u }
     };
 
-    TexturePaintApplied.LayerTaken = 1u;
+    TexturingApplied.LayerTaken = 1u;
 
     // 📝 The shared stack helper seeds the mutable row set and every working copy, exactly as the
     //    harness drives it — the two can never drift.
     StackRows.Seed(StackSeed, 12u);
-    SeedPaintContextFromRows(TexturePaintApplied, StackRows.Rows, StackRows.Count);
+    SeedTexturingContextFromRows(TexturingApplied, StackRows.Rows, StackRows.Count);
 
     for (std::uint32_t Index = 0u; Index < TextureLayerLimit; ++Index)
     {
-        TexturePaintApplied.MaskSourceTaken[Index] =
+        TexturingApplied.MaskSourceTaken[Index] =
             (Index == 2u || Index == 3u || Index == 4u) ? 4u : 0u;
-        TexturePaintApplied.MaskDensity[Index] = (Index == 3u) ? 88u : 100u;
-        TexturePaintApplied.MaskInverted[Index] = (Index == 9u);
+        TexturingApplied.MaskDensity[Index] = (Index == 3u) ? 88u : 100u;
+        TexturingApplied.MaskInverted[Index] = (Index == 9u);
     }
 
     MaterialLayerProjectionReport InitialMaterialBridge = ProjectMaterialLayersFromTextureStack(
-        EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturePaintApplied,
+        EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturingApplied,
         EditorMaterialExchange, nullptr);
     EditorMaterialSnapshot = InitialMaterialBridge.Snapshot;
     EditorMaterialSnapshotReady = true;
@@ -510,7 +510,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         return 1;
     }
 
-    if (!TexturePaint.ConstructTexturePaintPanel(SceneInteraction, Viewport.MotionSource(), Viewport.Surface(),
+    if (!Texturing.ConstructTexturingPanel(SceneInteraction, Viewport.MotionSource(), Viewport.Surface(),
                               Viewport.Appearance()).Resolved)
     {
         std::printf("%s \u2014 the texture paint panel was rejected\n", HostName);
@@ -1079,33 +1079,33 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 SceneDirectory.RecordProperties(LeafBody, SceneApplied,
                                                                 PresentedEntities, PresentedEntityCount, SceneApplied.InspectorTab);
                                 break;
-                            case PanelSubject::TexturePaint:
+                            case PanelSubject::Texturing:
                                 if (PanelConfiguration[Index].FooterDemand == EditorFooterDemand::ExportFlattened ||
                                     PanelConfiguration[Index].FooterDemand == EditorFooterDemand::LayerExport)
                                 {
-                                    TexturePaintApplied.ExportMode =
+                                    TexturingApplied.ExportMode =
                                         PanelConfiguration[Index].FooterDemand == EditorFooterDemand::LayerExport ? 1u : 0u;
-                                    TexturePaintApplied.StackPage = 2u;
+                                    TexturingApplied.StackPage = 2u;
 
                                     WorkspaceMaterialRecord ExportMaterial;
-                                    ExportMaterial.Reference = TexturePaintApplied.ExportName;
+                                    ExportMaterial.Reference = TexturingApplied.ExportName;
                                     ExportMaterial.Material = EditorMaterialDocument;
                                     ExportMaterial.Layers = EditorMaterialLayers;
                                     MaterialExportOptions ExportOptions;
-                                    ExportOptions.OutputName = TexturePaintApplied.ExportName;
-                                    ExportOptions.OutputDirectory = TexturePaintApplied.ExportLocation;
+                                    ExportOptions.OutputName = TexturingApplied.ExportName;
+                                    ExportOptions.OutputDirectory = TexturingApplied.ExportLocation;
                                     ExportOptions.Target = static_cast<MaterialExportTarget>(
-                                        std::min(TexturePaintApplied.ExportPreset,
+                                        std::min(TexturingApplied.ExportPreset,
                                                  static_cast<std::uint32_t>(MaterialExportTarget::TargetCount) - 1u));
-                                    ExportOptions.Format = TexturePaintApplied.ExportFormat == 1u
+                                    ExportOptions.Format = TexturingApplied.ExportFormat == 1u
                                         ? MaterialExportImageFormat::Tga : MaterialExportImageFormat::Png;
                                     ExportOptions.BitDepth = static_cast<MaterialExportBitDepth>(
-                                        std::min(TexturePaintApplied.ExportBitDepth,
+                                        std::min(TexturingApplied.ExportBitDepth,
                                                  static_cast<std::uint32_t>(MaterialExportBitDepth::DepthCount) - 1u));
-                                    ExportOptions.NormalConvention = TexturePaintApplied.ExportDirectXNormals
+                                    ExportOptions.NormalConvention = TexturingApplied.ExportDirectXNormals
                                         ? MaterialExportNormalConvention::DirectX : MaterialExportNormalConvention::OpenGl;
-                                    ExportOptions.Resolution = 128u << std::min(TexturePaintApplied.ExportResolution, 7u);
-                                    ExportOptions.Dilation = TexturePaintApplied.ExportDilation;
+                                    ExportOptions.Resolution = 128u << std::min(TexturingApplied.ExportResolution, 7u);
+                                    ExportOptions.Dilation = TexturingApplied.ExportDilation;
                                     const Deliver<MaterialExportPackage> ExportPackage =
                                         BuildMaterialExportPackage(ExportMaterial, ExportOptions);
                                     if (ExportPackage.Resolved)
@@ -1113,7 +1113,7 @@ int main(int ArgumentCount, char** ArgumentValues)
 
                                     PanelConfiguration[Index].FooterDemand = EditorFooterDemand::None;
                                 }
-                                TexturePaint.Record(LeafBody, TexturePaintApplied, StackRows.Rows, StackRows.Count);
+                                Texturing.Record(LeafBody, TexturingApplied, StackRows.Rows, StackRows.Count);
 
                                 if (LayerLeafTally < PanelStructure::RecordLimit)
                                 {
@@ -1188,8 +1188,8 @@ int main(int ArgumentCount, char** ArgumentValues)
             ParametricInteraction.Advance(Viewport.Surface().Pointer(), Pass.ElapsedMilliseconds);
 
             // 📐 Tab is shared by the scene directory's pages and the layer stack's carousel, so the
-            //    key goes to whichever panel the pointer is over: a TexturePaint leaf feeds the layer
-            //    stack, anything else feeds the scene directory. With no TexturePaint leaf open, the
+            //    key goes to whichever panel the pointer is over: a Texturing leaf feeds the layer
+            //    stack, anything else feeds the scene directory. With no Texturing leaf open, the
             //    scene directory keeps Tab as before.
             const bool TabPressed = Viewport.Seam().KeyPressed(KeySubject::Summon);
             const PointerCondition& Hovered = Viewport.Surface().Pointer();
@@ -1213,8 +1213,8 @@ int main(int ArgumentCount, char** ArgumentValues)
                                    SceneApplied,
                                    TabPressed && !PointerInLayers && !PointerBehindDrawer,
                                    Viewport.Seam().Modifiers());
-            TexturePaint.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
-                               TexturePaintApplied, StackRows.Rows, StackRows.Count,
+            Texturing.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
+                               TexturingApplied, StackRows.Rows, StackRows.Count,
                                TabPressed && PointerInLayers && !PointerBehindDrawer,
                                Viewport.Seam().Modifiers());
             SketchDirectory.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
@@ -1252,27 +1252,27 @@ int main(int ArgumentCount, char** ArgumentValues)
             }
 
             // 📝 The layer stack's own search pill — the same gated feed.
-            if (TexturePaintApplied.SearchTaken)
+            if (TexturingApplied.SearchTaken)
             {
-                static_cast<void>(Viewport.Seam().AcceptTyped(TexturePaintApplied.Retention,
-                                                              TexturePaintContext::TextureRetentionLimit));
+                static_cast<void>(Viewport.Seam().AcceptTyped(TexturingApplied.Retention,
+                                                              TexturingContext::TextureRetentionLimit));
 
                 if (Viewport.Seam().KeyPressed(KeySubject::Retract))
                 {
                     std::uint32_t Occupied = 0u;
 
-                    while (Occupied + 1u < TexturePaintContext::TextureRetentionLimit &&
-                           TexturePaintApplied.Retention[Occupied] != '\0')
+                    while (Occupied + 1u < TexturingContext::TextureRetentionLimit &&
+                           TexturingApplied.Retention[Occupied] != '\0')
                     {
                         ++Occupied;
                     }
 
                     if (Occupied > 0u)
-                        TexturePaintApplied.Retention[Occupied - 1u] = '\0';
+                        TexturingApplied.Retention[Occupied - 1u] = '\0';
                 }
 
                 if (Viewport.Seam().KeyPressed(KeySubject::Withdraw))
-                    TexturePaintApplied.Retention[0] = '\0';
+                    TexturingApplied.Retention[0] = '\0';
             }
 
             // The atmosphere is updated on the GPU in this frame's command stream. The scene component
@@ -1353,9 +1353,9 @@ int main(int ArgumentCount, char** ArgumentValues)
             // 📝 The layer stack's structural request is drained exactly once per tick, through the
             //    same shared helper the harness drives — the row set and the working copies stay in
             //    step with the panel's buttons and menus.
-            StackRows.ApplyRequest(TexturePaintApplied);
+            StackRows.ApplyRequest(TexturingApplied);
             MaterialLayerProjectionReport MaterialBridge = ProjectMaterialLayersFromTextureStack(
-                EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturePaintApplied,
+                EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturingApplied,
                 EditorMaterialExchange, EditorMaterialSnapshotReady ? &EditorMaterialSnapshot : nullptr);
             EditorMaterialSnapshot = MaterialBridge.Snapshot;
             EditorMaterialSnapshotReady = true;
@@ -1424,8 +1424,8 @@ int main(int ArgumentCount, char** ArgumentValues)
                     // The workspace names one shared pigment for every tea-service geometry entry.
                     // Present it once in the host-owned layer model rather than fabricating one layer per mesh.
                     StackRows.Seed(&WhiteDielectricLayer, 1u);
-                    SeedPaintContextFromRows(TexturePaintApplied, StackRows.Rows, StackRows.Count);
-                    TexturePaintApplied.LayerTaken = 0u;
+                    SeedTexturingContextFromRows(TexturingApplied, StackRows.Rows, StackRows.Count);
+                    TexturingApplied.LayerTaken = 0u;
                 }
                 if (ContentBrowserApplied.ImportBrowseRequested)
                 {
@@ -1489,7 +1489,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                     SceneDirectory.Reapply(Viewport.Appearance());
                     SketchDirectory.Reapply(Viewport.Appearance());
                     ParametricTools.Reapply(Viewport.Appearance());
-                    TexturePaint.Reapply(Viewport.Appearance());
+                    Texturing.Reapply(Viewport.Appearance());
                 }
             }
             ControlCentre.Exclude(Viewport.Drawers());
