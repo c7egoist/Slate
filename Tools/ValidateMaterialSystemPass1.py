@@ -130,7 +130,7 @@ def main() -> int:
         "DefaultWorkspaceMaterialRecord(Slot)",
     )
     require_text(
-        "Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp",
+        "Engine/SlateWorkspace/Discipline/ContentImportCommit/Source/ContentImportCommit.cpp",
         "OpenedScene.Materials.push_back(Material)",
         "EnsureWorkspaceMaterialRecords(OpenedScene)",
     )

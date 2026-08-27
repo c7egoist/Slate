@@ -4,7 +4,7 @@
 [unit]
 name    = "Application"
 product = "Executable"
-subject = [ "ConsoleHost", "PaintHost", "EditorHost", "InterfaceValidationHost", "ParametricSketchHost" ]
+subject = [ "ConsoleHost", "EditorHost", "InterfaceValidationHost" ]
 
 # 📝 A PRODUCT is one subject compiled with one feature macro. `Application/Api/HostFeature.h` reads that
 #    macro and nothing else, so what a product contains is declared here and derived nowhere.

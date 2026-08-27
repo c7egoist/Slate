@@ -35,8 +35,6 @@ TRANSLATION = [
     ("Engine/Application/EditorHost/Source/EditorHost.cpp", "SLATE_TEXTURE_AUTHORING"),
     ("Engine/Application/EditorHost/Source/EditorHost.cpp", "SLATE_PARAMETRIC_AUTHORING"),
     ("Engine/Application/EditorHost/Source/EditorHost.cpp", "SLATE_COMBINED_AUTHORING"),
-    ("Engine/Application/PaintHost/Source/PaintHost.cpp", "SLATE_TEXTURE_AUTHORING"),
-    ("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp", "SLATE_PARAMETRIC_AUTHORING"),
     ("Engine/Application/InterfaceValidationHost/Source/InterfaceValidationHost.cpp", "SLATE_COMBINED_AUTHORING"),
     ("Engine/Application/ConsoleHost/Source/ConsoleHost.cpp", "SLATE_COMBINED_AUTHORING"),
 ]
@@ -45,8 +43,6 @@ TRANSLATION = [
 # 📝 Hosts examined for abandoned file-local functions. One product macro each, deliberately -- see the
 #    note in the loop below.
 ABANDONMENT = [
-    ("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp", "SLATE_PARAMETRIC_AUTHORING"),
-    ("Engine/Application/PaintHost/Source/PaintHost.cpp", "SLATE_TEXTURE_AUTHORING"),
 ]
 
 

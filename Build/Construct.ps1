@@ -1,4 +1,4 @@
-# Construct.ps1 — builds every Slate unit with cl.exe, lib.exe and link.exe directly.
+﻿# Construct.ps1 — builds every Slate unit with cl.exe, lib.exe and link.exe directly.
 #
 # 🔴 /MD in every configuration, including Debug. SLATE_DEBUG selects the debug path; _DEBUG is never
 #    defined, because it selects the debug CRT and mixing that with /MD is a link failure at best.
@@ -607,7 +607,7 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
     #    in the log rather than appearing as the same unit translated three times.
     $Label = if ($ProductName) { "$UnitName / $ProductName" } elseif ($Subject) { "$UnitName / $Subject" } else { $UnitName }
 
-    Write-Building "$Label — $($Sources.Count) translation units"
+    Write-Building "$Label - $($Sources.Count) translation units"
 
     $Produced = New-Object System.Collections.Generic.List[string]
     $Stale    = New-Object System.Collections.Generic.List[string]
@@ -663,7 +663,7 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
     $ResponsePath = Join-Path $ObjectRoot "$UnitName.rsp"
     Write-ResponseFile $ResponsePath $Arguments
 
-    Write-Building "$Label — translating $($Stale.Count) of $($Sources.Count)"
+    Write-Building "$Label - translating $($Stale.Count) of $($Sources.Count)"
 
     $Diagnostics = & cl.exe '/nologo' "@$ResponsePath"
     $Rejected     = $LASTEXITCODE -ne 0
@@ -681,8 +681,8 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
         {
             $Diagnostics | ForEach-Object { Write-Host "    $_" }
         }
-        Write-Rejected "$UnitName — cl.exe rejected the translation batch"
-        throw "$UnitName — cl.exe rejected the translation batch"
+        Write-Rejected "$UnitName - cl.exe rejected the translation batch"
+        throw "$UnitName - cl.exe rejected the translation batch"
     }
 
     # 📝 The records land beside the objects under the name the predicate looks for. Moved rather than
@@ -717,8 +717,8 @@ function Invoke-Translation([hashtable] $UnitEntry, [string] $Selection, [string
     if ($Recorded -lt $Stale.Count)
     {
         $Absent = $Stale.Count - $Recorded
-        Write-Rejected "$UnitName — $Absent of $($Stale.Count) translations wrote no dependency record"
-        Write-Rejected "$UnitName — the next build cannot be incremental until that is corrected"
+        Write-Rejected "$UnitName - $Absent of $($Stale.Count) translations wrote no dependency record"
+        Write-Rejected "$UnitName - the next build cannot be incremental until that is corrected"
     }
 
     return $Produced.ToArray()
@@ -812,7 +812,7 @@ function Invoke-ShaderTranslation([hashtable] $UnitEntry, [string] $VulkanRoot)
         New-Item -ItemType Directory -Force -Path $SpirvRoot | Out-Null
     }
 
-    Write-Building "$UnitName — $($Sources.Count) shader entry points"
+    Write-Building "$UnitName - $($Sources.Count) shader entry points"
 
     $Lowered = 0
 
@@ -858,8 +858,8 @@ function Invoke-ShaderTranslation([hashtable] $UnitEntry, [string] $VulkanRoot)
 
         if ($Rejected)
         {
-            Write-Rejected "$UnitName — slangc rejected $([System.IO.Path]::GetFileName($Source))"
-            throw "$UnitName — slangc rejected $([System.IO.Path]::GetFileName($Source))"
+            Write-Rejected "$UnitName - slangc rejected $([System.IO.Path]::GetFileName($Source))"
+            throw "$UnitName - slangc rejected $([System.IO.Path]::GetFileName($Source))"
         }
     }
 
@@ -869,7 +869,7 @@ function Invoke-ShaderTranslation([hashtable] $UnitEntry, [string] $VulkanRoot)
         return
     }
 
-    Write-Lowered "$SpirvRoot — $Lowered lowered"
+    Write-Lowered "$SpirvRoot - $Lowered lowered"
 }
 
 #---
@@ -891,8 +891,8 @@ function Invoke-Archive([hashtable] $UnitEntry, [string[]] $ObjectPath)
     if ($LASTEXITCODE -ne 0)
     {
         $Diagnostics | ForEach-Object { Write-Host "    $_" }
-        Write-Rejected "$($UnitEntry.Name) — lib.exe rejected the archive"
-        throw "$($UnitEntry.Name) — lib.exe rejected the archive"
+        Write-Rejected "$($UnitEntry.Name) - lib.exe rejected the archive"
+        throw "$($UnitEntry.Name) - lib.exe rejected the archive"
     }
 
     Write-Produced $LibraryPath
@@ -954,7 +954,7 @@ function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string
     #    above — so omitting it fails at the one symbol and reads as a defect in the density read itself.
     $Linked += 'gdi32.lib'
 
-    # 📝 The executable is named for its subject folder. `Engine/Application/PaintHost/` becomes PaintHost.exe with
+    # 📝 The executable is named for its subject folder. `Engine/Application/EditorHost/` becomes EditorHost.exe with
     #    nothing in this script naming a host — adding one is a folder and one array entry.
     # 🔴 A product overrides that name. Several products compile one subject, so naming the executable for
     #    the subject would have each product overwrite the last and leave one binary carrying whichever
@@ -1010,7 +1010,7 @@ function Invoke-HostLink([hashtable] $UnitEntry, [string[]] $ObjectPath, [string
         #    still construct — the failure belongs at the run, where the message names the missing DLL.
         if (-not (Test-Path $CarriedPath))
         {
-            Write-Skipped "carry — $CarriedLeaf is absent at $Carried"
+            Write-Skipped "carry - $CarriedLeaf is absent at $Carried"
             continue
         }
 
@@ -1070,11 +1070,11 @@ function Invoke-PostConstruction
     {
         if (-not (Test-Path $Step.Path))
         {
-            Write-Skipped "$($Step.Tag) — $([System.IO.Path]::GetFileName($Step.Path)) is absent"
+            Write-Skipped "$($Step.Tag) - $([System.IO.Path]::GetFileName($Step.Path)) is absent"
             continue
         }
 
-        Write-Building "$($Step.Tag) — $([System.IO.Path]::GetFileName($Step.Path))"
+        Write-Building "$($Step.Tag) - $([System.IO.Path]::GetFileName($Step.Path))"
 
         Push-Location $RepositoryRoot
         try
@@ -1099,7 +1099,7 @@ function Invoke-PostConstruction
 #                                             THE RUN
 #---
 
-Write-Host "Slate — $Configuration"
+Write-Host "Slate - $Configuration"
 
 if ($Rebuild -and (Test-Path (Join-Path $OutputRoot 'Object')))
 {
@@ -1213,7 +1213,7 @@ Write-Host ''
 
 if ($Unit)
 {
-    Write-Skipped "post-construction — $Unit alone was constructed"
+    Write-Skipped "post-construction - $Unit alone was constructed"
 }
 else
 {

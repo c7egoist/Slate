@@ -86,6 +86,18 @@ def ReadUnitGraph():
             UnitName = Named.group(1)
 
         Producing = re.search(r'(?ms)^\[unit\].*?^product\s*=\s*"([^"]+)"', Content)
+
+        # 🔴 [product] is one subject compiled with one feature macro. Construct.ps1 supplies the
+        #    macro as /D; this script never did, so EditorHost was translated with NO product defined
+        #    and tripped HostFeature.h's #error. A sandbox result that disagrees with a Windows one is
+        #    exactly what running the pieces out of order was supposed to stop.
+        Products = {}
+        Table = re.search(r'(?ms)^\[product\]\s*$(.*?)(?=^\[|\Z)', Content)
+        if Table:
+            for Line in Table.group(1).splitlines():
+                Entry = re.match(r'\s*(\w+)\s*=\s*\{\s*subject\s*=\s*"([^"]+)"\s*,\s*define\s*=\s*"([^"]+)"', Line)
+                if Entry:
+                    Products.setdefault(Entry.group(2), []).append((Entry.group(1), Entry.group(3)))
         Product   = Producing.group(1) if Producing else 'StaticLibrary'
 
         # 📝 A subject names one source folder that becomes its own link target.
@@ -111,7 +123,7 @@ def ReadUnitGraph():
             Carried = re.findall(r'"([^"]+)"', Carrying.group(1))
 
         Declared[UnitName] = {
-            'Name': UnitName, 'Product': Product, 'Subject': Subject,
+            'Name': UnitName, 'Product': Product, 'Subject': Subject, 'Products': Products,
             'Requires': Linked, 'Carry': Carried, 'Root': Walked,
         }
 
@@ -262,9 +274,10 @@ def GetCompilationFlags(Selection):
 #                                                        TRANSLATION
 #------------------------------------------------------------------------------------------------------------------------
 
-def InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler, Warn, Subject=''):
+def InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler, Warn, Subject='', Define=None, Product=None):
     Sources = GetUnitSource(UnitEntry, Subject)
-    Named   = "{0}{1}".format(UnitEntry['Name'], "/" + Subject if Subject else "")
+    Named   = "{0}{1}{2}".format(UnitEntry['Name'], "/" + Subject if Subject else "",
+                                 " [" + Product + "]" if Product else "")
 
     if not Sources:
         WriteSkipped("{0} declares no translation unit".format(Named))
@@ -272,6 +285,9 @@ def InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler, Warn, Subje
 
     Include  = GetIncludePath(UnitEntry, VulkanInclude)
     Flags    = GetCompilationFlags(Selection) + (['-Wall', '-Wextra', '-Wno-unused-parameter'] if Warn else ['-w'])
+
+    if Define:
+        Flags = Flags + ['-D' + Define]
     Rejected  = 0
     LogRoot  = os.path.join(ScratchRoot, 'logs', 'construct')
 
@@ -416,11 +432,15 @@ def Main(Arguments):
             Translated += Count
             Rejected    += Broken
         else:
-            # 📝 One host per subject, so one host's main() never enters another's link.
+            # 📝 One host per subject, so one host's main() never enters another's link. A subject
+            #    named by [product] is translated ONCE PER PRODUCT with that product's macro, which is
+            #    what Construct.ps1 does; a subject with no product keeps the plain single pass.
             for Subject in UnitEntry['Subject']:
-                Count, Broken = InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler, Warn, Subject)
-                Translated += Count
-                Rejected    += Broken
+                for Product, Define in UnitEntry.get('Products', {}).get(Subject, [(None, None)]):
+                    Count, Broken = InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler,
+                                                      Warn, Subject, Define, Product)
+                    Translated += Count
+                    Rejected    += Broken
 
     print('')
 

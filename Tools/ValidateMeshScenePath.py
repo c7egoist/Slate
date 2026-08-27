@@ -21,7 +21,11 @@ def main() -> None:
     checks: list[str] = []
 
     import_cpp = "Engine/SlateDocument/Format/SceneMeshImport/Source/SceneMeshImport.cpp"
-    host_cpp = "Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp"
+    # 🔴 `ParametricSketchHost` is deleted. Its two concerns had different homes: the IMPORT is now a
+    #    unit, and the scene-directory WIRING stayed with the host that ships. Pointing both at one
+    #    file was what made this gate fail with "missing marker" rather than "missing behaviour".
+    import_unit = "Engine/SlateWorkspace/Discipline/ContentImportCommit/Source/ContentImportCommit.cpp"
+    host_cpp = "Engine/Application/EditorHost/Source/EditorHost.cpp"
 
     for ext, marker in [
         ("OBJ", "ImportObj"),
@@ -44,10 +48,10 @@ def main() -> None:
     require("Engine/SlateRuntime/Session/HostEnvironment/Source/HostEnvironment.cpp", "SceneMeshFormatSupported(Current.path().string())")
     checks.append("Content Browser import directory recognises mesh formats")
 
-    require(host_cpp, "ImportSceneMeshFile(ImportPath.string())")
+    require(import_unit, "ImportSceneMeshFile(ImportPath.string())")
     checks.append("host imports selected mesh files into the workspace scene")
 
-    require(host_cpp, "BuildSceneDirectoryRows(OpenedScene, SceneDirectoryStorage)")
+    require(host_cpp, "BuildSceneDirectoryRows(OpenedScene, WorkspaceSceneRows)")
     checks.append("imported meshes flow through Scene Directory rows")
 
     # 📝 Step 10 moved the proxy behaviour out of the host and into a unit, so these three are checked

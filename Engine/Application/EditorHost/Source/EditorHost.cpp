@@ -16,6 +16,10 @@
 //    viewport LEAF.
 
 #define SLATE_EDITOR_HOST 1
+#include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
+#include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
+#include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/HostFeature.h"
 #include "SlateWorkspace/Discipline/CodexActivation/Api/CodexActivation.h"
@@ -242,6 +246,28 @@ int main(int ArgumentCount, char** ArgumentValues)
     static SceneDirectoryContext   SceneApplied;
     static ControlIndex        SceneInteraction;
     static ParametricWorkspacePanel SketchDirectory;
+    // 🔴 THE SKETCH STATE THE PARAMETRIC PRODUCT DRAWS INTO. This lived only in
+    //    `ParametricSketchHost`, which is why that host could not be deleted: the hosts hold ZERO
+    //    definitions, so nothing would have failed to compile, and every gate would have stayed
+    //    green while the shipped product quietly lost the ability to draw.
+    //
+    // 📝 Declared unconditionally and used behind `HostHasFeature(FeatureParametric)`. A `constexpr`
+    //    test rather than an `#ifdef` keeps the body type-checked in every product, which is the same
+    //    reason `DiagnosticLayersRequested()` replaced three copies of `#ifdef SLATE_DEBUG`.
+    static WorkspaceNameIndex        SketchNaming;
+    static SketchStructure           Sketch;
+    static WorkspaceRecordStructure  SketchRecords;
+    static WorkspaceRevisionSequence SketchRevisions;
+    // 🔴 Seated beside the sketch, never inside it: a sketch holds exactly ONE plane and overwrites
+    //    it, which is what made placing a second workplane silently re-interpret everything already
+    //    drawn.
+    static WorkplaneCatalogue        SketchWorkplanes;
+    static SketchPlacement           SketchTool;
+    static WorkspaceRecordName       SketchPendingSelection;
+    // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
+    //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
+    static ViewportStanding          SketchView;
+
     static ParametricWorkspaceContext SketchDirectoryApplied;
     static ParametricToolsPanel    ParametricTools;
     static ParametricToolsContext  ParametricToolsApplied;
@@ -895,6 +921,12 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 OverlayGeometry& LeafOverlay = ViewportOverlays[Leaf];
                                 LeafOverlay.Reset();
 
+                                // 🔴 One press, one claimant. Scene selection, the workplane tool and
+                                //    the drawing tools all read the same pointer, so the first to take
+                                //    it stops the rest -- otherwise a click that picks a mesh also
+                                //    starts a curve.
+                                bool PointerTaken = false;
+
                                 SceneDirectory.RecordViewportSky(LeafBody, SceneApplied);
                                 // 🔴 The same drawing the parametric host uses. It was written twice
                                 //    because the shared projection could not express a free-flying
@@ -907,6 +939,46 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     SceneApplied.ViewportSkyCamera.AzimuthDegrees,
                                     SceneApplied.ViewportSkyCamera.ElevationDegrees,
                                     SceneApplied.ViewportSkyCamera.FieldOfViewDegrees);
+                                // 🔴 THE PARAMETRIC TOOLS, IN THE PRODUCT THAT SHIPS. This block is
+                                //    why `ParametricSketchHost` existed. `HostHasFeature` is
+                                //    `constexpr`, so the texture-only product compiles this away
+                                //    while still TYPE-CHECKING it -- an `#ifdef` would not.
+                                if constexpr (HostHasFeature(FeatureParametric))
+                                {
+                                    SketchView.OrbitYaw   = EditorCamera.YawDegrees;
+                                    SketchView.OrbitPitch = EditorCamera.PitchDegrees;
+                                    SketchView.Focus      = { EditorCamera.Position[0],
+                                                              EditorCamera.Position[1],
+                                                              EditorCamera.Position[2] };
+
+                                    const SpatialBasis SketchBasis = ResolveSketchBasis(Sketch);
+                                    // 🔴 The workplane tool is offered the press FIRST and consumes
+                                    //    it, or the click that places a plane is also read as the
+                                    //    first point of a curve -- drawn onto the plane it replaced.
+                                    PointerTaken = PointerTaken || ApplyWorkplaneTool(
+                                        LeafBody, BackgroundPointer, SketchBasis, SketchView, true,
+                                        ParametricToolsApplied, SketchNaming, Sketch, SketchRecords,
+                                        SketchRevisions, SketchWorkplanes);
+
+                                    if (!PointerTaken)
+                                        DriveDrawingWithModifiers(
+                                            LeafBody, BackgroundPointer,
+                                            Viewport.Surface().TextInput(), Viewport.Seam().Modifiers(),
+                                            SketchBasis, SketchView, true,
+                                            ParametricToolsApplied, SketchNaming, Sketch,
+                                            SketchRecords, SketchRevisions, SketchWorkplanes,
+                                            SketchPendingSelection, SketchTool, PointerTaken);
+                                }
+
+                                // 🔴 Clicking a mesh in the viewport selects it. Lived only in the
+                                //    deleted host; the editor drew scene proxies but could not pick one.
+                                if (!PointerTaken && BackgroundPointer.ContactPressed &&
+                                    LeafBody.Encloses(BackgroundPointer.PositionX, BackgroundPointer.PositionY))
+                                    PointerTaken = SelectSceneMeshAtPointer(
+                                        LeafBody, BackgroundPointer, SceneCamera,
+                                        OpenedScene, OpenedSceneStanding, WorkspaceSceneRows,
+                                        CodexMetresToMetres, SceneApplied);
+
                                 RecordCodexSceneProxy(Viewport.Surface(), LeafBody, SceneCamera,
                                                       OpenedScene, OpenedSceneStanding,
                                                       WorkspaceSceneRows, SceneApplied,
@@ -1427,6 +1499,16 @@ int main(int ArgumentCount, char** ArgumentValues)
                     SeedTexturingContextFromRows(TexturingApplied, StackRows.Rows, StackRows.Count);
                     TexturingApplied.LayerTaken = 0u;
                 }
+                // 🔴 The confirmed import. This was 82 lines inside `ParametricSketchHost`; deleting
+                //    that host would have taken mesh and material-image import with it, silently,
+                //    because a host with zero definitions still held the only call.
+                // 🔴 Edits made in the Scene Directory flow back onto the codex entries.
+                SynchroniseCodexTransformsFromSceneDirectory(OpenedScene, WorkspaceSceneRows,
+                                                             SceneApplied, OpenedSceneStanding);
+
+                CommitConfirmedImport(HostName, ContentBrowserApplied, WorkspaceSceneRows,
+                                      SceneApplied, OpenedScene, OpenedSceneStanding);
+
                 if (ContentBrowserApplied.ImportBrowseRequested)
                 {
                     std::filesystem::path Destination(ContentBrowserApplied.ImportLocation);

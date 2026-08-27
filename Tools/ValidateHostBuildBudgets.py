@@ -71,23 +71,35 @@ def main() -> int:
     require("ConsumeCodexActivation" in editor,
             "EditorHost activation must use the shared codex activation unit")
 
-    paint = read("Engine/Application/PaintHost/Source/PaintHost.cpp")
-    require(offstack(paint), "PaintHost must keep the motion-heavy viewport sequence off the stack")
-    require("EditorCameraComponent" in paint and "CameraInput" in paint,
-            "PaintHost viewport must use the shared editor camera component and hotkey path")
-    require("ConsumeCodexActivation" in paint,
-            "PaintHost activation must use the shared codex activation unit")
-    require("std::strncpy" not in paint, "PaintHost must avoid MSVC strncpy warning")
+    # 🔴 `PaintHost` AND `ParametricSketchHost` ARE DELETED. Their claims were about behaviour the
+    #    PRODUCT must have, not about those two files, so they are re-aimed at `EditorHost` -- the one
+    #    subject all three products build from. Two claims below pin the deletion.
+    require(not (ROOT / "Engine/Application/PaintHost").exists(),
+            "PaintHost is deleted; TextureAuthoring builds from EditorHost")
+    require(not (ROOT / "Engine/Application/ParametricSketchHost").exists(),
+            "ParametricSketchHost is deleted; ParametricAuthoring builds from EditorHost")
+    require("EditorCameraComponent" in editor and "CameraInput" in editor,
+            "the editor viewport must use the shared camera component and hotkey path")
+    require("std::strncpy" not in editor, "EditorHost must avoid MSVC strncpy warning")
+
+    # 🔴 THE WIRING THAT KEPT `ParametricSketchHost` ALIVE. The hosts held ZERO definitions, so
+    #    deleting them broke no compile and tripped no gate -- while quietly removing the product's
+    #    ability to draw. These claims are what make that impossible to repeat.
+    require("ApplyWorkplaneTool(" in editor,
+            "the editor must dispatch the workplane tool")
+    require("DriveDrawingWithModifiers(" in editor,
+            "the editor must dispatch the sketch drawing tools")
+    require(editor.index("ApplyWorkplaneTool(") < editor.index("DriveDrawingWithModifiers("),
+            "the workplane tool must be offered the press before the drawing tools")
+    require("HostHasFeature(FeatureParametric)" in editor,
+            "the parametric wiring must be gated by the product feature, not an #ifdef")
 
     validation = read("Engine/Application/InterfaceValidationHost/Source/InterfaceValidationHost.cpp")
     require("std::strncpy" not in validation, "InterfaceValidationHost must avoid MSVC strncpy warning")
 
-    parametric = read("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp")
-    require(offstack(parametric),
-            "ParametricSketchHost must keep the motion-heavy viewport sequence off the stack")
-    require("_dupenv_s(&Home" not in parametric,
-            "ParametricSketchHost must not carry its own copy of the home profile lookup")
-    require("std::strncpy" not in parametric, "ParametricSketchHost must avoid MSVC strncpy warning")
+    parametric = editor
+    require("_dupenv_s(&Home" not in editor,
+            "the editor must not carry its own copy of the home profile lookup")
     require("ConsumeCodexActivation" in parametric,
             "ParametricSketchHost activation must use the shared codex activation unit")
 
@@ -96,7 +108,7 @@ def main() -> int:
     #    activation, none of which were bridges and none of which could be tested where they sat.
     require(not (ROOT / "Engine" / "Application" / "Api" / "SharedViewportHostBridge.h").exists(),
             "SharedViewportHostBridge.h must not come back")
-    for Host, Body in (("EditorHost", editor), ("PaintHost", paint), ("ParametricSketchHost", parametric)):
+    for Host, Body in (("EditorHost", editor),):
         require("SharedViewportHostBridge" not in Body,
                 f"{Host} must not include the deleted bridge header")
 
@@ -108,7 +120,7 @@ def main() -> int:
     toolset = read("Engine/SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h")
     require("enum class SketchSubject" in toolset and "DeclaredPlacement" in toolset,
             "SketchToolset must own the shape-and-method dispatch")
-    for host_name, host in (("EditorHost", editor), ("ParametricSketchHost", parametric)):
+    for host_name, host in (("EditorHost", editor),):
         require("enum class ParametricDraftSubject" not in host and
                 "enum class SharedCadDraftSubject" not in host and
                 "enum class SketchSubject" not in host,
@@ -181,11 +193,8 @@ def main() -> int:
             and "StartTransformSession" in Interaction
             and "UpdateTransformSession" in Interaction,
             "transform gizmo handles must remain selectable and movable")
-    require("void DriveViewportSelectionAndTransform(" not in parametric,
-            "ParametricSketchHost must not define the interaction it now calls")
-    require("Panel leaves must sample pointer/contact before they record" in parametric and
-            parametric.find("ToolPanel.Advance") < parametric.find("WorkspacePanels.Record"),
-            "ParametricSketchHost must advance CAD tool interactions before recording/drawing the viewport")
+    require("void DriveViewportSelectionAndTransform(" not in editor,
+            "the editor must not define the interaction it now calls")
 
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
@@ -214,12 +223,9 @@ def main() -> int:
     # ⚠️ The ordering matters as much as the call. The workplane tool must run BEFORE the drawing tools
     #    and consume the press, or the click that places a plane is also read as the first point of a
     #    curve — drawn onto the plane that press just replaced.
-    sketch_host = read("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp")
-    require("ApplyWorkplaneTool(" in sketch_host,
-            "the parametric host must dispatch the workplane tool, not just link it")
-    require(sketch_host.index("ApplyWorkplaneTool(") < sketch_host.index("DriveDrawingWithModifiers("),
-            "the workplane tool must be offered the press before the drawing tools")
-    require("PointerTaken = ApplyWorkplaneTool(" in sketch_host,
+    # 📝 The host these claims were written against is deleted; the wiring moved into `EditorHost`,
+    #    and the claims moved with it. They are asserted once, above, beside the deletion pins.
+    require("PointerTaken = PointerTaken || ApplyWorkplaneTool(" in editor,
             "placing a workplane must consume the press so no curve starts on the replaced plane")
 
     interaction = read("Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp")

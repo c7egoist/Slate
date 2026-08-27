@@ -175,7 +175,7 @@ else
 #                                       COMPILATION
 #---
 
-Write-Building "ThorVG — compiling $($Sources.Count) translation units ($Configuration)"
+Write-Building "ThorVG - compiling $($Sources.Count) translation units ($Configuration)"
 
 $ObjectFiles = @()
 
@@ -203,7 +203,7 @@ foreach ($Src in $Sources)
 #                                       ARCHIVING
 #---
 
-Write-Building 'ThorVG — archiving thorvg.lib'
+Write-Building 'ThorVG - archiving thorvg.lib'
 
 $Destination = Join-Path $OutputDir 'thorvg.lib'
 $LibArgs = @('/nologo', "/OUT:$Destination") + $ObjectFiles

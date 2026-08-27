@@ -50,7 +50,7 @@ if (-not (Test-Path $OutputDir))
 #                                         CONFIGURE
 #---
 
-Write-Building "GLFW — cmake configure ($BuildDir)"
+Write-Building "GLFW - cmake configure ($BuildDir)"
 
 $ConfigArgs = @(
     '-S', $GlfwRoot
@@ -75,7 +75,7 @@ if ($LASTEXITCODE -ne 0)
 #                                          BUILD
 #---
 
-Write-Building 'GLFW — cmake build (Release)'
+Write-Building 'GLFW - cmake build (Release)'
 
 $BuildArgs = @(
     '--build', $BuildDir

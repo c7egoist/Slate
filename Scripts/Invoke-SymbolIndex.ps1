@@ -30,7 +30,7 @@ function Invoke-SymbolIndex {
     $ToolsPath      = Join-Path $RepositoryRoot 'Tools\SymbolIndex.py'
 
     if (-not (Test-Path -Path $ToolsPath)) {
-        Write-Error "🔴 SymbolIndex.py not found at $ToolsPath"
+        Write-Error " SymbolIndex.py not found at $ToolsPath"
         return
     }
 

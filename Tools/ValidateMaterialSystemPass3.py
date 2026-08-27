@@ -91,7 +91,7 @@ def main() -> int:
     )
 
     require_text(
-        "Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp",
+        "Engine/SlateWorkspace/Discipline/ContentImportCommit/Source/ContentImportCommit.cpp",
         "ImportMaterialImageReference(ImportPath.string())",
         "BindWorkspaceMaterialImage",
     )
