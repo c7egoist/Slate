@@ -829,3 +829,28 @@ written, and the host had one, seven cases long. A miss is now a refusal, which 
 | `ParametricSketchHost` lines         | 5 757         | **2 613** |
 | Definitions in the host              | 138           | **33**    |
 | Engine-mechanism definitions         | 18            | **7**     |
+
+**10q — what the selection makes possible.** `SlateWorkspace/Discipline/ToolAvailability`.
+
+🔴 **TWELVE FLAGS, RESET IN ONE BLOCK AND THEN SET BY A NINE-ARM SWITCH.** Each arm assigned only the flags
+it cared about, so the block and the arms had to agree — in two places, forever. An arm that forgot a flag
+inherited the reset's value; a reset that forgot one let the previous selection's value survive into the
+next. It is now one row per subject, applied whole, and the proof writes a **saturated** context before
+every call and demands the answer be identical to the one produced from a blank one. That is the claim the
+shipped shape could not make. Removing a single field from the application trips **10** claims.
+
+⚠️ **A SABOTAGE SURVIVED BECAUSE THE CLAIM READ THE ANSWER RATHER THAN THE BEHAVIOUR.** Removing the bound
+on `AnyRowSelected` scored **zero** failures: reading past a 128-element array usually returns the same
+answer, so a claim on the result cannot see it. The context is now embedded in a larger block whose tail is
+deliberately non-zero, and the claim is about where the search *stops*. **When proving a bound, place
+something on the other side of it.**
+
+⚠️ **`ParametricWorkspaceContext` ARRIVES WITH ROW ZERO ALREADY TICKED** — `RowSelected[RowLimit] = { true }`
+initialises the first element to true and the rest to false. My first fixture assumed a blank context
+selected nothing and reported the unit wrong.
+
+| Measure                              | Step 10 start | Now       |
+|--------------------------------------|---------------|-----------|
+| `ParametricSketchHost` lines         | 5 757         | **2 474** |
+| Definitions in the host              | 138           | **28**    |
+| Engine-mechanism definitions         | 18            | **4**     |

@@ -19,6 +19,7 @@
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "SlateWorkspace/Discipline/ConstraintAuthoring/Api/ConstraintAuthoring.h"
 #include "SlateWorkspace/Discipline/SketchViewportOverlay/Api/SketchViewportOverlay.h"
+#include "SlateWorkspace/Discipline/ToolAvailability/Api/ToolAvailability.h"
 #include "SlateWorkspace/Discipline/TransformGizmo/Api/TransformGizmo.h"
 #include "SlateWorkspace/Discipline/TransformSession/Api/TransformSession.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
@@ -464,30 +465,7 @@ SpatialPoint ApplySketchToolSettings(const SketchPlacement& Tool,
 namespace
 {
 
-WorkspaceRecordName ResolveSelectedRecord(const WorkspaceDirectoryProjection& Directory,
-                                          const ParametricWorkspaceContext& Applied)
-{
-    if (Applied.RowTaken >= Directory.Rows.size())
-        return {};
-    const WorkspaceDirectoryRow& Row = Directory.Rows[Applied.RowTaken];
-    return Row.Role == WorkspaceDirectoryRowRole::Record ? Row.Record : WorkspaceRecordName{};
-}
 
-ParametricViewportSelection ResolveEditableSelection(const SketchStructure& Sketch,
-                                                     const WorkspaceRecordStructure& Records,
-                                                     WorkspaceRecordName SelectedRecord,
-                                                     WorkspaceRecordName PendingSelection,
-                                                     const ParametricViewportSelection& SemanticSelection)
-{
-    if (SemanticSelection.Standing() &&
-        ((!SelectedRecord.Assigned() || SemanticSelection.Record.IssuedIndex == SelectedRecord.IssuedIndex) ||
-         (PendingSelection.Assigned() && PendingSelection.IssuedIndex == SemanticSelection.Record.IssuedIndex)))
-        return SemanticSelection;
-
-    ParametricViewportSelection Selection = {};
-    ResolvePickForRecord(Sketch, Records, SelectedRecord, Selection);
-    return Selection;
-}
 
 
 
@@ -1196,7 +1174,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
                                         double SessionMilliseconds,
                                         double& LastGPressedMilliseconds)
 {
-    const WorkspaceRecordName SelectedRecord = ResolveSelectedRecord(Directory, WorkspaceApplied);
+    const WorkspaceRecordName SelectedRecord = SelectedRecordIn(Directory, WorkspaceApplied);
     if (ApplyDimensionTextEdit(TextInput, Sketch, Records, Revisions, SelectedRecord))
         PointerTaken = true;
     if (SemanticSelection.Standing() && SelectedRecord.Assigned() &&
@@ -1212,7 +1190,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
         HoveredSelection = ResolveSketchPick(Sketch, Records, Probe, ResolveSnapTolerance(View, Perspective));
 
     const ParametricViewportSelection ActiveSelection =
-        ResolveEditableSelection(Sketch, Records, SelectedRecord, PendingSelection, SemanticSelection);
+        EditableSelection(Sketch, Records, SelectedRecord, PendingSelection, SemanticSelection);
 
     if (TextInput.DeletePressed && ActiveSelection.Record.Assigned())
     {
@@ -1388,27 +1366,7 @@ void SeedParametricWorkspace(WorkspaceNameIndex& Naming,
 }
 
 
-bool AnySelectedRow(const ParametricWorkspaceContext& Applied, std::uint32_t RowCount)
-{
-    for (std::uint32_t Index = 0u; Index < RowCount; ++Index)
-        if (Applied.RowSelected[Index])
-            return true;
-    return false;
-}
 
-std::uint32_t ResolveInitialRow(const WorkspaceDirectoryProjection& Directory)
-{
-    for (std::uint32_t Index = 0u; Index < Directory.Rows.size(); ++Index)
-        if (Directory.Rows[Index].Role == WorkspaceDirectoryRowRole::Record &&
-            Directory.Rows[Index].Subject != WorkspaceRecordSubject::Folder)
-            return Index;
-
-    for (std::uint32_t Index = 0u; Index < Directory.Rows.size(); ++Index)
-        if (Directory.Rows[Index].Role == WorkspaceDirectoryRowRole::Record)
-            return Index;
-
-    return 0u;
-}
 
 void SeatParametricContext(const WorkspaceDirectoryProjection& Directory,
                            ParametricWorkspaceContext& Applied,
@@ -1439,7 +1397,7 @@ void SeatParametricContext(const WorkspaceDirectoryProjection& Directory,
             if (Directory.Rows[Index].Subject == WorkspaceRecordSubject::Folder)
                 Applied.RowExpanded[Index] = true;
 
-        const std::uint32_t Initial = ResolveInitialRow(Directory);
+        const std::uint32_t Initial = InitialRowIn(Directory);
         Applied.RowTaken = Initial;
         Applied.RowSelectionAnchor = Initial;
         Applied.RowSelected[Initial] = true;
@@ -1447,12 +1405,12 @@ void SeatParametricContext(const WorkspaceDirectoryProjection& Directory,
         return;
     }
 
-    if (Applied.RowTaken >= RowCount || !AnySelectedRow(Applied, RowCount))
+    if (Applied.RowTaken >= RowCount || !AnyRowSelected(Applied, RowCount))
     {
         for (std::uint32_t Index = 0u; Index < RowCount; ++Index)
             Applied.RowSelected[Index] = false;
 
-        const std::uint32_t Initial = ResolveInitialRow(Directory);
+        const std::uint32_t Initial = InitialRowIn(Directory);
         Applied.RowTaken = Initial;
         Applied.RowSelectionAnchor = Initial;
         Applied.RowSelected[Initial] = true;
@@ -1513,103 +1471,6 @@ Deliver<bool> SynchroniseCadPacket(const SketchStructure& Sketch,
     return ProjectSketchRendering(Sketch, Records, Delivered, {});
 }
 
-void SynchroniseToolContext(const WorkspaceDirectoryProjection& Directory,
-                            const WorkspaceRecordStructure& Records,
-                            const SketchStructure& Sketch,
-                            const ParametricWorkspaceContext& WorkspaceApplied,
-                            ParametricToolsContext& ToolsApplied)
-{
-    ToolsApplied.WorkplaneActivation = Sketch.Declared();
-    ToolsApplied.ReferencePlaneCondition = Sketch.Declared();
-    ToolsApplied.PlanarProfileCondition = true;
-    ToolsApplied.UniformClosureCondition = true;
-    ToolsApplied.PendingGeometryCondition = false;
-    ToolsApplied.SourceImageryCondition = false;
-
-    ToolsApplied.SelectedCount = 0u;
-    for (std::uint32_t Index = 0u; Index < ParametricWorkspaceContext::RowLimit; ++Index)
-        if (WorkspaceApplied.RowSelected[Index])
-            ++ToolsApplied.SelectedCount;
-
-    ToolsApplied.ProfileCount = 0u;
-    ToolsApplied.PerimeterEdgeCount = 0u;
-    ToolsApplied.ExistingCircleCount = 0u;
-    ToolsApplied.SolidCount = 0u;
-    ToolsApplied.AxisAvailability = false;
-    ToolsApplied.PathAvailability = false;
-    ToolsApplied.SupportMaterialCondition = false;
-    ToolsApplied.TangentEndpointCondition = false;
-    ToolsApplied.OpeningCondition = false;
-    ToolsApplied.MeasurableCondition = false;
-    ToolsApplied.ClosedProfileCondition = false;
-    ToolsApplied.ActiveDimension = ParametricToolDimension::Nothing;
-
-    if (WorkspaceApplied.RowTaken >= Directory.Rows.size())
-        return;
-
-    const WorkspaceDirectoryRow& Row = Directory.Rows[WorkspaceApplied.RowTaken];
-    if (Row.Role != WorkspaceDirectoryRowRole::Record)
-        return;
-
-    const WorkspaceRecord* Record = Records.Resolve(Row.Record);
-    if (Record == nullptr)
-        return;
-
-    switch (Record->Subject)
-    {
-        case WorkspaceRecordSubject::Point:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Vertex;
-            ToolsApplied.MeasurableCondition = true;
-            break;
-        case WorkspaceRecordSubject::OpenCurve:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Edge;
-            ToolsApplied.PathAvailability = true;
-            ToolsApplied.AxisAvailability = true;
-            ToolsApplied.MeasurableCondition = true;
-            ToolsApplied.TangentEndpointCondition = true;
-            ToolsApplied.PerimeterEdgeCount = 1u;
-            break;
-        case WorkspaceRecordSubject::ClosedProfile:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Wire;
-            ToolsApplied.ProfileCount = 1u;
-            ToolsApplied.AxisAvailability = true;
-            ToolsApplied.PathAvailability = true;
-            ToolsApplied.ClosedProfileCondition = true;
-            ToolsApplied.MeasurableCondition = true;
-            ToolsApplied.PerimeterEdgeCount = 5u;
-            break;
-        case WorkspaceRecordSubject::ThinSurface:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Shell;
-            ToolsApplied.ProfileCount = 1u;
-            ToolsApplied.SupportMaterialCondition = true;
-            ToolsApplied.OpeningCondition = true;
-            ToolsApplied.MeasurableCondition = true;
-            break;
-        case WorkspaceRecordSubject::Solid:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Solid;
-            ToolsApplied.SolidCount = 1u;
-            ToolsApplied.SupportMaterialCondition = true;
-            ToolsApplied.ReferencePlaneCondition = true;
-            ToolsApplied.AxisAvailability = true;
-            ToolsApplied.MeasurableCondition = true;
-            ToolsApplied.ClosedProfileCondition = true;
-            break;
-        case WorkspaceRecordSubject::Dimension:
-        case WorkspaceRecordSubject::Constraint:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Edge;
-            ToolsApplied.MeasurableCondition = true;
-            break;
-        case WorkspaceRecordSubject::Pattern:
-        case WorkspaceRecordSubject::Mirror:
-            ToolsApplied.ActiveDimension = ParametricToolDimension::Face;
-            ToolsApplied.ReferencePlaneCondition = true;
-            ToolsApplied.MeasurableCondition = true;
-            break;
-        case WorkspaceRecordSubject::Folder:
-        case WorkspaceRecordSubject::SubjectCount:
-            break;
-    }
-}
 
 } // namespace
 
@@ -1977,7 +1838,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             CadPacket.Reset();
         }
 
-        SynchroniseToolContext(Directory, Records, Sketch, ParametricApplied, ToolsApplied);
+        ResolveToolContext(Directory, Records, Sketch, ParametricApplied, ToolsApplied);
         if (OpenedSceneStanding)
             BridgeSketchSceneDirectory(OpenedScene, SceneDirectoryStorage);
         else
