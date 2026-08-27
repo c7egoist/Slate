@@ -108,3 +108,27 @@ being able to draw.
 **Item 2 needs a step 11a first: move the parametric viewport wiring into `EditorHost` under
 `SLATE_PARAMETRIC_AUTHORING`, with a claim that the product dispatches the sketch tools.** Only then
 is deleting the two hosts a no-op. I have not done this, and I have not deleted the hosts.
+
+---
+
+## Outcome
+
+| # | Item | Result |
+|---|---|---|
+| 1 | `MaterialLayerStackBridge.h` | ✅ Deleted → `SlateWorkspace/…/MaterialLayerProjection`. `Application/Api/` now holds one file, `HostFeature.h`. **Every `*Bridge*` is gone.** |
+| 2 | Delete `PaintHost` / `ParametricSketchHost` | ⛔ **Blocked, deliberately not done** — see above. Deleting today removes drawing from every product. |
+| 3 | `Paint` → `Texture` sweep | ✅ 610 identifiers, 2 directories, UI strings. Gate widened to 5 units and enforces it. |
+| 4 | Workplane tool + placement bug | ✅ `ApplyWorkplaneTool` dispatched; 3 claims pin the call and its ordering. |
+| 5 | `DeviceOffering` / `InterfaceAttachment` | ✅ Unified in `Shared/DeviceAttachment.slang.h`; `Attach` deleted (it was defined twice). |
+| 6 | `UnitScale` boundary | ✅ `CodexUnitScaleProof`, 20 claims, 4 sabotages caught. |
+
+Four of six done, one blocked with the evidence, and item 2's blocker is now written down as
+step 11a rather than discovered later by an artist who cannot draw.
+
+**Three things were found only because the work was done rather than described:**
+
+1. `ApplyWorkplaneTool` was complete and called from nowhere.
+2. `Attach` was defined **twice** — invisible until the two structs it converted between became one.
+3. Two uses of "Draft" are **not** the banned word: the CAD draft angle on Extrude and Revolve, and
+   `CodexProfile::Drafting`, bound to the `.draft` file extension. A gate that could not tell a
+   vocabulary choice from a domain term would have forced a real defect in order to pass.
