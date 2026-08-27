@@ -111,8 +111,18 @@ def main() -> int:
             for Banned in ("Draught", "Paint"):
                 require(Banned not in Body,
                         f"{Source.name} carries the banned word {Banned}")
-    require("ResolveGizmoHandle" in parametric and "StartTransformSession" in parametric and "UpdateTransformSession" in parametric,
-            "ParametricSketchHost transform gizmo handles must remain selectable and movable")
+    # 📝 Step 10 moved the interaction out of the host and into
+    #    `SlateWorkspace/Discipline/SketchInteraction`, so the guarantee is checked where it now lives.
+    #    ⚠️ The host is checked NOT to define it: a host that grew its own copy back is exactly the
+    #    regression this file exists to catch, and looking only in the host could not tell the two apart.
+    Interaction = (ROOT / "Engine" / "SlateWorkspace" / "Discipline" / "SketchInteraction"
+                        / "Source" / "SketchInteraction.cpp").read_text(encoding="utf-8")
+    require("ResolveGizmoHandle" in Interaction
+            and "StartTransformSession" in Interaction
+            and "UpdateTransformSession" in Interaction,
+            "transform gizmo handles must remain selectable and movable")
+    require("void DriveViewportSelectionAndTransform(" not in parametric,
+            "ParametricSketchHost must not define the interaction it now calls")
     require("Panel leaves must sample pointer/contact before they record" in parametric and
             parametric.find("ToolPanel.Advance") < parametric.find("WorkspacePanels.Record"),
             "ParametricSketchHost must advance CAD tool interactions before recording/drawing the viewport")

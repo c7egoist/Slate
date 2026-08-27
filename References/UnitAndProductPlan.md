@@ -871,3 +871,22 @@ was turn a codex into directory rows, so it is now `BuildSceneDirectoryRows` in 
 `ValidateMaterialSystemPass2` both checked for the function *inside the host file*, so lifting it read as
 deletion. They now check that the host still CALLS it and that the unit DEFINES it — which is a stronger
 statement than either made before, and it fails if a host ever defines one again.
+
+**10s — the interaction itself.** `SlateWorkspace/Discipline/SketchInteraction`, **630 lines, 10
+definitions**: orbiting, drawing, dragging, typing a dimension, placing a workplane, applying a
+relationship.
+
+🔴 **THIS WAS THE PART THAT MATTERED MOST.** Ten functions reading a pointer and a keyboard and writing to
+the sketch, the record directory and the revision history — none reachable by anything but `main()`. A
+second viewport could not draw; a test could not press a key; the combined authoring host would have had to
+copy all six hundred lines.
+
+⚠️ **A THIRD GATE ASSERTED BEHAVIOUR BY ITS ADDRESS.** `ValidateHostBuildBudgets` required
+`ResolveGizmoHandle` to appear *in the host*. It now requires it in the unit **and requires the host not to
+define the interaction** — which catches the regression the original could not distinguish from the lift.
+
+| Measure                              | Step 10 start | Now       |
+|--------------------------------------|---------------|-----------|
+| `ParametricSketchHost` lines         | 5 757         | **1 522** |
+| Definitions in the host              | 138           | **10**    |
+| Engine-mechanism definitions         | 18            | **1**     |
