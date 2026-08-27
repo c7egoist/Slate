@@ -20,7 +20,7 @@
 #include "Application/Api/HostFeature.h"
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "Application/Api/MaterialLayerStackBridge.h"
-#include "Application/Api/SketchSceneDirectoryBridge.h"
+#include "SlateWorkspace/Discipline/CodexSceneProxy/Api/CodexSceneProxy.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateWorld/World/AtmosphereComponent/Api/AtmosphereComponent.h"
 #include "SlateWorld/World/DirectionalLightComponent/Api/DirectionalLightComponent.h"
@@ -498,7 +498,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         { "Post Process Volume",     EntitySubject::Actor,      1u,  3u,         0u, "post volume effects", CameraRole::Absent, 1006u },
         { "Editor Camera",           EntitySubject::Camera,     0u, 0xFFFFFFFFu, 0u, "camera fly view", CameraRole::Editor, 1007u }
     };
-    static SketchSceneDirectoryStorage WorkspaceSceneRows = {};
+    static SceneDirectoryRows WorkspaceSceneRows = {};
     static WorkspaceCodex OpenedScene = {};
     static bool OpenedSceneStanding = false;
     static const char* const WhiteDielectricChannels[] = { "Base Color", "Metallic", "Roughness", "Opacity" };
@@ -1590,10 +1590,10 @@ int main(int ArgumentCount, char** ArgumentValues)
                 {
                     OpenedScene = ActivatedScene.Scene.Workspace;
                     OpenedSceneStanding = true;
-                    BridgeSketchSceneDirectory(OpenedScene, WorkspaceSceneRows);
+                    BuildSceneDirectoryRows(OpenedScene, WorkspaceSceneRows);
                     PresentedEntities = WorkspaceSceneRows.Rows;
                     PresentedEntityCount = WorkspaceSceneRows.RowCount;
-                    ApplySketchSceneEnvironment(OpenedScene, SceneApplied);
+                    ApplySceneEnvironment(OpenedScene, SceneApplied);
                     const SharedViewportCameraSeed CameraSeed = SharedViewportDefaultCamera();
                     EditorCamera.Position[0] = CameraSeed.Position[0];
                     EditorCamera.Position[1] = CameraSeed.Position[1];

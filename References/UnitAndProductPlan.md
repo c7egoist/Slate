@@ -854,3 +854,20 @@ selected nothing and reported the unit wrong.
 | `ParametricSketchHost` lines         | 5 757         | **2 474** |
 | Definitions in the host              | 138           | **28**    |
 | Engine-mechanism definitions         | 18            | **4**     |
+
+**10r — the codex proxy.** `SlateWorkspace/Discipline/CodexSceneProxy`, **330 lines from the host plus 180
+from a bridge header**.
+
+🔴 **ALL THREE HOSTS DREW SCENE PROXIES AND ALL THREE PROJECTED THE POINTS THEMSELVES.**
+`ParametricSketchHost` had `RecordCodexSceneProxy`; `EditorHost` has `RecordWorkspaceCodexProxy` and
+`ProjectWorkspaceCodexPoint`; `PaintHost` has `ProjectPaintScenePoint`. Three copies of one idea, each with
+its own projection — which is how they came to disagree about where a box belongs.
+
+🔴 **`Application/Api/SketchSceneDirectoryBridge.h` IS DELETED — THE FIRST OF THE FOUR.** Two hosts included
+it and nothing else could reach it. `Bridge` named the file rather than the behaviour; what it actually did
+was turn a codex into directory rows, so it is now `BuildSceneDirectoryRows` in a unit.
+
+⚠️ **TWO GATES ASSERTED THE BEHAVIOUR BY ITS ADDRESS.** `ValidateMeshScenePath` and
+`ValidateMaterialSystemPass2` both checked for the function *inside the host file*, so lifting it read as
+deletion. They now check that the host still CALLS it and that the unit DEFINES it — which is a stronger
+statement than either made before, and it fails if a host ever defines one again.

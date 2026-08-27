@@ -82,8 +82,10 @@ def main() -> int:
         "MatcapShade",
     )
 
+    # 📝 The codex proxy left the host at step 10. The colour a proxy is tinted by is now the unit's
+    #    question, and this checks it where it is answered.
     require_text(
-        "Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp",
+        "Engine/SlateWorkspace/Discipline/CodexSceneProxy/Source/CodexSceneProxy.cpp",
         "CodexMaterialToken",
         "Material.Reference != Entry.MaterialReference",
         "ChannelSubject::AlbedoColour",

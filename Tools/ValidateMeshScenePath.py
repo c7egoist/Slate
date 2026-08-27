@@ -14,6 +14,9 @@ def require(path: str, needle: str) -> None:
         raise AssertionError(f"{path} does not contain expected marker: {needle}")
 
 
+PROXY_UNIT = "Engine/SlateWorkspace/Discipline/CodexSceneProxy/Source/CodexSceneProxy.cpp"
+
+
 def main() -> None:
     checks: list[str] = []
 
@@ -42,13 +45,18 @@ def main() -> None:
     require(host_cpp, "ImportSceneMeshFile(ImportPath.string())")
     checks.append("host imports selected mesh files into the workspace scene")
 
-    require(host_cpp, "BridgeSketchSceneDirectory(OpenedScene, SceneDirectoryStorage)")
+    require(host_cpp, "BuildSceneDirectoryRows(OpenedScene, SceneDirectoryStorage)")
     checks.append("imported meshes flow through Scene Directory rows")
 
+    # 📝 Step 10 moved the proxy behaviour out of the host and into a unit, so these three are checked
+    #    where they now live. The host still CALLS them — the line above proves that — but a host that
+    #    defined them again would be the defect this whole step exists to remove.
     require(host_cpp, "SelectSceneMeshAtPointer")
-    checks.append("viewport mesh selection path stands")
+    require(PROXY_UNIT, "SelectSceneMeshAtPointer")
+    checks.append("viewport mesh selection path stands, in the unit that owns it")
 
     require(host_cpp, "SynchroniseCodexTransformsFromSceneDirectory")
+    require(PROXY_UNIT, "SynchroniseCodexTransformsFromSceneDirectory")
     checks.append("scene transform edits feed back to mesh entries")
 
     require("Engine/SlateVulkan/Device/WorkspaceScenePass/Api/WorkspaceScenePass.h", "class WorkspaceScenePass")
