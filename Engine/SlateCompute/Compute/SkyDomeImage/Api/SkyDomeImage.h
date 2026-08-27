@@ -1,7 +1,12 @@
 //============================================================================================================================================
-//                                                               SKYIMAGE.H
+//                                                             SKYDOMEIMAGE.H
 //============================================================================================================================================
-// 🧩 Generates the editor viewport's sky image from the CPU atmosphere integrator.
+// 🧩 Generates a viewport's sky image from the CPU atmosphere integrator.
+//
+// 📝 ⚠️ This lived under `Application/EditorHost/` and was the last definition in that host's second
+//    translation unit. Nothing about it is host-specific — it reads an atmosphere and writes pixels — and
+//    a proof was already using it from outside the host, which is the clearest sign it never belonged
+//    there. It sits beside `AtmosphereIntegrator`, the model it evaluates.
 //
 //    The three resident surfaces (transmittance, multiple scattering, sky view)
 //    are direction-indexed: sampling the sky-view surface at a view direction

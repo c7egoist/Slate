@@ -1,8 +1,8 @@
 //============================================================================================================================================
-//                                                               SKYIMAGE.CPP
+//                                                            SKYDOMEIMAGE.CPP
 //============================================================================================================================================
 
-#include "Application/EditorHost/Api/SkyImage.h"
+#include "SlateCompute/Compute/SkyDomeImage/Api/SkyDomeImage.h"
 
 #include "SlateMath/Numeric/QuadratureIntegrator/Api/QuadratureIntegrator.h"
 
@@ -99,6 +99,15 @@ Deliver<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
         SunBlue  = 0.43 + Upper * 0.57;
     }
 
+    // 🔴 SUN INTENSITY WAS READ, CLAMPED AND THEN NEVER USED. The variable sat here unreferenced, which
+    //    `-Wunused-variable` would have said the moment this file was compiled as a unit — but it lived
+    //    under `Application/` where the host's warning settings never reached it. The artist's sun
+    //    intensity slider moved, the setting was saved to the codex and handed to the renderer at
+    //    `EditorHost:1297`, and the sky image behind the geometry ignored it completely. The sky and the
+    //    lit scene disagreed about how bright the sun was, which reads as a broken exposure rather than
+    //    as a missing multiply.
+    // 📝 It scales the direct disc, matching how `SkyIntensity` scales the dome below and how the
+    //    renderer takes the same figure as `SunIlluminance`. The clamp is the one already written here.
     const double SunIntensity = std::clamp(Environment.SunIntensity, 0.0, 10.0);
     const double SunHeight = std::sin(SunElevation);
     const double Daylight = std::clamp((SunHeight + 0.105) / 0.14, 0.0, 1.0);
@@ -108,7 +117,7 @@ Deliver<bool> GenerateSkyImage(AtmosphereIntegrator& Atmosphere,
     static_cast<void>(Atmosphere.SampleTransmittance(1.0, std::sin(SunElevation),
                                                      SunTransmitRed, SunTransmitGreen, SunTransmitBlue));
 
-    const double DirectStrength = std::clamp(Environment.SunDiscIntensity, 0.0, 4.0) * Daylight;
+    const double DirectStrength = std::clamp(Environment.SunDiscIntensity, 0.0, 4.0) * Daylight * SunIntensity;
     const double DirectRed   = SunRed   * SunTransmitRed * DirectStrength;
     const double DirectGreen = SunGreen * SunTransmitGreen * DirectStrength;
     const double DirectBlue  = SunBlue  * SunTransmitBlue * DirectStrength;

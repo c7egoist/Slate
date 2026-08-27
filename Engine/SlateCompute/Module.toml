@@ -9,7 +9,7 @@ subject = [ "Compute" ]
 # 📝 This is where the two peers meet. Every position crossing in is rebased in 64-bit before it narrows,
 #    and every Shared/ entry point compiled here is registered with ParityRunner — `02` §8 and `00` §4.
 [requires]
-unit = [ "SlateMath", "SlateVulkan", "SlateDocument" ]
+unit = [ "SlateMath", "SlateVulkan", "SlateDocument", "SlateUI" ]
 
 [external]
 include = [ "$VULKAN_SDK/Include", "ExternalPackages/earcut/include" ]
@@ -21,5 +21,5 @@ declare = []
 #    what an executable must **link** so every reference resolves. They coincide for most units and part
 #    for `SlateUI`, which links four archives and is permitted to include none of them — a static archive
 #    only satisfies references the linker has already seen, so the order is load-bearing.
-unit    = [ "SlateVulkan", "SlateDocument", "SlateMath" ]
+unit    = [ "SlateVulkan", "SlateDocument", "SlateUI", "SlateMath" ]
 library = []

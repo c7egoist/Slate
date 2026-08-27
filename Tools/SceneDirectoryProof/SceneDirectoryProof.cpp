@@ -78,7 +78,7 @@
 #include "Shared/OverlayGeometry.slang.h"
 #include "Shared/OverlayTransform.slang.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
-#include "Application/EditorHost/Api/SkyImage.h"
+#include "SlateCompute/Compute/SkyDomeImage/Api/SkyDomeImage.h"
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/AtmosphereIntegrator/Api/AtmosphereIntegrator.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
