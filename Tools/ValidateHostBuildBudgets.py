@@ -164,6 +164,27 @@ def main() -> int:
             and "CenterActivatedSceneAtWorldOrigin(Loaded)" in activation,
             "codex scene activation must recenter loaded geometry at the world origin")
 
+    # 🔴 THE WORKPLANE TOOL MUST BE DISPATCHED, NOT MERELY DEFINED. `ApplyWorkplaneTool` was written in
+    #    full — screen-space placement, catalogue write, directory record, sealed revision — and called
+    #    from nowhere. It compiled, two proofs covered its arithmetic, and picking the tool in the
+    #    viewport did nothing at all, because a function nothing calls is indistinguishable from a
+    #    function that does not work. No gate noticed: they all asserted the behaviour EXISTS.
+    #
+    # ⚠️ The ordering matters as much as the call. The workplane tool must run BEFORE the drawing tools
+    #    and consume the press, or the click that places a plane is also read as the first point of a
+    #    curve — drawn onto the plane that press just replaced.
+    sketch_host = read("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp")
+    require("ApplyWorkplaneTool(" in sketch_host,
+            "the parametric host must dispatch the workplane tool, not just link it")
+    require(sketch_host.index("ApplyWorkplaneTool(") < sketch_host.index("DriveDrawingWithModifiers("),
+            "the workplane tool must be offered the press before the drawing tools")
+    require("PointerTaken = ApplyWorkplaneTool(" in sketch_host,
+            "placing a workplane must consume the press so no curve starts on the replaced plane")
+
+    interaction = read("Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp")
+    require("Workplanes.Declare(Placed" in interaction and "Sketch.DeclarePlane({ Workplanes.Active()" in interaction,
+            "a placed workplane must join the catalogue and be adopted, never overwrite the sketch plane blind")
+
     content_browser = read("Engine/SlateUI/Interface/ContentBrowserPanel/Source/ContentBrowserPanel.cpp")
     require("ActivationRequested = Library.Taken" in content_browser and "ActivationRequested = Index" in content_browser,
             "Content Browser card and Import button must request codex activation")

@@ -759,7 +759,20 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                                SessionMilliseconds,
                                                                LastGPressedMilliseconds);
 
-                            if (!Transform.Engaged())
+                            // 🔴 THE WORKPLANE TOOL RUNS BEFORE THE DRAWING TOOLS AND CONSUMES THE PRESS.
+                            //    It returns true only when the Workplane subject is active, so the order
+                            //    costs nothing for every other tool; what it buys is that the press which
+                            //    places a plane cannot also be read as the first point of a curve on the
+                            //    plane it just replaced.
+                            if (!Transform.Engaged() && !PointerTaken)
+                                PointerTaken = ApplyWorkplaneTool(LeafBody, BackgroundPointer,
+                                                                  Basis, View,
+                                                                  PanelConfiguration[Index].Perspective,
+                                                                  ToolsApplied,
+                                                                  Naming, Sketch, Records, Revisions,
+                                                                  Workplanes);
+
+                            if (!Transform.Engaged() && !PointerTaken)
                                 DriveDrawingWithModifiers(LeafBody, BackgroundPointer,
                                                          Viewport.Surface().TextInput(), Modifiers,
                                                          Basis, View,
