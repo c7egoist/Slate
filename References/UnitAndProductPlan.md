@@ -478,3 +478,37 @@ product — all computing the same Rodrigues rotation. Folded into `CurveSpecifi
 pinned by six new claims. `DimensionSolver` also gave up a 28-line function that nothing had ever called.
 
 `ParametricSketchHost` 5 757 → **5 022** across step 10.
+
+**10f — writing a sketched thing into the workspace directory.** Five functions that differed in exactly
+three places — the subject the record carries, the folder it files under, and the payload member set —
+with the folder lookup and the naming written out five times around them. Now
+`SlateWorkspace/Discipline/RecordDeclaration`.
+
+📝 Kept as five named entry points rather than collapsed into one call taking a subject. The payload differs
+per subject, so a single entry point needs a variant or five optional arguments — a worse statement of the
+same thing, and one that would let a caller declaring a dimension hand over a curve. The repetition that
+actually mattered, the folder lookup, is now written once.
+
+🔴 **The proof corrected me twice, and neither correction was in the code.** The bench declared no sketch
+plane, so every area query *refused* rather than returning nothing, and seven claims failed for a reason
+unrelated to what they tested. Then, having fixed that, my claim that an upright square declares no profile
+turned out to be simply wrong: **closure is topological, not areal.** Curves chain end to end and the loop
+closes when the chain returns to its start; signed area is computed afterwards to sort loops and identify
+holes, never to decide whether a loop exists. An upright square declares a profile with zero area. The same
+round corrected a comment I had just written — the `0.05` is a **closure tolerance**, the largest gap two
+curve ends may leave and still be treated as joined, not a minimum area. Two claims now pin it from both
+sides: 0.03 of slack closes, 0.5 does not.
+
+⚠️ **Negative testing found a hole in the proof, not in the unit.** Six sabotages, five caught. The survivor
+removed the top-level restriction from the folder lookup — and the proof stayed green, because the nested
+folder in the test happened to have a higher index than the top-level one, so a forward walk reached the
+right answer by accident. Two claims were describing declaration order rather than the rule. The
+discriminating case is a category whose *only* folder is nested: it must resolve to nothing, so a new record
+files at the top level instead of burying itself in somebody's subfolder. With that added the sabotage is
+caught.
+
+The claim worth keeping is the undo cost: closing a rectangle is one action and seals **one** revision
+listing every profile it wrote. One revision per profile would make the artist press undo four times to walk
+back one gesture.
+
+`ParametricSketchHost` **5 022 → 4 915**. 90 claims. Thirteen gates.
