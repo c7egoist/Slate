@@ -47,6 +47,35 @@ constexpr ThemeToken Partial(std::uint32_t Packed, double Coverage)
     return Constructed;
 }
 
+/// 🧩 Dims a colour already chosen, scaling the coverage it already carries.
+/// in    Declared  [-]  the colour to dim
+/// in    Fraction  [-]  clamped to zero..one; one leaves the colour untouched
+/// note  📝 Different from `Partial`, which SETS the coverage from a packed literal. This one SCALES what
+///       is already there, so fading a half-covering colour by a half leaves it quarter-covering — which
+///       is what fading an overlay that is already translucent has to mean.
+/// cost  ✔️
+/// tag   api, constexpr, nonallocating, nonthrowing
+constexpr ThemeToken Faded(ThemeToken Declared, double Fraction)
+{
+    const double Held = Fraction < 0.0 ? 0.0 : (Fraction > 1.0 ? 1.0 : Fraction);
+    Declared.Opacity = static_cast<std::uint8_t>(static_cast<double>(Declared.Opacity) * Held + 0.5);
+    return Declared;
+}
+
+/// 🧩 Unpacks a 0xAARRGGBB word into a colour.
+/// note  ⚠️ THE OPACITY IS IN THE TOP BYTE HERE, unlike `Covering` and `Partial`, which take 0xRRGGBB and
+///       state the coverage separately. This is the inverse of the overlay geometry's packing, which is
+///       where such words come from; it is not a general literal constructor.
+/// cost  ✔️
+/// tag   api, constexpr, nonallocating, nonthrowing
+constexpr ThemeToken Unpacked(std::uint32_t Packed)
+{
+    return ThemeToken{ static_cast<std::uint8_t>((Packed >> 16) & 0xFFu),
+                       static_cast<std::uint8_t>((Packed >>  8) & 0xFFu),
+                       static_cast<std::uint8_t>((Packed >>  0) & 0xFFu),
+                       static_cast<std::uint8_t>((Packed >> 24) & 0xFFu) };
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    THE NEUTRAL LADDER
 //------------------------------------------------------------------------------------------------------------------------

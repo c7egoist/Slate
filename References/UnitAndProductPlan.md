@@ -780,3 +780,52 @@ what each relationship *means*. **A proof must know the answer before it asks.**
 
 `ParametricSketchHost` 3 635 → **3 512**. Engine-mechanism definitions 18 → **11**. 448 claims, five
 sabotages caught.
+
+### 4.8 Finishing step 10 — the overlay, and the widget three hosts copied
+
+**10n — snapping.** `SketchSnap` had **no proof at all**, and two defects were living in it.
+
+🔴 **INTERSECTION SNAPPING WORKED ON THE GROUND PLANE AND NOWHERE ELSE.** `SegmentIntersectionPlanar` read
+`.Left` and `.Forward` off every point — the ground plane's two spanning axes. Two lines crossing on the
+front plane share a constant `.Forward`, so the determinant vanished for every pair and the crossing was
+never found. Silently: the artist got no snap rather than a wrong one. This is precisely the failure that
+makes drawing on a chosen workplane feel broken, and it was sitting underneath Task 6 the whole time.
+
+🔴 **`SketchSnapMask::GridAccepted` WAS INERT.** The flag was declared the day the mask was written and
+`ResolveNearestSnap` never produced a `Grid` placement. Every caller that wanted grid snapping had to write
+its own, and the host did — with its own step, its own tolerance and its own ordering. The unit now honours
+the flag and states the rule that matters: **the grid is a last resort, never a competitor**, because a
+grid corner sits within half a step of every probe and would otherwise beat the endpoint the artist was
+reaching for.
+
+**10n also.** `ConstraintToolSubject` → `SelectedConstraint` in `SketchToolset`, beside `SelectedTool`,
+which is where tile-to-subject mapping already lived. ⚠️ **Three tiles cannot be honoured and now say so.**
+The palette offers `Midpoint`, `Symmetry` and `Concentric`; `ConstraintSubject` declares none of them. They
+fell to `default` alongside every non-constraint tile, so pressing one was indistinguishable from pressing
+nothing at all.
+
+**10o — the viewport overlay.** `SlateWorkspace/Discipline/SketchViewportOverlay`, **829 lines, 14
+definitions**: the grid, the orientation HUD, the selection highlight, the gizmo, the placement preview,
+the constraint badges, the profile shading and the edge readouts.
+
+🔴 **NOTHING BUT THE HOST COULD DRAW A SKETCH.** All fourteen were file-local to `ParametricSketchHost`. A
+second viewport — a detail view, a print preview, the combined authoring host — had no way to reach them
+and would have had to copy them.
+
+**10p — the orientation widget.** `SlateWorkspace/Discipline/OrientationCube`, lifted out of
+`Application/Api/SharedViewportHostBridge.h`.
+
+🔴 **472 LINES OF `inline` IN A HEADER ALL THREE HOSTS INCLUDED.** Every host compiled its own copy, and a
+header under `Application/` is reachable by no unit and no test, so the widget could never be exercised.
+That header is deleted at step 11; this is where its one real behaviour goes.
+
+🔴 **THE DUPLICATE ORIENTATION ENUMERATION IS GONE.** `SharedViewportOrientation` named the same seven
+directions as `ViewportOrientation` in different words — `Iso` against `Isometric` — plus a `None` member
+that meant only "the pointer hit nothing". Two enumerations for one idea is how a conversion switch gets
+written, and the host had one, seven cases long. A miss is now a refusal, which is what it always was.
+
+| Measure                              | Step 10 start | Now       |
+|--------------------------------------|---------------|-----------|
+| `ParametricSketchHost` lines         | 5 757         | **2 613** |
+| Definitions in the host              | 138           | **33**    |
+| Engine-mechanism definitions         | 18            | **7**     |
