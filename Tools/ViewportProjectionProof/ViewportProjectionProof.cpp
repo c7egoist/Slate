@@ -17,6 +17,7 @@
 //    sketch kernel to obtain one would make this gate fail for reasons that have nothing to do with
 //    projection. `ResolveSketchBasis` is the one function here not covered, and it is four lines.
 
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/CadProjection.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 
 #include <cmath>
@@ -422,6 +423,148 @@ void ProveRegressions()
               std::to_string(Named) + " of 80 did");
 }
 
+
+//------------------------------------------------------------------------------------------------------------------------
+//  §7  The shader agrees with the pointer
+//------------------------------------------------------------------------------------------------------------------------
+// 🔴 THE VIEWPORT PROJECTS EVERY POINT TWICE, BY TWO DIFFERENT ROUTES, AND THEY MUST LAND IN THE SAME
+//    PLACE. `ProjectViewportPoint` runs on the processor and decides what the artist has clicked on;
+//    `ResolveCadProjection` builds three rows the shader multiplies by, and decides where the line is
+//    DRAWN. If they ever disagree the drawing appears somewhere the pointer is not — and every point is
+//    off by the same amount, so the picture still looks plausible.
+//
+// ⚠️ Until step 10u this could not be written down: `ResolveCadProjection` was a definition inside
+//    `ParametricSketchHost.cpp`, so nothing but that host could call it, and nothing at all could compare
+//    the two answers. The two formulae have sat five hundred lines apart, maintained by hand, unchecked.
+//
+// 📝 The shader forms `Projection0 + u*Projection1 + v*Projection2` and divides x and y by w. This
+//    reproduces exactly that arithmetic and demands the result match the point projection.
+
+void ProjectThroughShaderRows(const WorkspaceCadProjection& Rows, double Along, double Across,
+                              float& ScreenX, float& ScreenY)
+{
+    const double X = Rows.Projection0[0] + Along * Rows.Projection1[0] + Across * Rows.Projection2[0];
+    const double Y = Rows.Projection0[1] + Along * Rows.Projection1[1] + Across * Rows.Projection2[1];
+    const double W = Rows.Projection0[3] + Along * Rows.Projection1[3] + Across * Rows.Projection2[3];
+    ScreenX = static_cast<float>(X / W);
+    ScreenY = static_cast<float>(Y / W);
+}
+
+void ProveShaderMatchesPointer()
+{
+    std::printf("\n  §7  the shader rows and the pointer projection agree\n");
+
+    const PlaneExtent  Extent = Viewport();
+    const SpatialBasis Basis = WorldPlane();
+    const DrawableScale Unscaled;   // 1:1 display; the scaled case is §7b below
+
+    // ⚠️ THE CAMERA MUST BE PANNED OFF THE PLANE ORIGIN. Both default to (0,0,0), which makes the row
+    //    describing the plane origin identically zero -- and a zero row hides every sign error in it.
+    //    With the focus at the origin, negating the whole base row changed nothing and this section
+    //    scored no failures against a deliberately broken build. The second focus below is what sees it.
+    const SpatialPoint EveryFocus[] = { { 0.0, 0.0, 0.0 }, { 37.0, -18.0, 61.0 } };
+
+    for (const ViewportOrientation Orientation : EveryOrientation)
+    {
+        for (const bool Perspective : { false, true })
+        for (const SpatialPoint& Focus : EveryFocus)
+        {
+            ViewportStanding View;
+            ApplyViewportOrientation(View, Orientation, Perspective);
+            View.OrthoScale = 1.7;
+            View.Focus = Focus;
+
+            const WorkspaceCadProjection Rows =
+                ResolveCadProjection(Basis, View, Perspective, Extent, Unscaled,
+                                     static_cast<std::uint32_t>(Extent.Width()),
+                                     static_cast<std::uint32_t>(Extent.Height()));
+
+            unsigned Agreed = 0u;
+            unsigned Compared = 0u;
+            for (double Along = -300.0; Along <= 300.0; Along += 150.0)
+            {
+                for (double Across = -300.0; Across <= 300.0; Across += 150.0)
+                {
+                    float PointerX = 0.0f, PointerY = 0.0f;
+                    if (!ProjectViewportPoint(Basis, View, Perspective, Extent, Along, Across, PointerX, PointerY))
+                        continue;   // behind a perspective eye; the shader clips it too
+
+                    float ShaderX = 0.0f, ShaderY = 0.0f;
+                    ProjectThroughShaderRows(Rows, Along, Across, ShaderX, ShaderY);
+
+                    ++Compared;
+                    // 🚩 A tenth of a pixel. The two routes accumulate rounding differently -- one keeps
+                    //    doubles to the end, the other stores floats in the rows -- but a real
+                    //    disagreement is a whole pixel or more, never a fraction.
+                    if (Near(ShaderX, PointerX, 0.1) && Near(ShaderY, PointerY, 0.1)) ++Agreed;
+                }
+            }
+
+            Claim(Compared > 0u,
+                  std::string("some point must project in ") + OrientationText(Orientation));
+            Claim(Agreed == Compared,
+                  std::string("shader rows must match the pointer in ") + OrientationText(Orientation) +
+                      (Perspective ? " perspective, " : " orthographic, ") +
+                      std::to_string(Agreed) + " of " + std::to_string(Compared) + " agreed");
+        }
+    }
+}
+
+// 🔴 §7b  THE SCALED DISPLAY. This is where the shipped placement defect lived (`e66b2c3`): the pointer
+//    arrives in LOGICAL points and the shader divides by PHYSICAL pixels. On a 1:1 display the two are the
+//    same number and every test passes; at 2x everything drawn is half a viewport out of place.
+void ProveScaledDisplayPlacement()
+{
+    std::printf("\n  §7b the projection holds on a scaled display\n");
+
+    const PlaneExtent Extent = Viewport();
+    const SpatialBasis Basis = WorldPlane();
+
+    DrawableScale Retina;
+    Retina.Factor = 2.0f;
+
+    ViewportStanding View;
+    ApplyViewportOrientation(View, ViewportOrientation::Top, false);
+    View.OrthoScale = 1.0;
+
+    const PlaneExtent Physical = Retina.ToPhysical(Extent);
+    const WorkspaceCadProjection Rows =
+        ResolveCadProjection(Basis, View, false, Extent, Retina,
+                             static_cast<std::uint32_t>(Physical.Width()),
+                             static_cast<std::uint32_t>(Physical.Height()));
+
+    // The plane origin must land at the physical centre of the viewport, not the logical one.
+    float OriginX = 0.0f, OriginY = 0.0f;
+    ProjectThroughShaderRows(Rows, 0.0, 0.0, OriginX, OriginY);
+
+    const float PhysicalCentreX = Physical.MinimumX + Physical.Width() * 0.5f;
+    const float PhysicalCentreY = Physical.MinimumY + Physical.Height() * 0.5f;
+    Claim(Near(OriginX, PhysicalCentreX, 0.001) && Near(OriginY, PhysicalCentreY, 0.001),
+          "the plane origin must land at the PHYSICAL viewport centre, at (" +
+              std::to_string(OriginX) + ", " + std::to_string(OriginY) + ") not (" +
+              std::to_string(PhysicalCentreX) + ", " + std::to_string(PhysicalCentreY) + ")");
+
+    // 🔴 And the scale must double with the display, or geometry is drawn at half size in physical
+    //    pixels -- which is the same defect wearing a different hat.
+    float UnitX = 0.0f, UnitY = 0.0f;
+    ProjectThroughShaderRows(Rows, 100.0, 0.0, UnitX, UnitY);
+
+    DrawableScale Unscaled;
+    const WorkspaceCadProjection Plain =
+        ResolveCadProjection(Basis, View, false, Extent, Unscaled,
+                             static_cast<std::uint32_t>(Extent.Width()),
+                             static_cast<std::uint32_t>(Extent.Height()));
+    float PlainOriginX = 0.0f, PlainOriginY = 0.0f, PlainUnitX = 0.0f, PlainUnitY = 0.0f;
+    ProjectThroughShaderRows(Plain, 0.0, 0.0, PlainOriginX, PlainOriginY);
+    ProjectThroughShaderRows(Plain, 100.0, 0.0, PlainUnitX, PlainUnitY);
+
+    const double ScaledSpan = std::fabs(UnitX - OriginX);
+    const double PlainSpan = std::fabs(PlainUnitX - PlainOriginX);
+    Claim(Near(ScaledSpan, PlainSpan * 2.0, 0.001),
+          "100 plane units must span twice as many physical pixels at 2x, " +
+              std::to_string(ScaledSpan) + " against " + std::to_string(PlainSpan));
+}
+
 }   // namespace
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -436,6 +579,8 @@ int main()
     ProveRoundTrip();
     ProveRefusals();
     ProveRegressions();
+    ProveShaderMatchesPointer();
+    ProveScaledDisplayPlacement();
 
     std::printf("\n%d claims, %d failures\n", Checks, Failures);
     std::printf(Failures == 0 ? "PROVEN\n\n" : "REFUTED\n\n");

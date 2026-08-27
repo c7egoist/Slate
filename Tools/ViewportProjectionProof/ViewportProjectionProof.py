@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [
     ROOT / "Tools/ViewportProjectionProof/ViewportProjectionProof.cpp",
     ROOT / "Engine/SlateWorkspace/Discipline/ViewportProjection/Source/ViewportProjection.cpp",
+    ROOT / "Engine/SlateWorkspace/Discipline/ViewportProjection/Source/CadProjection.cpp",
 ]
 
 for Source in SOURCES:

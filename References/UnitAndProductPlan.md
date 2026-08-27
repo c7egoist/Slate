@@ -908,3 +908,27 @@ separate blocks pointed at the unit and the host respectively.
 
 📝 `SlateRuntime` now names `SlateDocument` and `SlateShape` in `Module.toml`: knowing which files are
 importable means knowing the importers.
+
+**10u — the projection the shader uses.** `ResolveCadProjection` (87 lines) joins the rest of the
+projection maths in `ViewportProjection`; `WorkspaceCadProjection` moves from `SlateVulkan` to
+`Shared/WorkspaceCadPacket.slang.h` — it is six floats, and keeping it under the graphics device is what
+stopped the workspace computing one.
+
+🔴 **THE VIEWPORT PROJECTS EVERY POINT TWICE AND NOTHING CHECKED THEY AGREED.**
+`ProjectViewportPoint` decides what the artist has CLICKED ON; `ResolveCadProjection` builds the rows the
+shader multiplies by, deciding where the line is DRAWN. Same formula, written twice, five hundred lines
+apart, maintained by hand. While one of them was a definition inside a host file, no test could call it and
+no test could compare them. **`ViewportProjectionProof` §7 now projects the same points both ways and
+demands they land within a tenth of a pixel** — across seven orientations, both cameras, two camera focuses.
+§7b pins the scaled-display case, which is the shipped placement defect from `e66b2c3`.
+
+⚠️ **THE FIXTURE HID A SIGN ERROR ON THE FIRST ATTEMPT.** Negating the base row scored **zero failures**:
+the camera focus and the plane origin both default to the world origin, so the row that carries them is
+identically zero and any sign is correct. Panning the focus to `(37, -18, 61)` turns the same sabotage into
+**7 failures**. Eight sabotages now caught: 1, 1, 7, 7, 7, 14, 14, 14.
+
+| Measure                              | Step 10 start | Now       |
+|--------------------------------------|---------------|-----------|
+| `ParametricSketchHost` lines         | 5 757         | **1 349** |
+| Definitions in the host              | 138           | **6**     |
+| Engine-mechanism definitions         | 18            | **0**     |

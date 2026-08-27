@@ -19,15 +19,6 @@
 namespace Slate
 {
 
-struct WorkspaceCadProjection
-{
-    float DisplayWidth = 1.0f;
-    float DisplayHeight = 1.0f;
-    float Projection0[4] = {};
-    float Projection1[4] = {};
-    float Projection2[4] = {};
-};
-
 class WorkspaceCadPass
 {
 public:

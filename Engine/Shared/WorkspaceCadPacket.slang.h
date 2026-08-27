@@ -58,6 +58,19 @@ SLATE_SHARED Unsigned32 PackWorkspaceCadColour(Unsigned32 Red, Unsigned32 Green,
     return (Alpha << 24u) | (Red << 16u) | (Green << 8u) | Blue;
 }
 
+// 🧩 How a point in the sketch plane becomes a point on the display.
+// 📝 ⚠️ Lives beside the packet rather than in `SlateVulkan` because it is six floats and a size: the pass
+//    CONSUMES it, but computing it is geometry, and putting it here is what lets the workspace build one
+//    without depending on the graphics device.
+struct WorkspaceCadProjection
+{
+    Real32 DisplayWidth = 1.0f;
+    Real32 DisplayHeight = 1.0f;
+    Real32 Projection0[4] = {};
+    Real32 Projection1[4] = {};
+    Real32 Projection2[4] = {};
+};
+
 struct WorkspaceCadPacket
 {
     static constexpr Unsigned32 SegmentLimit = 4096u;
