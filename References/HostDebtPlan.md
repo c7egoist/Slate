@@ -218,3 +218,42 @@ start to the next definition's start, and `main()` is not a definition** — so 
 None was found by looking for defects. All four surfaced because code moved somewhere it could be
 compiled, warned about, or compared against its twin. **The duplication was not the risk; it was the
 mechanism by which the two copies were allowed to disagree.**
+
+---
+
+## 5. What the end-to-end build found that no syntax check could
+
+Everything in §4 was verified per-file. That was not enough. Running the real pipeline —
+`make sequence`, the same order as `Build/Construct.ps1` — refused at step 3:
+
+```
+[FAILED]  the unit graph holds a cycle among: Application, SketchToolset,
+          SlateCompute, SlateRuntime, SlateUI, SlateWorkspace, TextureToolset
+```
+
+Step C moved `SkyDomeImage` into `SlateCompute` and added `SlateUI` to its `requires`.
+`SlateUI`'s own link list already named `SlateCompute`. **Every one of the 33 gates passed and
+every file compiled, because a cycle is a property of the graph, not of any translation unit.**
+No amount of `-fsyntax-only` would ever have shown it.
+
+The cause was a misplaced struct. `EnvironmentConfiguration` lived in
+`SlateUI/Interface/SceneDirectoryPanel/`, but its nineteen fields are Rayleigh density, Mie
+asymmetry, ozone, scale heights — atmospheric physics, not a panel. The sky evaluator needs it;
+the panel only writes it. It now lives in `Shared/`, which both layers may read.
+
+`ParametricWorkspaceBridge.h` fell to the same rule that killed `SharedViewportHostBridge.h`: a
+unit was reaching **up** into `Application/` to compile.
+
+| Guard | Now refuses when |
+|---|---|
+| `make sequence` | the unit graph gains a cycle |
+| `VerifyPartition` | a unit includes what its `Module.toml` does not declare |
+| `ValidateHostBuildBudgets` | either deleted bridge header reappears |
+
+**The lesson, and it is the same one as `SynchroniseCadPacket`: a check that never runs the real
+thing measures the wrong quantity.** Line counts were attribution, not measurement; per-file
+syntax checks were compilation, not building. Both were confidently green while wrong.
+
+Baseline honesty: 36 of 246 translation units still fail in this sandbox on the stub Vulkan
+header and the absent ImGui submodule — **the identical count at `12e9a68e`, before this effort
+started.** No new translation failure was introduced.
