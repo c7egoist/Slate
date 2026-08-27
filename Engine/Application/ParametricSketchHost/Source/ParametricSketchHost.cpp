@@ -656,27 +656,6 @@ void AdoptCommittedShape(SketchSubject Subject,
 
 
 
-SketchSnapPlacement ResolveGridSnap(const SpatialBasis& Basis,
-                                    const SpatialPoint& Probe,
-                                    double Step,
-                                    double MaximumDistance)
-{
-    double Along = 0.0;
-    double Across = 0.0;
-    ResolvePlaneCoordinates(Basis, Probe, Along, Across);
-    const double SafeStep = std::max(Step, 1.0);
-    const double SnappedAlong = std::round(Along / SafeStep) * SafeStep;
-    const double SnappedAcross = std::round(Across / SafeStep) * SafeStep;
-    const SpatialPoint Snapped = ResolvePlanarPoint(Basis, SnappedAlong, SnappedAcross);
-    const double Distance = std::sqrt(LengthSquared(Difference(Probe, Snapped)));
-    if (Distance > MaximumDistance)
-        return {};
-    SketchSnapPlacement Placement = {};
-    Placement.Subject = SketchSnapSubject::Grid;
-    Placement.Position = Snapped;
-    Placement.Distance = Distance;
-    return Placement;
-}
 
 SpatialPoint ApplySketchToolSettings(const SketchPlacement& Tool,
                                           const SpatialBasis& Basis,
@@ -1849,10 +1828,9 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     // 📝 Snapping stays with the host: it needs the sketch, the view scale and the modifier that suspends
     //    it. The placement is told where the pointer ended up, not how it got there.
     const double SnapTolerance = ResolveSnapTolerance(View, Perspective);
-    SketchSnapPlacement Placement = Modifiers.Commanded ? SketchSnapPlacement{}
-                                                        : ResolveNearestSnap(Sketch, Raw, SnapTolerance);
-    if (!Placement.Resolved() && !Modifiers.Commanded)
-        Placement = ResolveGridSnap(Basis, Raw, 10.0, SnapTolerance);
+    const SketchSnapPlacement Placement = Modifiers.Commanded
+                                        ? SketchSnapPlacement{}
+                                        : ResolveNearestSnap(Sketch, Raw, SnapTolerance);
 
     SpatialPoint Hover = Placement.Resolved() ? Placement.Position : Raw;
     Hover = ApplySketchToolSettings(Tool, Basis, ToolContext, Hover);
@@ -1883,21 +1861,6 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
 }
 
-bool ConstraintToolSubject(ParametricToolSubject Tool,
-                           ConstraintSubject& Delivered)
-{
-    switch (Tool)
-    {
-        case ParametricToolSubject::HorizontalConstraint:    Delivered = ConstraintSubject::Horizontal; return true;
-        case ParametricToolSubject::VerticalConstraint:      Delivered = ConstraintSubject::Vertical; return true;
-        case ParametricToolSubject::CoincidentConstraint:    Delivered = ConstraintSubject::Coincident; return true;
-        case ParametricToolSubject::ParallelConstraint:      Delivered = ConstraintSubject::Parallel; return true;
-        case ParametricToolSubject::PerpendicularConstraint: Delivered = ConstraintSubject::Perpendicular; return true;
-        case ParametricToolSubject::TangentConstraint:       Delivered = ConstraintSubject::Tangent; return true;
-        case ParametricToolSubject::EqualConstraint:         Delivered = ConstraintSubject::Equal; return true;
-        default:                                             return false;
-    }
-}
 
 bool ApplyDimensionTextEdit(const TextInputCondition& TextInput,
                             SketchStructure& Sketch,
@@ -1938,7 +1901,7 @@ bool ApplyViewportConstraintTool(ParametricToolSubject Tool,
                                  WorkspaceRecordName& PendingSelection)
 {
     ConstraintSubject Subject = ConstraintSubject::Fixed;
-    if (!ConstraintToolSubject(Tool, Subject) || !ActiveSelection.Standing())
+    if (!SelectedConstraint(Tool, Subject) || !ActiveSelection.Standing())
         return false;
 
     // 🔴 What the relationship NEEDS is asked of the unit rather than decided by which branch the subject
@@ -1951,18 +1914,13 @@ bool ApplyViewportConstraintTool(ParametricToolSubject Tool,
     if (!Declared.Resolved)
         return false;
 
-    // 📝 A constraint applied on its own is still one thing the artist did, so it opens a journal of its
-    //    own and closes it immediately - one entry in the history, one press of undo.
-    std::vector<WorkspaceRecordName> Written;
-    PlacementJournal Journal(Revisions);
-    SealConstraintRecord(Naming, Records, Journal, Sketch, Declared.Delivered, Written);
-    Journal.Close();
-    if (!Written.empty())
-    {
-        PendingSelection = Written.front();
-        return true;
-    }
-    return false;
+    const Deliver<WorkspaceRecordName> Committed =
+        CommitConstraint(Naming, Sketch, Records, Revisions, Declared.Delivered);
+    if (!Committed.Resolved)
+        return false;
+
+    PendingSelection = Committed.Delivered;
+    return true;
 }
 
 bool CommitCurveSet(WorkspaceNameIndex& Naming,
@@ -2123,7 +2081,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     }
 
     ConstraintSubject ActiveConstraintSubject = ConstraintSubject::Fixed;
-    if (!Transform.Engaged() && Pointer.ContactPressed && ConstraintToolSubject(ActiveTool, ActiveConstraintSubject))
+    if (!Transform.Engaged() && Pointer.ContactPressed && SelectedConstraint(ActiveTool, ActiveConstraintSubject))
     {
         if (ApplyViewportConstraintTool(ActiveTool, Naming, Sketch, Records, Revisions,
                                         ActiveSelection, HoveredSelection, PendingSelection))

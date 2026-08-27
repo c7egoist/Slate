@@ -771,4 +771,28 @@ Deliver<WorkspaceRecordName> CommitPlacement(WorkspaceNameIndex& Naming,
     return Made;
 }
 
+Deliver<WorkspaceRecordName> CommitConstraint(WorkspaceNameIndex& Naming,
+                                              SketchStructure& Sketch,
+                                              WorkspaceRecordStructure& Records,
+                                              WorkspaceRevisionSequence& Revisions,
+                                              const ConstraintSpecification& Constraint)
+{
+    if (!Constraint.Declared())
+        return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+                                                      "the constraint names nothing to relate" });
+
+    std::vector<WorkspaceRecordName> Written;
+    {
+        PlacementJournal Journal(Revisions);
+        SealConstraintRecord(Naming, Records, Journal, Sketch, Constraint, Written);
+        Journal.Close();
+    }
+
+    if (Written.empty())
+        return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+                                                      "the constraint wrote no record" });
+
+    return Deliver<WorkspaceRecordName>::Result(Written.front());
+}
+
 }   // namespace Slate

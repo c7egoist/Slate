@@ -7,6 +7,7 @@
 
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
+#include "SlateShape/Sketch/ConstraintSpecification/Api/ConstraintSpecification.h"
 #include "SlateShape/Sketch/SketchSnap/Api/SketchSnap.h"
 #include "SlateUI/Interface/ParametricTools/Api/ParametricToolsSpecification.h"
 
@@ -301,6 +302,34 @@ constexpr SketchToolSelection SelectedTool(ParametricToolSubject Tile)
         case ParametricToolSubject::RationalSpline:       return { SketchSubject::RationalSpline, PlacementMethod::Extent };
 
         default:                                          return { SketchSubject::None,           PlacementMethod::Extent };
+    }
+}
+
+/// 🧩 Which relationship a catalogue tile asks for.
+/// in    Tile       [-]  the catalogue subject the artist pressed
+/// out   Delivered  [-]  the relationship, untouched when the tile is not a constraint tile
+/// out   -          [-]  whether the tile names one at all
+/// note  🔴 THREE CONSTRAINT TILES CANNOT BE HONOURED AND SAY SO HERE. The palette offers `Midpoint`,
+///        `Symmetry` and `Concentric`, and `ConstraintSubject` declares none of the three — the shipped
+///        mapping sent them to `default` alongside every non-constraint tile, so pressing one was
+///        indistinguishable from pressing nothing. They stay refused, deliberately and in one place,
+///        until the solver declares them.
+/// note  ⚠️ `Fixed` is reachable from no tile. It exists in `ConstraintSubject` and the palette has no
+///        tile for it, so it can only be declared in code.
+/// cost  ✔️
+/// tag   api, constexpr, nonallocating, nonthrowing
+constexpr bool SelectedConstraint(ParametricToolSubject Tile, ConstraintSubject& Delivered)
+{
+    switch (Tile)
+    {
+        case ParametricToolSubject::HorizontalConstraint:    Delivered = ConstraintSubject::Horizontal;    return true;
+        case ParametricToolSubject::VerticalConstraint:      Delivered = ConstraintSubject::Vertical;      return true;
+        case ParametricToolSubject::CoincidentConstraint:    Delivered = ConstraintSubject::Coincident;    return true;
+        case ParametricToolSubject::ParallelConstraint:      Delivered = ConstraintSubject::Parallel;      return true;
+        case ParametricToolSubject::PerpendicularConstraint: Delivered = ConstraintSubject::Perpendicular; return true;
+        case ParametricToolSubject::TangentConstraint:       Delivered = ConstraintSubject::Tangent;       return true;
+        case ParametricToolSubject::EqualConstraint:         Delivered = ConstraintSubject::Equal;         return true;
+        default:                                                                                           return false;
     }
 }
 

@@ -51,9 +51,18 @@ struct SketchSnapPlacement
     bool Resolved() const { return Subject != SketchSnapSubject::None; }
 };
 
+/// 🧩 The nearest thing worth snapping to, or nothing within reach.
+/// note 🔴 `GridAccepted` IS NOW HONOURED. The mask advertised it from the day it was written and this
+///       function never produced a `Grid` placement, so every caller that wanted grid snapping had to
+///       write its own — and the host did exactly that, against its own step and its own tolerance.
+///       Geometry still wins: the grid is only consulted when nothing drawn is within reach, because a
+///       grid line passes near everything and would otherwise beat the endpoint the artist aimed at.
+/// note ⚠️ `GridStep` is in world units and is clamped to at least 1.0. A step of zero would round every
+///       probe onto the plane's origin.
 SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
-                                       const SketchSnapMask& Accepted = {});
+                                       const SketchSnapMask& Accepted = {},
+                                       double GridStep = 10.0);
 
 } // namespace Slate

@@ -137,4 +137,19 @@ void SealConstraintRecord(WorkspaceNameIndex& Naming,
                           const ConstraintSpecification& Constraint,
                           std::vector<WorkspaceRecordName>& Written);
 
+/// 🧩 Apply one relationship the artist asked for, as one thing they can undo.
+/// in    Constraint  [-]  the relationship, already checked against the selection it came from
+/// out   -           [-]  the record written, or a refusal when the constraint wrote nothing
+/// note  📝 A constraint applied on its own opens a journal and closes it immediately, so it lands in the
+///        history as one entry and one press of undo — the same guarantee a drawn shape gets.
+/// note  ⚠️ Whether the SELECTION supports the relationship is `ConstraintAuthoring`'s question, answered
+///        before this is called. This one commits what has already been declared.
+/// cost  🚩
+/// tag   api, allocating
+Deliver<WorkspaceRecordName> CommitConstraint(WorkspaceNameIndex& Naming,
+                                              SketchStructure& Sketch,
+                                              WorkspaceRecordStructure& Records,
+                                              WorkspaceRevisionSequence& Revisions,
+                                              const ConstraintSpecification& Constraint);
+
 }   // namespace Slate

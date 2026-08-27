@@ -50,27 +50,60 @@ namespace
             Best = { Subject, SourceCurve, SketchPoint, SketchControl, CandidatePosition, CandidateDistance };
     }
 
-    bool SegmentIntersectionPlanar(const SpatialPoint& A,
+    /// 🔴 MEASURED IN THE SKETCH'S OWN PLANE, NOT IN X AND Z. This read `.Left` and `.Forward` off every
+    ///    point, which are the ground plane's two spanning axes — so two lines crossing on the FRONT plane
+    ///    have a constant `.Forward` and the determinant vanished for every pair. Intersection snapping
+    ///    worked on the ground and silently did nothing everywhere else, which is precisely the failure
+    ///    that makes drawing on a chosen workplane feel broken. Both spans now come from the plane.
+    bool SegmentIntersectionPlanar(const SpatialDirection& Along,
+                                   const SpatialDirection& Across,
+                                   const SpatialPoint& A,
                                    const SpatialPoint& B,
                                    const SpatialPoint& C,
                                    const SpatialPoint& D,
                                    SpatialPoint& Result)
     {
-        const double ABx = B.Left - A.Left;
-        const double ABy = B.Forward - A.Forward;
-        const double CDx = D.Left - C.Left;
-        const double CDy = D.Forward - C.Forward;
+        const SpatialDirection AB = Difference(A, B);
+        const SpatialDirection CD = Difference(C, D);
+        const SpatialDirection AC = Difference(A, C);
+
+        const double ABx = Dot(AB, Along),  ABy = Dot(AB, Across);
+        const double CDx = Dot(CD, Along),  CDy = Dot(CD, Across);
+        const double ACx = Dot(AC, Along),  ACy = Dot(AC, Across);
+
         const double Denominator = ABx * CDy - ABy * CDx;
         if (std::fabs(Denominator) <= 1.0e-9)
             return false;
-        const double ACx = C.Left - A.Left;
-        const double ACy = C.Forward - A.Forward;
+
         const double T = (ACx * CDy - ACy * CDx) / Denominator;
         const double U = (ACx * ABy - ACy * ABx) / Denominator;
         if (T < 0.0 || T > 1.0 || U < 0.0 || U > 1.0)
             return false;
-        Result = Added(A, Scaled(Difference(A, B), T));
+
+        Result = Added(A, Scaled(AB, T));
         return true;
+    }
+
+    /// 🧩 The two directions that span the plane a sketch is drawn on.
+    /// note ⚠️ Recomputed from the stored normal rather than trusted, and an undeclared sketch answers the
+    ///       ground plane's axes — the same rule `ResolveSketchBasis` follows, kept here because
+    ///       `SpatialBasis` itself lives a layer above this one.
+    void ResolvePlaneSpans(const SketchStructure& Declared,
+                           SpatialDirection& Along,
+                           SpatialDirection& Across)
+    {
+        Along  = { 1.0, 0.0, 0.0 };
+        Across = { 0.0, 0.0, 1.0 };
+
+        const SketchPlane& Plane = Declared.HeldPlane();
+        if (!Declared.Declared() || !Plane.Declared())
+            return;
+
+        if (LengthSquared(Plane.AlongDirection) <= 1.0e-18 || LengthSquared(Plane.Normal) <= 1.0e-18)
+            return;
+
+        Along  = Normalize(Plane.AlongDirection);
+        Across = Normalize(Cross(Normalize(Plane.Normal), Along));
     }
 }
 
@@ -78,7 +111,8 @@ namespace
 SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
-                                       const SketchSnapMask& Accepted)
+                                       const SketchSnapMask& Accepted,
+                                       double GridStep)
 {
     SketchSnapPlacement Best = {};
     Best.Distance = MaximumDistance;
@@ -93,6 +127,9 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
     std::vector<SketchControlPlacement> Controls;
     std::vector<SpatialPoint> Polyline;
     std::vector<CurvePolyline> CurvePolylines;
+
+    SpatialDirection Along = {}, Across = {};
+    ResolvePlaneSpans(Declared, Along, Across);
 
     for (std::uint32_t CurveIndex = 1u; CurveIndex <= Declared.Curves().size(); ++CurveIndex)
     {
@@ -178,7 +215,8 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                     for (std::size_t B = 0u; B + 1u < Right.Points.size(); ++B)
                     {
                         SpatialPoint Intersected = {};
-                        if (SegmentIntersectionPlanar(Left.Points[A], Left.Points[A + 1u],
+                        if (SegmentIntersectionPlanar(Along, Across,
+                                                      Left.Points[A], Left.Points[A + 1u],
                                                       Right.Points[B], Right.Points[B + 1u],
                                                       Intersected))
                         {
@@ -189,6 +227,29 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                 }
             }
         }
+    }
+
+    // 🔴 THE GRID IS THE LAST RESORT, NOT A COMPETITOR. A grid intersection sits within half a step of
+    //    every probe, so letting it race the drawn geometry on distance would hand back a grid corner
+    //    whenever the artist reached for an endpoint slightly further away. It is offered only when
+    //    nothing drawn was found, which is the behaviour the host had arrived at by ordering its two
+    //    calls — now stated here rather than left to each caller to rediscover.
+    if (Accepted.GridAccepted && !Best.Resolved())
+    {
+        const SpatialPoint Origin = Declared.Declared() && Declared.HeldPlane().Declared()
+                                  ? Declared.HeldPlane().Origin
+                                  : SpatialPoint{};
+
+        const double SafeStep = std::max(GridStep, 1.0);
+        const SpatialDirection Offset = Difference(Origin, Probe);
+
+        const double SnappedAlong  = std::round(Dot(Offset, Along)  / SafeStep) * SafeStep;
+        const double SnappedAcross = std::round(Dot(Offset, Across) / SafeStep) * SafeStep;
+
+        const SpatialPoint Snapped = Added(Added(Origin, Scaled(Along, SnappedAlong)),
+                                           Scaled(Across, SnappedAcross));
+
+        ConsiderCandidate(Probe, Snapped, {}, SketchSnapSubject::Grid, {}, {}, MaximumDistance, Best);
     }
 
     return Best;
