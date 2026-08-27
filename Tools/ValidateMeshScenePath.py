@@ -39,7 +39,9 @@ def main() -> None:
     require(import_cpp, "DefaultWorkspaceMaterialRecord")
     checks.append("material slot capture and default material records stand")
 
-    require(host_cpp, "SceneMeshFormatSupported(Current.path().string())")
+    # 📝 The import directory listing moved to `SlateRuntime/Session/HostEnvironment`, which is how BOTH
+    #    hosts came to recognise mesh formats — the editor host's private copy of this never did.
+    require("Engine/SlateRuntime/Session/HostEnvironment/Source/HostEnvironment.cpp", "SceneMeshFormatSupported(Current.path().string())")
     checks.append("Content Browser import directory recognises mesh formats")
 
     require(host_cpp, "ImportSceneMeshFile(ImportPath.string())")

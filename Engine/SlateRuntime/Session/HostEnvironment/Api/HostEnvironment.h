@@ -1,0 +1,49 @@
+//============================================================================================================================================
+//                                                        HOSTENVIRONMENT.H
+//============================================================================================================================================
+// 🧩 Where a running executable finds things: its shaders beside the binary, the artist's home directory,
+//    and what the content browser should show when it is pointed at a folder.
+//
+// 🔴 ALL THREE WERE DEFINED TWICE — ONCE IN `EditorHost` AND ONCE IN `ParametricSketchHost` — AND TWO OF
+//    THE PAIRS HAD ALREADY DRIFTED. `ShaderStreamDirectory` differed only in whitespace, but
+//    `PopulateImportDirectory` did not: the parametric host recognised mesh and material-image files and
+//    the editor host did not, so the SAME folder listed different importable files depending on which
+//    executable opened it. Neither copy was wrong on its own; having two is what made them disagree.
+//
+// 📝 This is genuinely a runtime concern rather than a workspace one — it does not vary between texturing
+//    and sketching, and it is fixed for the life of the process.
+
+#pragma once
+
+#include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
+
+#include <filesystem>
+#include <string>
+
+namespace Slate
+{
+
+/// 🧩 The directory the compiled shaders were written to, beside the running binary.
+/// note ⚠️ Derived from the executable's own path rather than the working directory, because a host
+///       launched from a debugger or a file manager does not start in its own folder.
+/// out  - [-] an empty string when the executable's path cannot be determined
+/// cost 🚩
+/// tag  api, allocating
+std::string ShaderStreamDirectory();
+
+/// 🧩 The artist's home directory.
+/// out  - [-] empty when the platform names none
+/// cost 🚩
+/// tag  api, allocating
+std::filesystem::path HomeProfilePath();
+
+/// 🧩 Fills the content browser with what one directory holds.
+/// in   Requested  [-]  the directory to list; the literal "Home" resolves to the profile path
+/// note 🔴 `Supported` marks what this build can actually OPEN — directories, the two document formats, and
+///       every mesh and image format the importers recognise. The editor host's copy of this listed only
+///       the document formats, so meshes it could import were shown as unopenable.
+/// cost 🚩
+/// tag  api, allocating
+void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::filesystem::path& Requested);
+
+}   // namespace Slate

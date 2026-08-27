@@ -890,3 +890,21 @@ define the interaction** — which catches the regression the original could not
 | `ParametricSketchHost` lines         | 5 757         | **1 522** |
 | Definitions in the host              | 138           | **10**    |
 | Engine-mechanism definitions         | 18            | **1**     |
+
+**10t — where a running host finds things.** `SlateRuntime/Session/HostEnvironment`, **89 lines, 3
+definitions**: `ShaderStreamDirectory`, `HomeProfilePath`, `PopulateImportDirectory`.
+
+🔴 **ALL THREE WERE DEFINED TWICE, AND TWO PAIRS HAD ALREADY DRIFTED.** `ShaderStreamDirectory` differed
+only in whitespace — harmless, and exactly the kind of harmless that hides the next one.
+`PopulateImportDirectory` did not: **the parametric host recognised mesh and material-image files in the
+content browser and the editor host did not**, so the same folder listed different openable files depending
+on which executable opened it. Neither copy was wrong on its own. Having two is what made them disagree.
+The lift takes the union, so the editor host now recognises imports it never could.
+
+⚠️ Three more address-asserting gates repaired (`ValidateHostBuildBudgets`, `ValidateMaterialSystemPass3`,
+`ValidateMeshScenePath`). `ValidateMaterialSystemPass3` bundled two unrelated claims into one `require_text`
+— listing a directory, and importing the chosen file — which is why one lift broke both; they are now
+separate blocks pointed at the unit and the host respectively.
+
+📝 `SlateRuntime` now names `SlateDocument` and `SlateShape` in `Module.toml`: knowing which files are
+importable means knowing the importers.

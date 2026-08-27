@@ -56,7 +56,13 @@ def main() -> int:
         "static ParametricToolsPanel    ParametricTools;",
     ]:
         require(needle in editor, f"EditorHost missing static storage move {needle!r}")
-    require("_dupenv_s(&Home" in editor, "EditorHost must avoid MSVC getenv warning on Windows")
+    # 📝 `HomeProfilePath` was defined identically in two hosts and now lives in
+    #    `SlateRuntime/Session/HostEnvironment`, so the MSVC guard is checked there — one place, both hosts.
+    Environment = read("Engine/SlateRuntime/Session/HostEnvironment/Source/HostEnvironment.cpp")
+    require("_dupenv_s(&Home" in Environment,
+            "HostEnvironment must avoid MSVC getenv warning on Windows")
+    require("_dupenv_s(&Home" not in editor,
+            "EditorHost must not carry its own copy of the home profile lookup")
     require("std::strncpy" not in editor, "EditorHost must avoid MSVC strncpy warning")
     require("ResizedGeometryOffering" in editor and "ResizedGeometryDelivery" in editor,
             "EditorHost resize path should not shadow geometry construction locals")
@@ -76,7 +82,8 @@ def main() -> int:
     parametric = read("Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp")
     require(offstack(parametric),
             "ParametricSketchHost must keep the motion-heavy viewport sequence off the stack")
-    require("_dupenv_s(&Home" in parametric, "ParametricSketchHost must avoid MSVC getenv warning on Windows")
+    require("_dupenv_s(&Home" not in parametric,
+            "ParametricSketchHost must not carry its own copy of the home profile lookup")
     require("std::strncpy" not in parametric, "ParametricSketchHost must avoid MSVC strncpy warning")
     require("ConsumeSharedCodexActivation" in parametric,
             "ParametricSketchHost activation must use the shared codex activation helper")

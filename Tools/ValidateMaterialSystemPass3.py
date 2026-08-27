@@ -83,9 +83,15 @@ def main() -> int:
         "WorkspaceMaterialImageReference",
     )
 
+    # 📝 Two different claims that used to sit in one host file. Listing a directory moved to
+    #    `HostEnvironment` (shared by both hosts); acting on the chosen file is still the host's own.
+    require_text(
+        "Engine/SlateRuntime/Session/HostEnvironment/Source/HostEnvironment.cpp",
+        "MaterialImageFormatSupported(Current.path().string())",
+    )
+
     require_text(
         "Engine/Application/ParametricSketchHost/Source/ParametricSketchHost.cpp",
-        "MaterialImageFormatSupported(Current.path().string())",
         "ImportMaterialImageReference(ImportPath.string())",
         "BindWorkspaceMaterialImage",
     )

@@ -35,6 +35,7 @@
 #include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectoryPanel.h"
 #include "SlateUI/Interface/WorkspacePanel/Api/WorkspaceIndex.h"
 #include "SlateRuntime/Session/SessionSequence/Api/SessionSequence.h"
+#include "SlateRuntime/Session/HostEnvironment/Api/HostEnvironment.h"
 #include "SlateVulkan/Device/WorkspaceOverlayPass/Api/WorkspaceOverlayPass.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
 #include "SlateVulkan/Device/AtmospherePresentationSurface/Api/AtmospherePresentationSurface.h"
@@ -80,66 +81,7 @@ constexpr std::uint32_t InitialHeight = 720u;    // [px]
 constexpr const char* WindowTitle = "Slate \u2014 Editor";
 constexpr const char* HostName    = "EditorHost";
 
-std::filesystem::path HomeProfilePath()
-{
-#if defined(_WIN32)
-    char* Home = nullptr;
-    std::size_t Count = 0u;
-    if (_dupenv_s(&Home, &Count, "USERPROFILE") == 0 && Home != nullptr && Count > 1u)
-    {
-        std::filesystem::path Result = Home;
-        std::free(Home);
-        return Result;
-    }
-    if (Home != nullptr) std::free(Home);
-    return {};
-#else
-    const char* Home = std::getenv("HOME");
-    return (Home != nullptr && Home[0] != '\0') ? std::filesystem::path(Home) : std::filesystem::path{};
-#endif
-}
 
-/// 🧩 Enumerates a host-approved import folder for the browser; SlateUI receives names only, never filesystem authority.
-void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::filesystem::path& Requested)
-{
-    std::error_code Error;
-    std::filesystem::path Resolved = Requested;
-    if (Requested == "Home")
-    {
-        const std::filesystem::path Home = HomeProfilePath();
-        if (!Home.empty()) Resolved = Home;
-    }
-    if (Resolved.empty()) Resolved = std::filesystem::current_path(Error);
-
-    Browser.ImportEntryCount = 0u;
-    Browser.ImportTaken = ContentLibrary::AbsentIndex;
-    std::snprintf(Browser.ImportLocation, sizeof(Browser.ImportLocation), "%s", Resolved.generic_string().c_str());
-    if (Error || !std::filesystem::is_directory(Resolved, Error) || Error) return;
-
-    std::vector<std::filesystem::directory_entry> Entries;
-    for (std::filesystem::directory_iterator Current(Resolved, Error), End; !Error && Current != End; Current.increment(Error))
-        Entries.push_back(*Current);
-    std::sort(Entries.begin(), Entries.end(), [](const auto& Left, const auto& Right)
-    {
-        const bool LeftDirectory = Left.is_directory();
-        const bool RightDirectory = Right.is_directory();
-        return LeftDirectory != RightDirectory ? LeftDirectory : Left.path().filename() < Right.path().filename();
-    });
-
-    for (const auto& Current : Entries)
-    {
-        if (Browser.ImportEntryCount >= 128u) break;
-        ContentImportEntry& Written = Browser.ImportEntries[Browser.ImportEntryCount++];
-        const std::string Name = Current.path().filename().string();
-        const std::string Extension = Current.path().extension().string();
-        Written.Directory = Current.is_directory(Error) && !Error;
-        Written.Octets = Written.Directory ? 0u : Current.file_size(Error);
-        if (Error) { Error.clear(); Written.Octets = 0u; }
-        std::snprintf(Written.Naming, sizeof(Written.Naming), "%s", Name.c_str());
-        std::snprintf(Written.Extension, sizeof(Written.Extension), "%s", Extension.c_str());
-        Written.Supported = Written.Directory || Extension == ".codex" || Extension == ".sketch" || Extension == ".pigment";
-    }
-}
 
 // 📝 The workspace ground the interface is recorded over. Stated here because it is the one visual decision
 //    this host makes; everything else it presents belongs to a panel.
@@ -211,47 +153,6 @@ static_assert(sizeof(SessionSequence) > AutomaticLimit,
 
 constexpr float WorkspaceGround[4] = { 0.06f, 0.06f, 0.08f, 1.0f };   // [-]
 
-/// 🧩 Where the build lowered its shader streams, resolved from the EXECUTABLE's own location: the
-///    hosts ship in `<OutputRoot>/Binary`, and the streams live at `<OutputRoot>/Shader` — one hop up
-///    from wherever the executable actually sits, not from the working directory. A host launched
-///    from a shortcut, a debugger or a console at another directory used to resolve `current_path()`,
-///    which pointed at the wrong `Shader` folder — the overlay pass refused on the missing streams
-///    and the grid, the axes and the gizmo silently never drew (the reported missing overlay).
-/// note  🔴 A build that never lowered shaders (the sandbox) leaves this directory absent; the
-///        overlay pass refuses on the missing streams and the editor runs without the GPU overlay —
-///        and now falls back to the interface-drawn overlay instead of drawing nothing.
-std::string ShaderStreamDirectory()
-{
-    std::error_code Error;
-    std::filesystem::path Binary;
-
-#if defined(_WIN32)
-    {
-        wchar_t Executable[32768] = {};
-        const DWORD Written = GetModuleFileNameW(nullptr, Executable, 32768);
-
-        if (Written > 0u && Written < 32768u)
-            Binary = std::filesystem::path(Executable).parent_path();
-    }
-#endif
-
-    if (Binary.empty())
-    {
-#if !defined(_WIN32)
-        std::vector<char> Executable(32768, '\0');
-        const std::size_t Written = readlink("/proc/self/exe", Executable.data(), Executable.size());
-
-        if (Written > 0u && Written < Executable.size())
-            Binary = std::filesystem::path(std::string(Executable.data(), Written)).parent_path();
-#endif
-    }
-
-    if (Binary.empty())
-        Binary = std::filesystem::current_path(Error);
-
-    const std::filesystem::path Shader = Binary / ".." / "Shader";
-    return Shader.lexically_normal().string();
-}
 
 bool ProjectWorkspaceCodexPoint(const SceneDirectoryContext& Scene,
                                 const PlaneExtent& Extent,
