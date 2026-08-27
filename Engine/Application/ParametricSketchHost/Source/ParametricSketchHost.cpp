@@ -11,6 +11,7 @@
 #include "Application/Api/SharedViewportHostBridge.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 #include "SlateWorkspace/Discipline/RecordDeclaration/Api/RecordDeclaration.h"
+#include "SlateWorkspace/Discipline/SketchPicking/Api/SketchPicking.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/DrawableScale.h"
 #include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
@@ -97,14 +98,9 @@ using ParametricViewOrientation = ViewportOrientation;
 
 using ParametricViewportState = ViewportStanding;
 
-enum class ParametricSelectionSubject : std::uint32_t
-{
-    None = 0u,
-    Point = 1u,
-    Control = 2u,
-    Curve = 3u,
-    Record = 4u
-};
+// 📝 Picking now lives in `SlateWorkspace/Discipline/SketchPicking`. These aliases keep the host's
+//    existing use sites reading as they did, so the lift shows in the diff as a lift.
+using ParametricSelectionSubject = SketchPickSubject;
 
 // 📝 The grammar and its vocabulary now live in `SlateWorkspace/Discipline/TransformSequence`. These
 //    aliases keep the host's 93 existing use sites reading as they did, so the lift is visible in the
@@ -113,28 +109,9 @@ using ParametricTransformMode = TransformManner;
 
 using ParametricTransformConstraint = TransformRestriction;
 
-struct ParametricViewportSelection
-{
-    ParametricSelectionSubject Subject = ParametricSelectionSubject::None;
-    WorkspaceRecordName Record = {};
-    SketchPointName Point = {};
-    SketchControlName Control = {};
-    SketchCurveName Curve = {};
-    SpatialPoint Position = {};
+using ParametricViewportSelection = SketchPick;
 
-    bool Standing() const
-    {
-        return Subject != ParametricSelectionSubject::None;
-    }
-};
-
-struct ParametricTransformPlacement
-{
-    bool ControlPlacement = false;
-    SketchPointName Point = {};
-    SketchControlName Control = {};
-    SpatialPoint Position = {};
-};
+using ParametricTransformPlacement = SketchPlacementSubject;
 
 // 🔴 The five members the grammar owns — Mode, Engaged, SlideAlongCurve, Constraint and Numeric — are now
 //    one `TransformStanding`, reached through the accessors below. They are NOT duplicated here: a host
@@ -1596,24 +1573,6 @@ ThemeToken TokenFromPacked(std::uint32_t Packed)
     };
 }
 
-bool ResolvePlanarCoordinates(const SpatialBasis& Basis,
-                              const SpatialPoint& Position,
-                              double& Along,
-                              double& Across)
-{
-    const SpatialDirection Offset = Difference(Basis.Origin, Position);
-    Along = Dot(Offset, Basis.Along);
-    Across = Dot(Offset, Basis.Across);
-    return true;
-}
-
-SpatialPoint ResolvePlanarPointLocal(const SpatialBasis& Basis,
-                                     double Along,
-                                     double Across)
-{
-    return ResolvePlanarPoint(Basis, Along, Across);
-}
-
 bool ProjectWorldPoint(const SpatialBasis& Basis,
                        const ParametricViewportState& View,
                        bool Perspective,
@@ -1661,304 +1620,6 @@ WorkspaceRecordName ResolveSelectedRecord(const WorkspaceDirectoryProjection& Di
     return Row.Role == WorkspaceDirectoryRowRole::Record ? Row.Record : WorkspaceRecordName{};
 }
 
-bool ResolveSketchPointPositionLocal(const SketchStructure& Sketch,
-                                     SketchPointName Subject,
-                                     SpatialPoint& Position)
-{
-    if (!Subject.Assigned())
-        return false;
-
-    const std::uint32_t CurveIndex = Subject.IssuedIndex >> 8u;
-    if (CurveIndex == 0u)
-        return false;
-
-    std::vector<SketchPointPlacement> Points;
-    if (!ResolveSketchPoints(Sketch, { CurveIndex }, Points))
-        return false;
-
-    for (const SketchPointPlacement& Current : Points)
-        if (Current.Name.IssuedIndex == Subject.IssuedIndex)
-        {
-            Position = Current.Position;
-            return true;
-        }
-
-    return false;
-}
-
-bool ProfileContainsCurve(const ProfileSpecification& Profile,
-                          SketchCurveName Curve)
-{
-    for (const ProfileLoop& Loop : Profile.HeldLoops())
-        for (const ProfileCurveUse& Use : Loop.Traversal)
-            if (Use.TraversedCurve.IssuedIndex == Curve.IssuedIndex)
-                return true;
-    return false;
-}
-
-WorkspaceRecordName ResolveRecordForPoint(const WorkspaceRecordStructure& Records,
-                                          SketchPointName Point)
-{
-    for (std::uint32_t Index = 1u; Index <= Records.DeclaredCount(); ++Index)
-    {
-        const WorkspaceRecord* Record = Records.Resolve({ Index });
-        if (Record != nullptr && Record->SketchPoint.IssuedIndex == Point.IssuedIndex)
-            return { Index };
-    }
-
-    const std::uint32_t CurveIndex = Point.IssuedIndex >> 8u;
-    if (CurveIndex != 0u)
-        for (std::uint32_t Index = 1u; Index <= Records.DeclaredCount(); ++Index)
-        {
-            const WorkspaceRecord* Record = Records.Resolve({ Index });
-            if (Record != nullptr && Record->SketchCurve.IssuedIndex == CurveIndex)
-                return { Index };
-        }
-
-    return {};
-}
-
-WorkspaceRecordName ResolveRecordForCurve(const SketchStructure& Sketch,
-                                          const WorkspaceRecordStructure& Records,
-                                          SketchCurveName Curve)
-{
-    for (std::uint32_t Index = 1u; Index <= Records.DeclaredCount(); ++Index)
-    {
-        const WorkspaceRecord* Record = Records.Resolve({ Index });
-        if (Record != nullptr && Record->SketchCurve.IssuedIndex == Curve.IssuedIndex)
-            return { Index };
-    }
-
-    for (std::uint32_t Index = 1u; Index <= Records.DeclaredCount(); ++Index)
-    {
-        const WorkspaceRecord* Record = Records.Resolve({ Index });
-        if (Record == nullptr || !Record->Profile.Assigned() ||
-            Record->Profile.IssuedIndex > Sketch.Profiles().size())
-            continue;
-        if (ProfileContainsCurve(Sketch.Profiles()[Record->Profile.IssuedIndex - 1u], Curve))
-            return { Index };
-    }
-
-    return {};
-}
-
-bool ResolveCurvePivot(const SketchStructure& Sketch,
-                       SketchCurveName Curve,
-                       SpatialPoint& Pivot)
-{
-    if (!Curve.Assigned() || Curve.IssuedIndex > Sketch.Curves().size())
-        return false;
-
-    const CurveSpecification& Geometry = Sketch.Curves()[Curve.IssuedIndex - 1u].Geometry;
-    switch (Geometry.Subject())
-    {
-        case CurveSubject::Line:
-        {
-            const LineCurve& Line = Geometry.HeldLine();
-            Pivot = { (Line.Origin.Left + Line.Terminus.Left) * 0.5,
-                      (Line.Origin.Up + Line.Terminus.Up) * 0.5,
-                      (Line.Origin.Forward + Line.Terminus.Forward) * 0.5 };
-            return true;
-        }
-        case CurveSubject::CircularArc:
-            Pivot = Geometry.HeldCircularArc().Centre;
-            return true;
-        case CurveSubject::Circle:
-            Pivot = Geometry.HeldCircle().Centre;
-            return true;
-        case CurveSubject::EllipticalArc:
-            Pivot = Geometry.HeldEllipticalArc().Centre;
-            return true;
-        case CurveSubject::Ellipse:
-            Pivot = Geometry.HeldEllipse().Centre;
-            return true;
-        case CurveSubject::Bezier:
-            if (!Geometry.HeldBezier().ControlPoints.empty())
-            {
-                Pivot = Geometry.HeldBezier().ControlPoints[Geometry.HeldBezier().ControlPoints.size() / 2u];
-                return true;
-            }
-            return false;
-        case CurveSubject::BasisSpline:
-            if (!Geometry.HeldBasisSpline().ControlPoints.empty())
-            {
-                Pivot = Geometry.HeldBasisSpline().ControlPoints[Geometry.HeldBasisSpline().ControlPoints.size() / 2u];
-                return true;
-            }
-            return false;
-        case CurveSubject::RationalSpline:
-            if (!Geometry.HeldRationalSpline().ControlPoints.empty())
-            {
-                Pivot = Geometry.HeldRationalSpline().ControlPoints[Geometry.HeldRationalSpline().ControlPoints.size() / 2u];
-                return true;
-            }
-            return false;
-        case CurveSubject::Hermite:
-        {
-            const HermiteCurve& Hermite = Geometry.HeldHermite();
-            Pivot = { (Hermite.StartPoint.Left + Hermite.EndPoint.Left) * 0.5,
-                      (Hermite.StartPoint.Up + Hermite.EndPoint.Up) * 0.5,
-                      (Hermite.StartPoint.Forward + Hermite.EndPoint.Forward) * 0.5 };
-            return true;
-        }
-        case CurveSubject::SubjectCount:
-            return false;
-    }
-    return false;
-}
-
-bool ResolveProfilePivot(const SketchStructure& Sketch,
-                         ProfileNameInFeature Profile,
-                         SpatialPoint& Pivot)
-{
-    if (!Profile.Assigned() || Profile.IssuedIndex > Sketch.Profiles().size())
-        return false;
-
-    const ProfileSpecification& Source = Sketch.Profiles()[Profile.IssuedIndex - 1u];
-    std::uint32_t Count = 0u;
-    Pivot = {};
-
-    for (const ProfileLoop& Loop : Source.HeldLoops())
-        for (const ProfileCurveUse& Use : Loop.Traversal)
-        {
-            SpatialPoint CurvePivot = {};
-            if (!ResolveCurvePivot(Sketch, { Use.TraversedCurve.IssuedIndex }, CurvePivot))
-                continue;
-            Pivot = { Pivot.Left + CurvePivot.Left,
-                      Pivot.Up + CurvePivot.Up,
-                      Pivot.Forward + CurvePivot.Forward };
-            ++Count;
-        }
-
-    if (Count == 0u)
-        return false;
-    const double Scale = 1.0 / static_cast<double>(Count);
-    Pivot = { Pivot.Left * Scale, Pivot.Up * Scale, Pivot.Forward * Scale };
-    return true;
-}
-
-void AppendPlacementUnique(std::vector<ParametricTransformPlacement>& Placements,
-                           const ParametricTransformPlacement& Placement)
-{
-    for (const ParametricTransformPlacement& Existing : Placements)
-    {
-        if (Placement.ControlPlacement == Existing.ControlPlacement)
-        {
-            if (!Placement.ControlPlacement && Placement.Point.IssuedIndex == Existing.Point.IssuedIndex)
-                return;
-            if (Placement.ControlPlacement && Placement.Control.IssuedIndex == Existing.Control.IssuedIndex)
-                return;
-        }
-    }
-    Placements.push_back(Placement);
-}
-
-void CollectCurvePlacements(const SketchStructure& Sketch,
-                            SketchCurveName Curve,
-                            std::vector<ParametricTransformPlacement>& Placements)
-{
-    std::vector<SketchPointPlacement> Points;
-    if (ResolveSketchPoints(Sketch, Curve, Points))
-        for (const SketchPointPlacement& Point : Points)
-            AppendPlacementUnique(Placements, { false, Point.Name, {}, Point.Position });
-
-    std::vector<SketchControlPlacement> Controls;
-    if (ResolveSketchControls(Sketch, Curve, Controls))
-        for (const SketchControlPlacement& Control : Controls)
-            AppendPlacementUnique(Placements, { true, {}, Control.Name, Control.Position });
-}
-
-void CollectProfilePlacements(const SketchStructure& Sketch,
-                              ProfileNameInFeature Profile,
-                              std::vector<ParametricTransformPlacement>& Placements)
-{
-    if (!Profile.Assigned() || Profile.IssuedIndex > Sketch.Profiles().size())
-        return;
-
-    for (const ProfileLoop& Loop : Sketch.Profiles()[Profile.IssuedIndex - 1u].HeldLoops())
-        for (const ProfileCurveUse& Use : Loop.Traversal)
-            CollectCurvePlacements(Sketch, { Use.TraversedCurve.IssuedIndex }, Placements);
-}
-
-ParametricViewportSelection ResolveViewportPick(const SketchStructure& Sketch,
-                                                const WorkspaceRecordStructure& Records,
-                                                const SpatialPoint& Probe,
-                                                double MaximumDistance)
-{
-    SketchPointPlacement Point = {};
-    double Distance = MaximumDistance;
-    if (ResolveNearestSketchPoint(Sketch, Probe, MaximumDistance, Point, Distance))
-    {
-        ParametricViewportSelection Pick = {};
-        Pick.Subject = ParametricSelectionSubject::Point;
-        Pick.Point = Point.Name;
-        Pick.Curve = Point.SourceCurve;
-        Pick.Position = Point.Position;
-        Pick.Record = ResolveRecordForPoint(Records, Point.Name);
-        if (Pick.Record.Assigned())
-            return Pick;
-    }
-
-    SketchControlPlacement Control = {};
-    Distance = MaximumDistance;
-    if (ResolveNearestSketchControl(Sketch, Probe, MaximumDistance, Control, Distance))
-    {
-        ParametricViewportSelection Pick = {};
-        Pick.Subject = ParametricSelectionSubject::Control;
-        Pick.Control = Control.Name;
-        Pick.Curve = Control.SourceCurve;
-        Pick.Position = Control.Position;
-        Pick.Record = ResolveRecordForCurve(Sketch, Records, Control.SourceCurve);
-        if (Pick.Record.Assigned())
-            return Pick;
-    }
-
-    SketchCurveName Curve = {};
-    Distance = MaximumDistance;
-    if (ResolveNearestSketchCurve(Sketch, Probe, MaximumDistance, Curve, Distance))
-    {
-        ParametricViewportSelection Pick = {};
-        Pick.Subject = ParametricSelectionSubject::Curve;
-        Pick.Curve = Curve;
-        Pick.Record = ResolveRecordForCurve(Sketch, Records, Curve);
-        ResolveCurvePivot(Sketch, Curve, Pick.Position);
-        return Pick;
-    }
-
-    return {};
-}
-
-bool ResolveRecordSelection(const SketchStructure& Sketch,
-                            const WorkspaceRecordStructure& Records,
-                            WorkspaceRecordName RecordName,
-                            ParametricViewportSelection& Selection)
-{
-    Selection = {};
-    const WorkspaceRecord* Record = Records.Resolve(RecordName);
-    if (Record == nullptr)
-        return false;
-
-    Selection.Record = RecordName;
-    switch (Record->Subject)
-    {
-        case WorkspaceRecordSubject::Point:
-            Selection.Subject = ParametricSelectionSubject::Point;
-            Selection.Point = Record->SketchPoint;
-            return ResolveSketchPointPositionLocal(Sketch, Record->SketchPoint, Selection.Position);
-        case WorkspaceRecordSubject::OpenCurve:
-            Selection.Subject = ParametricSelectionSubject::Curve;
-            Selection.Curve = Record->SketchCurve;
-            return ResolveCurvePivot(Sketch, Record->SketchCurve, Selection.Position);
-        case WorkspaceRecordSubject::ClosedProfile:
-        case WorkspaceRecordSubject::ThinSurface:
-        case WorkspaceRecordSubject::Solid:
-            Selection.Subject = ParametricSelectionSubject::Record;
-            return ResolveProfilePivot(Sketch, Record->Profile, Selection.Position);
-        default:
-            return false;
-    }
-}
-
 ParametricViewportSelection ResolveEditableSelection(const SketchStructure& Sketch,
                                                      const WorkspaceRecordStructure& Records,
                                                      WorkspaceRecordName SelectedRecord,
@@ -1971,7 +1632,7 @@ ParametricViewportSelection ResolveEditableSelection(const SketchStructure& Sket
         return SemanticSelection;
 
     ParametricViewportSelection Selection = {};
-    ResolveRecordSelection(Sketch, Records, SelectedRecord, Selection);
+    ResolvePickForRecord(Sketch, Records, SelectedRecord, Selection);
     return Selection;
 }
 
@@ -2074,7 +1735,7 @@ void ApplyTransformPlacements(SketchStructure& Sketch,
         const SpatialPoint& Origin = Transform.Origins[Index];
         double Along = 0.0;
         double Across = 0.0;
-        ResolvePlanarCoordinates(Basis, Origin, Along, Across);
+        ResolvePlaneCoordinates(Basis, Origin, Along, Across);
 
         if (Transform.Mode() == ParametricTransformMode::Move)
         {
@@ -2103,7 +1764,7 @@ void ApplyTransformPlacements(SketchStructure& Sketch,
             }
         }
 
-        const SpatialPoint Position = ResolvePlanarPointLocal(Basis, Along, Across);
+        const SpatialPoint Position = ResolvePlanarPoint(Basis, Along, Across);
         const ParametricTransformPlacement& Placement = Transform.Placements[Index];
         if (Placement.ControlPlacement)
             Discard(EnforceSketchControl(Sketch, Placement.Control, Position));
@@ -2170,7 +1831,7 @@ bool StartTransformSession(const PlaneExtent& Extent,
     Transform.Target = Target;
     Transform.Record = RecordName;
     Transform.Pivot = Pivot;
-    ResolvePlanarCoordinates(Basis, Pivot, Transform.PivotAlong, Transform.PivotAcross);
+    ResolvePlaneCoordinates(Basis, Pivot, Transform.PivotAlong, Transform.PivotAcross);
     Transform.Placements = Placements;
     Transform.Origins.reserve(Placements.size());
     for (const ParametricTransformPlacement& Placement : Placements)
@@ -2182,7 +1843,7 @@ bool StartTransformSession(const PlaneExtent& Extent,
     SpatialPoint Probe = Pivot;
     if (ResolveViewportPlaneIntersection(Basis, View, Perspective, Extent,
                                          Pointer.PositionX, Pointer.PositionY, Probe))
-        ResolvePlanarCoordinates(Basis, Probe, Transform.StartAlong, Transform.StartAcross);
+        ResolvePlaneCoordinates(Basis, Probe, Transform.StartAlong, Transform.StartAcross);
     else
     {
         Transform.StartAlong = Transform.PivotAlong;
@@ -2217,7 +1878,7 @@ void UpdateTransformSession(const PlaneExtent& Extent,
 
     double Along = 0.0;
     double Across = 0.0;
-    ResolvePlanarCoordinates(Basis, Probe, Along, Across);
+    ResolvePlaneCoordinates(Basis, Probe, Along, Across);
 
     double AlongOffset = Along - Transform.StartAlong;
     double AcrossOffset = Across - Transform.StartAcross;
@@ -2268,7 +1929,7 @@ void UpdateTransformSession(const PlaneExtent& Extent,
         }
         if (Modifiers.Commanded)
         {
-            const SpatialPoint SnappedProbe = ResolvePlanarPointLocal(Basis,
+            const SpatialPoint SnappedProbe = ResolvePlanarPoint(Basis,
                 Transform.StartAlong + AlongOffset,
                 Transform.StartAcross + AcrossOffset);
             const SketchSnapPlacement Snap = ResolveNearestSnap(Sketch, SnappedProbe,
@@ -2277,7 +1938,7 @@ void UpdateTransformSession(const PlaneExtent& Extent,
             {
                 double SnapAlong = 0.0;
                 double SnapAcross = 0.0;
-                ResolvePlanarCoordinates(Basis, Snap.Position, SnapAlong, SnapAcross);
+                ResolvePlaneCoordinates(Basis, Snap.Position, SnapAlong, SnapAcross);
                 AlongOffset += SnapAlong - (Transform.StartAlong + AlongOffset);
                 AcrossOffset += SnapAcross - (Transform.StartAcross + AcrossOffset);
             }
@@ -3585,7 +3246,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     const bool Probed = ResolveViewportPlaneIntersection(Basis, View, Perspective, Extent,
                                                          Pointer.PositionX, Pointer.PositionY, Probe);
     if (Probed)
-        HoveredSelection = ResolveViewportPick(Sketch, Records, Probe, ResolveSnapTolerance(View, Perspective));
+        HoveredSelection = ResolveSketchPick(Sketch, Records, Probe, ResolveSnapTolerance(View, Perspective));
 
     const ParametricViewportSelection ActiveSelection =
         ResolveEditableSelection(Sketch, Records, SelectedRecord, PendingSelection, SemanticSelection);

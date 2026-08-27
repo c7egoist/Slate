@@ -561,3 +561,29 @@ of bug originally reported, and the proof would have missed it.
 
 `ParametricSketchHost` 4 915 → **5 014** — this step ADDS a feature rather than lifting one. 37 + 293 new
 claims. Fifteen gates.
+
+**10h — what the artist just pointed at.** Fifteen functions, `SlateWorkspace/Discipline/SketchPicking`.
+
+🔴 **The pick priority is the whole design.** A point, a spline control and a curve can all be within reach
+of one cursor position, and picking the nearest of the three is *wrong*: a curve passes through every one of
+its own endpoints, so at an endpoint both sit at distance zero and a distance comparison could hand back the
+curve. The artist would never grab the end they were aiming at. The order is **point, then control, then
+curve** — smallest target first — each answered at its own full tolerance rather than competing.
+
+📝 **The proof corrected me on deduplication.** I claimed two lines meeting at a corner share that corner
+and it must be collected once. Wrong — each curve names its *own* endpoints, so the corner is point 258 of
+one line and point 513 of the other. They are coincident but genuinely distinct subjects, and both must
+move, or dragging one line would silently drag its neighbour's end with it. The uniqueness guard is for a
+subject reachable by two **routes**: a curve collected directly and again as part of a profile containing
+it. That is what the section now proves.
+
+⚠️ **One guard was added rather than transcribed.** `ResolveRecordForPoint` and `ResolveRecordForCurve`
+matched on `IssuedIndex` with no check that the incoming name was assigned. An unassigned name is index
+zero, and every record carrying no point also holds zero — so an unassigned name resolved to the first
+folder or dimension in the directory, handing back a record as the owner of something that does not exist.
+Both refuse now.
+
+**An eleventh duplicate:** the host's `ResolvePlanarCoordinates` was character-for-character the projection
+unit's `ResolvePlaneCoordinates`, differing only by an unconditional `return true` no caller could use.
+
+`ParametricSketchHost` 5 014 → **4 675**. 48 claims, seven sabotages caught.
