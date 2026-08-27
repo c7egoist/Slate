@@ -732,3 +732,51 @@ it cannot do is disambiguate coincident ones, and that wants a selection afforda
 click.
 
 105 claims, eight sabotages caught.
+
+### 4.7 Finishing step 10
+
+**10l — the projections.** Four host helpers, `ProjectAreaPoint`, `ProjectWorldPoint`,
+`ProjectSceneProxyPoint` and `ResolvePlanePosition`, were thin covers over `ViewportProjection`. Three were
+deleted outright and the fourth became `ProjectOffsetPoint`, which states an offset in the basis's own
+three axes — the host had rebuilt that offset by hand at three sites.
+
+🔴 **`ProjectSpatialPoint` DID NOT DO WHAT ITS HEADER SAID.** The note read "it does NOT require the point
+to lie on the plane"; the body ran the point through `ResolvePlaneCoordinates` first, which **discards the
+component along the normal**. A point fifty units above the plane projected to exactly the pixel of its
+shadow on it, and in orthographic the height was discarded silently and completely. Measured: 193 px of
+error in perspective at 50 units up, 400 px at 80. `ViewportProjectionProof` had a claim that projecting a
+point and projecting its coordinates agree — and both sides of it lie on the plane by construction, so the
+case was never covered. Eight new claims now pin it, including the sign, and the old body fails all eight.
+
+⚠️ **I manufactured a defect and then had to un-find it.** Comparing the host's projection against the
+unit's, I typed a 60° field of view into the scratch copy where the codebase uses 42°, measured up to 56 px
+of divergence, and briefly believed the host and the unit disagreed. They are algebraically identical.
+**Copy a constant, do not retype it** — and when two implementations of the same formula differ, suspect
+the harness before the code.
+
+**10m — the constraints.** `SlateWorkspace/Discipline/ConstraintAuthoring`.
+
+🔴 **What a constraint DEMANDS of the selection was decided by where it sat in an `if`-chain** — the same
+shape as the placement defect. The host tested the subject and then reached for `.Curve` or `.Point`
+according to the branch, so what a relationship needed was a property of its position in the chain rather
+than of the relationship. It is now a table of eight rows stating demand, badge and name, and every one of
+the sixteen selections the artist could be holding is walked against every subject.
+
+🔴 **Two of the six solver verdicts were unnamed.** `ConstraintDispositionText` handled four and fell
+through to "unknown", so a sketch that was simply *not solved yet* and one carrying a *duplicate
+constraint* both read as an unexplained failure. The compiler found it the moment the switch moved
+somewhere warnings are errors.
+
+🔴 **Every constraint badge on a line hung on the line's endpoint.** The anchor was `Polyline[size / 2]`,
+and **a line samples to exactly two points however many steps are asked for** — so `size / 2` is index 1,
+its end. That is precisely where lines meet, so badges on connected lines stacked on top of one another.
+The anchor is now the midpoint *by length*, which is right for a two-point line and a fifty-point arc
+alike.
+
+⚠️ **A sabotage survived because the fixture asked the unit what to expect.** §2 read each demand from
+`DeclaredConstraint` and then checked the unit against it, which proves only that the unit agrees with
+itself: changing Coincident to want two curves passed. The expectation is now stated independently, from
+what each relationship *means*. **A proof must know the answer before it asks.**
+
+`ParametricSketchHost` 3 635 → **3 512**. Engine-mechanism definitions 18 → **11**. 448 claims, five
+sabotages caught.

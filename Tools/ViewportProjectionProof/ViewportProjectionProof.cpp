@@ -278,6 +278,42 @@ void ProveRoundTrip()
                                              ResolvePlanarPoint(Basis, 9.0, -4.0), SpatialX, SpatialY);
     Claim(Planar == Spatial && Near(PlanarX, SpatialX, 0.001) && Near(PlanarY, SpatialY, 0.001),
           "projecting a point and projecting its coordinates agree");
+
+    // 🔴 A POINT OFF THE PLANE MUST NOT PROJECT TO ITS SHADOW ON IT. This went through
+    //    `ResolvePlaneCoordinates` first, which discards the component along the normal, so a point fifty
+    //    units up landed on exactly the pixel its ground shadow did. Everything that draws something
+    //    standing OFF the sketch plane — a scene proxy, a solid, a gizmo arm along the normal — was
+    //    drawing it flat, and no claim here covered the case because both sides of the comparison above
+    //    lie on the plane by construction.
+    for (const bool Projected : { false, true })
+    {
+        ViewportStanding Standing;
+        ApplyViewportOrientation(Standing, ViewportOrientation::Isometric, Projected);
+
+        const SpatialPoint OnPlane  = ResolvePlanarPoint(Basis, 9.0, -4.0);
+        const SpatialPoint Above    = Added(OnPlane, Scaled(Basis.Normal, 50.0));
+        const SpatialPoint Below    = Added(OnPlane, Scaled(Basis.Normal, -30.0));
+
+        float FlatX = 0.0f, FlatY = 0.0f, HighX = 0.0f, HighY = 0.0f, LowX = 0.0f, LowY = 0.0f;
+        const bool Flat = ProjectSpatialPoint(Basis, Standing, Projected, Extent, OnPlane, FlatX, FlatY);
+        const bool High = ProjectSpatialPoint(Basis, Standing, Projected, Extent, Above,   HighX, HighY);
+        const bool Low  = ProjectSpatialPoint(Basis, Standing, Projected, Extent, Below,   LowX,  LowY);
+
+        Claim(Flat && High && Low, "a point above and below the plane both project");
+        Claim(!Near(static_cast<double>(HighX), static_cast<double>(FlatX), 0.5) ||
+              !Near(static_cast<double>(HighY), static_cast<double>(FlatY), 0.5),
+              "a point standing off the plane does NOT land on its shadow");
+        Claim(!Near(static_cast<double>(LowX), static_cast<double>(HighX), 0.5) ||
+              !Near(static_cast<double>(LowY), static_cast<double>(HighY), 0.5),
+              "...and above the plane is not the same place as below it");
+
+        // 📝 On an isometric view the normal runs up the screen, so higher must draw higher — a smaller
+        //    screen Y. This pins the SIGN, which a bare inequality would let through inverted.
+        Claim(static_cast<double>(HighY) < static_cast<double>(FlatY),
+              "higher off the plane draws higher up the display");
+        Claim(static_cast<double>(LowY) > static_cast<double>(FlatY),
+              "...and below the plane draws lower down");
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------

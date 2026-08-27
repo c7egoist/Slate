@@ -149,6 +149,27 @@ bool ProjectSpatialPoint(const SpatialBasis& Basis,
                          float& ScreenX,
                          float& ScreenY);
 
+/// 🧩 Where a point offset from a centre in the basis's own three directions lands on screen.
+///
+/// in    Centre  [-]  the point the offset is measured from
+/// in    Along   [-]  distance along the basis's along direction
+/// in    Normal  [-]  distance along the basis's normal, so OFF the plane
+/// in    Across  [-]  distance along the basis's across direction
+///
+/// note 📝 For drawing a box, a proxy or any marker that stands off the plane. Saying it in the basis's
+///       own axes is what keeps the caller from rebuilding the offset by hand at every site — the host
+///       had done exactly that in three places.
+bool ProjectOffsetPoint(const SpatialBasis& Basis,
+                        const ViewportStanding& View,
+                        bool Perspective,
+                        const PlaneExtent& Extent,
+                        const SpatialPoint& Centre,
+                        double Along,
+                        double Normal,
+                        double Across,
+                        float& ScreenX,
+                        float& ScreenY);
+
 /// 🧩 Which point on the sketch plane a screen position names.
 /// out   Position  [-]  written only when the ray meets the plane in front of the viewer
 /// out   Standing  [-]  false when the ray runs parallel to the plane, or meets it behind the viewer

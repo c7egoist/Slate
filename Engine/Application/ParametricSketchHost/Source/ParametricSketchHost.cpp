@@ -17,6 +17,7 @@
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
 #include "SlateWorkspace/Discipline/PlacementCommit/Api/PlacementCommit.h"
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
+#include "SlateWorkspace/Discipline/ConstraintAuthoring/Api/ConstraintAuthoring.h"
 #include "SlateWorkspace/Discipline/TransformGizmo/Api/TransformGizmo.h"
 #include "SlateWorkspace/Discipline/TransformSession/Api/TransformSession.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
@@ -503,51 +504,7 @@ void RecordViewportStateReadout(RecordingSurface& Surface,
                     Detail, 11.0f);
 }
 
-const char* ConstraintGlyphText(ConstraintSubject Subject)
-{
-    switch (Subject)
-    {
-        case ConstraintSubject::Coincident:     return "●";
-        case ConstraintSubject::Horizontal:     return "H";
-        case ConstraintSubject::Vertical:       return "V";
-        case ConstraintSubject::Parallel:       return "∥";
-        case ConstraintSubject::Perpendicular:  return "⊥";
-        case ConstraintSubject::Tangent:        return "T";
-        case ConstraintSubject::Equal:          return "=";
-        case ConstraintSubject::Fixed:          return "F";
-        case ConstraintSubject::SubjectCount:   return "?";
-    }
-    return "?";
-}
 
-bool ResolveConstraintGlyphAnchor(const SketchStructure& Sketch,
-                                  const ReferenceSpecification& Reference,
-                                  SpatialPoint& Anchor)
-{
-    if (Reference.Subject == ReferenceSubject::SketchCurve && Reference.SketchCurve.Assigned() &&
-        Reference.SketchCurve.IssuedIndex <= Sketch.Curves().size())
-    {
-        std::vector<SpatialPoint> Polyline;
-        AppendCurvePolyline(Sketch.Curves()[Reference.SketchCurve.IssuedIndex - 1u].Geometry, Polyline, 24u);
-        if (Polyline.empty())
-            return false;
-        Anchor = Polyline[Polyline.size() / 2u];
-        return true;
-    }
-    if (Reference.Subject == ReferenceSubject::SketchPoint && Reference.SketchPoint.Assigned())
-    {
-        const std::uint32_t CurveIndex = Reference.SketchPoint.IssuedIndex >> 8u;
-        std::vector<SketchPointPlacement> Points;
-        if (CurveIndex != 0u && ResolveSketchPoints(Sketch, { CurveIndex }, Points))
-            for (const SketchPointPlacement& Point : Points)
-                if (Point.Name.IssuedIndex == Reference.SketchPoint.IssuedIndex)
-                {
-                    Anchor = Point.Position;
-                    return true;
-                }
-    }
-    return false;
-}
 
 void RecordConstraintGlyphs(RecordingSurface& Surface,
                             const PlaneExtent& Extent,
@@ -561,43 +518,19 @@ void RecordConstraintGlyphs(RecordingSurface& Surface,
     for (const ConstraintSpecification& Constraint : Sketch.Constraints())
     {
         SpatialPoint Anchor = {};
-        if (!ResolveConstraintGlyphAnchor(Sketch, Constraint.Primary, Anchor))
+        if (!ResolveConstraintAnchor(Sketch, Constraint.Primary, Anchor))
             continue;
+
         float X = 0.0f, Y = 0.0f;
-        const SpatialDirection Offset = Difference(Basis.Origin, Anchor);
-        const double Along = Dot(Offset, Basis.Along);
-        const double Across = Dot(Offset, Basis.Across);
-        if (!ProjectViewportPoint(Basis, View, Perspective, Extent, Along, Across, X, Y))
+        if (!ProjectSpatialPoint(Basis, View, Perspective, Extent, Anchor, X, Y))
             continue;
+
         Surface.TextRun(X + 6.0f, Y - 6.0f, Covering(0xFBBF24u),
-                        ConstraintGlyphText(Constraint.Subject), 12.0f, 0.0f, true);
+                        ConstraintGlyph(Constraint.Subject), 12.0f, 0.0f, true);
     }
 }
 
-const char* ConstraintDispositionText(ConstraintDisposition Disposition)
-{
-    switch (Disposition)
-    {
-        case ConstraintDisposition::Produced:              return "valid";
-        case ConstraintDisposition::InvalidSketch:         return "invalid sketch references";
-        case ConstraintDisposition::UnsupportedConstraint: return "unsupported constraint";
-        case ConstraintDisposition::ConflictingConstraint: return "conflicting constraint";
-    }
-    return "unknown";
-}
 
-bool ProjectAreaPoint(const SpatialBasis& Basis,
-                        const ParametricViewportState& View,
-                        bool Perspective,
-                        const PlaneExtent& Extent,
-                        const SpatialPoint& Position,
-                        float& X,
-                        float& Y)
-{
-    const SpatialDirection Offset = Difference(Basis.Origin, Position);
-    return ProjectViewportPoint(Basis, View, Perspective, Extent,
-                                Dot(Offset, Basis.Along), Dot(Offset, Basis.Across), X, Y);
-}
 
 void RecordProfileAreaOverlay(RecordingSurface& Surface,
                                 const PlaneExtent& Extent,
@@ -613,9 +546,9 @@ void RecordProfileAreaOverlay(RecordingSurface& Surface,
     for (const ProfileAreaTriangle& Triangle : Analysis.Triangles)
     {
         float X0 = 0.0f, Y0 = 0.0f, X1 = 0.0f, Y1 = 0.0f, X2 = 0.0f, Y2 = 0.0f;
-        if (!ProjectAreaPoint(Basis, View, Perspective, Extent, Triangle.A, X0, Y0) ||
-            !ProjectAreaPoint(Basis, View, Perspective, Extent, Triangle.B, X1, Y1) ||
-            !ProjectAreaPoint(Basis, View, Perspective, Extent, Triangle.C, X2, Y2))
+        if (!ProjectSpatialPoint(Basis, View, Perspective, Extent, Triangle.A, X0, Y0) ||
+            !ProjectSpatialPoint(Basis, View, Perspective, Extent, Triangle.B, X1, Y1) ||
+            !ProjectSpatialPoint(Basis, View, Perspective, Extent, Triangle.C, X2, Y2))
             continue;
         const float Corners[6] = { X0, Y0, X1, Y1, X2, Y2 };
         Surface.Tongue(Corners, 3u, Partial(0x5B8CFFu, Triangle.Role == ProfileAreaLoopRole::Outer ? 0.12 : 0.04));
@@ -629,8 +562,8 @@ void RecordProfileAreaOverlay(RecordingSurface& Surface,
         for (std::size_t Index = 0u; Index + 1u < Loop.Points.size(); ++Index)
         {
             float X0 = 0.0f, Y0 = 0.0f, X1 = 0.0f, Y1 = 0.0f;
-            if (ProjectAreaPoint(Basis, View, Perspective, Extent, Loop.Points[Index], X0, Y0) &&
-                ProjectAreaPoint(Basis, View, Perspective, Extent, Loop.Points[Index + 1u], X1, Y1))
+            if (ProjectSpatialPoint(Basis, View, Perspective, Extent, Loop.Points[Index], X0, Y0) &&
+                ProjectSpatialPoint(Basis, View, Perspective, Extent, Loop.Points[Index + 1u], X1, Y1))
             {
                 const float Xs[2] = { X0, X1 };
                 const float Ys[2] = { Y0, Y1 };
@@ -640,7 +573,7 @@ void RecordProfileAreaOverlay(RecordingSurface& Surface,
         if (!Loop.Points.empty())
         {
             float X = 0.0f, Y = 0.0f;
-            if (ProjectAreaPoint(Basis, View, Perspective, Extent, Loop.Points[Loop.Points.size() / 2u], X, Y))
+            if (ProjectSpatialPoint(Basis, View, Perspective, Extent, Loop.Points[Loop.Points.size() / 2u], X, Y))
                 Surface.TextRun(X + 8.0f, Y + 8.0f,
                                 Loop.Role == ProfileAreaLoopRole::Hole ? Covering(0xC4B5FDu) : Covering(0xA7F3D0u),
                                 Loop.Role == ProfileAreaLoopRole::Hole ? "hole" : "outer", 10.0f);
@@ -650,12 +583,12 @@ void RecordProfileAreaOverlay(RecordingSurface& Surface,
     for (const ProfileAreaIssue& Issue : Analysis.Issues)
     {
         float X0 = 0.0f, Y0 = 0.0f, X1 = 0.0f, Y1 = 0.0f;
-        if (!ProjectAreaPoint(Basis, View, Perspective, Extent, Issue.Primary, X0, Y0))
+        if (!ProjectSpatialPoint(Basis, View, Perspective, Extent, Issue.Primary, X0, Y0))
             continue;
         const ThemeToken Tone = Issue.Subject == ProfileAreaIssueSubject::SelfIntersection ? Covering(0xF97316u)
                                                                                               : Covering(0xEF4444u);
         if (Issue.Subject == ProfileAreaIssueSubject::Gap &&
-            ProjectAreaPoint(Basis, View, Perspective, Extent, Issue.Secondary, X1, Y1))
+            ProjectSpatialPoint(Basis, View, Perspective, Extent, Issue.Secondary, X1, Y1))
         {
             const float Xs[2] = { X0, X1 };
             const float Ys[2] = { Y0, Y1 };
@@ -688,7 +621,7 @@ void RecordProfileValidationReadout(RecordingSurface& Surface,
                   static_cast<unsigned>(Areas.Loops.size()),
                   static_cast<unsigned>(Areas.Issues.size()),
                   static_cast<unsigned>(Sketch.Constraints().size()),
-                  ConstraintDispositionText(Constraints),
+                  ConstraintDispositionNaming(Constraints),
                   Areas.Clipper2BackendAvailable ? "clipper2" : "poly fallback",
                   Areas.EarcutBackendAvailable ? "earcut" : "fan preview");
     Surface.TextRun(Extent.MinimumX + 16.0f,
@@ -718,28 +651,10 @@ void AdoptCommittedShape(SketchSubject Subject,
 }
 
 
-ReferenceSpecification ReferenceFromPoint(SketchPointName Point)
-{
-    ReferenceSpecification Reference = {};
-    Reference.Subject = ReferenceSubject::SketchPoint;
-    Reference.SketchPoint = Point;
-    return Reference;
-}
-
-ReferenceSpecification ReferenceFromCurve(SketchCurveName Curve)
-{
-    ReferenceSpecification Reference = {};
-    Reference.Subject = ReferenceSubject::SketchCurve;
-    Reference.SketchCurve = Curve;
-    return Reference;
-}
 
 
 
-SpatialPoint ResolvePlanePosition(const SpatialBasis& Basis, double Along, double Across)
-{
-    return ResolvePlanarPoint(Basis, Along, Across);
-}
+
 
 SketchSnapPlacement ResolveGridSnap(const SpatialBasis& Basis,
                                     const SpatialPoint& Probe,
@@ -752,7 +667,7 @@ SketchSnapPlacement ResolveGridSnap(const SpatialBasis& Basis,
     const double SafeStep = std::max(Step, 1.0);
     const double SnappedAlong = std::round(Along / SafeStep) * SafeStep;
     const double SnappedAcross = std::round(Across / SafeStep) * SafeStep;
-    const SpatialPoint Snapped = ResolvePlanePosition(Basis, SnappedAlong, SnappedAcross);
+    const SpatialPoint Snapped = ResolvePlanarPoint(Basis, SnappedAlong, SnappedAcross);
     const double Distance = std::sqrt(LengthSquared(Difference(Probe, Snapped)));
     if (Distance > MaximumDistance)
         return {};
@@ -790,7 +705,7 @@ SpatialPoint ApplySketchToolSettings(const SketchPlacement& Tool,
             Angle = Settings.LineAngleDegrees * Pi / 180.0;
         if (Settings.LineLengthAssist)
             Distance = std::max(Settings.LineLength, 0.0);
-        return ResolvePlanePosition(Basis,
+        return ResolvePlanarPoint(Basis,
                                     AnchorAlong + std::cos(Angle) * Distance,
                                     AnchorAcross + std::sin(Angle) * Distance);
     }
@@ -799,7 +714,7 @@ SpatialPoint ApplySketchToolSettings(const SketchPlacement& Tool,
     {
         const double SignAlong = DeltaAlong < 0.0 ? -1.0 : 1.0;
         const double SignAcross = DeltaAcross < 0.0 ? -1.0 : 1.0;
-        return ResolvePlanePosition(Basis,
+        return ResolvePlanarPoint(Basis,
                                     AnchorAlong + SignAlong * std::max(Settings.RectangleWidth, 0.0),
                                     AnchorAcross + SignAcross * std::max(Settings.RectangleHeight, 0.0));
     }
@@ -808,7 +723,7 @@ SpatialPoint ApplySketchToolSettings(const SketchPlacement& Tool,
     {
         const double Radius = std::max(Settings.CircleRadius, 0.0);
         double Angle = Length > 1.0e-6 ? std::atan2(DeltaAcross, DeltaAlong) : 0.0;
-        return ResolvePlanePosition(Basis,
+        return ResolvePlanarPoint(Basis,
                                     AnchorAlong + std::cos(Angle) * Radius,
                                     AnchorAcross + std::sin(Angle) * Radius);
     }
@@ -1028,43 +943,6 @@ ThemeToken TokenFromPacked(std::uint32_t Packed)
     };
 }
 
-bool ProjectWorldPoint(const SpatialBasis& Basis,
-                       const ParametricViewportState& View,
-                       bool Perspective,
-                       const PlaneExtent& Extent,
-                       const SpatialPoint& Position,
-                       float& ScreenX,
-                       float& ScreenY,
-                       double* Depth = nullptr)
-{
-    const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
-    if (!Perspective)
-    {
-        const SpatialDirection Offset = Difference(View.Focus, Position);
-        const double X = Dot(Offset, Frame.Right);
-        const double Y = Dot(Offset, Frame.Up);
-        if (Depth != nullptr)
-            *Depth = Dot(Offset, Frame.Forward);
-        ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + X * View.OrthoScale);
-        ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5 - Y * View.OrthoScale);
-        return true;
-    }
-
-    const SpatialDirection EyeToPoint = Difference(Frame.Eye, Position);
-    const double CameraX = Dot(EyeToPoint, Frame.Right);
-    const double CameraY = Dot(EyeToPoint, Frame.Up);
-    const double CameraZ = Dot(EyeToPoint, Frame.Forward);
-    if (Depth != nullptr)
-        *Depth = CameraZ;
-    if (CameraZ <= 0.01)
-        return false;
-
-    const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * Pi / 180.0);
-    const double Focal = (Extent.Height() * 0.5) / TanHalf;
-    ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + CameraX / CameraZ * Focal);
-    ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5 - CameraY / CameraZ * Focal);
-    return true;
-}
 
 WorkspaceRecordName ResolveSelectedRecord(const WorkspaceDirectoryProjection& Directory,
                                           const ParametricWorkspaceContext& Applied)
@@ -1208,21 +1086,6 @@ void ResolveCodexProxyExtent(const CodexSceneEntry& Entry,
     }
 }
 
-bool ProjectSceneProxyPoint(const SpatialBasis& Basis,
-                            const ParametricViewportState& View,
-                            bool Perspective,
-                            const PlaneExtent& Extent,
-                            const SpatialPoint& Centre,
-                            double X,
-                            double Y,
-                            double Z,
-                            float& ScreenX,
-                            float& ScreenY)
-{
-    const SpatialPoint Position = Added(Centre,
-        Added(Added(Scaled(Basis.Along, X), Scaled(Basis.Normal, Y)), Scaled(Basis.Across, Z)));
-    return ProjectWorldPoint(Basis, View, Perspective, Extent, Position, ScreenX, ScreenY);
-}
 
 void SeedSceneDirectoryTransformsFromCodex(const WorkspaceCodex& Scene,
                                            const SketchSceneDirectoryStorage& Storage,
@@ -1331,7 +1194,7 @@ bool SelectSceneMeshAtPointer(const PlaneExtent& Extent,
         for (std::size_t Vertex = 0u; Vertex * 3u + 2u < Mesh->Positions.size(); ++Vertex)
         {
             float X = 0.0f, Y = 0.0f;
-            if (!ProjectSceneProxyPoint(Basis, View, Perspective, Extent, Centre,
+            if (!ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
                 Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * CodexSceneMetreScale,
                 Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * CodexSceneMetreScale,
                 Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * CodexSceneMetreScale, X, Y))
@@ -1439,7 +1302,7 @@ void RecordCodexSceneProxy(RecordingSurface& Surface,
                         TriangleStanding = false;
                         break;
                     }
-                    TriangleStanding = ProjectSceneProxyPoint(Basis, View, Perspective, Extent, Centre,
+                    TriangleStanding = ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
                         Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * CodexSceneMetreScale,
                         Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * CodexSceneMetreScale,
                         Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * CodexSceneMetreScale,
@@ -1465,7 +1328,7 @@ void RecordCodexSceneProxy(RecordingSurface& Surface,
         };
         bool Standing = true;
         for (std::uint32_t Index = 0u; Index < 8u; ++Index)
-            Standing = ProjectSceneProxyPoint(Basis, View, Perspective, Extent, Centre,
+            Standing = ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
                                               Signs[Index][0] * HalfX,
                                               Signs[Index][1] * HalfY,
                                               Signs[Index][2] * HalfZ,
@@ -1639,7 +1502,7 @@ void RecordViewportGizmo(OverlayGeometry& Overlay,
 
     const auto Project = [&](const SpatialPoint& P, float& X, float& Y) -> bool
     {
-        return ProjectWorldPoint(Basis, View, Perspective, Extent, P, X, Y);
+        return ProjectSpatialPoint(Basis, View, Perspective, Extent, P, X, Y);
     };
     const auto AddWorldLine = [&](const SpatialPoint& A, const SpatialPoint& B, std::uint32_t Packed, float Thickness)
     {
@@ -2078,37 +1941,21 @@ bool ApplyViewportConstraintTool(ParametricToolSubject Tool,
     if (!ConstraintToolSubject(Tool, Subject) || !ActiveSelection.Standing())
         return false;
 
-    ConstraintSpecification Constraint = {};
-    Constraint.Subject = Subject;
-    if (Subject == ConstraintSubject::Horizontal || Subject == ConstraintSubject::Vertical)
-    {
-        if (!ActiveSelection.Curve.Assigned())
-            return false;
-        Constraint.Primary = ReferenceFromCurve(ActiveSelection.Curve);
-    }
-    else if (Subject == ConstraintSubject::Coincident)
-    {
-        if (!ActiveSelection.Point.Assigned() || !HoveredSelection.Point.Assigned())
-            return false;
-        Constraint.Primary = ReferenceFromPoint(ActiveSelection.Point);
-        Constraint.Secondary = ReferenceFromPoint(HoveredSelection.Point);
-    }
-    else
-    {
-        if (!ActiveSelection.Curve.Assigned() || !HoveredSelection.Curve.Assigned())
-            return false;
-        Constraint.Primary = ReferenceFromCurve(ActiveSelection.Curve);
-        Constraint.Secondary = ReferenceFromCurve(HoveredSelection.Curve);
-    }
-
-    if (!Constraint.Declared())
+    // 🔴 What the relationship NEEDS is asked of the unit rather than decided by which branch the subject
+    //    falls into. The chain here tested the subject and then reached for whichever selection field the
+    //    branch assumed, so what a constraint demanded was a property of its position in the chain.
+    const Deliver<ConstraintSpecification> Declared =
+        DeclareConstraintFrom(Subject,
+                              ActiveSelection.Curve, HoveredSelection.Curve,
+                              ActiveSelection.Point, HoveredSelection.Point);
+    if (!Declared.Resolved)
         return false;
 
     // 📝 A constraint applied on its own is still one thing the artist did, so it opens a journal of its
     //    own and closes it immediately - one entry in the history, one press of undo.
     std::vector<WorkspaceRecordName> Written;
     PlacementJournal Journal(Revisions);
-    SealConstraintRecord(Naming, Records, Journal, Sketch, Constraint, Written);
+    SealConstraintRecord(Naming, Records, Journal, Sketch, Declared.Delivered, Written);
     Journal.Close();
     if (!Written.empty())
     {

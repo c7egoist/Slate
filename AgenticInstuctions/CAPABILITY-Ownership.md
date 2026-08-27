@@ -36,6 +36,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Transform handles              | `SlateWorkspace/Discipline/TransformGizmo` — one pixel table both the hit test and the drawing read, so a handle is where it looks |
 | Committing a placement         | `SlateWorkspace/Discipline/PlacementCommit` — chooses the geometry by subject AND method, and seals one revision per drawn thing |
 | The planes a workspace has     | `SlateWorkspace/Discipline/WorkplaneCatalogue` — every plane, which is active, and the promise that activating one never moves the drawing |
+| Authoring a constraint         | `SlateWorkspace/Discipline/ConstraintAuthoring` — what each relationship demands of the selection, its badge, and where the badge hangs |
 | Dragging a selection           | `SlateWorkspace/Discipline/TransformSession` — what moves, about what, by how much, and putting it back exactly |
 | Viewport picking and pivots    | `SlateWorkspace/Discipline/SketchPicking` — point before control before curve, which record owns a pick, and what a transform moves |
 | Record declaration             | `SlateWorkspace/Discipline/RecordDeclaration` — filing a curve, profile, dimension, constraint or point under its category folder, and declaring every enclosed area as one undo step |
