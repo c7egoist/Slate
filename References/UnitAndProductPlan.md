@@ -587,3 +587,20 @@ Both refuse now.
 unit's `ResolvePlaneCoordinates`, differing only by an unconditional `return true` no caller could use.
 
 `ParametricSketchHost` 5 014 → **4 675**. 48 claims, seven sabotages caught.
+
+**10i — the drag itself.** Nine functions, `SlateWorkspace/Discipline/TransformSession`. This is the other
+half of 10d: that unit reads the keyboard grammar, this one moves the points it names.
+
+🔴 **A session replays from the original positions; it does not accumulate onto the live geometry.** Every
+frame applies one transform to where the subjects *started*. That is what makes a long drag exact — a
+hundred frames of dragging is one transform, not a hundred stacked roundings — and it is what makes
+cancelling free, because putting the originals back is all there is to do.
+
+⚠️ **Three of eight sabotages survived the first proof, and the proof was at fault.** The fixture stood a
+line symmetrically about the world origin, where rotating about the pivot and rotating about the origin are
+the same operation, and used round coordinates a "restore to three decimals" implementation reproduces
+perfectly. A degenerate fixture makes a broken implementation look correct. Two sections were added — one
+standing the line off-origin at 10..50, one beginning a scale exactly *on* the pivot where the start radius
+divides by zero — and all eight sabotages are now caught.
+
+`ParametricSketchHost` 4 675 → **4 296**. 53 claims.
