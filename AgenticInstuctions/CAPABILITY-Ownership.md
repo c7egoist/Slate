@@ -34,6 +34,7 @@ This is `32` §5's gate, restated so it can be checked. `Tools/VerifyHostPartiti
 | Logical/physical pixels        | `SlateWorkspace/Discipline/ViewportProjection` (`DrawableScale.h`) — the one place that converts between what ImGui reports and what the swapchain is made of |
 | The surface a sketch sits on   | `SlateWorkspace/Discipline/WorkplaneStanding` — standing planes, offsets, and a plane named by pointing at the viewport |
 | Transform handles              | `SlateWorkspace/Discipline/TransformGizmo` — one pixel table both the hit test and the drawing read, so a handle is where it looks |
+| Committing a placement         | `SlateWorkspace/Discipline/PlacementCommit` — chooses the geometry by subject AND method, and seals one revision per drawn thing |
 | Dragging a selection           | `SlateWorkspace/Discipline/TransformSession` — what moves, about what, by how much, and putting it back exactly |
 | Viewport picking and pivots    | `SlateWorkspace/Discipline/SketchPicking` — point before control before curve, which record owns a pick, and what a transform moves |
 | Record declaration             | `SlateWorkspace/Discipline/RecordDeclaration` — filing a curve, profile, dimension, constraint or point under its category folder, and declaring every enclosed area as one undo step |

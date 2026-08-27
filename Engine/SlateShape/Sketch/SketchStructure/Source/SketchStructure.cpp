@@ -127,9 +127,20 @@ Deliver<ProfileNameInFeature> SketchStructure::DeclareCircleProfile(const Circle
         const double StartRadians = 1.5707963267948966 * static_cast<double>(QuarterIndex);
         const SpatialDirection QuarterStart = Added(Scaled(StartDirection, std::cos(StartRadians)),
                                                     Scaled(QuarterDirection, std::sin(StartRadians)));
-        const SketchCurveName DeclaredCurve = DeclareCurve(CurveSpecification::DeclareCircularArc(
-            { Declared.Centre, Declared.Normal, QuarterStart, Declared.Radius, 1.5707963267948966 },
-            { 0.0, 1.0 }));
+        // ⚠️ EVERY FIELD, NAMED BY POSITION. `CircularArcCurve` carries a `ThroughPoint` and a
+        //    `ThroughDeclared` between the start direction and the radius. A five-element brace list
+        //    silently slid the radius into `ThroughPoint` and the sweep into `ThroughDeclared`, leaving
+        //    the real radius at zero — so every circle profile in the application collapsed to its own
+        //    centre. It still declared, still selected, still appeared in the outliner, and drew nothing.
+        CircularArcCurve Quarter = {};
+        Quarter.Centre         = Declared.Centre;
+        Quarter.Normal         = Declared.Normal;
+        Quarter.StartDirection = QuarterStart;
+        Quarter.Radius         = Declared.Radius;
+        Quarter.SweepRadians   = 1.5707963267948966;
+
+        const SketchCurveName DeclaredCurve = DeclareCurve(
+            CurveSpecification::DeclareCircularArc(Quarter, { 0.0, 1.0 }));
         Loop.Traversal.push_back({ CurveReferenceOf(DeclaredCurve), true });
     }
 
@@ -235,12 +246,24 @@ Deliver<ProfileNameInFeature> SketchStructure::DeclareSlot(const SpatialPoint& S
 
     const SketchCurveName Upper = DeclareLine(StartUpper, EndUpper);
     const SketchCurveName Lower = DeclareLine(EndLower, StartLower);
-    const SketchCurveName StartArc = DeclareCurve(CurveSpecification::DeclareCircularArc(
-        { StartPoint, Plane.Normal, Negated(SideDirection), Radius, 3.141592653589793 },
-        { 0.0, 1.0 }));
-    const SketchCurveName EndArc = DeclareCurve(CurveSpecification::DeclareCircularArc(
-        { EndPoint, Plane.Normal, SideDirection, Radius, 3.141592653589793 },
-        { 0.0, 1.0 }));
+    // ⚠️ The same five-versus-seven field slide as `DeclareCircleProfile` above: both end caps of every
+    //    slot were declared with a zero radius.
+    CircularArcCurve StartCap = {};
+    StartCap.Centre         = StartPoint;
+    StartCap.Normal         = Plane.Normal;
+    StartCap.StartDirection = Negated(SideDirection);
+    StartCap.Radius         = Radius;
+    StartCap.SweepRadians   = 3.141592653589793;
+
+    CircularArcCurve EndCap = {};
+    EndCap.Centre         = EndPoint;
+    EndCap.Normal         = Plane.Normal;
+    EndCap.StartDirection = SideDirection;
+    EndCap.Radius         = Radius;
+    EndCap.SweepRadians   = 3.141592653589793;
+
+    const SketchCurveName StartArc = DeclareCurve(CurveSpecification::DeclareCircularArc(StartCap, { 0.0, 1.0 }));
+    const SketchCurveName EndArc   = DeclareCurve(CurveSpecification::DeclareCircularArc(EndCap, { 0.0, 1.0 }));
 
     ProfileSpecification Profile;
     Profile.DeclarePlane({ Plane.Origin, Plane.Normal, Plane.AlongDirection });

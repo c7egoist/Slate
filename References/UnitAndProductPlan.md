@@ -644,3 +644,50 @@ reason to take the smallest world-per-pixel is oblique foreshortening (~13% apar
 is what the corrected note and sabotage S3 now pin.
 
 `ParametricSketchHost` 4 296 → **4 146**. 125 claims, eight sabotages caught.
+
+**10k — the commit.** `SlateWorkspace/Discipline/PlacementCommit`.
+
+🔴 **The unit that fixes the reported bug: the host chose the geometry by SUBJECT ALONE when the decision
+has TWO axes.** `CommitPlacement` was a 399-line `if`-chain testing `Tool.Subject`, so of the 27
+subject-and-method pairs the catalogue accepts, **nine reached an arm not written for them**:
+
+| the artist asked for | the host drew |
+|---|---|
+| Circle, Centred | a circle across the two anchors, at half the radius, offset to one side |
+| Arc, Centred / Tangent / ThreePoint | a three-point arc, whatever the method |
+| Ellipse, Centred / Diameter | an extent ellipse |
+| EllipticalArc, Centred / ThreePoint | an extent elliptical arc |
+| Polygon, Centred | an extent polygon |
+
+The `Arc` `Centred | Tangent` arm sat *below* the bare `Arc` arm and was therefore **unreachable dead
+code** — it read like a feature and had never once run. `Tangent` had no reachable implementation at all.
+This is exactly the redundancy the tool-list rework set out to remove: separating shape from method in the
+catalogue accomplishes nothing while the commit still dispatches on shape. The chain is now a **27-row
+table keyed on both axes**, and a pair with no row is refused by name rather than silently drawn wrong.
+
+🔴 **One drawn thing was many presses of undo.** Each arm sealed its own revision as it went, so a line
+sealed two (the line, then its coincidence), a circle sealed two (the profile, then its radius dimension),
+and a five-anchor polyline sealed **five**. `PlacementJournal` now accumulates the affected records and
+seals exactly one revision when the placement closes. It deliberately mirrors `WorkspaceRevisionSequence`'s
+`Seal` signature so that every arm body could be moved across **verbatim**.
+
+🔴 **Three defects outside the unit that the proof caught, all of which stopped geometry appearing.**
+
+- **A five-element brace list for a seven-field struct.** `CircularArcCurve` hides `ThroughPoint` and
+  `ThroughDeclared` between `StartDirection` and `Radius`; three sites in `SketchStructure.cpp` passed five
+  values, so the radius landed in `ThroughPoint` and **every circle profile and every slot had radius
+  zero**. It compiled silently, declared, named and listed correctly, and drew nothing.
+- **`DeclareThreePointArc` was wrong three separate ways** — reversed `Difference` arguments, a normalised
+  vector in the numerator against an unnormalised denominator, and both cross products *and* both weights
+  swapped against the standard circumcentre form, which cancelled in magnitude and negated the centre. It
+  returned a centre near the origin with radius 0.02. Fixing two of the three left it looking nearly right.
+- **`acos` of a dot product was unclamped**, so a rounding overshoot returned NaN and a NaN sweep drew
+  nothing.
+
+⚠️ **`AppendCurvePolyline` clears the vector it is handed, in spite of its name.** Sampling a whole sketch
+by looping it over one accumulator keeps only the last curve, so a correct four-arc circle measured as a
+single quadrant — half the radius, offset by half the radius. Every shipped caller passes a fresh vector,
+so nothing was broken, but the name means the opposite of the behaviour and it cost real time.
+
+`ParametricSketchHost` 4 146 → **3 635**. 142 claims, four sabotages caught — two of them at compile time,
+because `-Werror=unused-function` turns a deleted table row into a build failure.

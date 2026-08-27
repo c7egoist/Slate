@@ -50,26 +50,48 @@ CurveSpecification CurveSpecification::DeclareThreePointArc(const SpatialPoint& 
     Held.HeldSubject = CurveSubject::CircularArc;
     Held.HeldInterval = { 0.0, 1.0 };
 
-    const SpatialDirection First = Difference(ThroughPoint, StartPoint);
-    const SpatialDirection Second = Difference(EndPoint, StartPoint);
-    const SpatialDirection Normal = Normalize(Cross(First, Second));
-    const double FirstLengthSquared = LengthSquared(First);
-    const double SecondLengthSquared = LengthSquared(Second);
-    const SpatialDirection Auxiliary = Cross(Normal, First);
-    const double Denominator = 2.0 * LengthSquared(Cross(First, Second));
+    // ⚠️ `Difference(A, B)` runs FROM A TO B, so the start point comes SECOND to get a direction
+    //    pointing away from it. Reading it the other way negates both chords, which flips the computed
+    //    centre through the start point.
+    const SpatialDirection First  = Difference(StartPoint, ThroughPoint);
+    const SpatialDirection Second = Difference(StartPoint, EndPoint);
+
+    const SpatialDirection Perpendicular = Cross(First, Second);
+    const double Denominator = 2.0 * LengthSquared(Perpendicular);
 
     if (Denominator > 0.0)
     {
-        const SpatialDirection CentreOffset = Added(Scaled(Auxiliary, SecondLengthSquared),
-                                                    Scaled(Cross(Second, Normal), FirstLengthSquared));
+        // 🔴 THE NORMAL IN THE NUMERATOR MUST BE THE SAME ONE THE DENOMINATOR IS BUILT FROM.
+        //    The circumcentre is (|Second|^2 (First x P) + |First|^2 (P x Second)) / 2|P|^2 with the
+        //    UNNORMALISED P = First x Second. Using a unit normal in the numerator while dividing by
+        //    |P|^2 leaves a stray factor of |P| — here 1200 — and collapses the arc to a radius of 0.02
+        //    about a centre 0.02 from the start point. It still declared, still drew, and was invisible.
+        const double FirstLengthSquared  = LengthSquared(First);
+        const double SecondLengthSquared = LengthSquared(Second);
+
+        const SpatialDirection CentreOffset = Added(Scaled(Cross(Second, Perpendicular), FirstLengthSquared),
+                                                    Scaled(Cross(Perpendicular, First), SecondLengthSquared));
         const SpatialPoint Centre = Added(StartPoint, Scaled(CentreOffset, 1.0 / Denominator));
+        const SpatialDirection Normal = Normalize(Perpendicular);
         const SpatialDirection StartDirection = Normalize(Difference(Centre, StartPoint));
         const SpatialDirection ThroughDirection = Normalize(Difference(Centre, ThroughPoint));
         const SpatialDirection EndDirection = Normalize(Difference(Centre, EndPoint));
         const double Radius = std::sqrt(LengthSquared(Difference(Centre, StartPoint)));
-        double Sweep = std::acos(Dot(StartDirection, EndDirection));
-        const double ThroughSweep = std::acos(Dot(StartDirection, ThroughDirection));
-        if (ThroughSweep > Sweep)
+        // ⚠️ `std::acos` cannot tell a turn one way from a turn the other — it only ever answers 0..pi.
+        //    The middle point says which way round the arc goes: if it does NOT lie on the short way from
+        //    start to end, the arc is the long way round. Clamped because a dot product of exactly
+        //    ±1.0000000001 from rounding makes `acos` return NaN, and a NaN sweep draws nothing at all.
+        const auto AngleBetween = [](const SpatialDirection& From, const SpatialDirection& To)
+        {
+            double Cosine = Dot(From, To);
+            Cosine = Cosine < -1.0 ? -1.0 : (Cosine > 1.0 ? 1.0 : Cosine);
+            return std::acos(Cosine);
+        };
+
+        double Sweep = AngleBetween(StartDirection, EndDirection);
+        const double ThroughSweep = AngleBetween(StartDirection, ThroughDirection);
+        const double ThroughToEnd  = AngleBetween(ThroughDirection, EndDirection);
+        if (ThroughSweep > Sweep || ThroughToEnd > Sweep)
             Sweep = 6.283185307179586 - Sweep;
 
         Held.CircularArc = { Centre, Normal, StartDirection, ThroughPoint, true, Radius, Sweep };
