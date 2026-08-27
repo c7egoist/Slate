@@ -80,8 +80,10 @@ bool ResolveConstraintAnchor(const SketchStructure& Sketch,
 
 /// 🧩 Whether a selection satisfies what a relationship demands.
 ///
-/// in    PrimaryCurve/SecondaryCurve  [-]  the curves the artist has active and hovered
-/// in    PrimaryPoint/SecondaryPoint  [-]  the points, likewise
+/// in    PrimaryCurve    [-]  the curve the artist has active
+/// in    SecondaryCurve  [-]  the curve the artist has hovered
+/// in    PrimaryPoint    [-]  the point the artist has active
+/// in    SecondaryPoint  [-]  the point the artist has hovered
 ///
 /// note 🔴 The single place that answers "can this constraint be applied right now". The host asked it
 ///       three different ways in three branches, so a relationship that wanted two curves could be

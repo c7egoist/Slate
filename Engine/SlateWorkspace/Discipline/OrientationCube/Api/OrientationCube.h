@@ -130,7 +130,7 @@ struct ViewportCameraSeed
 ///       products' viewports in different directions.
 /// note 📝 Isometric is 52°/24° rather than 45°/35° because it is a viewing preference, not a derivation;
 ///       the figures are the ones the editor has always used.
-/// cost 🟢
+/// cost ✔️
 /// tag  api, pure, nonallocating, nonthrowing
 void OrientationYawPitch(ViewportOrientation Orientation, double& YawDegrees, double& PitchDegrees);
 

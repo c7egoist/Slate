@@ -33,7 +33,7 @@ namespace Slate
 /// note 📝 Rows are `Origin`, `Along` and `Across`; the shader forms `Projection0 + u*Projection1 +
 ///       v*Projection2` and divides by `w`. Under an orthographic camera `w` is fixed at 1 and the
 ///       division is free.
-/// cost 🟢
+/// cost ✔️
 /// tag  api, pure
 WorkspaceCadProjection ResolveCadProjection(const SpatialBasis& Basis,
                                             const ViewportStanding& View,

@@ -94,6 +94,27 @@ def main() -> int:
     require("HostHasFeature(FeatureParametric)" in editor,
             "the parametric wiring must be gated by the product feature, not an #ifdef")
 
+    # 🔴 THE TOOL PANEL MUST ADVANCE BEFORE THE VIEWPORT READS THE ACTIVE TOOL. `ParametricSketchHost`
+    #    advanced at line 644 and drew at 776, and a gate asserted that order -- but the gate named the
+    #    host BY ITS PATH, so deleting the host deleted the CLAIM instead of re-aiming it. The editor
+    #    then advanced at the END of the frame: the click that picked Line was not visible to the
+    #    drawing code until the next frame, so picking a shape and clicking the grid drew nothing.
+    require(editor.index("ParametricTools.Advance(") < editor.index("DriveDrawingWithModifiers("),
+            "the tool panel must advance before the viewport reads the active tool")
+
+    # 🔴 RECORDING A CURVE IS NOT DRAWING IT. The editor took the presses and built the sketch, then
+    #    showed nothing, because the projection and the overlays stayed behind in the deleted host.
+    #    Each of these is a separate way for the viewport to go blank while every gate stays green.
+    for Drawn, Why in (
+            ("RecordViewportGridOverlay(", "the sketch grid must be drawn"),
+            ("ProjectSketchRendering(", "sketch curves must be projected into the CAD packet"),
+            ("RecordCadFallback(", "curves must still draw when the GPU CAD pass is not standing"),
+            ("RecordPlacementPreview(", "the tool in flight must show its rubber-band preview")):
+        require(Drawn in editor, f"{Why} -- {Drawn} is not called by the host that ships")
+
+    require(editor.index("RecordViewportGridOverlay(") < editor.index("RecordPlacementPreview("),
+            "the grid must be recorded before the preview so curves sit on top of it")
+
     validation = read("Engine/Application/InterfaceValidationHost/Source/InterfaceValidationHost.cpp")
     require("std::strncpy" not in validation, "InterfaceValidationHost must avoid MSVC strncpy warning")
 

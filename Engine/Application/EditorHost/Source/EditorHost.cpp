@@ -16,6 +16,8 @@
 //    viewport LEAF.
 
 #define SLATE_EDITOR_HOST 1
+#include "SlateWorkspace/Discipline/SketchViewportOverlay/Api/SketchViewportOverlay.h"
+#include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 #include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
@@ -267,6 +269,8 @@ int main(int ArgumentCount, char** ArgumentValues)
     // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
     //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
     static ViewportStanding          SketchView;
+    // 📝 Static: the packet is large and is reused every frame.
+    static WorkspaceCadPacket        SketchCadPacket;
 
     static ParametricWorkspaceContext SketchDirectoryApplied;
     static ParametricToolsPanel    ParametricTools;
@@ -759,6 +763,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             const bool ForegroundDrawerStanding =
                 (NorthInterior.MaximumY > 0.0f && NorthInterior.MinimumY < static_cast<float>(Pass.Height)) ||
                 (SouthInterior.MaximumY > 0.0f && SouthInterior.MinimumY < static_cast<float>(Pass.Height));
+            const bool TabPressed = Viewport.Seam().KeyPressed(KeySubject::Summon);
             const bool PointerBehindDrawer =
                 NorthInterior.Encloses(ForegroundPointer.PositionX, ForegroundPointer.PositionY) ||
                 SouthInterior.Encloses(ForegroundPointer.PositionX, ForegroundPointer.PositionY);
@@ -796,6 +801,20 @@ int main(int ArgumentCount, char** ArgumentValues)
             RegisterIntoNode = 0u;
 
             WorkspacePanels.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
+
+            // 🔴 THE TOOL PANEL ADVANCES BEFORE THE VIEWPORT READS THE ACTIVE TOOL. It used to run at
+            //    the END of the frame, after the viewport had already dispatched -- so the click that
+            //    picked Line was not visible to the drawing code until the NEXT frame, and the frame
+            //    that mattered still held the previous tool. Picking a shape then clicking the grid
+            //    drew nothing, because `ActiveSubject` was still `Select`.
+            //
+            // ⚠️ `ParametricSketchHost` had this right: it advanced at line 644 and drew at 776. A gate
+            //    asserted the order -- and that gate named the host by its path, so when the host was
+            //    deleted the CLAIM was deleted with it instead of being re-aimed. The claim below
+            //    restores it against the file that ships.
+            ParametricTools.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
+                                    ParametricToolsApplied,
+                                    TabPressed && !PointerBehindDrawer);
 
             // 📐 The fly camera is integrated BEFORE any leaf is recorded, so the sky geometry, the
             //    ground lattice and the gizmo are all projected through the SAME current-tick pose.
@@ -968,6 +987,22 @@ int main(int ArgumentCount, char** ArgumentValues)
                                             ParametricToolsApplied, SketchNaming, Sketch,
                                             SketchRecords, SketchRevisions, SketchWorkplanes,
                                             SketchPendingSelection, SketchTool, PointerTaken);
+
+                                    // 🔴 RECORDING A CURVE IS NOT DRAWING IT. The editor took the
+                                    //    presses and built the sketch, and then showed nothing,
+                                    //    because the projection and the overlays stayed behind in the
+                                    //    deleted host. Four calls, in the order the old host used:
+                                    //    grid first so curves sit on top of it, then the projection
+                                    //    into the CAD packet, its fallback when the GPU pass is not
+                                    //    standing, and the rubber-band preview of the tool in flight.
+                                    RecordViewportGridOverlay(LeafOverlay, LeafBody, Sketch, SketchView,
+                                                              true, PanelConfiguration[Index]);
+
+                                    Discard(ProjectSketchRendering(Sketch, SketchRecords, SketchCadPacket));
+                                    RecordCadFallback(Viewport.Surface(), LeafBody, Sketch, SketchView,
+                                                      true, SketchCadPacket);
+                                    RecordPlacementPreview(Viewport.Surface(), LeafBody, Sketch,
+                                                           SketchView, true, SketchTool);
                                 }
 
                                 // 🔴 Clicking a mesh in the viewport selects it. Lived only in the
@@ -1263,7 +1298,6 @@ int main(int ArgumentCount, char** ArgumentValues)
             //    key goes to whichever panel the pointer is over: a Texturing leaf feeds the layer
             //    stack, anything else feeds the scene directory. With no Texturing leaf open, the
             //    scene directory keeps Tab as before.
-            const bool TabPressed = Viewport.Seam().KeyPressed(KeySubject::Summon);
             const PointerCondition& Hovered = Viewport.Surface().Pointer();
             bool PointerInLayers = LayerLeafTally > 0u;
 
@@ -1291,9 +1325,6 @@ int main(int ArgumentCount, char** ArgumentValues)
                                Viewport.Seam().Modifiers());
             SketchDirectory.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
                                     SketchDirectoryApplied,
-                                    TabPressed && !PointerBehindDrawer);
-            ParametricTools.Advance(BackgroundPointer, Pass.ElapsedMilliseconds,
-                                    ParametricToolsApplied,
                                     TabPressed && !PointerBehindDrawer);
 
             // 📝 The search field: while it holds the contact, the seam's typed run feeds the

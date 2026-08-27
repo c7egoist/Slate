@@ -106,7 +106,7 @@ constexpr double CadPerspectiveFieldOfViewDegrees = 42.0;
 /// in   PitchDegrees  [deg]  above the horizon; negative looks down
 /// note 📝 Yaw and pitch are the editor camera's own convention, matching `SkyViewCamera` and
 ///       `EditorCameraComponent`: forward is `(cosP*sinY, sinP, cosP*cosY)` in world axes.
-/// cost 🟢
+/// cost ✔️
 /// tag  api, pure
 ViewFrame ResolveFreeViewFrame(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees);
 
@@ -146,7 +146,9 @@ bool ProjectFromCamera(const ResolvedCamera& Camera, const PlaneExtent& Extent,
                        const SpatialPoint& Position, float& ScreenX, float& ScreenY);
 
 /// 🧩 Where a point offset from a centre along the camera's basis axes lands.
-/// in   Along, Normal, Across  [-]  the offset, in the basis' own axes
+/// in   Along   [-]  the offset along the basis' Along axis
+/// in   Normal  [-]  the offset along the basis' Normal axis
+/// in   Across  [-]  the offset along the basis' Across axis
 bool ProjectOffsetFromCamera(const ResolvedCamera& Camera, const PlaneExtent& Extent,
                              const SpatialPoint& Centre, double Along, double Normal, double Across,
                              float& ScreenX, float& ScreenY);
@@ -158,7 +160,7 @@ bool ProjectOffsetFromCamera(const ResolvedCamera& Camera, const PlaneExtent& Ex
 /// note 🔴 THE ONE PERSPECTIVE DIVIDE. Every perspective projection in the codebase resolves here, so
 ///       there is a single place for the formula to be right or wrong. `ProjectSpatialPoint` calls it
 ///       with an orbit frame; the editor hosts call it with a free frame.
-/// cost 🟢
+/// cost ✔️
 /// tag  api, pure
 bool ProjectThroughFrame(const ViewFrame& Frame,
                          const PlaneExtent& Extent,
