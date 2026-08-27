@@ -906,15 +906,19 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                          Naming, Sketch, Records, Revisions, Workplanes,
                                                          PendingSelection, Tool, PointerTaken);
 
+                            // 📝 The parametric workspace works in millimetres; a codex stores metres.
+                            const ResolvedCamera SceneCamera =
+                                ResolveOrbitCamera(Basis, View, PanelConfiguration[Index].Perspective);
+
                             if (!PointerTaken && PointerInside && ToolsApplied.ActiveSubject == ParametricToolSubject::Select)
-                                PointerTaken = SelectSceneMeshAtPointer(LeafBody, BackgroundPointer, Basis, View,
-                                                                        PanelConfiguration[Index].Perspective,
+                                PointerTaken = SelectSceneMeshAtPointer(LeafBody, BackgroundPointer, SceneCamera,
                                                                         OpenedScene, OpenedSceneStanding,
-                                                                        SceneDirectoryStorage, SceneApplied);
-                            RecordCodexSceneProxy(Viewport.Surface(), LeafBody, Basis, View,
-                                                  PanelConfiguration[Index].Perspective,
+                                                                        SceneDirectoryStorage,
+                                                                        CodexMetresToMillimetres, SceneApplied);
+                            RecordCodexSceneProxy(Viewport.Surface(), LeafBody, SceneCamera,
                                                   OpenedScene, OpenedSceneStanding,
-                                                  SceneDirectoryStorage, SceneApplied);
+                                                  SceneDirectoryStorage, SceneApplied,
+                                                  CodexMetresToMillimetres);
 
                             Discard(SynchroniseCadPacket(Sketch, Records, CadPacket));
                             if (!CadPass.Standing())
@@ -933,7 +937,8 @@ int main(int ArgumentCount, char** ArgumentValues)
                             {
                                 SpatialPoint ScenePivot = {};
                                 if (ResolveSelectedSceneMeshPivot(OpenedScene, OpenedSceneStanding,
-                                                                  SceneDirectoryStorage, SceneApplied, ScenePivot))
+                                                                  SceneDirectoryStorage, SceneApplied,
+                                                                  CodexMetresToMillimetres, ScenePivot))
                                 {
                                     ParametricViewportSelection SceneSelection = {};
                                     SceneSelection.Subject = ParametricSelectionSubject::Record;
@@ -1051,7 +1056,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 {
                     if (Entry.Subject != CodexSceneSubject::Geometry)
                         continue;
-                    const SpatialPoint Position = CodexScenePosition(Entry);
+                    const SpatialPoint Position = CodexScenePosition(Entry, CodexMetresToMillimetres);
                     Focus.Left += Position.Left;
                     Focus.Up += Position.Up;
                     Focus.Forward += Position.Forward;

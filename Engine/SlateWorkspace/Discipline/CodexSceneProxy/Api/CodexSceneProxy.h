@@ -70,7 +70,27 @@ void AppendCadReferenceRows(const WorkspaceRecordStructure& Records,
 void ApplySceneEnvironment(const WorkspaceCodex& Workspace,
                            SceneDirectoryContext& Applied);
 
-SpatialPoint CodexScenePosition(const CodexSceneEntry& Entry);
+//------------------------------------------------------------------------------------------------------------------------
+//                                              THE TWO HOSTS DO NOT SHARE A UNIT
+//------------------------------------------------------------------------------------------------------------------------
+// 🔴 A codex stores positions in METRES (`WorkspaceCodex.h:36`). The parametric workspace works in
+//    MILLIMETRES — its viewport orbits at a default distance of 240, which is 24 cm, not 240 m. The editor
+//    works in metres directly: its camera sits at 1.5, an eye height.
+//
+// 🔴 SO THE SAME CODEX DRAWN BY THE TWO HOSTS NEEDS TWO DIFFERENT SCALES, AND MERGING THEM WITHOUT SAYING
+//    SO WOULD PUT EVERY IMPORTED MESH A THOUSAND TIMES TOO FAR AWAY. The scale was a `constexpr` hidden in
+//    this unit's `.cpp`, applied unconditionally — correct for the one caller it had, and a trap for the
+//    second. It is a parameter now, and it is named at both call sites.
+
+/// 🧩 What one codex metre measures in the parametric workspace, which works in millimetres.
+constexpr double CodexMetresToMillimetres = 1000.0;
+
+/// 🧩 What one codex metre measures in the editor, which works in metres.
+constexpr double CodexMetresToMetres = 1.0;
+
+/// 🧩 Where a scene entry sits, in the caller's units.
+/// in   UnitScale  [-]  `CodexMetresToMillimetres` or `CodexMetresToMetres`
+SpatialPoint CodexScenePosition(const CodexSceneEntry& Entry, double UnitScale);
 
 void ResolveCodexProxyExtent(const CodexSceneEntry& Entry,
                              double& HalfX,
@@ -81,16 +101,16 @@ bool ResolveSelectedSceneMeshPivot(const WorkspaceCodex& Scene,
                                    bool SceneStanding,
                                    const SceneDirectoryRows& Storage,
                                    const SceneDirectoryContext& Applied,
+                                   double UnitScale,
                                    SpatialPoint& Pivot);
 
 bool SelectSceneMeshAtPointer(const PlaneExtent& Extent,
                               const PointerCondition& Pointer,
-                              const SpatialBasis& Basis,
-                              const ViewportStanding& View,
-                              bool Perspective,
+                              const ResolvedCamera& Camera,
                               const WorkspaceCodex& Scene,
                               bool SceneStanding,
                               const SceneDirectoryRows& Storage,
+                              double UnitScale,
                               SceneDirectoryContext& Applied);
 
 ThemeToken CodexMaterialToken(const WorkspaceCodex& Scene,
@@ -100,13 +120,12 @@ ThemeToken CodexMaterialToken(const WorkspaceCodex& Scene,
 
 void RecordCodexSceneProxy(RecordingSurface& Surface,
                            const PlaneExtent& Extent,
-                           const SpatialBasis& Basis,
-                           const ViewportStanding& View,
-                           bool Perspective,
+                           const ResolvedCamera& Camera,
                            const WorkspaceCodex& Scene,
                            bool SceneStanding,
                            const SceneDirectoryRows& Storage,
-                           const SceneDirectoryContext& Applied);
+                           const SceneDirectoryContext& Applied,
+                           double UnitScale);
 
 void SeedSceneDirectoryTransformsFromCodex(const WorkspaceCodex& Scene,
                                            const SceneDirectoryRows& Storage,

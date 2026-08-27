@@ -15,7 +15,6 @@ namespace Slate
 {
 
 // 📝 A codex records positions in metres; the sketch works in millimetres. One constant, stated once.
-constexpr double CodexSceneMetreScale = 1000.0;
 
 EntitySubject SceneEntrySubject(CodexSceneSubject Subject)
 {
@@ -182,11 +181,11 @@ void ApplySceneEnvironment(const WorkspaceCodex& Workspace,
     Applied.Environment.AtmosphereScaleHeight = Workspace.Environment.AtmosphereScaleHeight;
 }
 
-SpatialPoint CodexScenePosition(const CodexSceneEntry& Entry)
+SpatialPoint CodexScenePosition(const CodexSceneEntry& Entry, double UnitScale)
 {
-    return { Entry.Position[0] * CodexSceneMetreScale,
-             Entry.Position[1] * CodexSceneMetreScale,
-             Entry.Position[2] * CodexSceneMetreScale };
+    return { Entry.Position[0] * UnitScale,
+             Entry.Position[1] * UnitScale,
+             Entry.Position[2] * UnitScale };
 }
 
 void ResolveCodexProxyExtent(const CodexSceneEntry& Entry,
@@ -229,6 +228,7 @@ bool ResolveSelectedSceneMeshPivot(const WorkspaceCodex& Scene,
                                    bool SceneStanding,
                                    const SceneDirectoryRows& Storage,
                                    const SceneDirectoryContext& Applied,
+                                   double UnitScale,
                                    SpatialPoint& Pivot)
 {
     if (!SceneStanding || Applied.EntityTaken >= Storage.RowCount || Applied.EntityTaken >= SceneDirectoryContext::EntityLimit)
@@ -239,18 +239,17 @@ bool ResolveSelectedSceneMeshPivot(const WorkspaceCodex& Scene,
     const std::uint32_t SceneIndex = Identity - 6200u;
     if (SceneIndex >= Scene.Scene.size() || Scene.Scene[SceneIndex].Subject != CodexSceneSubject::Geometry)
         return false;
-    Pivot = CodexScenePosition(Scene.Scene[SceneIndex]);
+    Pivot = CodexScenePosition(Scene.Scene[SceneIndex], UnitScale);
     return true;
 }
 
 bool SelectSceneMeshAtPointer(const PlaneExtent& Extent,
                               const PointerCondition& Pointer,
-                              const SpatialBasis& Basis,
-                              const ViewportStanding& View,
-                              bool Perspective,
+                              const ResolvedCamera& Camera,
                               const WorkspaceCodex& Scene,
                               bool SceneStanding,
                               const SceneDirectoryRows& Storage,
+                              double UnitScale,
                               SceneDirectoryContext& Applied)
 {
     if (!SceneStanding || !Pointer.ContactPressed || !Extent.Encloses(Pointer.PositionX, Pointer.PositionY))
@@ -277,15 +276,15 @@ bool SelectSceneMeshAtPointer(const PlaneExtent& Extent,
         if (Mesh == nullptr || Mesh->Positions.size() < 3u)
             continue;
 
-        const SpatialPoint Centre = CodexScenePosition(Entry);
+        const SpatialPoint Centre = CodexScenePosition(Entry, UnitScale);
         float MinX = 1.0e30f, MinY = 1.0e30f, MaxX = -1.0e30f, MaxY = -1.0e30f;
         for (std::size_t Vertex = 0u; Vertex * 3u + 2u < Mesh->Positions.size(); ++Vertex)
         {
             float X = 0.0f, Y = 0.0f;
-            if (!ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
-                Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * CodexSceneMetreScale,
-                Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * CodexSceneMetreScale,
-                Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * CodexSceneMetreScale, X, Y))
+            if (!ProjectOffsetFromCamera(Camera, Extent, Centre,
+                Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * UnitScale,
+                Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * UnitScale,
+                Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * UnitScale, X, Y))
                 continue;
             MinX = std::min(MinX, X); MinY = std::min(MinY, Y);
             MaxX = std::max(MaxX, X); MaxY = std::max(MaxY, Y);
@@ -343,13 +342,12 @@ ThemeToken CodexMaterialToken(const WorkspaceCodex& Scene,
 
 void RecordCodexSceneProxy(RecordingSurface& Surface,
                            const PlaneExtent& Extent,
-                           const SpatialBasis& Basis,
-                           const ViewportStanding& View,
-                           bool Perspective,
+                           const ResolvedCamera& Camera,
                            const WorkspaceCodex& Scene,
                            bool SceneStanding,
                            const SceneDirectoryRows& Storage,
-                           const SceneDirectoryContext& Applied)
+                           const SceneDirectoryContext& Applied,
+                           double UnitScale)
 {
     if (!SceneStanding)
         return;
@@ -366,7 +364,7 @@ void RecordCodexSceneProxy(RecordingSurface& Surface,
         if (Entry.Subject != CodexSceneSubject::Geometry)
             continue;
 
-        const SpatialPoint Centre = CodexScenePosition(Entry);
+        const SpatialPoint Centre = CodexScenePosition(Entry, UnitScale);
         const ThemeToken Fill = CodexMaterialToken(Scene, Entry, 0.34, 0xF4F1E8u);
         const CodexSceneMesh* Mesh = nullptr;
         for (const CodexSceneMesh& Candidate : Scene.SceneMeshes)
@@ -390,10 +388,10 @@ void RecordCodexSceneProxy(RecordingSurface& Surface,
                         TriangleStanding = false;
                         break;
                     }
-                    TriangleStanding = ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
-                        Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * CodexSceneMetreScale,
-                        Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * CodexSceneMetreScale,
-                        Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * CodexSceneMetreScale,
+                    TriangleStanding = ProjectOffsetFromCamera(Camera, Extent, Centre,
+                        Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0] * UnitScale,
+                        Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1] * UnitScale,
+                        Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2] * UnitScale,
                         SX[Corner], SY[Corner]) && TriangleStanding;
                 }
                 if (TriangleStanding)
@@ -416,7 +414,7 @@ void RecordCodexSceneProxy(RecordingSurface& Surface,
         };
         bool Standing = true;
         for (std::uint32_t Index = 0u; Index < 8u; ++Index)
-            Standing = ProjectOffsetPoint(Basis, View, Perspective, Extent, Centre,
+            Standing = ProjectOffsetFromCamera(Camera, Extent, Centre,
                                               Signs[Index][0] * HalfX,
                                               Signs[Index][1] * HalfY,
                                               Signs[Index][2] * HalfZ,

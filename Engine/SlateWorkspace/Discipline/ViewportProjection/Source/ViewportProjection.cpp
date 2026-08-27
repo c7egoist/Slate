@@ -239,6 +239,57 @@ ViewFrame ResolveFreeViewFrame(const SpatialPoint& Eye, double YawDegrees, doubl
     return Frame;
 }
 
+ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStanding& View, bool Perspective)
+{
+    ResolvedCamera Camera;
+    Camera.Basis              = Basis;
+    Camera.Frame              = ResolveViewportFrame(Basis, View, Perspective);
+    Camera.Perspective        = Perspective;
+    Camera.FieldOfViewDegrees = CadPerspectiveFieldOfViewDegrees;
+    Camera.OrthoScale         = View.OrthoScale;
+    return Camera;
+}
+
+ResolvedCamera ResolveFreeCamera(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees,
+                                 double FieldOfViewDegrees)
+{
+    ResolvedCamera Camera;
+    Camera.Basis              = { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
+    Camera.Frame              = ResolveFreeViewFrame(Eye, YawDegrees, PitchDegrees);
+    Camera.Perspective        = true;   // 📝 A free-flying editor camera is always perspective.
+    Camera.FieldOfViewDegrees = FieldOfViewDegrees;
+    Camera.OrthoScale         = 1.0;
+    return Camera;
+}
+
+bool ProjectFromCamera(const ResolvedCamera& Camera, const PlaneExtent& Extent,
+                       const SpatialPoint& Position, float& ScreenX, float& ScreenY)
+{
+    if (!Camera.Perspective)
+    {
+        // 📝 Measured from the eye, not from an orbit focus this camera may not have. Equivalent for an
+        //    orbit — the eye is displaced along `Forward`, which `Right` and `Up` are perpendicular to.
+        const SpatialDirection Offset = Difference(Camera.Frame.Eye, Position);
+        ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5
+                                     + Dot(Offset, Camera.Frame.Right) * Camera.OrthoScale);
+        ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5
+                                     - Dot(Offset, Camera.Frame.Up) * Camera.OrthoScale);
+        return true;
+    }
+
+    return ProjectThroughFrame(Camera.Frame, Extent, Camera.FieldOfViewDegrees, Position, ScreenX, ScreenY);
+}
+
+bool ProjectOffsetFromCamera(const ResolvedCamera& Camera, const PlaneExtent& Extent,
+                             const SpatialPoint& Centre, double Along, double Normal, double Across,
+                             float& ScreenX, float& ScreenY)
+{
+    const SpatialPoint Position =
+        Added(Centre, Added(Added(Scaled(Camera.Basis.Along, Along), Scaled(Camera.Basis.Normal, Normal)),
+                            Scaled(Camera.Basis.Across, Across)));
+    return ProjectFromCamera(Camera, Extent, Position, ScreenX, ScreenY);
+}
+
 bool ProjectThroughFrame(const ViewFrame& Frame,
                          const PlaneExtent& Extent,
                          double FieldOfViewDegrees,

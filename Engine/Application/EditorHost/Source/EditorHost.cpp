@@ -154,104 +154,7 @@ static_assert(sizeof(SessionSequence) > AutomaticLimit,
 constexpr float WorkspaceGround[4] = { 0.06f, 0.06f, 0.08f, 1.0f };   // [-]
 
 
-bool ProjectWorkspaceCodexPoint(const SceneDirectoryContext& Scene,
-                                const PlaneExtent& Extent,
-                                double WorldX,
-                                double WorldY,
-                                double WorldZ,
-                                float& ScreenX,
-                                float& ScreenY)
-{
-    const double Yaw   = Scene.ViewportSkyCamera.AzimuthDegrees * 3.14159265358979323846 / 180.0;
-    const double Pitch = Scene.ViewportSkyCamera.ElevationDegrees * 3.14159265358979323846 / 180.0;
-    const double CosP = std::cos(Pitch), SinP = std::sin(Pitch);
-    const double SinY = std::sin(Yaw),   CosY = std::cos(Yaw);
-    const double ForwardX = CosP * SinY;
-    const double ForwardY = SinP;
-    const double ForwardZ = CosP * CosY;
-    const double RightX = CosY;
-    const double RightZ = -SinY;
-    const double UpX = -SinP * SinY;
-    const double UpY = CosP;
-    const double UpZ = -SinP * CosY;
 
-    const double DX = WorldX - Scene.CameraPosition[0];
-    const double DY = WorldY - Scene.CameraPosition[1];
-    const double DZ = WorldZ - Scene.CameraPosition[2];
-    const double CameraX = DX * RightX + DZ * RightZ;
-    const double CameraY = DX * UpX + DY * UpY + DZ * UpZ;
-    const double CameraZ = DX * ForwardX + DY * ForwardY + DZ * ForwardZ;
-    if (CameraZ <= 0.01)
-        return false;
-
-    const double HalfV = Scene.ViewportSkyCamera.FieldOfViewDegrees * 0.5 * 3.14159265358979323846 / 180.0;
-    const double TanV = std::tan(HalfV);
-    const double Aspect = Extent.Height() > 0.0f ? static_cast<double>(Extent.Width()) / static_cast<double>(Extent.Height()) : 1.0;
-    const double TanH = TanV * Aspect;
-    ScreenX = static_cast<float>((CameraX / (CameraZ * TanH) * 0.5 + 0.5) * Extent.Width() + Extent.MinimumX);
-    ScreenY = static_cast<float>((-CameraY / (CameraZ * TanV) * 0.5 + 0.5) * Extent.Height() + Extent.MinimumY);
-    return true;
-}
-
-void RecordWorkspaceCodexProxy(RecordingSurface& Surface,
-                               const PlaneExtent& Extent,
-                               const SceneDirectoryContext& SceneApplied,
-                               const WorkspaceCodex& Scene,
-                               bool SceneStanding)
-{
-    if (!SceneStanding)
-        return;
-
-    Surface.Confine(Extent);
-    const ThemeToken Fill = Partial(0xF4F1E8u, 0.38f);
-    const ThemeToken Edge = Partial(0xFFFFFFu, 0.72f);
-    for (const CodexSceneEntry& Entry : Scene.Scene)
-    {
-        if (Entry.Subject != CodexSceneSubject::Geometry)
-            continue;
-        const CodexSceneMesh* Mesh = nullptr;
-        for (const CodexSceneMesh& Candidate : Scene.SceneMeshes)
-            if (Candidate.Naming == Entry.GeometryReference)
-            {
-                Mesh = &Candidate;
-                break;
-            }
-        if (Mesh == nullptr)
-            continue;
-        for (std::uint32_t Index = 0u; Index + 2u < Mesh->Indices.size(); Index += 3u)
-        {
-            float SX[3] = {};
-            float SY[3] = {};
-            bool Standing = true;
-            for (std::uint32_t Corner = 0u; Corner < 3u; ++Corner)
-            {
-                const std::uint32_t Vertex = Mesh->Indices[Index + Corner];
-                if (Vertex * 3u + 2u >= Mesh->Positions.size())
-                {
-                    Standing = false;
-                    break;
-                }
-                Standing = ProjectWorkspaceCodexPoint(SceneApplied, Extent,
-                    Entry.Position[0] + Mesh->Positions[Vertex * 3u + 0u] * Entry.Scale[0],
-                    Entry.Position[1] + Mesh->Positions[Vertex * 3u + 1u] * Entry.Scale[1],
-                    Entry.Position[2] + Mesh->Positions[Vertex * 3u + 2u] * Entry.Scale[2],
-                    SX[Corner], SY[Corner]) && Standing;
-            }
-            if (Standing)
-            {
-                const float Corners[6] = { SX[0], SY[0], SX[1], SY[1], SX[2], SY[2] };
-                Surface.Tongue(Corners, 3u, Fill);
-                const float X0[2] = { SX[0], SX[1] }; const float Y0[2] = { SY[0], SY[1] };
-                const float X1[2] = { SX[1], SX[2] }; const float Y1[2] = { SY[1], SY[2] };
-                const float X2[2] = { SX[2], SX[0] }; const float Y2[2] = { SY[2], SY[0] };
-                Surface.Polyline(X0, Y0, 2u, Edge, 0.7f);
-                Surface.Polyline(X1, Y1, 2u, Edge, 0.7f);
-                Surface.Polyline(X2, Y2, 2u, Edge, 0.7f);
-            }
-        }
-    }
-    Surface.Release();
-}
 
 
 
@@ -992,8 +895,21 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 LeafOverlay.Reset();
 
                                 SceneDirectory.RecordViewportSky(LeafBody, SceneApplied);
-                                RecordWorkspaceCodexProxy(Viewport.Surface(), LeafBody, SceneApplied,
-                                                          OpenedScene, OpenedSceneStanding);
+                                // 🔴 The same drawing the parametric host uses. It was written twice
+                                //    because the shared projection could not express a free-flying
+                                //    camera; `ResolveFreeCamera` now does. The editor works in METRES
+                                //    and the parametric workspace in millimetres, so the unit scale is
+                                //    named here rather than hidden inside the unit.
+                                const ResolvedCamera SceneCamera = ResolveFreeCamera(
+                                    { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
+                                      SceneApplied.CameraPosition[2] },
+                                    SceneApplied.ViewportSkyCamera.AzimuthDegrees,
+                                    SceneApplied.ViewportSkyCamera.ElevationDegrees,
+                                    SceneApplied.ViewportSkyCamera.FieldOfViewDegrees);
+                                RecordCodexSceneProxy(Viewport.Surface(), LeafBody, SceneCamera,
+                                                      OpenedScene, OpenedSceneStanding,
+                                                      WorkspaceSceneRows, SceneApplied,
+                                                      CodexMetresToMetres);
                                 {
                                     SharedViewportBasis GizmoBasis = SharedViewportBasisFromYawPitch(
                                         SceneApplied.ViewportSkyCamera.AzimuthDegrees,
