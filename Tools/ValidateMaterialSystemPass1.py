@@ -80,8 +80,8 @@ def main() -> int:
             "coverage inversion is not part of mask evaluation")
 
     require_text(
-        "Engine/Application/Api/MaterialLayerStackBridge.h",
-        "RebuildMaterialLayersFromTextureStack",
+        "Engine/SlateWorkspace/Discipline/MaterialLayerProjection/Source/MaterialLayerProjection.cpp",
+        "ProjectMaterialLayersFromTextureStack",
         "InitialiseDielectric(Material, Layers)",
         "TextureRowCoverage",
         "MaskChannel",
@@ -89,12 +89,17 @@ def main() -> int:
         "Exchange.Compare(*PreviousSnapshot, Report.Snapshot)",
     )
 
+    # 🔴 The third and last `*Bridge*` header. It called itself an "editor-only bridge"; it was neither.
+    #    Living in `Application/` meant one host could reach it and a second would have had to copy it.
+    if (ROOT / "Engine/Application/Api/MaterialLayerStackBridge.h").exists():
+        raise SystemExit("MaterialLayerStackBridge.h is deleted; the projection lives in SlateWorkspace")
+
     require_text(
         "Engine/Application/EditorHost/Source/EditorHost.cpp",
-        "Application/Api/MaterialLayerStackBridge.h",
+        "SlateWorkspace/Discipline/MaterialLayerProjection/Api/MaterialLayerProjection.h",
         "MaterialSpecification     EditorMaterialDocument",
         "SurfaceLayerSequence      EditorMaterialLayers",
-        "RebuildMaterialLayersFromTextureStack",
+        "ProjectMaterialLayersFromTextureStack",
     )
 
     require_text(

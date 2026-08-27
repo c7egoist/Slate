@@ -1,33 +1,14 @@
 //============================================================================================================================================
-//                                                 MATERIALLAYERSTACKBRIDGE.H
+//                                                    MATERIALLAYERPROJECTION.CPP
 //============================================================================================================================================
-// 🧩 Editor-only bridge from the Texture Paint layer-stack presentation to document material layers.
 
-#pragma once
-
-#include "SlateCompute/Compute/MaterialProcessingExchange/Api/MaterialProcessingExchange.h"
-#include "SlateDocument/Document/MaterialSpecification/Api/MaterialSpecification.h"
-#include "SlateDocument/Document/SurfaceLayerSequence/Api/SurfaceLayerSequence.h"
-#include "SlateUI/Interface/TexturePaintPanel/Api/TexturePaintPanel.h"
-
-#include <algorithm>
-#include <cstdint>
-#include <string>
+#include "SlateWorkspace/Discipline/MaterialLayerProjection/Api/MaterialLayerProjection.h"
 
 namespace Slate
 {
 
-struct MaterialLayerStackBridgeReport
-{
-    std::uint32_t MirroredLayerCount = 0u;
-    std::uint32_t MaskedLayerCount = 0u;
-    LayerIdentity BaseLayer = {};
-    MaterialProcessingSnapshot Snapshot = {};
-    MaterialProcessingDirtySet Dirty = {};
-    bool HadPreviousSnapshot = false;
-};
 
-inline ChannelSubject TextureChannelToMaterialChannel(std::uint32_t ChannelIndex)
+ChannelSubject TextureChannelToMaterialChannel(std::uint32_t ChannelIndex)
 {
     switch (ChannelIndex)
     {
@@ -49,12 +30,12 @@ inline ChannelSubject TextureChannelToMaterialChannel(std::uint32_t ChannelIndex
     }
 }
 
-inline std::uint32_t MaterialChannelBit(ChannelSubject Channel)
+std::uint32_t MaterialChannelBit(ChannelSubject Channel)
 {
     return Channel == ChannelSubject::ChannelCount ? 0u : (1u << static_cast<std::uint32_t>(Channel));
 }
 
-inline std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
                                            std::uint32_t RowIndex,
                                            const TextureLayerRow& Row)
 {
@@ -76,7 +57,7 @@ inline std::uint32_t TextureRowChannelMask(const TexturePaintContext& Context,
     return Mask == 0u ? MaterialChannelBit(ChannelSubject::AlbedoColour) : Mask;
 }
 
-inline std::uint32_t TextureRowMaskChannelMask(const TexturePaintContext& Context,
+std::uint32_t TextureRowMaskChannelMask(const TexturePaintContext& Context,
                                                std::uint32_t RowIndex,
                                                std::uint32_t LayerChannelMask)
 {
@@ -92,7 +73,7 @@ inline std::uint32_t TextureRowMaskChannelMask(const TexturePaintContext& Contex
     return Mask == 0u ? LayerChannelMask : Mask;
 }
 
-inline LayerContentSource TextureLayerSource(TextureLayerClassification Classified)
+LayerContentSource TextureLayerSource(TextureLayerClassification Classified)
 {
     switch (Classified)
     {
@@ -113,7 +94,7 @@ inline LayerContentSource TextureLayerSource(TextureLayerClassification Classifi
     }
 }
 
-inline CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
+CoverageSpecification TextureRowCoverage(const TexturePaintContext& Context,
                                                 std::uint32_t RowIndex,
                                                 const TextureLayerRow& Row,
                                                 std::uint32_t LayerChannelMask)
@@ -130,7 +111,7 @@ inline CoverageSpecification TextureRowCoverage(const TexturePaintContext& Conte
     return Coverage;
 }
 
-inline MaterialLayerStackBridgeReport RebuildMaterialLayersFromTextureStack(
+MaterialLayerProjectionReport ProjectMaterialLayersFromTextureStack(
     MaterialSpecification& Material,
     SurfaceLayerSequence& Layers,
     const TexturePaintStack& Stack,
@@ -138,7 +119,7 @@ inline MaterialLayerStackBridgeReport RebuildMaterialLayersFromTextureStack(
     const MaterialProcessingExchange& Exchange,
     const MaterialProcessingSnapshot* PreviousSnapshot)
 {
-    MaterialLayerStackBridgeReport Report;
+    MaterialLayerProjectionReport Report;
     Layers = SurfaceLayerSequence{};
     const Deliver<LayerIdentity> Base = Exchange.InitialiseDielectric(Material, Layers);
     if (Base.Resolved) Report.BaseLayer = Base.Resolve();
@@ -172,4 +153,5 @@ inline MaterialLayerStackBridgeReport RebuildMaterialLayersFromTextureStack(
     return Report;
 }
 
-} // namespace Slate
+
+}   // namespace Slate

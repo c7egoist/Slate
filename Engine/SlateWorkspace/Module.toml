@@ -29,7 +29,7 @@ subject = [ "Discipline" ]
 #    seats AND which tools it offers. It names no device and no tick: a workspace that knew when it was
 #    recorded would be a runtime concern wearing a workspace's name.
 [requires]
-unit = [ "SketchToolset", "TextureToolset", "SlateUI", "SlateDocument", "SlateShape", "SlateMath" ]
+unit = [ "SketchToolset", "TextureToolset", "SlateUI", "SlateCompute", "SlateDocument", "SlateShape", "SlateMath" ]
 
 [external]
 include = [ "$VULKAN_SDK/Include" ]
@@ -39,5 +39,5 @@ declare = []
 # 🔴 `unit` here is the ARCHIVE order handed to the linker, most-dependent first, and it is a different
 #    statement from `[requires].unit` above. That one says what this unit may **include**; this one says
 #    what an executable must **link** so every reference resolves.
-unit    = [ "SketchToolset", "TextureToolset", "SlateUI", "SlateDocument", "SlateShape", "SlateMath" ]
+unit    = [ "SketchToolset", "TextureToolset", "SlateUI", "SlateCompute", "SlateDocument", "SlateShape", "SlateMath" ]
 library = []

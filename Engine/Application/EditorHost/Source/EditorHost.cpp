@@ -20,7 +20,7 @@
 #include "Application/Api/HostFeature.h"
 #include "SlateWorkspace/Discipline/CodexActivation/Api/CodexActivation.h"
 #include "SlateWorkspace/Discipline/OrientationCube/Api/OrientationCube.h"
-#include "Application/Api/MaterialLayerStackBridge.h"
+#include "SlateWorkspace/Discipline/MaterialLayerProjection/Api/MaterialLayerProjection.h"
 #include "SlateWorkspace/Discipline/CodexSceneProxy/Api/CodexSceneProxy.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateWorld/World/AtmosphereComponent/Api/AtmosphereComponent.h"
@@ -463,7 +463,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         TexturePaintApplied.MaskInverted[Index] = (Index == 9u);
     }
 
-    MaterialLayerStackBridgeReport InitialMaterialBridge = RebuildMaterialLayersFromTextureStack(
+    MaterialLayerProjectionReport InitialMaterialBridge = ProjectMaterialLayersFromTextureStack(
         EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturePaintApplied,
         EditorMaterialExchange, nullptr);
     EditorMaterialSnapshot = InitialMaterialBridge.Snapshot;
@@ -1354,7 +1354,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             //    same shared helper the harness drives — the row set and the working copies stay in
             //    step with the panel's buttons and menus.
             StackRows.ApplyRequest(TexturePaintApplied);
-            MaterialLayerStackBridgeReport MaterialBridge = RebuildMaterialLayersFromTextureStack(
+            MaterialLayerProjectionReport MaterialBridge = ProjectMaterialLayersFromTextureStack(
                 EditorMaterialDocument, EditorMaterialLayers, StackRows, TexturePaintApplied,
                 EditorMaterialExchange, EditorMaterialSnapshotReady ? &EditorMaterialSnapshot : nullptr);
             EditorMaterialSnapshot = MaterialBridge.Snapshot;
