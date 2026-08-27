@@ -8,7 +8,8 @@
 #define SLATE_PARAMETRIC_SKETCH_HOST 1
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "Foundation/DeliveryGuarantee.h"
-#include "Application/Api/SharedViewportHostBridge.h"
+#include "SlateWorkspace/Discipline/CodexActivation/Api/CodexActivation.h"
+#include "SlateWorkspace/Discipline/OrientationCube/Api/OrientationCube.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 #include "SlateWorkspace/Discipline/RecordDeclaration/Api/RecordDeclaration.h"
 #include "SlateWorkspace/Discipline/SketchPicking/Api/SketchPicking.h"
@@ -1036,7 +1037,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             ContentBrowser.RecordBrowser(BrowserInterior, ContentApplied, ContentBrowserApplied);
             ContentBrowser.RecordDeferred();
 
-            const SharedCodexActivation ActivatedScene = ConsumeSharedCodexActivation(
+            const CodexActivation ActivatedScene = ConsumeCodexActivation(
                 ContentBrowserApplied, ContentApplied, EngineContentRoot);
             if (ActivatedScene.Requested && !ActivatedScene.Resolved)
             {

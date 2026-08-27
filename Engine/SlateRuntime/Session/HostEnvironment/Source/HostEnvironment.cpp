@@ -116,4 +116,38 @@ void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::fi
     }
 }
 
+std::filesystem::path ResolveEngineContentRoot(const std::filesystem::path& ExecutablePath)
+{
+    const auto Standing = [](const std::filesystem::path& Candidate)
+    {
+        return std::filesystem::exists(Candidate / "WhiteTeaService.codex") ||
+               std::filesystem::exists(Candidate / "FontArchives");
+    };
+
+    const std::filesystem::path Starts[3] =
+    {
+        std::filesystem::current_path() / "EngineContent",
+        ExecutablePath.parent_path() / "EngineContent",
+        ExecutablePath.parent_path().parent_path() / "EngineContent"
+    };
+
+    for (const std::filesystem::path& Candidate : Starts)
+        if (Standing(Candidate))
+            return Candidate.lexically_normal();
+
+    std::filesystem::path Walk = std::filesystem::current_path();
+    for (std::uint32_t Step = 0u; Step < 8u; ++Step)
+    {
+        const std::filesystem::path Candidate = Walk / "EngineContent";
+        if (Standing(Candidate))
+            return Candidate.lexically_normal();
+
+        if (!Walk.has_parent_path() || Walk.parent_path() == Walk)
+            break;
+        Walk = Walk.parent_path();
+    }
+
+    return (std::filesystem::current_path() / "EngineContent").lexically_normal();
+}
+
 }   // namespace Slate

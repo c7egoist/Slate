@@ -388,12 +388,7 @@ const ToolEntry ReferenceTools[] =
     { "Workplane", "⇧W", SymbolSubject::SketchPlane, ParametricToolDimension::Nothing,
       false, false, false, false, false, false, false, false, false, false, false, false, false, false,
       0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Base", "XY" }, { "Offset", "0 mm" }, { "Rotation", "0°" }, { "Visible", "On" } }, 4u },
-
-    { "Datum Plane", "", SymbolSubject::SketchPlane, ParametricToolDimension::Nothing,
-      false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "3 Points" }, { "Offset", "0 mm" } }, 2u },
+      { { "Base", "XY" }, { "Defined By", "Offset" }, { "Offset", "0 mm" }, { "Rotation", "0°" } }, 4u },
 
     { "Datum Axis", "", SymbolSubject::CrosshairCentre, ParametricToolDimension::Nothing,
       false, false, false, false, false, false, false, false, false, false, false, false, false, false,
@@ -673,7 +668,6 @@ ParametricToolSubject ToolSubjectOf(std::uint32_t BandIndex, std::uint32_t ToolI
                                    : ParametricToolSubject::Mirror;
         case 8u:
             return ToolIndex == 0u ? ParametricToolSubject::Workplane
-                 : ToolIndex == 1u ? ParametricToolSubject::DatumPlane
                                    : ParametricToolSubject::DatumAxis;
         case 9u:
             return ToolIndex == 0u ? ParametricToolSubject::ImportStep

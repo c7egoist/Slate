@@ -5,7 +5,8 @@
 
 #define SLATE_PAINT_HOST 1
 #include "Foundation/DeliveryGuarantee.h"
-#include "Application/Api/SharedViewportHostBridge.h"
+#include "SlateWorkspace/Discipline/CodexActivation/Api/CodexActivation.h"
+#include "SlateWorkspace/Discipline/OrientationCube/Api/OrientationCube.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
 #include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
@@ -221,9 +222,9 @@ void RecordSharedViewportChrome(RecordingSurface& Surface, const PlaneExtent& Ex
         Surface.Polyline(PointsX, PointsY, 2u, Partial(0xC4C8D6u, 0.10f), 1.0f);
     }
 
-    const SharedViewportBasis GizmoBasis = SharedViewportBasisFromYawPitch(Camera.LaggedYawDegrees,
+    const CubeBasis GizmoBasis = CubeBasisFromYawPitch(Camera.LaggedYawDegrees,
                                                                             Camera.LaggedPitchDegrees);
-    RecordSharedViewportGizmo(Surface, Extent, GizmoBasis, Configuration.Gizmo == PanelGizmo::Cad);
+    RecordOrientationWidget(Surface, Extent, GizmoBasis, Configuration.Gizmo == PanelGizmo::Cad);
     Surface.Release();
 }
 
@@ -316,7 +317,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     EditorCameraComponent    EditorCamera;
     bool                     EditorCameraLookLatched = false;
     {
-        const SharedViewportCameraSeed CameraSeed = SharedViewportDefaultCamera();
+        const ViewportCameraSeed CameraSeed = ViewportCameraSeed{};
         EditorCamera.Position[0] = CameraSeed.Position[0];
         EditorCamera.Position[1] = CameraSeed.Position[1];
         EditorCamera.Position[2] = CameraSeed.Position[2];
@@ -520,16 +521,16 @@ int main(int ArgumentCount, char** ArgumentValues)
                             if (BackgroundPointer.ContactPressed &&
                                 LeafBody.Encloses(BackgroundPointer.PositionX, BackgroundPointer.PositionY))
                             {
-                                const SharedViewportBasis GizmoBasis = SharedViewportBasisFromYawPitch(
+                                const CubeBasis GizmoBasis = CubeBasisFromYawPitch(
                                     EditorCamera.LaggedYawDegrees, EditorCamera.LaggedPitchDegrees);
-                                const SharedViewportOrientation Hit = HitSharedViewportGizmo(
+                                const Deliver<ViewportOrientation> Hit = HitOrientationWidget(
                                     LeafBody, GizmoBasis, BackgroundPointer.PositionX, BackgroundPointer.PositionY,
                                     PanelConfiguration[Index].Gizmo == PanelGizmo::Cad);
-                                if (Hit != SharedViewportOrientation::None)
+                                if (Hit.Resolved)
                                 {
                                     double Yaw = EditorCamera.YawDegrees;
                                     double Pitch = EditorCamera.PitchDegrees;
-                                    SharedViewportOrientationPreset(Hit, Yaw, Pitch);
+                                    OrientationYawPitch(Hit.Resolve(), Yaw, Pitch);
                                     EditorCamera.YawDegrees = Yaw;
                                     EditorCamera.PitchDegrees = Pitch;
                                     EditorCamera.Snap();
@@ -610,7 +611,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                           0.0f, CornerNone);
                 ContentBrowser.RecordBrowser(BrowserInterior, ContentApplied, ContentBrowserApplied);
                 ContentBrowser.RecordDeferred();
-                const SharedCodexActivation ActivatedScene = ConsumeSharedCodexActivation(
+                const CodexActivation ActivatedScene = ConsumeCodexActivation(
                     ContentBrowserApplied, ContentApplied, EngineContentRoot);
                 if (ActivatedScene.Resolved)
                 {

@@ -157,8 +157,7 @@ bool ApplyWorkplaneTool(const PlaneExtent& Extent,
                         WorkspaceRevisionSequence& Revisions,
                         WorkplaneCatalogue& Workplanes)
 {
-    if (ToolContext.ActiveSubject != ParametricToolSubject::Workplane &&
-        ToolContext.ActiveSubject != ParametricToolSubject::DatumPlane)
+    if (ToolContext.ActiveSubject != ParametricToolSubject::Workplane)
         return false;
 
     if (!Pointer.ContactPressed || !Extent.Encloses(Pointer.PositionX, Pointer.PositionY))

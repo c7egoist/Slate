@@ -18,7 +18,8 @@
 #define SLATE_EDITOR_HOST 1
 #include "Foundation/DeliveryGuarantee.h"
 #include "Application/Api/HostFeature.h"
-#include "Application/Api/SharedViewportHostBridge.h"
+#include "SlateWorkspace/Discipline/CodexActivation/Api/CodexActivation.h"
+#include "SlateWorkspace/Discipline/OrientationCube/Api/OrientationCube.h"
 #include "Application/Api/MaterialLayerStackBridge.h"
 #include "SlateWorkspace/Discipline/CodexSceneProxy/Api/CodexSceneProxy.h"
 #include "SlateWorld/World/EditorCameraComponent/Api/EditorCameraComponent.h"
@@ -911,28 +912,28 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                       WorkspaceSceneRows, SceneApplied,
                                                       CodexMetresToMetres);
                                 {
-                                    SharedViewportBasis GizmoBasis = SharedViewportBasisFromYawPitch(
+                                    CubeBasis GizmoBasis = CubeBasisFromYawPitch(
                                         SceneApplied.ViewportSkyCamera.AzimuthDegrees,
                                         SceneApplied.ViewportSkyCamera.ElevationDegrees);
                                     const EditorPanelConfiguration& PanelDeclaredForGizmo = PanelConfiguration[Index];
                                     if (BackgroundPointer.ContactPressed &&
                                         LeafBody.Encloses(BackgroundPointer.PositionX, BackgroundPointer.PositionY))
                                     {
-                                        const SharedViewportOrientation Hit = HitSharedViewportGizmo(
+                                        const Deliver<ViewportOrientation> Hit = HitOrientationWidget(
                                             LeafBody, GizmoBasis, BackgroundPointer.PositionX, BackgroundPointer.PositionY,
                                             PanelDeclaredForGizmo.Gizmo == PanelGizmo::Cad);
-                                        if (Hit != SharedViewportOrientation::None)
+                                        if (Hit.Resolved)
                                         {
                                             double Yaw = EditorCamera.YawDegrees;
                                             double Pitch = EditorCamera.PitchDegrees;
-                                            SharedViewportOrientationPreset(Hit, Yaw, Pitch);
+                                            OrientationYawPitch(Hit.Resolve(), Yaw, Pitch);
                                             EditorCamera.YawDegrees = Yaw;
                                             EditorCamera.PitchDegrees = Pitch;
                                             EditorCamera.Snap();
-                                            GizmoBasis = SharedViewportBasisFromYawPitch(Yaw, Pitch);
+                                            GizmoBasis = CubeBasisFromYawPitch(Yaw, Pitch);
                                         }
                                     }
-                                    RecordSharedViewportGizmo(Viewport.Surface(), LeafBody, GizmoBasis,
+                                    RecordOrientationWidget(Viewport.Surface(), LeafBody, GizmoBasis,
                                                               PanelDeclaredForGizmo.Gizmo == PanelGizmo::Cad);
                                 }
 
@@ -1396,7 +1397,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 ContentBrowser.RecordBrowser(BrowserInterior, ContentApplied, ContentBrowserApplied);
                 ContentBrowser.RecordDeferred();
 
-                const SharedCodexActivation ActivatedScene = ConsumeSharedCodexActivation(
+                const CodexActivation ActivatedScene = ConsumeCodexActivation(
                     ContentBrowserApplied, ContentApplied, EngineContentRoot);
                 if (ActivatedScene.Requested && !ActivatedScene.Resolved)
                 {
@@ -1411,7 +1412,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                     PresentedEntities = WorkspaceSceneRows.Rows;
                     PresentedEntityCount = WorkspaceSceneRows.RowCount;
                     ApplySceneEnvironment(OpenedScene, SceneApplied);
-                    const SharedViewportCameraSeed CameraSeed = SharedViewportDefaultCamera();
+                    const ViewportCameraSeed CameraSeed = ViewportCameraSeed{};
                     EditorCamera.Position[0] = CameraSeed.Position[0];
                     EditorCamera.Position[1] = CameraSeed.Position[1];
                     EditorCamera.Position[2] = CameraSeed.Position[2];

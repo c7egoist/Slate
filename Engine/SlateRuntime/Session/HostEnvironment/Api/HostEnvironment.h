@@ -46,4 +46,15 @@ std::filesystem::path HomeProfilePath();
 /// tag  api, allocating
 void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::filesystem::path& Requested);
 
+/// 🧩 The `EngineContent` directory the running executable should read from.
+/// in   ExecutablePath  [-]  argv[0], or empty if the host does not know its own path
+/// note ⚠️ Searched rather than assumed: beside the working directory, beside the binary, one above the
+///       binary, then up to eight parents. A host launched from a debugger, an installed location or a
+///       build tree all start somewhere different, and none of them is wrong.
+/// note 📝 Recognised by `WhiteTeaService.codex` or a `FontArchives` folder being present. Falls back to
+///       `./EngineContent` so the caller always has a path to report in a refusal.
+/// cost 🚩
+/// tag  api, allocating
+std::filesystem::path ResolveEngineContentRoot(const std::filesystem::path& ExecutablePath);
+
 }   // namespace Slate

@@ -59,7 +59,14 @@ enum class ParametricToolSubject : std::uint32_t
     Cut = 24u,
     LinearArray = 25u,
     Mirror = 26u,
-    DatumPlane = 27u,
+    // 🔴 27u WAS `DatumPlane`, AND IT WAS THE SAME TOOL AS `Workplane`. Every consumer treated the two
+    //    identically — `SketchInteraction` tested for either and did one thing, the panel listed both
+    //    under one group. The only stated difference was its "Defined By: 3 Points" property, which is a
+    //    METHOD OF CONSTRUCTION, not a different subject: a plane through three points is a workplane,
+    //    placed a particular way. Shape and method are separate axes, and one tool per method is exactly
+    //    the redundancy this pass exists to remove.
+    // ⚠️ 27u is deliberately left unused rather than renumbered. These values are written into saved
+    //    documents; shifting `DatumAxis` from 28 to 27 would silently reinterpret every stored tool.
     DatumAxis = 28u,
     ImportStep = 29u,
     MeshToSolid = 30u,

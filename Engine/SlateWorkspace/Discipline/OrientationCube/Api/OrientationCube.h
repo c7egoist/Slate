@@ -111,4 +111,27 @@ Deliver<ViewportOrientation> HitOrientationWidget(const PlaneExtent& Extent,
                                                   float PointerY,
                                                   bool CadMode);
 
+
+/// 🧩 Where a viewport's free-flying camera starts before anything is opened.
+/// note 📝 Shared so the two products open on the same view of the same scene. It was a `SharedViewport*`
+///       name in a bridge header; it is just the default camera.
+struct ViewportCameraSeed
+{
+    double Position[3]         = { 0.0, 1.2, -4.0 };   // [m]
+    double YawDegrees          = 0.0;
+    double PitchDegrees        = -8.0;
+    double FieldOfViewDegrees  = 60.0;
+};
+
+/// 🧩 The yaw and pitch a free-flying camera should fly to when an orientation is chosen.
+/// note 🔴 A CAD viewport answers this with `ApplyViewportOrientation`, which sets an ORBIT. A free camera
+///       has no orbit to set — it needs the two angles — so this is the same table in the form the editor
+///       hosts can use. The two must name the same directions or clicking the cube points the two
+///       products' viewports in different directions.
+/// note 📝 Isometric is 52°/24° rather than 45°/35° because it is a viewing preference, not a derivation;
+///       the figures are the ones the editor has always used.
+/// cost 🟢
+/// tag  api, pure, nonallocating, nonthrowing
+void OrientationYawPitch(ViewportOrientation Orientation, double& YawDegrees, double& PitchDegrees);
+
 }   // namespace Slate

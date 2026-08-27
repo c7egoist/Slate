@@ -425,4 +425,18 @@ Deliver<ViewportOrientation> HitOrientationWidget(const PlaneExtent& Extent,
                    : HitOrientationBall(Extent, Basis, PointerX, PointerY);
 }
 
+void OrientationYawPitch(ViewportOrientation Orientation, double& YawDegrees, double& PitchDegrees)
+{
+    switch (Orientation)
+    {
+        case ViewportOrientation::Top:       YawDegrees = 0.0;   PitchDegrees = 80.0;  return;
+        case ViewportOrientation::Bottom:    YawDegrees = 0.0;   PitchDegrees = -80.0; return;
+        case ViewportOrientation::Front:     YawDegrees = 0.0;   PitchDegrees = 0.0;   return;
+        case ViewportOrientation::Back:      YawDegrees = 180.0; PitchDegrees = 0.0;   return;
+        case ViewportOrientation::Right:     YawDegrees = 90.0;  PitchDegrees = 0.0;   return;
+        case ViewportOrientation::Left:      YawDegrees = -90.0; PitchDegrees = 0.0;   return;
+        case ViewportOrientation::Isometric: YawDegrees = 52.0;  PitchDegrees = 24.0;  return;
+    }
+}
+
 }   // namespace Slate

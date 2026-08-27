@@ -66,14 +66,17 @@ def main() -> int:
     require("std::strncpy" not in editor, "EditorHost must avoid MSVC strncpy warning")
     require("ResizedGeometryOffering" in editor and "ResizedGeometryDelivery" in editor,
             "EditorHost resize path should not shadow geometry construction locals")
-    require("ConsumeSharedCodexActivation" in editor, "EditorHost activation must use the shared codex activation helper")
+    # 📝 `ConsumeSharedCodexActivation` was an `inline` in `Application/Api/SharedViewportHostBridge.h`,
+    #    which is deleted. It is now `ConsumeCodexActivation` in `SlateWorkspace/Discipline/CodexActivation`.
+    require("ConsumeCodexActivation" in editor,
+            "EditorHost activation must use the shared codex activation unit")
 
     paint = read("Engine/Application/PaintHost/Source/PaintHost.cpp")
     require(offstack(paint), "PaintHost must keep the motion-heavy viewport sequence off the stack")
     require("EditorCameraComponent" in paint and "CameraInput" in paint,
             "PaintHost viewport must use the shared editor camera component and hotkey path")
-    require("ConsumeSharedCodexActivation" in paint,
-            "PaintHost activation must use the shared codex activation helper")
+    require("ConsumeCodexActivation" in paint,
+            "PaintHost activation must use the shared codex activation unit")
     require("std::strncpy" not in paint, "PaintHost must avoid MSVC strncpy warning")
 
     validation = read("Engine/Application/InterfaceValidationHost/Source/InterfaceValidationHost.cpp")
@@ -85,8 +88,17 @@ def main() -> int:
     require("_dupenv_s(&Home" not in parametric,
             "ParametricSketchHost must not carry its own copy of the home profile lookup")
     require("std::strncpy" not in parametric, "ParametricSketchHost must avoid MSVC strncpy warning")
-    require("ConsumeSharedCodexActivation" in parametric,
-            "ParametricSketchHost activation must use the shared codex activation helper")
+    require("ConsumeCodexActivation" in parametric,
+            "ParametricSketchHost activation must use the shared codex activation unit")
+
+    # 🔴 THE BRIDGE HEADER IS GONE AND MUST STAY GONE. 675 `inline` lines under `Application/` that three
+    #    hosts included — the orientation widget, the camera seed, the content root and the codex
+    #    activation, none of which were bridges and none of which could be tested where they sat.
+    require(not (ROOT / "Engine" / "Application" / "Api" / "SharedViewportHostBridge.h").exists(),
+            "SharedViewportHostBridge.h must not come back")
+    for Host, Body in (("EditorHost", editor), ("PaintHost", paint), ("ParametricSketchHost", parametric)):
+        require("SharedViewportHostBridge" not in Body,
+                f"{Host} must not include the deleted bridge header")
 
     # 🔴 This block used to demand the literal spelling `SharedCadDrawingController.h` in both hosts. That
     #    asserted a FILE NAME, not a property, so it reported a regression the moment the duplicated
@@ -134,16 +146,22 @@ def main() -> int:
             parametric.find("ToolPanel.Advance") < parametric.find("WorkspacePanels.Record"),
             "ParametricSketchHost must advance CAD tool interactions before recording/drawing the viewport")
 
-    shared_viewport = read("Engine/Application/Api/SharedViewportHostBridge.h")
-    require("RecordSharedViewportGizmo" in shared_viewport and "HitSharedViewportGizmo" in shared_viewport,
-            "shared viewport bridge must own the one-at-a-time gizmo dispatch")
-    require("Extent.MinimumX + 52.0f" not in shared_viewport and "Extent.MaximumX - 70.0f" in shared_viewport,
+    # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
+    #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
+    #    `SlateWorkspace/Discipline/CodexActivation`; the guarantees are unchanged, only their address is.
+    orientation = read("Engine/SlateWorkspace/Discipline/OrientationCube/Source/OrientationCube.cpp")
+    require("RecordOrientationWidget" in orientation and "HitOrientationWidget" in orientation,
+            "the orientation unit must own the one-at-a-time gizmo dispatch")
+    require("Extent.MinimumX + 52.0f" not in orientation and "Extent.MaximumX - 70.0f" in orientation,
             "both Blender and CAD viewport gizmos must be anchored at the top-right of the viewport")
-    require("SharedViewportCameraDepth" in shared_viewport,
-            "shared viewport gizmos must use the HTML-reference camera-forward depth ordering")
-    require("DrawFaceLabel" in shared_viewport and "TextRun(Face" not in shared_viewport,
+    require("CubeAxisDepth" in orientation,
+            "viewport gizmos must use the HTML-reference camera-forward depth ordering")
+    require("DrawFaceLabel" in orientation and "TextRun(Face" not in orientation,
             "CAD cube face labels must be projected face strokes, not hovering screen-space text")
-    require("CenterActivatedSceneAtWorldOrigin" in shared_viewport and "CenterActivatedSceneAtWorldOrigin(Loaded)" in shared_viewport,
+
+    activation = read("Engine/SlateWorkspace/Discipline/CodexActivation/Source/CodexActivation.cpp")
+    require("CenterActivatedSceneAtWorldOrigin" in activation
+            and "CenterActivatedSceneAtWorldOrigin(Loaded)" in activation,
             "codex scene activation must recenter loaded geometry at the world origin")
 
     content_browser = read("Engine/SlateUI/Interface/ContentBrowserPanel/Source/ContentBrowserPanel.cpp")
