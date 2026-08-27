@@ -150,19 +150,5 @@ std::filesystem::path ResolveEngineContentRoot(const std::filesystem::path& Exec
     return (std::filesystem::current_path() / "EngineContent").lexically_normal();
 }
 
-InterfaceAttachment Attach(const DeviceOffering& Offered)
-{
-    InterfaceAttachment Incoming = {};
-    Incoming.Instance = Offered.Instance;
-    Incoming.ScoredDevice = Offered.ScoredDevice;
-    Incoming.ActiveDevice = Offered.ActiveDevice;
-    Incoming.GraphicsQueue = Offered.GraphicsQueue;
-    Incoming.GraphicsFamilyIndex = Offered.GraphicsFamilyIndex;
-    Incoming.ColourTargetFormat = Offered.ColourTargetFormat;
-    Incoming.MinimumDisplayImageCount = Offered.MinimumDisplayImageCount;
-    Incoming.DisplayImageCount = Offered.DisplayImageCount;
-    Incoming.NativeWindowSlot = Offered.NativeWindowSlot;
-    return Incoming;
-}
 
 }   // namespace Slate

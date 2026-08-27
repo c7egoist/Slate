@@ -5,6 +5,9 @@
 
 #pragma once
 
+// 📝 `InterfaceAttachment` is an alias for the shared `DeviceAttachment`; see the note there.
+#include "Shared/DeviceAttachment.slang.h"
+
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
@@ -28,18 +31,6 @@ namespace Slate
 ///       interface without acquiring ImGui's declarations. `00` §2.2 makes a host that includes `imgui.h`
 ///       a defect, and a defect that cannot be spelled cannot be committed.
 /// tag   nonallocating, nonthrowing
-struct InterfaceAttachment
-{
-    VkInstance        Instance              = VK_NULL_HANDLE;          // [-]  - the loaded instance
-    VkPhysicalDevice  ScoredDevice          = VK_NULL_HANDLE;          // [-]  - the device VendorClassifier won
-    VkDevice          ActiveDevice          = VK_NULL_HANDLE;          // [-]  - the created device
-    VkQueue           GraphicsQueue         = VK_NULL_HANDLE;          // [-]  - the one queue taken
-    std::uint32_t     GraphicsFamilyIndex = 0u;                      // [-]  - the family that queue sits in
-    VkFormat          ColourTargetFormat       = VK_FORMAT_UNDEFINED;  // [-] - format of DisplaySurface
-    std::uint32_t     MinimumDisplayImageCount = 0u;                   // [-] - minimum requested of the chain
-    std::uint32_t     DisplayImageCount        = 0u;                   // [-] - actual images the chain holds
-    void*             NativeWindowSlot         = nullptr;              // [-] - WindowInterchange's handle
-};
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                  THE INTERFACE SEAM

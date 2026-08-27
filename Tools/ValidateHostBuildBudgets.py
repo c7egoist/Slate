@@ -226,6 +226,23 @@ def main() -> int:
     require("Workplanes.Declare(Placed" in interaction and "Sketch.DeclarePlane({ Workplanes.Active()" in interaction,
             "a placed workplane must join the catalogue and be adopted, never overwrite the sketch plane blind")
 
+    # 🔴 `DeviceOffering` and `InterfaceAttachment` were nine identical fields in two units, with a
+    #    hand-written `Attach` copying each one across — and `Attach` itself was DEFINED TWICE, which
+    #    only became visible once the types were unified. A field added to one side and forgotten on
+    #    the other compiles perfectly and arrives as a null handle.
+    device_attachment = read("Engine/Shared/DeviceAttachment.slang.h")
+    require("using DeviceOffering = DeviceAttachment;" in device_attachment
+            and "using InterfaceAttachment = DeviceAttachment;" in device_attachment,
+            "the device handles must be one type; the two old names are aliases, not copies")
+    for Twin in ("Engine/SlateVulkan/Device/HostLifecycle/Api/HostLifecycle.h",
+                 "Engine/SlateUI/Interface/InterfaceExchange/Api/InterfaceExchange.h"):
+        Body = read(Twin)
+        require("struct DeviceOffering" not in Body and "struct InterfaceAttachment" not in Body,
+                f"{Twin} must not redeclare the shared device attachment")
+    require("InterfaceAttachment Attach(const DeviceOffering&" not in read(
+                "Engine/SlateRuntime/Session/HostEnvironment/Api/HostEnvironment.h"),
+            "Attach converted a type to itself once the twins merged; it is deleted")
+
     content_browser = read("Engine/SlateUI/Interface/ContentBrowserPanel/Source/ContentBrowserPanel.cpp")
     require("ActivationRequested = Library.Taken" in content_browser and "ActivationRequested = Index" in content_browser,
             "Content Browser card and Import button must request codex activation")

@@ -5,6 +5,9 @@
 
 #pragma once
 
+// 📝 `DeviceOffering` is an alias for the shared `DeviceAttachment`; see the note there.
+#include "Shared/DeviceAttachment.slang.h"
+
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateMath/Platform/TickSequence/Api/TickSequence.h"
 #include "SlateMath/Platform/WindowInterchange/Api/WindowInterchange.h"
@@ -74,18 +77,6 @@ struct HostDeclaration
 /// note  ⚠️ The image counts are restated on every display recovery, so a reader that took a copy before a
 ///        resize holds two figures the chain no longer has.
 /// tag   guarantee, nonallocating, nonthrowing
-struct DeviceOffering
-{
-    VkInstance        Instance                 = VK_NULL_HANDLE;         // [-]
-    VkPhysicalDevice  ScoredDevice             = VK_NULL_HANDLE;         // [-]
-    VkDevice          ActiveDevice             = VK_NULL_HANDLE;         // [-]
-    VkQueue           GraphicsQueue            = VK_NULL_HANDLE;         // [-]
-    std::uint32_t     GraphicsFamilyIndex    = 0u;                     // [-]
-    VkFormat          ColourTargetFormat       = VK_FORMAT_UNDEFINED;    // [-]
-    std::uint32_t     MinimumDisplayImageCount = 0u;                     // [-]
-    std::uint32_t     DisplayImageCount        = 0u;                     // [-]
-    void*             NativeWindowSlot         = nullptr;                // [-]
-};
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    WHAT ONE TICK CARRIES

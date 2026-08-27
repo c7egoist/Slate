@@ -295,7 +295,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    chrome nothing in the reference has, which is the opposite of what a validation host is for.
     InterfaceExchange Interface;
 
-    if (!Interface.AttachInterface(Attach(Lifetime.Offering())).Resolved)
+    if (!Interface.AttachInterface(Lifetime.Offering()).Resolved)
     {
         std::printf("%s \u2014 the interface context was rejected\n", HostName);
         return 1;
@@ -558,7 +558,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         {
             Interface.Reclaim();
 
-            if (!Interface.AttachInterface(Attach(Lifetime.Offering())).Resolved)
+            if (!Interface.AttachInterface(Lifetime.Offering()).Resolved)
             {
                 std::printf("%s \u2014 the interface could not be rebuilt on the recovered device\n", HostName);
                 break;

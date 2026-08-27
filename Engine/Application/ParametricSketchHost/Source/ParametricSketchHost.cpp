@@ -231,7 +231,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     static ViewportSequence Viewport;
     DrawerDeclaration NorthDrawer = { "ControlCentre", SymbolSubject::PulseTrace, 2u };
     DrawerDeclaration SouthDrawer = { "ContentBrowser", SymbolSubject::FolderClosed, 3u };
-    if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDrawer, SouthDrawer).Resolved)
+    if (!Viewport.ConstructViewportSequence(Lifetime.Offering(), NorthDrawer, SouthDrawer).Resolved)
     {
         std::printf("%s — the viewport sequence was rejected\n", HostName);
         return 1;
@@ -472,7 +472,7 @@ int main(int ArgumentCount, char** ArgumentValues)
 
         if (Lifetime.DeviceRecovered())
         {
-            if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDrawer, SouthDrawer).Resolved)
+            if (!Viewport.ConstructViewportSequence(Lifetime.Offering(), NorthDrawer, SouthDrawer).Resolved)
             {
                 std::printf("%s — the interface could not be rebuilt on the recovered device\n", HostName);
                 break;

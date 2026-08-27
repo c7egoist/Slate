@@ -67,8 +67,6 @@ std::filesystem::path ResolveEngineContentRoot(const std::filesystem::path& Exec
 /// note ⚠️ Unifying them is a `SlateVulkan`/`SlateUI` change touching every host, deliberately NOT done
 ///       here — this pass is about getting behaviour out of hosts, not about redrawing that boundary.
 /// cost 🟢
-/// tag  api, pure, nonallocating, nonthrowing
-InterfaceAttachment Attach(const DeviceOffering& Offered);
 
 /// 🧩 Whether this build should ask the vendor for validation layers.
 /// note 🔴 The answer to "am I a debug build" belongs in ONE place. Each host was writing its own

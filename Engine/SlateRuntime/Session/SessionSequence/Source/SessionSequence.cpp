@@ -64,22 +64,6 @@ std::filesystem::path ResolveContentRoot(const std::filesystem::path& Executable
 // 📝 The device handles copied across the layer edge. `DeviceOffering` and `InterfaceAttachment` are the
 //    same eight handles declared one layer apart deliberately — a component in SlateVulkan that included
 //    the interface's spelling would invert the partition. All four hosts wrote this identical copy.
-InterfaceAttachment Attach(const DeviceOffering& Offered)
-{
-    InterfaceAttachment Incoming = {};
-
-    Incoming.Instance                 = Offered.Instance;
-    Incoming.ScoredDevice             = Offered.ScoredDevice;
-    Incoming.ActiveDevice             = Offered.ActiveDevice;
-    Incoming.GraphicsQueue            = Offered.GraphicsQueue;
-    Incoming.GraphicsFamilyIndex      = Offered.GraphicsFamilyIndex;
-    Incoming.ColourTargetFormat       = Offered.ColourTargetFormat;
-    Incoming.MinimumDisplayImageCount = Offered.MinimumDisplayImageCount;
-    Incoming.DisplayImageCount        = Offered.DisplayImageCount;
-    Incoming.NativeWindowSlot         = Offered.NativeWindowSlot;
-
-    return Incoming;
-}
 
 // 📝 Copies static text into a fixed extent, always terminated. The two paths this holds are resolved once
 //    at bring-up and read for the life of the session, so they are owned here rather than pointed at —
@@ -130,7 +114,7 @@ Deliver<bool> SessionSequence::ConstructSession(const SessionDeclaration& Declar
     }
 
     // ② The viewport sequence — springs, drawers, and the assembled recording.
-    if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDeclared, SouthDeclared).Resolved)
+    if (!Viewport.ConstructViewportSequence(Lifetime.Offering(), NorthDeclared, SouthDeclared).Resolved)
     {
         Lifetime.Reclaim();
 
@@ -236,7 +220,7 @@ SessionPass SessionSequence::Await()
     if (Lifetime.DeviceRecovered())
     {
         // 📝 Not reclaimed here: the retiring tick above already did it, while the device lived.
-        if (!Viewport.ConstructViewportSequence(Attach(Lifetime.Offering()), NorthDeclared, SouthDeclared).Resolved)
+        if (!Viewport.ConstructViewportSequence(Lifetime.Offering(), NorthDeclared, SouthDeclared).Resolved)
         {
             std::printf("%s \u2014 the interface could not be rebuilt on the recovered device\n", Naming);
 
