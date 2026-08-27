@@ -565,6 +565,301 @@ void ProveScaledDisplayPlacement()
               std::to_string(ScaledSpan) + " against " + std::to_string(PlainSpan));
 }
 
+
+//------------------------------------------------------------------------------------------------------------------------
+//  §8  An orbit and a free eye describing the same camera project alike
+//------------------------------------------------------------------------------------------------------------------------
+// 🔴 THIS IS THE CLAIM THAT KEEPS THE PROJECTION FROM BEING WRITTEN A FOURTH TIME.
+//
+//    A `ViewportStanding` is an orbit: a focus and a distance. An editor camera is a free eye: a position
+//    it has flown to and a direction it points. Every host that had the second kind and could not express
+//    it as the first kind wrote its own projection — `EditorHost` and `PaintHost` both did, and each then
+//    wrote its own scene-proxy drawing on top of it. ~250 duplicated lines from one missing conversion.
+//
+//    `ResolveFreeViewFrame` supplies the conversion. This section demands it is faithful: place a free eye
+//    exactly where an orbit puts its eye, point it the same way, and every sample point must land on the
+//    same pixel by both routes. If it ever does not, the two descriptions have drifted apart again and the
+//    duplication has a reason to come back.
+//
+// ⚠️ THE TWO CAMERAS HAVE OPPOSITE HANDEDNESS, AND THIS SECTION HAD TO BE CORRECTED TO SAY SO. The first
+//    version of §8 demanded the two frames project every point to the same pixel; it failed 20 claims, and
+//    the measurement showed why: `Forward` and `Up` agree to the last bit while `Right` is exactly
+//    negated. The CAD orbit builds right as `Cross(Forward, Normal)`; the editor camera uses
+//    `(cosY, 0, -sinY)`. Neither is wrong — they are two conventions — but they are NOT interchangeable,
+//    and a claim that says they are would have been satisfied only by breaking one of the two hosts.
+//
+// 🔴 SO THE HONEST CLAIM IS NARROWER AND STRONGER: the free frame must be orthonormal, must look where the
+//    orbit looks, must share its up, and must mirror it in the horizontal — and, separately and most
+//    importantly, must reproduce the SHIPPED host projection to the bit. That last one is what licences
+//    deleting the host copies; a claim about matching the orbit never would have.
+
+void ProveFreeEyeMatchesOrbit()
+{
+    std::printf("\n  §8  a free eye and an orbit describing one camera agree\n");
+
+    const PlaneExtent  Extent = Viewport();
+    const SpatialBasis Basis = WorldPlane();
+
+    for (const double Yaw : { 0.0, 37.0, 145.0, -80.0, 300.0 })
+    {
+        for (const double Pitch : { 0.0, 22.0, -41.0, 64.0 })
+        {
+            ViewportStanding Orbit;
+            Orbit.Orientation = ViewportOrientation::Isometric;
+            Orbit.Focus       = { 12.0, -4.0, 31.0 };
+            Orbit.Distance    = 190.0;
+            Orbit.OrbitYaw    = Yaw;
+            Orbit.OrbitPitch  = Pitch;
+
+            const ViewFrame Orbited = ResolveViewportFrame(Basis, Orbit, true);
+
+            // The same camera, described the other way: the eye where the orbit put it, pointing along the
+            // orbit's own forward. Yaw and pitch are recovered from that direction rather than reused, so
+            // this tests the conversion instead of assuming it.
+            const double RecoveredPitch = std::asin(Orbited.Forward.Up) * 180.0 / ProjectionPi;
+            const double RecoveredYaw   = std::atan2(Orbited.Forward.Left, Orbited.Forward.Forward) * 180.0 / ProjectionPi;
+
+            const ViewFrame Free = ResolveFreeViewFrame(Orbited.Eye, RecoveredYaw, RecoveredPitch);
+
+            const std::string At = " at yaw " + std::to_string(Yaw) + " pitch " + std::to_string(Pitch);
+
+            Claim(Near(Free.Forward.Left, Orbited.Forward.Left, 1.0e-9)
+                      && Near(Free.Forward.Up, Orbited.Forward.Up, 1.0e-9)
+                      && Near(Free.Forward.Forward, Orbited.Forward.Forward, 1.0e-9),
+                  "a free frame must look the way the orbit looks" + At);
+
+            Claim(Near(Free.Up.Left, Orbited.Up.Left, 1.0e-9)
+                      && Near(Free.Up.Up, Orbited.Up.Up, 1.0e-9)
+                      && Near(Free.Up.Forward, Orbited.Up.Forward, 1.0e-9),
+                  "a free frame must share the orbit's up" + At);
+
+            // 🔴 The handedness difference, stated exactly rather than tolerated. If either convention is
+            //    ever changed this fails, which is the point: it is the one place the difference is
+            //    written down instead of being discovered by a picture coming out mirrored.
+            Claim(Near(Free.Right.Left, -Orbited.Right.Left, 1.0e-9)
+                      && Near(Free.Right.Up, -Orbited.Right.Up, 1.0e-9)
+                      && Near(Free.Right.Forward, -Orbited.Right.Forward, 1.0e-9),
+                  "the free frame's right must be the orbit's, mirrored" + At);
+
+            // Orthonormal, at every pitch — including the steep ones where a hand-written basis usually
+            // stops being one.
+            const double RightLength = std::sqrt(Dot(Free.Right, Free.Right));
+            const double UpLength    = std::sqrt(Dot(Free.Up, Free.Up));
+            const double FwdLength   = std::sqrt(Dot(Free.Forward, Free.Forward));
+            Claim(Near(RightLength, 1.0, 1.0e-9) && Near(UpLength, 1.0, 1.0e-9) && Near(FwdLength, 1.0, 1.0e-9),
+                  "the free frame's axes must be unit length" + At);
+            Claim(Near(Dot(Free.Right, Free.Up), 0.0, 1.0e-9)
+                      && Near(Dot(Free.Right, Free.Forward), 0.0, 1.0e-9)
+                      && Near(Dot(Free.Up, Free.Forward), 0.0, 1.0e-9),
+                  "the free frame's axes must be perpendicular" + At);
+
+            unsigned Agreed = 0u, Compared = 0u;
+            for (double X = -120.0; X <= 120.0; X += 60.0)
+                for (double Y = -60.0; Y <= 60.0; Y += 60.0)
+                    for (double Z = -120.0; Z <= 120.0; Z += 60.0)
+                    {
+                        const SpatialPoint Where = { X, Y, Z };
+
+                        float OrbitX = 0.0f, OrbitY = 0.0f;
+                        const bool OrbitSaw = ProjectThroughFrame(Orbited, Extent,
+                                                                  CadPerspectiveFieldOfViewDegrees,
+                                                                  Where, OrbitX, OrbitY);
+                        float FreeX = 0.0f, FreeY = 0.0f;
+                        const bool FreeSaw = ProjectThroughFrame(Free, Extent,
+                                                                 CadPerspectiveFieldOfViewDegrees,
+                                                                 Where, FreeX, FreeY);
+
+                        // 🔴 They must agree about WHETHER the point is visible, not only about where.
+                        //    A projection that silently drops points behind one eye and not the other is
+                        //    the same defect wearing a different hat.
+                        Claim(OrbitSaw == FreeSaw,
+                              "both descriptions must agree the point is visible at yaw " +
+                                  std::to_string(Yaw));
+                        if (!OrbitSaw) continue;
+
+                        ++Compared;
+                        // Mirrored horizontally about the viewport centre, identical vertically —
+                        // which is exactly what an inverted `Right` and a shared `Up` must produce.
+                        const double Centre = Extent.MinimumX + Extent.Width() * 0.5;
+                        if (Near(FreeX - Centre, -(OrbitX - Centre), 0.01) && Near(FreeY, OrbitY, 0.01))
+                            ++Agreed;
+                    }
+
+            Claim(Compared > 0u, "some point must be visible" + At);
+            Claim(Agreed == Compared,
+                  "free eye and orbit must project to mirrored pixels" + At + ", " +
+                      std::to_string(Agreed) + " of " + std::to_string(Compared) + " agreed");
+        }
+    }
+}
+
+// 🔴 §8b  THE FIELD OF VIEW MUST REACH THE ARITHMETIC. `ProjectThroughFrame` takes the angle as an
+//    argument because the editor camera's 60 degrees and the CAD viewport's 42 are genuinely different
+//    cameras. A version that ignored the argument and used the CAD constant would pass every claim above,
+//    since §8 asks for one angle only — so this asks for two and demands they differ.
+void ProveFieldOfViewIsHonoured()
+{
+    std::printf("\n  §8b the field of view argument reaches the arithmetic\n");
+
+    const PlaneExtent Extent = Viewport();
+    const ViewFrame Frame = ResolveFreeViewFrame({ 0.0, 0.0, -200.0 }, 0.0, 0.0);
+    const SpatialPoint OffAxis = { 40.0, 25.0, 0.0 };
+
+    float NarrowX = 0.0f, NarrowY = 0.0f, WideX = 0.0f, WideY = 0.0f;
+    const bool Narrow = ProjectThroughFrame(Frame, Extent, 30.0, OffAxis, NarrowX, NarrowY);
+    const bool Wide   = ProjectThroughFrame(Frame, Extent, 90.0, OffAxis, WideX, WideY);
+
+    Claim(Narrow && Wide, "an off-axis point in front of the eye must project at both angles");
+
+    const double CentreX = Extent.MinimumX + Extent.Width() * 0.5;
+    Claim(std::fabs(NarrowX - CentreX) > std::fabs(WideX - CentreX) * 1.5,
+          "a narrower field of view must push an off-axis point further from centre, " +
+              std::to_string(std::fabs(NarrowX - CentreX)) + " against " +
+              std::to_string(std::fabs(WideX - CentreX)));
+
+    // 📝 And the exact ratio, so "further out" cannot be satisfied by an arbitrary wrong number:
+    //    screen offset scales with 1/tan(fov/2).
+    const double Expected = std::tan(90.0 * 0.5 * ProjectionPi / 180.0)
+                          / std::tan(30.0 * 0.5 * ProjectionPi / 180.0);
+    const double Measured = std::fabs(NarrowX - CentreX) / std::fabs(WideX - CentreX);
+    Claim(Near(Measured, Expected, 1.0e-6),
+          "the offset ratio must be tan(45)/tan(15) = " + std::to_string(Expected) + ", measured " +
+              std::to_string(Measured));
+}
+
+
+//------------------------------------------------------------------------------------------------------------------------
+//  §8c  The shared projection reproduces the shipped host formula exactly
+//------------------------------------------------------------------------------------------------------------------------
+// 🔴 THIS IS THE CLAIM THAT LICENCES DELETING THE HOST COPIES, AND NOTHING ELSE DOES.
+//
+//    `EditorHost::ProjectWorkspaceCodexPoint` and `PaintHost::ProjectPaintScenePoint` are what actually
+//    draws the scene proxies today. Replacing them with `ResolveFreeViewFrame` + `ProjectThroughFrame` is
+//    only safe if the replacement gives the SAME ANSWER — not a similar one, and not a better one. A
+//    "better" projection here would move every imported mesh in the editor viewport, silently.
+//
+//    The host formula is transcribed below verbatim, from the file, before it is deleted. It stays in this
+//    proof afterwards as the recorded definition of what the editor camera means.
+//
+// 📝 The two look nothing alike on the page: the host divides by `tan(fovV/2) * aspect` and rescales by
+//    width, the shared one multiplies by `Focal = (Height/2)/tan(fovV/2)`. They are the same expression
+//    rearranged, and the tolerance below is ZERO — not a small number, zero. They agree to the bit.
+
+bool ShippedHostProjection(const SpatialPoint& Camera, double AzimuthDegrees, double ElevationDegrees,
+                           double FieldOfViewDegrees, const PlaneExtent& Extent,
+                           double WorldX, double WorldY, double WorldZ, float& ScreenX, float& ScreenY)
+{
+    const double Yaw   = AzimuthDegrees * 3.14159265358979323846 / 180.0;
+    const double Pitch = ElevationDegrees * 3.14159265358979323846 / 180.0;
+    const double CosP = std::cos(Pitch), SinP = std::sin(Pitch);
+    const double SinY = std::sin(Yaw),   CosY = std::cos(Yaw);
+    const double ForwardX = CosP * SinY, ForwardY = SinP, ForwardZ = CosP * CosY;
+    const double RightX = CosY, RightZ = -SinY;
+    const double UpX = -SinP * SinY, UpY = CosP, UpZ = -SinP * CosY;
+
+    const double DX = WorldX - Camera.Left;
+    const double DY = WorldY - Camera.Up;
+    const double DZ = WorldZ - Camera.Forward;
+    const double CameraX = DX * RightX + DZ * RightZ;
+    const double CameraY = DX * UpX + DY * UpY + DZ * UpZ;
+    const double CameraZ = DX * ForwardX + DY * ForwardY + DZ * ForwardZ;
+    if (CameraZ <= 0.01)
+        return false;
+
+    const double TanV = std::tan(FieldOfViewDegrees * 0.5 * 3.14159265358979323846 / 180.0);
+    const double Aspect = Extent.Height() > 0.0f
+                              ? static_cast<double>(Extent.Width()) / static_cast<double>(Extent.Height())
+                              : 1.0;
+    const double TanH = TanV * Aspect;
+    ScreenX = static_cast<float>((CameraX / (CameraZ * TanH) * 0.5 + 0.5) * Extent.Width() + Extent.MinimumX);
+    ScreenY = static_cast<float>((-CameraY / (CameraZ * TanV) * 0.5 + 0.5) * Extent.Height() + Extent.MinimumY);
+    return true;
+}
+
+void ProveSharedProjectionReplacesTheHostCopies()
+{
+    std::printf("\n  §8c the shared projection reproduces the shipped host formula\n");
+
+    const PlaneExtent Extent = Viewport();
+    const SpatialPoint Camera = { 3.0, 1.5, -7.0 };
+
+    unsigned Compared = 0u, Exact = 0u, VisibilityAgreed = 0u, Total = 0u;
+    for (const double Azimuth : { 0.0, 37.0, 143.0, -80.0, 300.0 })
+        for (const double Elevation : { 0.0, 22.0, -41.0, 78.0 })
+        {
+            const ViewFrame Frame = ResolveFreeViewFrame(Camera, Azimuth, Elevation);
+            for (double X = -90.0; X <= 140.0; X += 115.0)
+                for (double Y = -70.0; Y <= 110.0; Y += 90.0)
+                    for (double Z = -120.0; Z <= 240.0; Z += 120.0)
+                    {
+                        float HostX = 0.0f, HostY = 0.0f, SharedX = 0.0f, SharedY = 0.0f;
+                        const bool HostSaw = ShippedHostProjection(Camera, Azimuth, Elevation, 60.0,
+                                                                   Extent, X, Y, Z, HostX, HostY);
+                        const bool SharedSaw = ProjectThroughFrame(Frame, Extent, 60.0,
+                                                                   { X, Y, Z }, SharedX, SharedY);
+                        ++Total;
+                        if (HostSaw == SharedSaw) ++VisibilityAgreed;
+                        if (!HostSaw || !SharedSaw) continue;
+                        ++Compared;
+                        // 🚩 Zero tolerance. Both routes end in the same float cast of the same quantity.
+                        if (HostX == SharedX && HostY == SharedY) ++Exact;
+                    }
+        }
+
+    Claim(VisibilityAgreed == Total,
+          "both must refuse the same points, " + std::to_string(VisibilityAgreed) + " of " +
+              std::to_string(Total) + " agreed");
+    Claim(Compared > 100u,
+          "enough points must be visible to be worth comparing, " + std::to_string(Compared) + " were");
+    Claim(Exact == Compared,
+          "the shared projection must reproduce the host formula EXACTLY, " + std::to_string(Exact) +
+              " of " + std::to_string(Compared) + " matched to the bit");
+}
+
+
+// 🔴 §8d  WHERE THE REFUSAL BOUNDARY ACTUALLY SITS. Moving `CameraZ <= 0.01` to `CameraZ < 0.0` scored
+//    ZERO failures across all 1 997 claims — no sample happened to fall in the sliver between the eye and
+//    a hundredth of a unit in front of it, so a claim about the RESULT could not see the boundary move.
+//    This is the third time a bound has hidden from a proof that only sampled around it: the answer is
+//    always to put something on both sides of the line and claim where it stops.
+void ProveNearEyeRefusal()
+{
+    std::printf("\n  §8d the near-eye refusal boundary is where it says it is\n");
+
+    const PlaneExtent Extent = Viewport();
+    const ViewFrame Frame = ResolveFreeViewFrame({ 0.0, 0.0, 0.0 }, 0.0, 0.0);   // looking down +Z
+
+    float X = 0.0f, Y = 0.0f;
+
+    // Comfortably in front — projected.
+    Claim(ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, 5.0 }, X, Y),
+          "a point 5 units in front of the eye must project");
+
+    // Just past the threshold — projected, and this is the side a `< 0.0` test would still pass.
+    Claim(ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, 0.02 }, X, Y),
+          "a point 0.02 in front of the eye must project");
+
+    // 🔴 INSIDE the sliver. `<= 0.01` refuses this; `< 0.0` accepts it and divides by a hundredth,
+    //    throwing a proxy hundreds of viewports wide across the screen. This is the claim that was missing.
+    Claim(!ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, 0.005 }, X, Y),
+          "a point 0.005 in front of the eye must be REFUSED, not divided by");
+    Claim(!ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, 0.01 }, X, Y),
+          "a point exactly at the threshold must be refused");
+
+    // At the eye, and behind it.
+    Claim(!ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, 0.0 }, X, Y),
+          "a point at the eye must be refused");
+    Claim(!ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, -30.0 }, X, Y),
+          "a point behind the eye must be refused");
+
+    // 📝 And the refusal must not scribble on the outputs — a caller that ignores the return value should
+    //    see its own values, not half-computed ones.
+    float KeptX = -1234.0f, KeptY = -5678.0f;
+    ProjectThroughFrame(Frame, Extent, 60.0, { 0.0, 0.0, -30.0 }, KeptX, KeptY);
+    Claim(KeptX == -1234.0f && KeptY == -5678.0f,
+          "a refused projection must leave the outputs untouched");
+}
+
 }   // namespace
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -581,6 +876,10 @@ int main()
     ProveRegressions();
     ProveShaderMatchesPointer();
     ProveScaledDisplayPlacement();
+    ProveFreeEyeMatchesOrbit();
+    ProveFieldOfViewIsHonoured();
+    ProveSharedProjectionReplacesTheHostCopies();
+    ProveNearEyeRefusal();
 
     std::printf("\n%d claims, %d failures\n", Checks, Failures);
     std::printf(Failures == 0 ? "PROVEN\n\n" : "REFUTED\n\n");

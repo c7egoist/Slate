@@ -218,15 +218,45 @@ bool ProjectSpatialPoint(const SpatialBasis& Basis,
         return true;
     }
 
+    return ProjectThroughFrame(Frame, Extent, CadPerspectiveFieldOfViewDegrees, Position, ScreenX, ScreenY);
+}
+
+ViewFrame ResolveFreeViewFrame(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees)
+{
+    const double Yaw   = YawDegrees * ProjectionPi / 180.0;
+    const double Pitch = PitchDegrees * ProjectionPi / 180.0;
+    const double CosP = std::cos(Pitch), SinP = std::sin(Pitch);
+    const double SinY = std::sin(Yaw),   CosY = std::cos(Yaw);
+
+    // 📝 The editor camera's own convention, preserved exactly: forward carries pitch in world Y, and
+    //    right is the horizontal perpendicular — so rolling is impossible, which is what a WASD camera
+    //    wants. Up is derived rather than assumed, so the three axes stay orthonormal at any pitch.
+    ViewFrame Frame;
+    Frame.Eye     = Eye;
+    Frame.Forward = { CosP * SinY, SinP, CosP * CosY };
+    Frame.Right   = { CosY, 0.0, -SinY };
+    Frame.Up      = { -SinP * SinY, CosP, -SinP * CosY };
+    return Frame;
+}
+
+bool ProjectThroughFrame(const ViewFrame& Frame,
+                         const PlaneExtent& Extent,
+                         double FieldOfViewDegrees,
+                         const SpatialPoint& Position,
+                         float& ScreenX,
+                         float& ScreenY)
+{
     const SpatialDirection EyeToPoint = Difference(Frame.Eye, Position);
     const double CameraX = Dot(EyeToPoint, Frame.Right);
     const double CameraY = Dot(EyeToPoint, Frame.Up);
     const double CameraZ = Dot(EyeToPoint, Frame.Forward);
 
+    // 🔴 A point at or behind the eye has no screen position. Returning one anyway draws it mirrored
+    //    through the centre of the viewport, which looks like geometry rather than like an error.
     if (CameraZ <= 0.01)
         return false;
 
-    const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+    const double TanHalf = std::tan(FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
     const double Focal   = (Extent.Height() * 0.5) / TanHalf;
 
     ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + CameraX / CameraZ * Focal);

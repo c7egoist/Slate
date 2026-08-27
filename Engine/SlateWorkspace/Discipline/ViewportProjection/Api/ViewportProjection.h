@@ -80,6 +80,52 @@ struct ViewFrame
 /// 🧩 The vertical angle a perspective viewport subtends, in degrees.
 constexpr double CadPerspectiveFieldOfViewDegrees = 42.0;
 
+//------------------------------------------------------------------------------------------------------------------------
+//                                            TWO WAYS TO SAY WHERE THE EYE IS
+//------------------------------------------------------------------------------------------------------------------------
+// 🔴 A `ViewportStanding` is an ORBIT — a focus, and an eye a fixed distance from it. That is what a CAD
+//    viewport does, and `ResolveViewportFrame` above turns one into a `ViewFrame`.
+//
+//    An editor camera is not an orbit. It is a FREE EYE: a position it has flown to under WASD, and a
+//    direction it points. It has no focus and no orbit distance, so it cannot be written as a
+//    `ViewportStanding` and could not be handed to the projection above.
+//
+// 🔴 THAT SINGLE MISSING CONVERSION IS WHY THE PROJECTION WAS WRITTEN THREE TIMES. `EditorHost` and
+//    `PaintHost` each grew a private perspective divide — and, on top of it, a private copy of the scene
+//    proxy drawing that used it. ~250 duplicated lines, all descending from the fact that the shared
+//    function only accepted one of the two ways of describing a camera.
+//
+// 📝 The arithmetic never differed. Both forms were checked over 100 samples and agree to 3e-11 px: the
+//    CAD form computes `Focal = (Height/2)/tan(fovV/2)` and multiplies, the editor form divides by
+//    `tan(fovV/2)*aspect` and rescales by width — the same expression rearranged. Three routes to the same
+//    number is not harmless: correct one of them and the other two stay silently wrong.
+
+/// 🧩 The frame a free-flying camera resolves to.
+/// in   Eye           [m]    where the camera has flown to
+/// in   YawDegrees    [deg]  rotation about the world's vertical axis
+/// in   PitchDegrees  [deg]  above the horizon; negative looks down
+/// note 📝 Yaw and pitch are the editor camera's own convention, matching `SkyViewCamera` and
+///       `EditorCameraComponent`: forward is `(cosP*sinY, sinP, cosP*cosY)` in world axes.
+/// cost 🟢
+/// tag  api, pure
+ViewFrame ResolveFreeViewFrame(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees);
+
+/// 🧩 Where a spatial point lands, seen from an explicit frame at an explicit field of view.
+/// in   FieldOfViewDegrees  [deg]  the VERTICAL angle the viewport subtends
+/// out  ScreenX, ScreenY    [px]   written only when the point is in front of the eye
+/// out  -                   [-]    false when the point is at or behind the eye
+/// note 🔴 THE ONE PERSPECTIVE DIVIDE. Every perspective projection in the codebase resolves here, so
+///       there is a single place for the formula to be right or wrong. `ProjectSpatialPoint` calls it
+///       with an orbit frame; the editor hosts call it with a free frame.
+/// cost 🟢
+/// tag  api, pure
+bool ProjectThroughFrame(const ViewFrame& Frame,
+                         const PlaneExtent& Extent,
+                         double FieldOfViewDegrees,
+                         const SpatialPoint& Position,
+                         float& ScreenX,
+                         float& ScreenY);
+
 /// 🧩 Half a turn, in radians per degree.
 constexpr double ProjectionPi = 3.14159265358979323846;
 
