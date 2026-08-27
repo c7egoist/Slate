@@ -384,9 +384,21 @@ Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
 {
     Delivered.Reset();
 
-    if (!Sketch.Declared())
+    // 🔴 DRAWING IS NOT VALIDATION, AND MAKING IT ONE COST THE ARTIST EVERY SHAPE ON SCREEN. This
+    //    tested `Sketch.Declared()`, which is all-or-nothing across EVERY curve, profile and
+    //    constraint -- so a single malformed curve refused the whole projection and the viewport went
+    //    blank. Closing a polyline used to declare a zero-length final segment, which is exactly such
+    //    a curve: the artist pressed Enter and watched a session's work vanish, though every other
+    //    shape was perfectly well-formed and already committed.
+    //
+    //    Only the PLANE is genuinely required, because it defines the coordinate frame everything is
+    //    projected into. Individual records are skipped by the resolvers below when they cannot be
+    //    resolved, so one bad shape now costs one shape.
+    // ⚠️ `PlaneStanding` as well as the plane's own validity: a sketch that was never given a plane
+    //    must be refused even if the default happens to look well-formed.
+    if (!Sketch.PlaneDeclared())
         return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
-                                       "the sketch declarations are incomplete" });
+                                       "the sketch has no plane to project onto" });
 
     const PlanarBasis Basis = ResolvePlanarBasis(Sketch.HeldPlane());
     std::vector<PlanarVertex> Polyline;

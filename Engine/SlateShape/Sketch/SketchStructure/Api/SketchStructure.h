@@ -64,6 +64,14 @@ public:
                                               double Radius);
 
     const SketchPlane& HeldPlane() const { return Plane; }
+
+    /// 🧩 Whether a plane has been declared and is usable -- the ONE thing drawing genuinely requires.
+    /// note 🔴 Distinct from `Declared()`, which is all-or-nothing across every curve, profile and
+    ///       constraint. Refusing to draw on that made a single malformed curve blank the entire
+    ///       viewport; a renderer needs the coordinate frame, not a clean bill of health.
+    /// cost ✔️
+    /// tag  api, nonallocating, nonthrowing
+    bool PlaneDeclared() const { return PlaneStanding && Plane.Declared(); }
     const std::vector<DeclaredSketchCurve>& Curves() const { return HeldCurves; }
     std::vector<DeclaredSketchCurve>& Curves() { return HeldCurves; }
     const std::vector<ProfileSpecification>& Profiles() const { return HeldProfiles; }

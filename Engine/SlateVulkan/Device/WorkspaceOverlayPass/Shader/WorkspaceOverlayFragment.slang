@@ -114,15 +114,41 @@ Real32x4 ResolveGround(Real32x2 Corner)
     const bool ShowAxisX = (AxisMask & 1u) != 0u;
     const bool ShowAxisY = (AxisMask & 2u) != 0u;
     const bool ShowAxisZ = (AxisMask & 4u) != 0u;
-    const Unsigned32 Present = Unsigned32(Push.UpAndPresent.w + 0.5);
+    const Unsigned32 Present = Unsigned32(Push.UpAndPresent.w + 0.5) & 0xFFu;
 
-    // ① The pixel's ray through the pinhole camera.
+    // ① The pixel's ray. Perspective rays fan out from one eye; orthographic rays are PARALLEL and
+    //    leave from different origins, so the eye moves per pixel rather than the direction changing.
+    //    The grid used to ray-march a pinhole camera unconditionally, so it stayed in perspective
+    //    while the geometry drawn on it went orthographic.
     const Real32 NdcX = Corner.x * 2.0 - 1.0;
     const Real32 NdcY = 1.0 - Corner.y * 2.0;
 
-    const Real32x3 Ray = normalize(Right * (NdcX * TanH)
-                                 + Up    * (NdcY * TanV)
-                                 + Forward);
+    // 📐 THE PUSH BLOCK IS FULL AT VULKAN'S GUARANTEED 128 BYTES, so the orthographic scale rides in
+    //    the high bits of `Presentation` rather than widening it: the presentation enum needs 8 bits,
+    //    and the scale is quantised into the rest as hundredths of a pixel per unit. Zero means
+    //    perspective, which is what every existing caller pushes.
+    const Real32 OrthoScale = Real32(Unsigned32(Push.UpAndPresent.w + 0.5) >> 8u) * 0.01;
+    const bool   Parallel   = OrthoScale > 0.0;
+
+    Real32x3 RayOrigin = Eye;
+    Real32x3 Ray       = Real32x3(0.0, 0.0, 1.0);
+
+    if (Parallel)
+    {
+        // 📐 Half the leaf in world units at this scale; the pixel's offset from the centre displaces
+        //    the origin, and every ray runs along the camera's forward direction.
+        // ⚠️ The LEAF's size, not the display's. `Corner` is already normalised across the leaf, so
+        //    using the whole display would scale the lattice by the ratio between them -- the grid
+        //    would change size when a panel is split.
+        const Real32 HalfWidth  = ((Push.LeafRect.z - Push.LeafRect.x) * 0.5) / OrthoScale;
+        const Real32 HalfHeight = ((Push.LeafRect.w - Push.LeafRect.y) * 0.5) / OrthoScale;
+        RayOrigin = Eye + Right * (NdcX * HalfWidth) + Up * (NdcY * HalfHeight);
+        Ray       = normalize(Forward);
+    }
+    else
+    {
+        Ray = normalize(Right * (NdcX * TanH) + Up * (NdcY * TanV) + Forward);
+    }
 
     // 📐 Two independent authored limits: one bounds the lattice around world centre, the other
     //    follows the camera and softens nearby detail into nothing at its radius.
@@ -134,13 +160,13 @@ Real32x4 ResolveGround(Real32x2 Corner)
     Real32   FinalAlpha = 0.0;
 
     // ② Ground Plane (Y = 0): minor and major grid lines fading together + Red X & Blue Z axes.
-    if (abs(Ray.y) > 1e-6 && (Eye.y * Ray.y < 0.0))
+    if (abs(Ray.y) > 1e-6 && (RayOrigin.y * Ray.y < 0.0))
     {
-        const Real32 Distance = -Eye.y / Ray.y;
+        const Real32 Distance = -RayOrigin.y / Ray.y;
         if (Distance > 0.0)
         {
-            const Real32x2 Ground = Real32x2(Eye.x + Ray.x * Distance,
-                                             Eye.z + Ray.z * Distance);
+            const Real32x2 Ground = Real32x2(RayOrigin.x + Ray.x * Distance,
+                                             RayOrigin.z + Ray.z * Distance);
 
             const Real32 MinorCell = Cell;
             const Real32 MajorCell = Cell * MajorStep;
@@ -212,18 +238,20 @@ Real32x4 ResolveGround(Real32x2 Corner)
         const Real32 RayXZ2 = Ray.x * Ray.x + Ray.z * Ray.z;
         if (RayXZ2 > 1e-7)
         {
-            const Real32 TClosest = -(Eye.x * Ray.x + Eye.z * Ray.z) / RayXZ2;
+            const Real32 TClosest = -(RayOrigin.x * Ray.x + RayOrigin.z * Ray.z) / RayXZ2;
             if (TClosest > 0.05)
             {
-                const Real32 ClosestX = Eye.x + Ray.x * TClosest;
-                const Real32 ClosestZ = Eye.z + Ray.z * TClosest;
+                const Real32 ClosestX = RayOrigin.x + Ray.x * TClosest;
+                const Real32 ClosestZ = RayOrigin.z + Ray.z * TClosest;
                 const Real32 DistPerp = sqrt(ClosestX * ClosestX + ClosestZ * ClosestZ);
 
-                const Real32 PixelWorldSize = TClosest * (2.0 * TanH / max(Push.DisplayWidth, 1.0));
+                const Real32 PixelWorldSize = Parallel
+                                            ? (1.0 / max(OrthoScale, 1e-6))
+                                            : TClosest * (2.0 * TanH / max(Push.DisplayWidth, 1.0));
                 const Real32 PixelDist = DistPerp / max(PixelWorldSize, 1e-6);
 
                 Real32 AxisY = 1.0 - min(PixelDist / max(Weight * 1.8, 0.5), 1.0);
-                const Real32 ClosestY = Eye.y + Ray.y * TClosest;
+                const Real32 ClosestY = RayOrigin.y + Ray.y * TClosest;
                 const Real32 CentreFadeY = 1.0 - smoothstep(WorldExtent * 0.82, WorldExtent,
                                                             abs(ClosestY));
                 const Real32 CameraFadeY = 1.0 - smoothstep(FadeRadius * 0.62, FadeRadius,

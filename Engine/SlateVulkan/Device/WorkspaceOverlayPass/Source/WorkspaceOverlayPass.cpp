@@ -464,7 +464,8 @@ void WorkspaceOverlayPass::Upload(const OverlayGeometry& Overlay)
 }
 
 void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, std::uint32_t Height,
-                          float ClipX0, float ClipY0, float ClipX1, float ClipY1)
+                          float LeafX0, float LeafY0, float LeafX1, float LeafY1,
+                          float ScissorX0, float ScissorY0, float ScissorX1, float ScissorY1)
 {
     if (DeviceEdge == nullptr || OverlayPipeline == VK_NULL_HANDLE || Command == VK_NULL_HANDLE ||
         Width == 0u || Height == 0u)
@@ -490,12 +491,12 @@ void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, 
     //    over the outliner, the properties or any other panel — they are drawn only inside the leaf
     //    that produced the geometry. The box is clamped to the display so a leaf at the window edge
     //    cannot push the scissor past the target.
-    const std::int32_t ScissorX = static_cast<std::int32_t>(ClipX0 < 0.0f ? 0.0f : ClipX0);
-    const std::int32_t ScissorY = static_cast<std::int32_t>(ClipY0 < 0.0f ? 0.0f : ClipY0);
-    const std::int32_t ScissorRight  = static_cast<std::int32_t>(ClipX1 > static_cast<float>(Width)
-                                                                 ? static_cast<float>(Width) : ClipX1);
-    const std::int32_t ScissorBottom = static_cast<std::int32_t>(ClipY1 > static_cast<float>(Height)
-                                                                 ? static_cast<float>(Height) : ClipY1);
+    const std::int32_t ScissorX = static_cast<std::int32_t>(ScissorX0 < 0.0f ? 0.0f : ScissorX0);
+    const std::int32_t ScissorY = static_cast<std::int32_t>(ScissorY0 < 0.0f ? 0.0f : ScissorY0);
+    const std::int32_t ScissorRight  = static_cast<std::int32_t>(ScissorX1 > static_cast<float>(Width)
+                                                                 ? static_cast<float>(Width) : ScissorX1);
+    const std::int32_t ScissorBottom = static_cast<std::int32_t>(ScissorY1 > static_cast<float>(Height)
+                                                                 ? static_cast<float>(Height) : ScissorY1);
     const std::int32_t ScissorWidth  = ScissorRight  > ScissorX ? ScissorRight  - ScissorX : 0;
     const std::int32_t ScissorHeight = ScissorBottom > ScissorY ? ScissorBottom - ScissorY : 0;
 
@@ -559,7 +560,20 @@ void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, 
         Push.UpAndPresent[0] = OverlayGround.UpX;
         Push.UpAndPresent[1] = OverlayGround.UpY;
         Push.UpAndPresent[2] = OverlayGround.UpZ;
-        Push.UpAndPresent[3] = static_cast<float>(OverlayGround.Presentation);
+        // 📐 Presentation in the low 8 bits, the orthographic scale in the rest as hundredths of a
+        //    pixel per unit. The block is already at Vulkan's guaranteed-minimum 128 bytes.
+        {
+            // ⚠️ A float holds 24 bits of mantissa exactly. Beyond 65535 hundredths (a scale of
+            //    ~655 px/unit) the packed value would start rounding, silently shifting the
+            //    presentation bits underneath it, so the scale is clamped instead.
+            constexpr std::uint32_t ScaleUnitLimit = 0xFFFFu;
+            const std::uint32_t RequestedUnits = OverlayGround.OrthoScale > 0.0f
+                ? static_cast<std::uint32_t>(OverlayGround.OrthoScale * 100.0f + 0.5f) : 0u;
+            const std::uint32_t ScaleUnits = RequestedUnits > ScaleUnitLimit ? ScaleUnitLimit
+                                                                             : RequestedUnits;
+            Push.UpAndPresent[3] = static_cast<float>((OverlayGround.Presentation & 0xFFu)
+                                                    | (ScaleUnits << 8u));
+        }
 
         // 📐 The reference's own lattice tone, straight alpha.
         Push.LatticeColour[0] = 0.60f;
@@ -572,10 +586,14 @@ void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, 
         Push.WeightsAndDot[2] = OverlayGround.Subdivisions;
         Push.WeightsAndDot[3] = static_cast<float>(OverlayGround.AxisMask);
 
-        Push.LeafRect[0] = ClipX0;
-        Push.LeafRect[1] = ClipY0;
-        Push.LeafRect[2] = ClipX1;
-        Push.LeafRect[3] = ClipY1;
+        // 🔴 THE WHOLE LEAF, NOT THE SCISSOR. The fragment stage maps the camera's field of view
+        //    across this rectangle, so it must stay the leaf's true box however little of it is
+        //    currently visible -- otherwise hiding a covered strip squashes the grid into what
+        //    remains, which is exactly the defect that kept trading places with the vanishing grid.
+        Push.LeafRect[0] = LeafX0;
+        Push.LeafRect[1] = LeafY0;
+        Push.LeafRect[2] = LeafX1;
+        Push.LeafRect[3] = LeafY1;
 
         vkCmdPushConstants(Command, OverlayPipelineLayout, Stages,
                            0u, OverlayPushConstantBytes, &Push);
@@ -595,10 +613,11 @@ void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, 
             return;
 
         PushBlock Push = { DrawValue(Draw), static_cast<float>(Width), static_cast<float>(Height), 0.0f };
-        Push.LeafRect[0] = ClipX0;
-        Push.LeafRect[1] = ClipY0;
-        Push.LeafRect[2] = ClipX1;
-        Push.LeafRect[3] = ClipY1;
+        // 📝 The leaf box again -- these vertices are already in leaf space.
+        Push.LeafRect[0] = LeafX0;
+        Push.LeafRect[1] = LeafY0;
+        Push.LeafRect[2] = LeafX1;
+        Push.LeafRect[3] = LeafY1;
 
         vkCmdPushConstants(Command, OverlayPipelineLayout, Stages,
                            0u, OverlayPushConstantBytes, &Push);

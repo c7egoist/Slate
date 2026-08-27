@@ -134,6 +134,26 @@ struct ResolvedCamera
 /// 🧩 The camera a CAD viewport's orbit resolves to.
 ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStanding& View, bool Perspective);
 
+/// 🧩 The orbit standing that reproduces a free editor eye, so sketch geometry projects through the SAME
+///    camera as the scene and the analytic grid.
+///
+/// in   Eye          [m]   where the free camera stands
+/// in   YawDegrees   [deg] its yaw, in the editor camera's convention
+/// in   PitchDegrees [deg] its pitch
+/// in   Basis        [-]   the sketch plane's basis, which the orbit arm resolves against
+///
+/// note 🔴 THE TWO CAMERAS DISAGREED ON HANDEDNESS. `ResolveViewportFrame` builds `Right` as
+///       `Cross(Forward, Normal)` from an orbit yaw measured against the basis, while
+///       `ResolveFreeViewFrame` builds it as `{cos, 0, -sin}` from a world yaw. Measured over five
+///       yaws, `Right` came out EXACTLY NEGATED in Z and the forward vectors did not agree at all
+///       (dot -0.5 at yaw 0). Sketch geometry drawn through the orbit camera therefore tracked
+///       correctly up and down and ran the WRONG WAY left and right as the artist orbited.
+///
+/// note ⚠️ The orbit arm negates `Across` in its forward term and measures yaw from the basis, so the
+///       conversion is not simply "copy the angles" -- that is precisely the bug this replaces.
+ViewportStanding ResolveOrbitStandingFromFree(const SpatialPoint& Eye, double YawDegrees,
+                                              double PitchDegrees, const SpatialBasis& Basis);
+
 /// 🧩 The camera a free-flying editor eye resolves to.
 /// in   Eye              [m]   where the eye stands
 /// in   YawDegrees       [deg]

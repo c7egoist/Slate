@@ -103,7 +103,25 @@ Deliver<bool> SketchStructure::DeclarePolyline(const std::vector<SpatialPoint>& 
 
     DeclaredCurves.reserve(Positions.size() - 1u);
     for (std::size_t PositionIndex = 0u; PositionIndex + 1u < Positions.size(); ++PositionIndex)
+    {
+        // 🔴 A ZERO-LENGTH SEGMENT IS NOT A LINE, AND ONE OF THEM BLANKED THE WHOLE SKETCH. Closing a
+        //    polyline anchors the start point a second time, so the final pair was coincident and
+        //    `DeclareLine` produced an UNDECLARED curve. `SketchStructure::Declared()` is all-or-
+        //    nothing across every curve, and `ProjectSketchRendering` refuses outright on an
+        //    undeclared sketch -- so closing a shape and pressing Enter made every shape already
+        //    drawn disappear at once. Coincident neighbours are skipped rather than declared.
+        const SpatialDirection Span = Difference(Positions[PositionIndex],
+                                                 Positions[PositionIndex + 1u]);
+        if (LengthSquared(Span) <= 0.0)
+            continue;
+
         DeclaredCurves.push_back(DeclareLine(Positions[PositionIndex], Positions[PositionIndex + 1u]));
+    }
+
+    // ⚠️ Every pair coincident means the artist clicked one spot repeatedly; there is no polyline.
+    if (DeclaredCurves.empty())
+        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
+                                       "a polyline requires two distinct positions" });
 
     return Deliver<bool>::Result(true);
 }

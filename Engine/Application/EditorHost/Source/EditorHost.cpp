@@ -46,6 +46,9 @@
 #include "SlateRuntime/Session/SessionSequence/Api/SessionSequence.h"
 #include "SlateRuntime/Session/HostEnvironment/Api/HostEnvironment.h"
 #include "SlateVulkan/Device/WorkspaceOverlayPass/Api/WorkspaceOverlayPass.h"
+#include "SlateVulkan/Device/WorkspaceCadPass/Api/WorkspaceCadPass.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/DrawableScale.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/CadProjection.h"
 #include "SlateVulkan/Device/ShaderCodec/Api/ShaderCodec.h"
 #include "SlateVulkan/Device/AtmospherePresentationSurface/Api/AtmospherePresentationSurface.h"
 #include "SlateCompute/Compute/MaterialTextureExport/Api/MaterialTextureExport.h"
@@ -292,6 +295,15 @@ int main(int ArgumentCount, char** ArgumentValues)
     EditorCameraComponent     EditorCamera;
     ShaderCodec             OverlayCodec;
     WorkspaceOverlayPass             Overlay;
+    // 🔴 THE SKETCH'S OWN GPU PASS. Curves and fills were being drawn through the interface's draw
+    //    lists -- ImGui tessellates every segment on the CPU each frame, which is why the viewport
+    //    bogged down as shapes accumulated, and why the fill showed its triangulation as a wireframe:
+    //    each triangle was a separate anti-aliased primitive with visible shared edges. The data still
+    //    lives on the CPU; only the rasterisation moves.
+    WorkspaceCadPass                 CadPass;
+    std::uint32_t                    UploadedCadGeneration = 0xFFFFFFFFu;
+    WorkspaceCadProjection           ViewportCadProjections[PanelStructure::RecordLimit] = {};
+    DrawableScale                    ViewportLeafScale = {};
     GeometryDeviceExchange           GeometryDevice = {};
     GeometryFileInterchange          GeometryTransfer = {};
     GeometryInterchange              ImportedGeometry = {};
@@ -623,6 +635,23 @@ int main(int ArgumentCount, char** ArgumentValues)
             std::printf("%s \u2014 overlay pass standing: the grid, the axes and the gizmo draw on the GPU\n",
                         HostName);
         }
+
+        // 📝 The sketch pass shares the overlay's codec and colour format.
+        if constexpr (HostHasFeature(FeatureParametric))
+        {
+            const Deliver<bool> CadDelivery = CadPass.ConstructWorkspaceCadPass(
+                Lifetime.DeviceExchange(), Lifetime.DiagnosticsExtension(), OverlayCodec,
+                Lifetime.Offering().ColourTargetFormat);
+            if (!CadDelivery.Resolved)
+                std::printf("%s \u2014 the CAD pass was not standing (reason %u: %s); "
+                            "drawing sketch geometry through the interface fallback\n",
+                            HostName,
+                            static_cast<unsigned>(CadDelivery.Error.DeclaredReason),
+                            CadDelivery.Error.Detail);
+            else
+                std::printf("%s \u2014 CAD pass standing: sketch curves and fills draw on the GPU\n",
+                            HostName);
+        }
     }
 
     // 🔴 The renderer's device estate is deliberately brought up before any geometry is admitted. The next
@@ -722,6 +751,17 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                     Lifetime.DiagnosticsExtension(),
                                                     OverlayCodec,
                                                     Lifetime.Offering().ColourTargetFormat));
+                if constexpr (HostHasFeature(FeatureParametric))
+                {
+                    // ⚠️ Reclaimed first: the pass holds device memory bound to the old chain.
+                    CadPass.Reclaim();
+                    static_cast<void>(CadPass.ConstructWorkspaceCadPass(Lifetime.DeviceExchange(),
+                                                        Lifetime.DiagnosticsExtension(),
+                                                        OverlayCodec,
+                                                        Lifetime.Offering().ColourTargetFormat));
+                    // 📝 Force a re-upload: the vertex buffer went with the old pass.
+                    UploadedCadGeneration = 0xFFFFFFFFu;
+                }
                 for (std::uint32_t Index = 0u; Index < PanelStructure::RecordLimit; ++Index)
                     OverlayGeneration[Index] = 0u;
             }
@@ -969,13 +1009,25 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 //    while still TYPE-CHECKING it -- an `#ifdef` would not.
                                 if constexpr (HostHasFeature(FeatureParametric))
                                 {
-                                    SketchView.OrbitYaw   = EditorCamera.YawDegrees;
-                                    SketchView.OrbitPitch = EditorCamera.PitchDegrees;
-                                    SketchView.Focus      = { EditorCamera.Position[0],
-                                                              EditorCamera.Position[1],
-                                                              EditorCamera.Position[2] };
-
                                     const SpatialBasis SketchBasis = ResolveSketchBasis(Sketch);
+
+                                    // 🔴 ONE CAMERA, NOT TWO. The orbit angles were copied straight off
+                                    //    the editor camera, but the orbit arm measures yaw against the
+                                    //    sketch BASIS and places the eye at `Focus - Forward*Distance`,
+                                    //    so the two resolved to genuinely different cameras -- forward
+                                    //    vectors disagreeing by as much as a dot of -0.5. Sketch
+                                    //    geometry consequently sat on a surface that slid out from
+                                    //    under it as the artist orbited. The conversion derives the
+                                    //    orbit standing FROM the free camera, so both descriptions
+                                    //    resolve to one frame (verified over 225 orientations).
+                                    const double PreservedScale = SketchView.OrthoScale;
+                                    SketchView = ResolveOrbitStandingFromFree(
+                                        { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
+                                          SceneApplied.CameraPosition[2] },
+                                        SceneApplied.ViewportSkyCamera.AzimuthDegrees,
+                                        SceneApplied.ViewportSkyCamera.ElevationDegrees,
+                                        SketchBasis);
+                                    SketchView.OrthoScale = PreservedScale;
                                     // 🔴 The workplane tool is offered the press FIRST and consumes
                                     //    it, or the click that places a plane is also read as the
                                     //    first point of a curve -- drawn onto the plane it replaced.
@@ -994,19 +1046,27 @@ int main(int ArgumentCount, char** ArgumentValues)
                                             SketchRecords, SketchRevisions, SketchWorkplanes,
                                             SketchPendingSelection, SketchTool, PointerTaken);
 
-                                    // 🔴 RECORDING A CURVE IS NOT DRAWING IT. The editor took the
-                                    //    presses and built the sketch, and then showed nothing,
-                                    //    because the projection and the overlays stayed behind in the
-                                    //    deleted host. Four calls, in the order the old host used:
-                                    //    grid first so curves sit on top of it, then the projection
-                                    //    into the CAD packet, its fallback when the GPU pass is not
-                                    //    standing, and the rubber-band preview of the tool in flight.
-                                    RecordViewportGridOverlay(LeafOverlay, LeafBody, Sketch, SketchView,
-                                                              LeafPerspective, PanelConfiguration[Index]);
-
+                                    // 🔴 NO SECOND GRID. `RecordViewportGridOverlay` was called here and
+                                    //    drew 161 CPU line segments of its OWN lattice on top of the
+                                    //    analytic ground the overlay pass already draws on the GPU.
+                                    //    Worse, it projected them through `SketchView` -- an ORBIT
+                                    //    camera -- while the scene and the real grid use the free
+                                    //    editor camera, and the two resolve `Right` with opposite
+                                    //    signs. That is why the phantom grid tracked correctly up and
+                                    //    down but ran the wrong way left and right, and why drawn
+                                    //    shapes appeared to sit on a surface that slid under them.
+                                    //    The existing grid is the grid; the sketch draws onto it.
                                     Discard(ProjectSketchRendering(Sketch, SketchRecords, SketchCadPacket));
-                                    RecordCadFallback(Viewport.Surface(), LeafBody, Sketch, SketchView,
-                                                      LeafPerspective, SketchCadPacket);
+
+                                    // 🔴 THE FALLBACK IS A FALLBACK. It walks every segment and fill
+                                    //    through the interface's draw lists, which ImGui tessellates on
+                                    //    the CPU each frame -- the viewport slowed as shapes
+                                    //    accumulated, and each fill triangle drew its own anti-aliased
+                                    //    edges, showing the triangulation as a wireframe over the
+                                    //    surface. It now runs only when the GPU pass is not standing.
+                                    if (!CadPass.Standing())
+                                        RecordCadFallback(Viewport.Surface(), LeafBody, Sketch, SketchView,
+                                                          LeafPerspective, SketchCadPacket);
                                     RecordPlacementPreview(Viewport.Surface(), LeafBody, Sketch,
                                                            SketchView, LeafPerspective, SketchTool);
                                 }
@@ -1099,6 +1159,12 @@ int main(int ArgumentCount, char** ArgumentValues)
                                               * static_cast<double>(PanelDeclared.LatticeScale));
 
                                     Pose.Presentation = static_cast<std::uint32_t>(PanelDeclared.Lattice);
+                                    // 🔴 The grid flattens with everything else. Zero keeps the
+                                    //    perspective ray-march; a positive scale selects parallel rays
+                                    //    so the lattice and the geometry drawn on it agree.
+                                    Pose.OrthoScale = LeafPerspective
+                                                    ? 0.0f
+                                                    : static_cast<float>(SketchView.OrthoScale);
                                     Pose.LineWeight   = PanelDeclared.LatticeLineWeight;
                                     Pose.DotRadius    = PanelDeclared.LatticeDotRadius;
                                     Pose.Subdivisions = PanelDeclared.Subdivisions > 0u
@@ -1127,6 +1193,22 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 {
                                     ViewportLeafIndexs[ViewportLeafTally] = Leaf;
                                     ViewportLeafRects[ViewportLeafTally]    = LeafBody;
+
+                                    if constexpr (HostHasFeature(FeatureParametric))
+                                    {
+                                        // 🔴 Measured from the two extents seen THIS frame. A reported
+                                        //    scale can be a frame stale after the window changes
+                                        //    monitor, and a stale scale clips the wrong region.
+                                        const DrawableScale Drawable = DrawableScale::Between(
+                                            Viewport.Surface().Display().Width,
+                                            static_cast<double>(Pass.Width));
+
+                                        ViewportCadProjections[ViewportLeafTally] = ResolveCadProjection(
+                                            ResolveSketchBasis(Sketch), SketchView, LeafPerspective,
+                                            LeafBody, Drawable, Pass.Width, Pass.Height);
+                                        ViewportLeafScale = Drawable;
+                                    }
+
                                     ++ViewportLeafTally;
                                 }
                                 break;
@@ -1645,6 +1727,35 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    Each viewport leaf's geometry is uploaded at most once per generation change
                 //    and drawn with a scissor clipped to that leaf's box, so the overlay never
                 //    paints over the outliner, the properties or any other panel.
+                // 🔴 THE SKETCH, RASTERISED ON THE GPU. The packet is uploaded once per generation
+                //    change -- not per frame and not per leaf -- and each viewport leaf records it with
+                //    its own projection. This is the pass the deleted host used and the one whose
+                //    absence made the viewport bog down as shapes accumulated.
+                if constexpr (HostHasFeature(FeatureParametric))
+                {
+                    if (CadPass.Standing())
+                    {
+                        if (UploadedCadGeneration != SketchCadPacket.Generation)
+                        {
+                            CadPass.Upload(SketchCadPacket);
+                            UploadedCadGeneration = SketchCadPacket.Generation;
+                        }
+
+                        for (std::uint32_t ViewportIndex = 0u; ViewportIndex < ViewportLeafTally;
+                             ++ViewportIndex)
+                        {
+                            // ⚠️ The scissor is PHYSICAL. `LeafBody` is logical, and the pass clamps
+                            //    against a physical width -- a clamp that never fires and silently
+                            //    leaves logical numbers in a physical field, clipping the wrong region.
+                            const PlaneExtent CadRect =
+                                ViewportLeafScale.ToPhysical(ViewportLeafRects[ViewportIndex]);
+                            CadPass.Record(Pass.Recording, ViewportCadProjections[ViewportIndex],
+                                           CadRect.MinimumX, CadRect.MinimumY,
+                                           CadRect.MaximumX, CadRect.MaximumY);
+                        }
+                    }
+                }
+
                 // 🔴 A DRAWER HIDES THE STRIP IT COVERS, NOT THE WHOLE VIEWPORT. The GPU overlay is
                 //    recorded after the interface, so it cannot be hidden by an ImGui ground -- the
                 //    first fix for the lattice cutting through Control Centre was to drop the overlay
@@ -1679,16 +1790,21 @@ int main(int ArgumentCount, char** ArgumentValues)
 
                     const PlaneExtent& LeafRect = ViewportLeafRects[ViewportIndex];
 
-                    // 📝 The leaf's own box intersected with the band no drawer covers.
-                    const float ClipY0 = std::max(LeafRect.MinimumY, UncoveredTop);
-                    const float ClipY1 = std::min(LeafRect.MaximumY, UncoveredBottom);
+                    // 🔴 TWO RECTANGLES, DELIBERATELY. The leaf's WHOLE box is the camera's canvas and
+                    //    is passed unchanged however much a drawer covers; the scissor is the part of
+                    //    it no drawer covers. Passing the clipped box for both is what made the grid
+                    //    squash into the remaining space instead of simply being hidden there.
+                    const float ScissorY0 = std::max(LeafRect.MinimumY, UncoveredTop);
+                    const float ScissorY1 = std::min(LeafRect.MaximumY, UncoveredBottom);
 
-                    if (ClipY1 <= ClipY0)
+                    if (ScissorY1 <= ScissorY0)
                         continue;
 
                     Overlay.Record(Pass.Recording, Pass.Width, Pass.Height,
-                                   LeafRect.MinimumX, ClipY0,
-                                   LeafRect.MaximumX, ClipY1);
+                                   LeafRect.MinimumX, LeafRect.MinimumY,
+                                   LeafRect.MaximumX, LeafRect.MaximumY,
+                                   LeafRect.MinimumX, ScissorY0,
+                                   LeafRect.MaximumX, ScissorY1);
                 }
             }
         }
@@ -1704,6 +1820,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
     // 📝 This host's own panels first.
+    CadPass.Reclaim();
     ControlCentre.Reset();
     WorkspacePanels.Reset();
     for (std::uint32_t Index = 0u; Index < WorkspaceIndex::WorkspaceLimit; ++Index)

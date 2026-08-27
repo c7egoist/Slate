@@ -78,22 +78,32 @@ public:
 
     /// 🧩 Records the overlay primitives inside the open dynamic-rendering scope, clipped to one
     ///    viewport leaf's box.
+    /// note  🔴 The lines draw as `4 × count`, the dots as `4 × count`, the triangles as
+    ///        `3 × count` — the vertex stage expands by `SV_VertexID`, so nothing here tessellates.
     /// in    Command  [-]  the recording, between `vkCmdBeginRendering` and `vkCmdEndRendering`
     /// in    Width    [px] the display extent the viewport state is set against
     /// in    Height   [px]
-    /// in    ClipX0 [px]  the viewport leaf's box — the scissor is set to
-    /// in    ClipY0 [px]
-    /// in    ClipX1 [px]
-    /// in    ClipY1 [px]
-    ///                     it, so the grid, the axes and the gizmo NEVER paint over the outliner,
-    ///                     the properties or any other panel; they are drawn only inside the
-    ///                     viewport leaf that produced the geometry
-    /// note  🔴 The lines draw as `4 × count`, the dots as `4 × count`, the triangles as
-    ///        `3 × count` — the vertex stage expands by `SV_VertexID`, so nothing here tessellates.
+    /// in    LeafX0   [px] the viewport leaf's WHOLE box -- what the camera is mapped across
+    /// in    LeafY0   [px]
+    /// in    LeafX1   [px]
+    /// in    LeafY1   [px]
+    /// in    ScissorX0 [px] the visible sub-rectangle -- what is allowed to be painted
+    /// in    ScissorY0 [px]
+    /// in    ScissorX1 [px]
+    /// in    ScissorY1 [px]
+    /// note  🔴 THESE ARE TWO DIFFERENT RECTANGLES AND CONFLATING THEM IS THE GRID BUG. The leaf box
+    ///        is geometry: the fragment stage maps the camera's field of view across it, so shrinking
+    ///        it does not clip the grid, it SQUASHES the camera into a smaller box. The scissor is
+    ///        visibility: it hides what a drawer covers without moving anything. One value served both
+    ///        roles, so hiding the covered strip squashed the grid and un-squashing it un-hid the
+    ///        strip -- the two symptoms traded back and forth because they were the same number.
+    ///        Pass the WHOLE leaf as the leaf box even when most of it is hidden.
+    /// note  ⚠️ Both are PHYSICAL pixels. Logical points silently clip the wrong region.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
     void Record(VkCommandBuffer Command, std::uint32_t Width, std::uint32_t Height,
-                float ClipX0, float ClipY0, float ClipX1, float ClipY1);
+                float LeafX0, float LeafY0, float LeafX1, float LeafY1,
+                float ScissorX0, float ScissorY0, float ScissorX1, float ScissorY1);
 
     /// 🧩 Whether the pass stands — what the host tests before it records the GPU overlay, and what
     ///    decides whether the interface-drawn fallback (same geometry, drawn through the recording

@@ -138,8 +138,17 @@ ViewFrame ResolveViewportFrame(const SpatialBasis& Basis, const ViewportStanding
               Scaled(Basis.Normal, std::sin(Pitch))),
         Scaled(Negated(Basis.Across), std::cos(Yaw) * std::cos(Pitch))));
 
-    const SpatialDirection Right = Normalize(Cross(Forward, Basis.Normal));
-    const SpatialDirection Up    = Normalize(Cross(Right, Forward));
+    // 🔴 THE OPERANDS WERE THE WRONG WAY ROUND, MAKING THIS FRAME LEFT-HANDED. `Cross(Forward, Normal)`
+    //    is the negation of what the orthographic arm ten lines above and `ResolveFreeViewFrame` both
+    //    produce: measured, a view down -Z gave `Right = -X` here and `+X` in both of those, across
+    //    every yaw tested, while `Forward` and `Up` agreed. Geometry projected through this camera was
+    //    therefore MIRRORED HORIZONTALLY -- it tracked correctly up and down and ran the wrong way left
+    //    and right as the artist orbited, which is exactly what the sketch did against the grid.
+    //
+    // ⚠️ `Up` takes its operands in the opposite order for the same reason: it is derived FROM `Right`,
+    //    so correcting `Right` alone would have negated `Up` in turn and merely moved the mirror.
+    const SpatialDirection Right = Normalize(Cross(Basis.Normal, Forward));
+    const SpatialDirection Up    = Normalize(Cross(Forward, Right));
 
     return { Added(View.Focus, Scaled(Forward, -View.Distance)), Right, Up, Forward };
 }
@@ -248,6 +257,35 @@ ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStand
     Camera.FieldOfViewDegrees = CadPerspectiveFieldOfViewDegrees;
     Camera.OrthoScale         = View.OrthoScale;
     return Camera;
+}
+
+ViewportStanding ResolveOrbitStandingFromFree(const SpatialPoint& Eye, double YawDegrees,
+                                              double PitchDegrees, const SpatialBasis& Basis)
+{
+    // ① The free camera's actual forward, in the editor camera's own convention.
+    const ViewFrame Free = ResolveFreeViewFrame(Eye, YawDegrees, PitchDegrees);
+
+    // ② Re-express that forward in the orbit arm's terms. It builds forward as
+    //       Along*sin(Y)cos(P) + Normal*sin(P) - Across*cos(Y)cos(P)
+    //    so the orbit angles are recovered by projecting onto the basis and inverting -- NOT by
+    //    copying the world yaw, which is what made the two cameras disagree.
+    const double AlongTerm  = Dot(Free.Forward, Basis.Along);
+    const double NormalTerm = Dot(Free.Forward, Basis.Normal);
+    const double AcrossTerm = Dot(Free.Forward, Basis.Across);
+
+    ViewportStanding View;
+    View.OrbitPitch = std::asin(NormalTerm < -1.0 ? -1.0 : (NormalTerm > 1.0 ? 1.0 : NormalTerm))
+                    * 180.0 / ProjectionPi;
+    // ⚠️ `-Across` in the forward term is why the second argument is negated here.
+    View.OrbitYaw   = std::atan2(AlongTerm, -AcrossTerm) * 180.0 / ProjectionPi;
+
+
+    // ③ The orbit arm places the eye at `Focus - Forward * Distance`, so a focus one unit ahead of the
+    //    free eye with a matching distance puts the orbit eye exactly where the free eye stands.
+    View.Distance    = 1.0;
+    View.Focus       = Added(Eye, Free.Forward);
+    View.Orientation = ViewportOrientation::Isometric;
+    return View;
 }
 
 ResolvedCamera ResolveFreeCamera(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees,

@@ -633,13 +633,21 @@ void ProveFreeEyeMatchesOrbit()
                       && Near(Free.Up.Forward, Orbited.Up.Forward, 1.0e-9),
                   "a free frame must share the orbit's up" + At);
 
-            // 🔴 The handedness difference, stated exactly rather than tolerated. If either convention is
-            //    ever changed this fails, which is the point: it is the one place the difference is
-            //    written down instead of being discovered by a picture coming out mirrored.
-            Claim(Near(Free.Right.Left, -Orbited.Right.Left, 1.0e-9)
-                      && Near(Free.Right.Up, -Orbited.Right.Up, 1.0e-9)
-                      && Near(Free.Right.Forward, -Orbited.Right.Forward, 1.0e-9),
-                  "the free frame's right must be the orbit's, mirrored" + At);
+            // 🔴 THIS CLAIM USED TO ASSERT THE OPPOSITE, AND IT WAS WRONG. It required the orbit's
+            //    `Right` to be the NEGATION of the free camera's, describing the disagreement as a
+            //    deliberate convention -- its own comment said writing it down here was what stopped
+            //    the difference "being discovered by a picture coming out mirrored". The picture WAS
+            //    coming out mirrored: sketch geometry projected through the orbit camera ran the wrong
+            //    way left and right as the artist orbited, while tracking correctly up and down.
+            //
+            //    The orbit arm resolved `Right` as `Cross(Forward, Normal)`, the negation of what both
+            //    the ORTHOGRAPHIC arm of the same function and `ResolveFreeViewFrame` produce. That is
+            //    not two conventions, it is one function contradicting itself. Both now agree, and this
+            //    claim requires the agreement.
+            Claim(Near(Free.Right.Left, Orbited.Right.Left, 1.0e-9)
+                      && Near(Free.Right.Up, Orbited.Right.Up, 1.0e-9)
+                      && Near(Free.Right.Forward, Orbited.Right.Forward, 1.0e-9),
+                  "the free frame's right must be the orbit's right" + At);
 
             // Orthonormal, at every pitch — including the steep ones where a hand-written basis usually
             // stops being one.
@@ -678,16 +686,18 @@ void ProveFreeEyeMatchesOrbit()
                         if (!OrbitSaw) continue;
 
                         ++Compared;
-                        // Mirrored horizontally about the viewport centre, identical vertically —
-                        // which is exactly what an inverted `Right` and a shared `Up` must produce.
-                        const double Centre = Extent.MinimumX + Extent.Width() * 0.5;
-                        if (Near(FreeX - Centre, -(OrbitX - Centre), 0.01) && Near(FreeY, OrbitY, 0.01))
+                        // 🔴 THE SAME PIXEL, not a mirrored one. This used to require
+                        //    `FreeX - Centre == -(OrbitX - Centre)` -- the pixel-level statement of the
+                        //    inverted `Right`, and the reason a sketch drawn in the viewport slid the
+                        //    wrong way when the camera orbited. Two descriptions of one camera must
+                        //    land a point on one pixel.
+                        if (Near(FreeX, OrbitX, 0.01) && Near(FreeY, OrbitY, 0.01))
                             ++Agreed;
                     }
 
             Claim(Compared > 0u, "some point must be visible" + At);
             Claim(Agreed == Compared,
-                  "free eye and orbit must project to mirrored pixels" + At + ", " +
+                  "free eye and orbit must project to the same pixel" + At + ", " +
                       std::to_string(Agreed) + " of " + std::to_string(Compared) + " agreed");
         }
     }

@@ -176,22 +176,22 @@ const ToolEntry SketchDrawTools[] =
 
     { "Bezier", "", SymbolSubject::CurveTangent, ParametricToolDimension::Nothing,
       false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      2u, 0u, 0u, 0u, 0u, 0u, 0u,
+      0u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Controls", "2+" }, { "Finish", "double click" } }, 2u },
 
     { "Hermite", "", SymbolSubject::CurveTangent, ParametricToolDimension::Nothing,
       false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      4u, 0u, 0u, 0u, 0u, 0u, 0u,
+      0u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Inputs", "start/end/tangents" }, { "Finish", "double click" } }, 2u },
 
     { "Basis Spline", "", SymbolSubject::CurveTangent, ParametricToolDimension::Nothing,
       false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      3u, 0u, 0u, 0u, 0u, 0u, 0u,
+      0u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Degree", "3" }, { "Finish", "double click" } }, 2u },
 
     { "NURBS Curve", "", SymbolSubject::CurveTangent, ParametricToolDimension::Nothing,
       false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      3u, 0u, 0u, 0u, 0u, 0u, 0u,
+      0u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Weights", "uniform" }, { "Finish", "double click" } }, 2u },
 
     { "Construction Line", "", SymbolSubject::EdgeSegment, ParametricToolDimension::Nothing,
@@ -199,30 +199,10 @@ const ToolEntry SketchDrawTools[] =
       0u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Semantic", "construction" } }, 1u },
 
-    { "Center Rectangle", "", SymbolSubject::FacePlanar, ParametricToolDimension::Nothing,
-      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "centre + corner" } }, 1u },
 
-    { "3-Point Rectangle", "", SymbolSubject::FacePlanar, ParametricToolDimension::Nothing,
-      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "edge + height" } }, 1u },
 
-    { "Diameter Circle", "", SymbolSubject::ConstraintDimension, ParametricToolDimension::Nothing,
-      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "diameter endpoints" } }, 1u },
 
-    { "3-Point Circle", "", SymbolSubject::ConstraintDimension, ParametricToolDimension::Nothing,
-      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "three points" } }, 1u },
 
-    { "Center Arc", "", SymbolSubject::ConstraintDimension, ParametricToolDimension::Nothing,
-      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
-      0u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Defined By", "centre/start/end" } }, 1u },
 
     { "Tangent Arc", "", SymbolSubject::CurveTangent, ParametricToolDimension::Nothing,
       false, true, false, false, false, false, false, false, false, true, false, false, false, false,
@@ -633,13 +613,14 @@ ParametricToolSubject ToolSubjectOf(std::uint32_t BandIndex, std::uint32_t ToolI
                  : ToolIndex == 10u ? ParametricToolSubject::BasisSpline
                  : ToolIndex == 11u ? ParametricToolSubject::RationalSpline
                  : ToolIndex == 12u ? ParametricToolSubject::ConstructionLine
-                 : ToolIndex == 13u ? ParametricToolSubject::CenterRectangle
-                 : ToolIndex == 14u ? ParametricToolSubject::ThreePointRectangle
-                 : ToolIndex == 15u ? ParametricToolSubject::DiameterCircle
-                 : ToolIndex == 16u ? ParametricToolSubject::ThreePointCircle
-                 : ToolIndex == 17u ? ParametricToolSubject::CenterStartEndArc
-                 : ToolIndex == 18u ? ParametricToolSubject::TangentArc
-                 : ToolIndex == 19u ? ParametricToolSubject::Polygon
+                 // 🔴 FIVE TILES REMOVED, NO CAPABILITY LOST. `CenterRectangle`,
+                 //    `ThreePointRectangle`, `DiameterCircle`, `ThreePointCircle` and
+                 //    `CenterStartEndArc` were separate SUBJECTS for what is one subject drawn by a
+                 //    different METHOD -- shape and method of construction are separate axes, and
+                 //    crossing them into the tile list is what produced a rectangle three times and a
+                 //    circle three times. The method is chosen for the active shape instead.
+                 : ToolIndex == 13u ? ParametricToolSubject::TangentArc
+                 : ToolIndex == 14u ? ParametricToolSubject::Polygon
                                     : ParametricToolSubject::Slot;
         case 2u:
             return ToolIndex == 0u ? ParametricToolSubject::Fillet

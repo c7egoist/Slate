@@ -112,6 +112,10 @@ struct OverlayGroundPose
     Real32  FadeRadiusMetres = 40.0f; // [m] - camera-relative sharp-to-absent radius
     Unsigned32 AxisMask = 7u;   // [-] - bit 0: X, bit 1: Y, bit 2: Z
     Unsigned32 Presentation = 1u;   // [-] - PanelLatticePresentation
+    // 🔴 The viewport footer's Ortho/Perspective choice. The fragment stage ray-marched a pinhole
+    //    camera unconditionally, so the grid stayed in perspective while the geometry drawn on it
+    //    went orthographic -- the shapes and the surface they sit on disagreed.
+    Real32  OrthoScale = 0.0f;  // [px/unit] - zero means perspective; positive selects parallel rays
     bool    Standing = false;   // [-] - the leaf draws a ground at all
 };
 

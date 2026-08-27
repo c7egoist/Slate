@@ -106,14 +106,31 @@ def main() -> int:
     #    showed nothing, because the projection and the overlays stayed behind in the deleted host.
     #    Each of these is a separate way for the viewport to go blank while every gate stays green.
     for Drawn, Why in (
-            ("RecordViewportGridOverlay(", "the sketch grid must be drawn"),
             ("ProjectSketchRendering(", "sketch curves must be projected into the CAD packet"),
             ("RecordCadFallback(", "curves must still draw when the GPU CAD pass is not standing"),
             ("RecordPlacementPreview(", "the tool in flight must show its rubber-band preview")):
         require(Drawn in editor, f"{Why} -- {Drawn} is not called by the host that ships")
 
-    require(editor.index("RecordViewportGridOverlay(") < editor.index("RecordPlacementPreview("),
-            "the grid must be recorded before the preview so curves sit on top of it")
+    # 🔴 EXACTLY ONE GRID, AND IT IS THE ANALYTIC ONE. `RecordViewportGridOverlay` draws a SECOND
+    #    lattice as CPU line segments on top of the ground the overlay pass already renders, and
+    #    projects it through the orbit camera while the real grid uses the free editor camera -- so it
+    #    tracked correctly up and down and ran the wrong way left and right. The existing grid is the
+    #    grid. This claim previously demanded the opposite and was wrong.
+    require("RecordViewportGridOverlay(" not in editor,
+            "the host must not draw a second CPU grid over the analytic one")
+
+    # 🔴 SKETCH GEOMETRY RASTERISES ON THE GPU. Drawing it through the interface's draw lists makes
+    #    ImGui tessellate every segment on the CPU each frame -- the viewport slows as shapes
+    #    accumulate, and each fill triangle shows its own anti-aliased edges as a wireframe.
+    require("CadPass.Upload(" in editor and "CadPass.Record(" in editor,
+            "the sketch must be uploaded to and recorded by the GPU CAD pass")
+    require("if (!CadPass.Standing())" in editor,
+            "the CPU fallback must run only when the GPU CAD pass is absent")
+
+    # 🔴 ONE CAMERA. The sketch used orbit angles copied off the editor camera, which resolves a
+    #    genuinely different frame -- geometry sat on a surface that slid out from under it.
+    require("ResolveOrbitStandingFromFree(" in editor,
+            "sketch geometry must project through the same camera as the scene")
 
     # 🔴 A DRAWER HIDES THE STRIP IT COVERS, NOT THE WHOLE VIEWPORT. The overlay pass records after the
     #    interface, so an open Control Centre / Content Browser cannot occlude it -- the first fix was to
@@ -123,6 +140,19 @@ def main() -> int:
             "the overlay must clip to the uncovered band, not be suppressed while a drawer stands")
     require("UncoveredTop" in editor and "UncoveredBottom" in editor,
             "the overlay loop must compute the band no drawer covers")
+
+    # 🔴 THE CAMERA RECTANGLE AND THE SCISSOR ARE TWO DIFFERENT THINGS. `LeafRect` is pushed to the
+    #    shader, where the fragment stage maps the camera's field of view across it -- so passing the
+    #    drawer-clipped box for both does not clip the grid, it SQUASHES the camera into the remaining
+    #    space. One value served both roles, which is why hiding the covered strip squashed the grid
+    #    and un-squashing it un-hid the strip: the two symptoms traded back and forth for several
+    #    attempts because they were the same number. The record call must pass the WHOLE leaf first.
+    OverlayRecord = editor[editor.index("Overlay.Record("):]
+    OverlayRecord = OverlayRecord[:OverlayRecord.index(";")]
+    require("LeafRect.MinimumY," in OverlayRecord and "ScissorY0," in OverlayRecord,
+            "the overlay must receive the whole leaf as its camera rect and the visible band as its scissor")
+    require(OverlayRecord.index("LeafRect.MinimumY,") < OverlayRecord.index("ScissorY0,"),
+            "the leaf box must precede the scissor in the overlay record call")
 
     # 🔴 THE FOOTER'S ORTHO/PERSPECTIVE BUTTON MUST REACH THE CAMERA. `PanelConfiguration[].Perspective`
     #    stored the artist's choice while the camera was resolved perspective unconditionally and the
