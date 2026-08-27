@@ -16,6 +16,8 @@
 //    viewport LEAF.
 
 #define SLATE_EDITOR_HOST 1
+#include <algorithm>
+
 #include "SlateWorkspace/Discipline/SketchViewportOverlay/Api/SketchViewportOverlay.h"
 #include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 #include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
@@ -760,9 +762,6 @@ int main(int ArgumentCount, char** ArgumentValues)
             const PointerCondition& ForegroundPointer = Viewport.Surface().Pointer();
             const PlaneExtent NorthInterior = Viewport.Drawers().Interior(DrawerBearing::North);
             const PlaneExtent SouthInterior = Viewport.Drawers().Interior(DrawerBearing::South);
-            const bool ForegroundDrawerStanding =
-                (NorthInterior.MaximumY > 0.0f && NorthInterior.MinimumY < static_cast<float>(Pass.Height)) ||
-                (SouthInterior.MaximumY > 0.0f && SouthInterior.MinimumY < static_cast<float>(Pass.Height));
             const bool TabPressed = Viewport.Seam().KeyPressed(KeySubject::Summon);
             const bool PointerBehindDrawer =
                 NorthInterior.Encloses(ForegroundPointer.PositionX, ForegroundPointer.PositionY) ||
@@ -952,12 +951,18 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 //    camera; `ResolveFreeCamera` now does. The editor works in METRES
                                 //    and the parametric workspace in millimetres, so the unit scale is
                                 //    named here rather than hidden inside the unit.
+                                // 🔴 THE FOOTER'S ORTHO/PERSPECTIVE BUTTON, HONOURED. The panel stored
+                                //    the artist's choice and nothing read it: the camera was resolved
+                                //    perspective unconditionally and every overlay below was passed a
+                                //    literal `true`. Pressing Ortho changed the label and nothing else.
+                                const bool LeafPerspective = PanelConfiguration[Index].Perspective;
                                 const ResolvedCamera SceneCamera = ResolveFreeCamera(
                                     { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
                                       SceneApplied.CameraPosition[2] },
                                     SceneApplied.ViewportSkyCamera.AzimuthDegrees,
                                     SceneApplied.ViewportSkyCamera.ElevationDegrees,
-                                    SceneApplied.ViewportSkyCamera.FieldOfViewDegrees);
+                                    SceneApplied.ViewportSkyCamera.FieldOfViewDegrees,
+                                    LeafPerspective, SketchView.OrthoScale);
                                 // 🔴 THE PARAMETRIC TOOLS, IN THE PRODUCT THAT SHIPS. This block is
                                 //    why `ParametricSketchHost` existed. `HostHasFeature` is
                                 //    `constexpr`, so the texture-only product compiles this away
@@ -975,7 +980,8 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     //    it, or the click that places a plane is also read as the
                                     //    first point of a curve -- drawn onto the plane it replaced.
                                     PointerTaken = PointerTaken || ApplyWorkplaneTool(
-                                        LeafBody, BackgroundPointer, SketchBasis, SketchView, true,
+                                        LeafBody, BackgroundPointer, SketchBasis, SketchView,
+                                        LeafPerspective,
                                         ParametricToolsApplied, SketchNaming, Sketch, SketchRecords,
                                         SketchRevisions, SketchWorkplanes);
 
@@ -983,7 +989,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         DriveDrawingWithModifiers(
                                             LeafBody, BackgroundPointer,
                                             Viewport.Surface().TextInput(), Viewport.Seam().Modifiers(),
-                                            SketchBasis, SketchView, true,
+                                            SketchBasis, SketchView, LeafPerspective,
                                             ParametricToolsApplied, SketchNaming, Sketch,
                                             SketchRecords, SketchRevisions, SketchWorkplanes,
                                             SketchPendingSelection, SketchTool, PointerTaken);
@@ -996,13 +1002,13 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     //    into the CAD packet, its fallback when the GPU pass is not
                                     //    standing, and the rubber-band preview of the tool in flight.
                                     RecordViewportGridOverlay(LeafOverlay, LeafBody, Sketch, SketchView,
-                                                              true, PanelConfiguration[Index]);
+                                                              LeafPerspective, PanelConfiguration[Index]);
 
                                     Discard(ProjectSketchRendering(Sketch, SketchRecords, SketchCadPacket));
                                     RecordCadFallback(Viewport.Surface(), LeafBody, Sketch, SketchView,
-                                                      true, SketchCadPacket);
+                                                      LeafPerspective, SketchCadPacket);
                                     RecordPlacementPreview(Viewport.Surface(), LeafBody, Sketch,
-                                                           SketchView, true, SketchTool);
+                                                           SketchView, LeafPerspective, SketchTool);
                                 }
 
                                 // 🔴 Clicking a mesh in the viewport selects it. Lived only in the
@@ -1639,11 +1645,27 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    Each viewport leaf's geometry is uploaded at most once per generation change
                 //    and drawn with a scissor clipped to that leaf's box, so the overlay never
                 //    paints over the outliner, the properties or any other panel.
-                // The GPU overlay is recorded after the interface and therefore cannot be hidden by an
-                // ImGui ground. Suppress it while either opaque foreground drawer stands; otherwise the
-                // lattice would visibly cut through Control Centre and Content Browser pages.
+                // 🔴 A DRAWER HIDES THE STRIP IT COVERS, NOT THE WHOLE VIEWPORT. The GPU overlay is
+                //    recorded after the interface, so it cannot be hidden by an ImGui ground -- the
+                //    first fix for the lattice cutting through Control Centre was to drop the overlay
+                //    entirely whenever a drawer stood. That is why the grid and the sketch VANISH the
+                //    moment the Control Centre or the Content Browser is opened, even where the
+                //    viewport is still plainly visible between them.
+                //
+                //    Both drawers are full-width horizontal bands: North descends from the top edge,
+                //    South rises from the bottom. So the uncovered region is a band, and clipping the
+                //    scissor to it keeps the grid everywhere it is legitimately visible while still
+                //    refusing to paint a single pixel over a drawer page.
+                const float UncoveredTop    = NorthInterior.MaximumY > 0.0f
+                                            ? std::max(0.0f, NorthInterior.MaximumY) : 0.0f;
+                const float UncoveredBottom = SouthInterior.MinimumY < static_cast<float>(Pass.Height)
+                                            ? std::min(static_cast<float>(Pass.Height), SouthInterior.MinimumY)
+                                            : static_cast<float>(Pass.Height);
+
+                // ⚠️ Drawers meeting in the middle leave nothing; the loop must not record an inverted
+                //    box, which is a validation error rather than an empty draw.
                 for (std::uint32_t ViewportIndex = 0u;
-                     !ForegroundDrawerStanding && ViewportIndex < ViewportLeafTally;
+                     UncoveredBottom > UncoveredTop && ViewportIndex < ViewportLeafTally;
                      ++ViewportIndex)
                 {
                     const std::uint32_t LeafIndex = ViewportLeafIndexs[ViewportIndex];
@@ -1657,9 +1679,16 @@ int main(int ArgumentCount, char** ArgumentValues)
 
                     const PlaneExtent& LeafRect = ViewportLeafRects[ViewportIndex];
 
+                    // 📝 The leaf's own box intersected with the band no drawer covers.
+                    const float ClipY0 = std::max(LeafRect.MinimumY, UncoveredTop);
+                    const float ClipY1 = std::min(LeafRect.MaximumY, UncoveredBottom);
+
+                    if (ClipY1 <= ClipY0)
+                        continue;
+
                     Overlay.Record(Pass.Recording, Pass.Width, Pass.Height,
-                                   LeafRect.MinimumX, LeafRect.MinimumY,
-                                   LeafRect.MaximumX, LeafRect.MaximumY);
+                                   LeafRect.MinimumX, ClipY0,
+                                   LeafRect.MaximumX, ClipY1);
                 }
             }
         }

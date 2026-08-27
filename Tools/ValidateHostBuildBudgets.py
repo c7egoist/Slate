@@ -115,6 +115,25 @@ def main() -> int:
     require(editor.index("RecordViewportGridOverlay(") < editor.index("RecordPlacementPreview("),
             "the grid must be recorded before the preview so curves sit on top of it")
 
+    # 🔴 A DRAWER HIDES THE STRIP IT COVERS, NOT THE WHOLE VIEWPORT. The overlay pass records after the
+    #    interface, so an open Control Centre / Content Browser cannot occlude it -- the first fix was to
+    #    skip the overlay entirely while a drawer stood, which is why the grid and the sketch vanished
+    #    the moment either was opened. The loop must clip to the uncovered band instead of suppressing.
+    require("ForegroundDrawerStanding" not in editor,
+            "the overlay must clip to the uncovered band, not be suppressed while a drawer stands")
+    require("UncoveredTop" in editor and "UncoveredBottom" in editor,
+            "the overlay loop must compute the band no drawer covers")
+
+    # 🔴 THE FOOTER'S ORTHO/PERSPECTIVE BUTTON MUST REACH THE CAMERA. `PanelConfiguration[].Perspective`
+    #    stored the artist's choice while the camera was resolved perspective unconditionally and the
+    #    overlays were passed a literal `true`, so the button moved a label and nothing else.
+    require("LeafPerspective" in editor,
+            "the viewport leaf must read the panel's Ortho/Perspective choice")
+    require(editor.count("LeafPerspective") >= 6,
+            "the projection mode must reach the camera and every sketch overlay, not just one of them")
+    require(", true," not in editor.split("ResolveFreeCamera(")[1].split(";")[0],
+            "the free camera must not be resolved with a hardcoded projection mode")
+
     validation = read("Engine/Application/InterfaceValidationHost/Source/InterfaceValidationHost.cpp")
     require("std::strncpy" not in validation, "InterfaceValidationHost must avoid MSVC strncpy warning")
 

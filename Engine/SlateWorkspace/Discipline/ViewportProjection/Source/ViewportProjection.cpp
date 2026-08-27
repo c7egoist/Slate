@@ -251,14 +251,21 @@ ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStand
 }
 
 ResolvedCamera ResolveFreeCamera(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees,
-                                 double FieldOfViewDegrees)
+                                 double FieldOfViewDegrees, bool Perspective, double OrthoScale)
 {
     ResolvedCamera Camera;
     Camera.Basis              = { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
     Camera.Frame              = ResolveFreeViewFrame(Eye, YawDegrees, PitchDegrees);
-    Camera.Perspective        = true;   // 📝 A free-flying editor camera is always perspective.
+    // 🔴 A FREE CAMERA IS NOT ALWAYS PERSPECTIVE. This read `true` unconditionally, so the viewport
+    //    footer's Ortho/Perspective button moved a flag that reached the sketch overlays and NOTHING
+    //    else: curves flattened, the scene behind them stayed in perspective, and the two disagreed.
+    //    The eye keeps its orientation either way -- only how the frame is flattened changes.
+    Camera.Perspective        = Perspective;
     Camera.FieldOfViewDegrees = FieldOfViewDegrees;
-    Camera.OrthoScale         = 1.0;
+    // ⚠️ Orthographic projection has no focal length to divide by, so scale is the only thing setting
+    //    how large the world reads. Carried from the caller rather than defaulted to 1.0, which would
+    //    render the scene at one pixel per metre -- a toggle that looks like the scene vanished.
+    Camera.OrthoScale         = OrthoScale;
     return Camera;
 }
 

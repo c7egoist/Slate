@@ -135,8 +135,17 @@ struct ResolvedCamera
 ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStanding& View, bool Perspective);
 
 /// 🧩 The camera a free-flying editor eye resolves to.
+/// in   Eye              [m]   where the eye stands
+/// in   YawDegrees       [deg]
+/// in   PitchDegrees     [deg]
+/// in   FieldOfViewDegrees [deg] vertical, perspective only
+/// in   Perspective      [-]   false projects orthographically, as the viewport footer's toggle asks
+/// in   OrthoScale       [px/unit] how large the world reads when orthographic; ignored otherwise
+/// note 🔴 `Perspective` is carried rather than assumed. It was hardcoded `true`, so the footer's
+///       Ortho/Perspective button changed the sketch overlays and left the scene in perspective.
 ResolvedCamera ResolveFreeCamera(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees,
-                                 double FieldOfViewDegrees);
+                                 double FieldOfViewDegrees, bool Perspective = true,
+                                 double OrthoScale = 1.0);
 
 /// 🧩 Where a spatial point lands, seen from a resolved camera.
 /// out  -  [-]  false when a perspective camera cannot see the point
