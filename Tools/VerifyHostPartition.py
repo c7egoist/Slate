@@ -14,10 +14,10 @@ Four rules are checked:
   ④ Every .cpp under Application/ is reachable from a declared subject.
 
     python3 Tools/VerifyHostPartition.py            # warn only, reports and exits 0
-    python3 Tools/VerifyHostPartition.py --strict   # refuses, exits 1
+    python3 Tools/VerifyHostPartition.py --permissive   # reports without refusing
 
 The default is deliberate. The debt predates the rule, so the check is introduced measuring rather than
-refusing; --strict is turned on by the step that finishes paying it down.
+refusing. That debt is now zero and this refuses by default; see the note at the foot of main().
 """
 
 from __future__ import annotations
@@ -171,7 +171,10 @@ def scan(path: Path) -> dict:
 
 def main() -> int:
     parsed = argparse.ArgumentParser(description=__doc__)
-    parsed.add_argument("--strict", action="store_true", help="refuse rather than report")
+    parsed.add_argument("--strict", action="store_true",
+                        help="accepted and ignored; refusing is the default now that the debt is paid")
+    parsed.add_argument("--permissive", action="store_true",
+                        help="report without refusing, for use mid-lift")
     argument = parsed.parse_args()
 
     subjects = declared_subjects()
@@ -230,12 +233,16 @@ def main() -> int:
         print("[HostPartition] hosts are lifetime and tick only")
         return 0
 
-    if argument.strict:
-        print("[HostPartition] failed: a host holds behaviour that belongs in a unit", file=sys.stderr)
-        return 1
+    # 🔴 THE DEBT IS PAID. Every host reached zero definitions, zero engine-mechanism and zero
+    #    preprocessor-gated logic, so this refuses by default from here on. `--permissive` still reports
+    #    without refusing, for someone mid-lift who wants to see the remaining count — but a host that
+    #    grows a definition back now FAILS THE BUILD rather than adding a line to a report nobody reads.
+    if argument.permissive:
+        print("[HostPartition] reporting only — --permissive was passed")
+        return 0
 
-    print("[HostPartition] reporting only — run with --strict once the debt above is paid down")
-    return 0
+    print("[HostPartition] failed: a host holds behaviour that belongs in a unit", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

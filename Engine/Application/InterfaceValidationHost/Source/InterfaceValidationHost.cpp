@@ -3,6 +3,7 @@
 //============================================================================================================================================
 // 🧩 Records the control sheet and reusable global-interface components for direct visual comparison.
 
+#include "SlateRuntime/Session/HostEnvironment/Api/HostEnvironment.h"
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/ComponentSpecification/Api/ComponentSpecification.h"
@@ -46,22 +47,6 @@ constexpr float PageGroundInk[4] = { 0.0196f, 0.0196f, 0.0196f, 1.0f };   // [-]
 /// 🧩 Copies the device handles across the layer seam into the attachment the interface declares.
 /// note  🔴 `SlateVulkan` cannot name `InterfaceAttachment` — it lives one layer above — so `HostLifecycle`
 ///        offers the same handles as `DeviceOffering` and the host performs the copy.
-InterfaceAttachment Attach(const DeviceOffering& Offered)
-{
-    InterfaceAttachment Incoming = {};
-
-    Incoming.Instance                 = Offered.Instance;
-    Incoming.ScoredDevice             = Offered.ScoredDevice;
-    Incoming.ActiveDevice             = Offered.ActiveDevice;
-    Incoming.GraphicsQueue            = Offered.GraphicsQueue;
-    Incoming.GraphicsFamilyIndex    = Offered.GraphicsFamilyIndex;
-    Incoming.ColourTargetFormat       = Offered.ColourTargetFormat;
-    Incoming.MinimumDisplayImageCount = Offered.MinimumDisplayImageCount;
-    Incoming.DisplayImageCount        = Offered.DisplayImageCount;
-    Incoming.NativeWindowSlot         = Offered.NativeWindowSlot;
-
-    return Incoming;
-}
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    WHAT THE SHEET SEATS

@@ -166,3 +166,55 @@ size is currently unknown. **F** any time; **G** only when the rest is green.
 `PaintHost`'s three definitions are deliberately **not** in this plan. It is deleted at step 11, and
 lifting code out of a file that is about to be removed is work that gets thrown away — except for
 `ProjectPaintScenePoint`, which step A retires by making the shared projection able to express its camera.
+
+---
+
+## 4. Outcome — all steps green at `--strict`
+
+```
+[HostPartition] 5 host translation units
+  [    ] ConsoleHost.cpp              exempt — presents no workspace
+  [ok  ] EditorHost.cpp               1 585 lines · 0 defs · 0 mech · 0 pp
+  [    ] InterfaceValidationHost.cpp  exempt — presents no workspace
+  [ok  ] PaintHost.cpp                  621 lines · 0 defs · 0 mech · 0 pp
+  [ok  ] ParametricSketchHost.cpp     1 216 lines · 0 defs · 0 mech · 0 pp
+
+[HostPartition] totals — 0 definitions, 0 engine-mechanism, 0 preprocessor-gated, 0 unreachable
+[HostPartition] hosts are lifetime and tick only
+```
+
+**Refusing is now the DEFAULT**, not a flag. A host that grows a definition back fails the build — verified
+by adding one and watching the gate exit 1. `--permissive` remains for anyone mid-lift.
+
+### ⭐ The measurement that nearly cost a week
+
+`SynchroniseCadPacket` was reported by the gate as **1 013 lines** and had been carried in the plan as "the
+last big one, ~1 000 lines, contains `main()`". Measured by braces it is **six**:
+
+```cpp
+Deliver<bool> SynchroniseCadPacket(const SketchStructure& Sketch,
+                                   const WorkspaceRecordStructure& Records,
+                                   WorkspaceCadPacket& Delivered)
+{
+    return ProjectSketchRendering(Sketch, Records, Delivered, {});
+}
+```
+
+A pass-through to a unit function that already defaults its fourth argument. It was deleted, not lifted.
+`Attach` was likewise reported as 85 lines and is 14. **The gate attributes everything from a definition's
+start to the next definition's start, and `main()` is not a definition** — so the last function before
+`main()` absorbs the whole of it. This is the second time that fiction has driven planning; the first was
+`SynchroniseToolContext`, reported 1 098, actual 97.
+
+### What the four defects had in common
+
+| Found | Because |
+|-------|---------|
+| Editor content browser could not see mesh or image imports | `PopulateImportDirectory` existed twice and only one copy knew |
+| Sun intensity did nothing to the sky | `-Wunused-variable` never reached code under `Application/` |
+| `DatumPlane` was a second name for `Workplane` | two enumerators, one behaviour, no test comparing them |
+| Editor scene proxies would have been 1 000× too far away | the metre/millimetre difference was a `constexpr` in a `.cpp` |
+
+None was found by looking for defects. All four surfaced because code moved somewhere it could be
+compiled, warned about, or compared against its twin. **The duplication was not the risk; it was the
+mechanism by which the two copies were allowed to disagree.**

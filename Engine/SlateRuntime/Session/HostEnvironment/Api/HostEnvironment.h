@@ -16,6 +16,8 @@
 #pragma once
 
 #include "SlateUI/Interface/ContentBrowserPanel/Api/ContentBrowserPanel.h"
+#include "SlateUI/Interface/InterfaceExchange/Api/InterfaceExchange.h"
+#include "SlateVulkan/Device/HostLifecycle/Api/HostLifecycle.h"
 
 #include <filesystem>
 #include <string>
@@ -56,5 +58,32 @@ void PopulateImportDirectory(ContentBrowserConfiguration& Browser, const std::fi
 /// cost 🚩
 /// tag  api, allocating
 std::filesystem::path ResolveEngineContentRoot(const std::filesystem::path& ExecutablePath);
+
+/// 🧩 Hands the device the lifecycle produced to the interface layer.
+/// note 🔴 `DeviceOffering` and `InterfaceAttachment` ARE THE SAME TEN FIELDS IN THE SAME ORDER, declared
+///       twice under two names — so crossing between them needs a function that does nothing but copy.
+///       Two hosts each wrote that function. It is not the copy that is wrong, it is that the two types
+///       exist; the copy is the smallest honest way to say so until they are unified.
+/// note ⚠️ Unifying them is a `SlateVulkan`/`SlateUI` change touching every host, deliberately NOT done
+///       here — this pass is about getting behaviour out of hosts, not about redrawing that boundary.
+/// cost 🟢
+/// tag  api, pure, nonallocating, nonthrowing
+InterfaceAttachment Attach(const DeviceOffering& Offered);
+
+/// 🧩 Whether this build should ask the vendor for validation layers.
+/// note 🔴 The answer to "am I a debug build" belongs in ONE place. Each host was writing its own
+///       `#ifdef SLATE_DEBUG` around the same assignment, which is three chances to disagree and a
+///       compile-time branch the compiler cannot check the inside of. As a `constexpr` function the body
+///       is type-checked in every build, and callers read as ordinary code.
+/// cost 🟢
+/// tag  api, pure, nonallocating, nonthrowing
+constexpr bool DiagnosticLayersRequested()
+{
+#ifdef SLATE_DEBUG
+    return true;
+#else
+    return false;
+#endif
+}
 
 }   // namespace Slate
