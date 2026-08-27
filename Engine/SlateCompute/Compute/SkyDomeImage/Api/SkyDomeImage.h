@@ -22,7 +22,7 @@
 
 #include "Foundation/DeliveryGuarantee.h"
 #include "SlateCompute/Compute/AtmosphereIntegrator/Api/AtmosphereIntegrator.h"
-#include "SlateUI/Interface/SceneDirectoryPanel/Api/SceneDirectorySpecification.h"
+#include "Shared/EnvironmentConfiguration.slang.h"
 
 #include <cstdint>
 #include <vector>

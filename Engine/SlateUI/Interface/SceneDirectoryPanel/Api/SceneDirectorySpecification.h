@@ -7,6 +7,10 @@
 
 #pragma once
 
+// 📝 `EnvironmentConfiguration` moved to `Shared/EnvironmentConfiguration.slang.h`. See the note there:
+//    it is atmospheric physics, and `SlateCompute` needs it without depending on the interface layer.
+#include "Shared/EnvironmentConfiguration.slang.h"
+
 #include "SlateUI/Interface/AppearanceSpecification/Api/AppearanceSpecification.h"
 #include "SlateUI/Interface/SymbolSpecification/Api/SymbolSpecification.h"
 
@@ -204,34 +208,6 @@ struct EntityRow
 //                                                      THE ENVIRONMENT
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Every parameter the editor's sun, sky and atmosphere present, owned by the host and written through
-///    by the inspector's slider cards.
-/// note  🔴 Phase 1 presents these as editable ordinates and renders a stylised sky from them. The values are
-///        exactly what the atmosphere shaders will read in phase 2, so the property surface does not move
-///        when the renderer stops being a placeholder.
-/// tag   guarantee, nonallocating, nonthrowing
-struct EnvironmentConfiguration
-{
-    double SunElevation = 35.0;       // [deg] - above the horizon, 0…90
-    double SunAzimuth   = 120.0;      // [deg] - clockwise from north, 0…360
-    double SunIntensity = 4.8;        // [lx]  - the directional illuminant's illuminance
-    double SunTemperature = 5500.0;   // [K]   - the sun's colour temperature, 1000…12000
-    double SunDiscRadius = 8.0;       // [-]   - multiplier on the analytic solar angular radius
-    double SunDiscIntensity = 0.95;   // [-]   - the direct term's strength, 0…4
-    double DayCycleDegreesPerSecond = 0.0; // [deg/s] - zero pauses runtime time-of-day motion
-    double SunShadowStrength = 1.0;   // [-]   - directional-light shadow contribution, 0…1
-    double SkyIntensity = 1.0;        // [-]   - the sky dome's luminance scale, 0…3
-    double SkyTurbidity = 2.0;        // [-]   - artist-facing haze control, 1…10
-    double ExposureCompensation = 0.0; // [EV] - presentation-only exposure, -8…8
-    double GroundAlbedo = 0.1;        // [-]   - average ground reflectance, 0…1
-    double AtmosphereDensity = 1.0;   // [-]   - the Rayleigh density scale, 0…3
-    double AtmosphereScaleHeight = 1.0; // [-] - Rayleigh scale-height multiplier, 0.2…3
-    double MieDensity = 1.0;          // [-]   - the Mie scattering scale, 0…4
-    double MieScaleHeightKilometres = 1.2; // [km] - aerosol scale height, 0.1…8
-    double MieAsymmetry = 0.80;       // [-]   - the Mie forward-scattering asymmetry, -0.95…0.95
-    double OzoneDensity = 1.0;        // [-]   - Chappuis absorption multiplier, 0…3
-    std::uint32_t AtmosphereQuality = 2u; // [-] - 0 Preview, 1 Balanced, 2 High, 3 Ultra
-};
 
 /// 🧩 The sky dome's own camera, stated in plain numbers so the panel never names an Application type.
 /// note  📐 The dome is direction-indexed: azimuth across the width, elevation down the height. The

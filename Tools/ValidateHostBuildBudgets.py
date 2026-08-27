@@ -177,11 +177,24 @@ def main() -> int:
 
     parametric_spec = read("Engine/SlateUI/Interface/ParametricWorkspace/Api/ParametricWorkspaceSpecification.h")
     parametric_panel = read("Engine/SlateUI/Interface/ParametricWorkspace/Source/ParametricWorkspacePanel.cpp")
-    parametric_bridge = read("Engine/Application/Api/ParametricWorkspaceBridge.h")
+    # 🔴 These three strings were asserted against `Engine/Application/Api/ParametricWorkspaceBridge.h`,
+    #    which no longer exists: it was 347 `inline` lines in the APPLICATION layer that `SlateWorkspace`
+    #    had to reach UP into, inverting the dependency arrow. The behaviour now lives in the unit that
+    #    owns the transformation. The claim is about the DATA the inspector shows, so it survives the move
+    #    unchanged — only its address changes.
+    parametric_bridge = read("Engine/SlateWorkspace/Discipline/SketchDirectoryPresentation/Source/SketchDirectoryPresentation.cpp")
     require("ExtrusionCapToggleDemand" in parametric_spec and "Extrude Caps" in parametric_panel,
             "closed profile properties must expose a capped/wall extrusion toggle")
     require("Curve Closure" in parametric_bridge and "Extrude Result" in parametric_bridge and "Extrude Caps" in parametric_bridge,
             "closed profile inspector data must distinguish closed-loop rendering from capped solid extrusion")
+
+    # 🔴 Pins the deletion: a unit must never again depend on the application layer above it. If either
+    #    file returns, this refuses instead of silently re-inverting the graph — the failure `make sequence`
+    #    reported as "the unit graph holds a cycle".
+    require(not (ROOT / "Engine/Application/Api/ParametricWorkspaceBridge.h").exists(),
+            "ParametricWorkspaceBridge.h is deleted; SlateWorkspace must not reach up into Application/")
+    require(not (ROOT / "Engine/Application/Api/SharedViewportHostBridge.h").exists(),
+            "SharedViewportHostBridge.h is deleted; its four concerns live in the units that own them")
 
     theme = read("Engine/SlateUI/Interface/ThemeInterchange/Source/ThemeInterchange.cpp")
     require("std::strncpy" not in theme, "ThemeInterchange must avoid MSVC strncpy warning")

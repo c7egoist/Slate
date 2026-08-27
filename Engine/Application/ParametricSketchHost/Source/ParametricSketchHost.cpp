@@ -30,7 +30,6 @@
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 #include "SlateWorkspace/Discipline/WorkspaceDeclaration/Api/WorkspaceDeclaration.h"
-#include "Application/Api/ParametricWorkspaceBridge.h"
 #include "SlateWorkspace/Discipline/CodexSceneProxy/Api/CodexSceneProxy.h"
 #include "SlateShape/Record/WorkspaceDirectoryProjection/Api/WorkspaceDirectoryProjection.h"
 #include "SlateShape/Record/WorkspaceNameIndex/Api/WorkspaceNameIndex.h"
@@ -276,7 +275,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    re-interpret everything already drawn.
     WorkplaneCatalogue Workplanes;
     WorkspaceDirectoryProjection Directory;
-    ParametricWorkspaceBridgeStorage Bridge;
+    SketchDirectoryPresentation Bridge;
     static WorkspaceCadPacket CadPacket;
     static OverlayGeometry ViewportOverlays[PanelStructure::RecordLimit];
     ParametricWorkspaceContext ParametricApplied = {};
