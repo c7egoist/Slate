@@ -16,6 +16,7 @@
 #include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
 #include "SlateWorkspace/Discipline/PlacementCommit/Api/PlacementCommit.h"
+#include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "SlateWorkspace/Discipline/TransformGizmo/Api/TransformGizmo.h"
 #include "SlateWorkspace/Discipline/TransformSession/Api/TransformSession.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
@@ -1869,7 +1870,8 @@ bool ApplyWorkplaneTool(const PlaneExtent& Extent,
                         WorkspaceNameIndex& Naming,
                         SketchStructure& Sketch,
                         WorkspaceRecordStructure& Records,
-                        WorkspaceRevisionSequence& Revisions)
+                        WorkspaceRevisionSequence& Revisions,
+                        WorkplaneCatalogue& Workplanes)
 {
     if (ToolContext.ActiveSubject != ParametricToolSubject::Workplane &&
         ToolContext.ActiveSubject != ParametricToolSubject::DatumPlane)
@@ -1888,20 +1890,37 @@ bool ApplyWorkplaneTool(const PlaneExtent& Extent,
     //    drawn with, and its Forward runs from the eye into the display — exactly the normal a plane
     //    square to the display needs.
     const ViewFrame Frame = ResolveViewportFrame(Basis, View, Perspective);
+
     const Workplane Placed = ResolvePlacedWorkplane(Pointed, Frame.Forward);
 
     if (!Placed.Declared())
         return false;
 
-    Sketch.DeclarePlane({ Placed.Origin, Placed.Normal, Placed.Along });
+    // 🔴 THE PLANE JOINS THE OTHERS RATHER THAN REPLACING THE ONE THE SKETCH HOLDS. This is the fix for
+    //    "drew in the wrong place": the shipped code called `Sketch.DeclarePlane` straight away, and
+    //    because a sketch holds exactly one plane and overwrites it, everything already drawn was from
+    //    then on measured against a surface it had never been drawn on. Nothing moved in world terms and
+    //    nothing refused, so the drawing simply stopped meaning what it had meant.
+    const WorkplaneName Named =
+        Workplanes.Declare(Placed, ResolveWorkplaneNaming(Workplanes, WorkplaneOrigin::Placed));
+    if (!Named.Assigned())
+        return false;
 
-    // 📝 Written into the directory so the artist can see it, select it and walk it back, rather than
-    //    silently changing the surface under them.
+    // 📝 The sketch adopts the plane that is now active. Existing curves keep their world coordinates and
+    //    do not move; what changes is only the surface the NEXT thing is drawn on.
+    Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                          Workplanes.Active().Normal,
+                          Workplanes.Active().Along });
+
+    // 📝 Written into the directory so the artist can see it, select it and walk it back.
+    const CataloguedWorkplane* Held = Workplanes.Resolve(Named);
     WorkspaceRecord Record = {};
-    Record.Subject      = WorkspaceRecordSubject::Folder;
+    Record.Subject        = WorkspaceRecordSubject::Folder;
     Record.FolderCategory = WorkspaceCategory::Geometry;
-    Record.ParentFolder = ResolveCategoryFolder(Records, WorkspaceCategory::Geometry);
-    Record.Naming       = std::string("Workplane ") + Naming.Issue(WorkspaceRecordSubject::Folder);
+    Record.ParentFolder   = ResolveCategoryFolder(Records, WorkspaceCategory::Geometry);
+    Record.Naming         = Held != nullptr
+                          ? Held->Naming
+                          : std::string("Workplane ") + Naming.Issue(WorkspaceRecordSubject::Folder);
     const WorkspaceRecordName Written = Records.Declare(Record);
 
     Revisions.Seal("Placed a workplane facing the view", "Place Workplane", { Written },
@@ -1921,6 +1940,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                                SketchStructure& Sketch,
                                WorkspaceRecordStructure& Records,
                                WorkspaceRevisionSequence& Revisions,
+                               WorkplaneCatalogue& Workplanes,
                                WorkspaceRecordName& PendingSelection,
                                SketchPlacement& Tool,
                                bool& PointerTaken)
@@ -1933,7 +1953,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     // 🔴 The workplane tool changes the surface rather than drawing on it, so it is answered BEFORE the
     //    sketch tools and consumes the press when it fires.
     if (ApplyWorkplaneTool(Extent, Pointer, Basis, View, Perspective, ToolContext,
-                           Naming, Sketch, Records, Revisions))
+                           Naming, Sketch, Records, Revisions, Workplanes))
     {
         PointerTaken = true;
         return;
@@ -1981,8 +2001,13 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     if (!Text.AcceptPressed && !Pointer.ContactPressed)
         return;
 
+    // 🔴 The first placement adopts whatever plane the catalogue says is ACTIVE, which is the ground
+    //    plane until the artist chooses otherwise. The shipped code hardcoded the ground plane here, so
+    //    activating another plane and then drawing put the geometry on the ground anyway.
     if (!Sketch.Declared())
-        Sketch.DeclarePlane({ { 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 } });
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
 
     const bool Terminating = Text.AcceptPressed || Pointer.ContactDoublePressed;
 
@@ -2699,6 +2724,10 @@ int main(int ArgumentCount, char** ArgumentValues)
     SketchStructure Sketch;
     WorkspaceRecordStructure Records;
     WorkspaceRevisionSequence Revisions;
+    // 🔴 The planes the workspace has. Seated here rather than inside the sketch because a sketch holds
+    //    exactly ONE plane and overwrites it, which is what made placing a second workplane silently
+    //    re-interpret everything already drawn.
+    WorkplaneCatalogue Workplanes;
     WorkspaceDirectoryProjection Directory;
     ParametricWorkspaceBridgeStorage Bridge;
     static WorkspaceCadPacket CadPacket;
@@ -3190,7 +3219,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                          Basis, View,
                                                          PanelConfiguration[Index].Perspective,
                                                          ToolsApplied,
-                                                         Naming, Sketch, Records, Revisions,
+                                                         Naming, Sketch, Records, Revisions, Workplanes,
                                                          PendingSelection, Tool, PointerTaken);
 
                             if (!PointerTaken && PointerInside && ToolsApplied.ActiveSubject == ParametricToolSubject::Select)

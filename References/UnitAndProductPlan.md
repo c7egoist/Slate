@@ -691,3 +691,44 @@ so nothing was broken, but the name means the opposite of the behaviour and it c
 
 `ParametricSketchHost` 4 146 → **3 635**. 142 claims, four sabotages caught — two of them at compile time,
 because `-Werror=unused-function` turns a deleted table row into a build failure.
+
+### 4.6 The workplane defect
+
+**`SlateWorkspace/Discipline/WorkplaneCatalogue`.**
+
+🔴 **A sketch held exactly ONE plane and overwrote it, so placing a workplane silently re-interpreted
+everything already drawn.** `SketchStructure::DeclarePlane` assigns; the workplane tool called it directly.
+Curves keep their world coordinates, so nothing visibly jumps — but from that moment every measurement,
+every grid line and every projection answers for a surface the geometry was never drawn on. Nothing
+refused and nothing warned. Measured: a line drawn on the ground, then a second plane placed, and the
+sketch reports the *second* plane for all of it.
+
+🔴 **A workplane was a name and nothing else.** The shipped tool wrote a `Folder` record carrying only a
+string and put the actual plane nowhere. It could not be selected, re-activated, offset, measured against
+or removed, and it did not survive reopening. A plane the artist can make but cannot then *use* is worse
+than no tool at all, because it also moves their drawing.
+
+📝 **The arrangement is the one every parametric sketcher converges on, for the same reason:** planes are a
+named collection, one is active, and the standing planes are entries in it rather than a separate
+mechanism — so "sketch on the front plane" and "sketch on the one I just placed" are the same act.
+`WorkplaneStanding` already knew what a plane *is*; this unit is where they live and which is current.
+
+⚠️ **Two host sites were hardcoded to the ground plane** and both now read the catalogue: the workplane
+tool, and the first-placement seeding at what was `:2004`, which meant activating a plane and then drawing
+put the geometry on the ground anyway.
+
+🔴 **A proof that passed while the behaviour was wrong.** `ResolvePointedWorkplane` was written so the
+artist could point at an existing plane and draw on it, and its first proof passed — because the fixture
+used a plane standing at y=60, well away from everything. Wired into the host and actually measured, **all
+three standing planes pass through the world origin**, so a ray aimed anywhere near the middle of the
+scene passes within reach of every one of them and "nearest along the ray" is decided by where the camera
+happens to stand. From one ordinary three-quarter view, clicking the ground selects Ground, Front, Front
+and Side at four different points. The host wiring was withdrawn and §7 now pins the instability itself as
+a measured claim. **A fixture that avoids the degenerate case proves nothing about it** — the same lesson
+as the transform-session proof, learned again.
+
+The unit keeps `ResolvePointedWorkplane` because it is correct and proven for planes that stand apart; what
+it cannot do is disambiguate coincident ones, and that wants a selection affordance rather than a bare
+click.
+
+105 claims, eight sabotages caught.
