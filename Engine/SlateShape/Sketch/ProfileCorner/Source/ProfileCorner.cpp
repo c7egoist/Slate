@@ -127,6 +127,91 @@ CornerDisposition EvaluateProfileCorner(const SketchStructure& Declared,
     return CornerDisposition::Produced;
 }
 
+Deliver<ProfileCornerTarget> ResolveProfileCornerNear(const SketchStructure& Declared,
+                                                      SketchCurveName Subject,
+                                                      const SpatialPoint& Probe)
+{
+    if (!Subject.Assigned())
+        return Deliver<ProfileCornerTarget>::Refuse({ RefusalReason::ContentUnsupported,
+                                                      "no curve was selected" });
+
+    ProfileCornerTarget Nearest;
+    double NearestDistance = 0.0;
+    bool Found = false;
+
+    const std::vector<ProfileSpecification>& Profiles = Declared.Profiles();
+
+    // 🔴 NEWEST PROFILE FIRST, AND ONLY THE NEWEST. `ApplyProfileCorner` APPENDS the reshaped profile
+    //    and leaves the one it superseded in the sketch, so after one bevel the square exists twice:
+    //    once rounded, once as the artist first drew it. Scanning every profile finds corners on shapes
+    //    that are no longer on screen, and bevelling twice then cut the same corner off the stale copy
+    //    instead of a second corner off the live one. The proof caught exactly that.
+    std::size_t Live = Profiles.size();
+    while (Live > 0u)
+    {
+        const std::size_t Candidate = Live - 1u;
+        bool Uses = false;
+        for (const ProfileLoop& Loop : Profiles[Candidate].HeldLoops())
+            for (const ProfileCurveUse& Use : Loop.Traversal)
+                Uses = Uses || Use.TraversedCurve.IssuedIndex == Subject.IssuedIndex;
+        if (Uses)
+            break;
+        --Live;
+    }
+    if (Live == 0u)
+        return Deliver<ProfileCornerTarget>::Refuse({ RefusalReason::ContentUnsupported,
+                                                      "the selected curve belongs to no resolved loop" });
+
+    {
+        const std::size_t ProfileIndex = Live - 1u;
+        const ProfileSpecification& Profile = Profiles[ProfileIndex];
+
+        for (std::size_t LoopIndex = 0u; LoopIndex < Profile.HeldLoops().size(); ++LoopIndex)
+        {
+            const ProfileLoop& Loop = Profile.HeldLoops()[LoopIndex];
+
+            // 📝 Only loops that actually traverse the selected curve are candidates. Rounding a corner
+            //    of some other profile because it happened to lie nearer the pointer would be obedient
+            //    to the click and wrong about the intent.
+            bool Traverses = false;
+            for (const ProfileCurveUse& Use : Loop.Traversal)
+                Traverses = Traverses || Use.TraversedCurve.IssuedIndex == Subject.IssuedIndex;
+            if (!Traverses)
+                continue;
+
+            std::vector<LoopCurveEndpoint> Curves;
+            if (!ResolveLoopCurveSet(Declared, Loop, Curves))
+                continue;
+
+            for (std::size_t CornerIndex = 0u; CornerIndex < Curves.size(); ++CornerIndex)
+            {
+                // ⚠️ Corner `n` is the joint BEFORE traversal entry `n`, which is how `ApplyProfileCorner`
+                //    indexes it. Reading it as the joint after would round the neighbouring corner and
+                //    look like an off-by-one in the geometry rather than in the naming.
+                const std::size_t PriorIndex = (CornerIndex + Curves.size() - 1u) % Curves.size();
+                const SpatialPoint Corner = Curves[PriorIndex].EndPoint;
+                const double Distance = LengthSquared(Difference(Corner, Probe));
+
+                if (!Found || Distance < NearestDistance)
+                {
+                    Nearest.Profile     = { static_cast<std::uint32_t>(ProfileIndex + 1u) };
+                    Nearest.LoopIndex   = static_cast<std::uint32_t>(LoopIndex);
+                    Nearest.CornerIndex = static_cast<std::uint32_t>(CornerIndex);
+                    Nearest.Position    = Corner;
+                    NearestDistance     = Distance;
+                    Found               = true;
+                }
+            }
+        }
+    }
+
+    if (!Found)
+        return Deliver<ProfileCornerTarget>::Refuse({ RefusalReason::ContentUnsupported,
+                                                      "the selected curve belongs to no resolved loop" });
+
+    return Deliver<ProfileCornerTarget>::Result(Nearest);
+}
+
 Deliver<ProfileNameInFeature> ApplyProfileCorner(SketchStructure& Declared,
                                                  ProfileNameInFeature Subject,
                                                  std::uint32_t LoopIndex,

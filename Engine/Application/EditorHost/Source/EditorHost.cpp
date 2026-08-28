@@ -1221,8 +1221,13 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         //    disabled until a selection exists, because every one of them
                                         //    acts on one: offering Trim with nothing picked invites the
                                         //    artist to press it and watch nothing happen.
-                                        const bool Picked = SketchSelection.Element !=
-                                                            SelectionElement::ElementCount;
+                                        // 🔴 THE GATE IS THE ACTUAL PICK, NOT THE ELEMENT MODE.
+                                        //    `SketchSelection.Element` is which KIND of thing the artist
+                                        //    is picking and is always set; it says nothing about whether
+                                        //    anything is currently selected. Reading it here would have
+                                        //    every row permanently enabled and every command refuse.
+                                        const bool Picked = SketchSemanticSelection.Standing() &&
+                                                            SketchSemanticSelection.Curve.Assigned();
 
                                         MenuItem BuildRows[5] = {};
                                         BuildRows[0].Caption = "Bevel";
@@ -1236,7 +1241,13 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         BuildRows[2].Divides = true;
                                         BuildRows[3].Caption = "Cut";
                                         BuildRows[3].Enabled = Picked;
-                                        BuildRows[4].Caption = "Add";
+                                        // ⚠️ The plan defines trim and cut in its own words but leaves
+                                        //    "add" undefined. Extend is its literal opposite -- trim takes
+                                        //    length away, extend gives it back -- it is the classic pairing,
+                                        //    and unlike offset it is already implemented for real. The row
+                                        //    is captioned for what it does rather than the bare word, so
+                                        //    nobody has to guess which of the two it turned out to be.
+                                        BuildRows[4].Caption = "Add (Extend)";
                                         BuildRows[4].Enabled = Picked;
 
                                         MenuDeclaration BuildMenu;
@@ -1245,8 +1256,35 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         BuildMenu.ItemCount = 5u;
 
                                         std::uint32_t BuildTaken = 0u;
-                                        Discard(SketchContextMenu.Record(LeafBody, BuildMenu,
-                                                                         BuildTaken, PointerTaken));
+                                        if (SketchContextMenu.Record(LeafBody, BuildMenu,
+                                                                     BuildTaken, PointerTaken).Resolve())
+                                        {
+                                            // 📐 The rows, in the order they are declared above. Bevel and
+                                            //    Chamfer differ only in the shape of the cut, which is why
+                                            //    they are one branch in the edit tool and two rows here.
+                                            constexpr ParametricToolSubject BuildTools[5] = {
+                                                ParametricToolSubject::Fillet,
+                                                ParametricToolSubject::Chamfer,
+                                                ParametricToolSubject::Trim,
+                                                ParametricToolSubject::Cut,
+                                                ParametricToolSubject::Extend,
+                                            };
+
+                                            if (BuildTaken < 5u)
+                                            {
+                                                // 🔴 `ApplyViewportEditTool` was 90 correct lines with no
+                                                //    call site -- the fifth such function found in this
+                                                //    tree. The probe is the selection's own position, so
+                                                //    the command acts where the artist picked rather than
+                                                //    where the menu happened to be dismissed.
+                                                static_cast<void>(ApplyViewportEditTool(
+                                                    BuildTools[BuildTaken],
+                                                    SketchSemanticSelection.Position,
+                                                    SketchBasis, SketchNaming, Sketch, SketchRecords,
+                                                    SketchRevisions, SketchSemanticSelection,
+                                                    SketchPendingSelection));
+                                            }
+                                        }
                                     }
 
                                     // 🔴 ONE CAMERA, NOT TWO. The orbit angles were copied straight off

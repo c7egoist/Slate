@@ -360,6 +360,36 @@ def main() -> int:
     require("SecondaryClickTravel" in editor and "SecondaryReleased" in editor,
             "the menu must open on a stationary right-click, not on any secondary press")
 
+    # 🔴 AND TAKING A ROW MUST REACH REAL GEOMETRY. This is the claim the tree has needed five times over.
+    #    `ApplyProfileCorner` was 214 working lines with no caller; `ApplyViewportEditTool` was ninety more
+    #    behind it, equally unreachable. A menu that draws five rows and discards which one was taken looks
+    #    identical on screen to one that works, which is precisely how the earlier orphans survived review.
+    require("ApplyViewportEditTool(" in editor,
+            "the construction rows must call the edit tool, not discard the taken index")
+    require("BuildTools[BuildTaken]" in editor,
+            "the row the artist took must select the tool, or every row does the same thing")
+    require("SketchSemanticSelection.Standing()" in editor,
+            "the rows must be gated on an ACTUAL pick, not on the element mode, which is always set")
+
+    # 📐 And the catalogue must be complete: the plan named five tools and all five must be reachable.
+    for tool in ("ParametricToolSubject::Fillet", "ParametricToolSubject::Chamfer",
+                 "ParametricToolSubject::Trim", "ParametricToolSubject::Cut",
+                 "ParametricToolSubject::Extend"):
+        require(tool in editor, f"the construction catalogue must reach {tool}")
+
+    # 🔴 THE EDIT TOOL'S CORNER ARM MUST DO THE CORNER. It used to call `CutCurve` and label the revision
+    #    "Fillet Preparation" -- a name that admits it never filleted anything.
+    interaction = read("Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp")
+    require("ApplyProfileCorner(" in interaction,
+            "bevel and chamfer must call the corner solver, not merely split the curve")
+    require("ResolveProfileCornerNear(" in interaction,
+            "the selected curve and the click must be resolved to a corner")
+    # ⚠️ Scoped to the QUOTED revision label, not the word: the comment above the fixed arm quotes the
+    #    old name to explain what it replaced, and a gate that cannot tell a name from a mention of a
+    #    name would forbid recording why the change was made.
+    require('"Fillet Preparation"' not in interaction and '"Chamfer Preparation"' not in interaction,
+            "a revision named 'Preparation' is a stub admitting it did not do the work")
+
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
     #    `SlateWorkspace/Discipline/CodexActivation`; the guarantees are unchanged, only their address is.

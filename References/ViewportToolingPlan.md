@@ -258,11 +258,42 @@ rather than trusted. Sabotaged four ways: flush treated as overlap (4 failures),
 first blocked corner (10), never refusing (2), dropping the slide (6). Three gate claims guard the
 wiring, each sabotaged.
 
-### Step 8 — Construction tools
-`Bevel`, `Chamfer`, `Trim` (delete a region bounded by two points), `Cut` (split at selected
-points), `Add`. Each is a tile plus a context menu, and each needs a selection — which is why it
-follows steps 5 to 7. `Operation/ChamferSolver` and `TaperSolver` already exist as stubs to
-build into.
+### Step 8 — Construction tools — **DONE**
+`Bevel`, `Chamfer`, `Trim`, `Cut`, `Add`, reached from the step-7 menu and acting on the current pick.
+
+**Almost none of this needed writing. It needed connecting.** The survey found the fifth orphan in
+this tree: `Sketch/ProfileCorner` is 214 lines of working 2-D fillet and chamfer with **no call site
+anywhere**. Behind it `ApplyViewportEditTool` was ninety more, also callerless, and its corner arm was
+a stub — it split the curve, labelled the revision as merely preparatory, and never called the corner
+solver at all. `ChamferSolver` and `TaperSolver`, which this plan proposed building into, are 5-line
+stubs; the real code was somewhere else the whole time.
+
+| Row | Reaches | Was |
+| --- | --- | --- |
+| Bevel | `ApplyProfileCorner(..., Chamfer = false)` | split the curve, called it preparation |
+| Chamfer | `ApplyProfileCorner(..., Chamfer = true)` | the same arm, same stub |
+| Trim | `TrimCurve` | already real, unreachable |
+| Cut | `CutCurve`, keeping both halves | **no arm existed** |
+| Add (Extend) | `ApplyViewportEditTool`'s extend arm | already real, unreachable |
+
+Three things the wiring had to get right:
+
+| Question | Answer |
+| --- | --- |
+| A corner is not a curve | The artist selects a **curve** and clicks near one end; the solver wants a **corner index** in a resolved loop. Nothing bridged the two, which is a large part of why the solver was never called. `ResolveProfileCornerNear` is that bridge. |
+| Which profile is the live one? | `ApplyProfileCorner` **appends** the reshaped profile and leaves the superseded one in the sketch, so after one bevel the square exists twice. Scanning all profiles found corners on shapes no longer on screen — bevelling twice cut the same corner off the stale copy. The resolver now takes the newest profile that uses the curve. **The proof caught this, not review.** |
+| What is "Add"? | The plan never says. Extend is trim's literal opposite, the classic pairing, and already implemented — so the row is captioned `Add (Extend)` rather than leaving anyone to guess which it turned out to be. |
+
+**Proven:** `ConstructionToolProof`, 50 claims that measure the produced geometry rather than trusting
+it — the original vertex is *gone*, a bevel introduces an arc and a chamfer does not (measured by
+sagitta, not by asking), the cut lands exactly `r` back along both edges, a radius that does not fit
+refuses instead of clamping, the loop stays closed end to end, and two chamfers cut two *different*
+corners. Sabotaged five ways: chamfer drawn as an arc (1 failure), the stale-profile scan restored
+(2), the corner index off by one (3), the radius-fit refusal removed (1), the probe ignored (4).
+Seven gate claims guard the host wiring and the edit tool, each sabotaged and caught.
+
+Also deleted: 81 lines of `ResolveCurveTangent` in `ProfileReshape`, uncalled, containing a branch
+whose two arms were identical and an `if` with an empty body.
 
 ---
 

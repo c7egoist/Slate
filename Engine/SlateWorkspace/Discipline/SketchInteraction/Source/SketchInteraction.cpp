@@ -5,6 +5,7 @@
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
 
 #include "SlateShape/Sketch/DimensionSolver/Api/DimensionSolver.h"
+#include "SlateShape/Sketch/ProfileCorner/Api/ProfileCorner.h"
 #include "SlateShape/Sketch/ProfilePattern/Api/ProfilePattern.h"
 #include "SlateShape/Sketch/ProfileReshape/Api/ProfileReshape.h"
 #include "SlateShape/Sketch/SketchEditing/Api/SketchEditing.h"
@@ -479,13 +480,68 @@ bool ApplyViewportEditTool(ParametricToolSubject Tool,
     }
     else if (Tool == ParametricToolSubject::Fillet || Tool == ParametricToolSubject::Chamfer)
     {
-        const Deliver<std::vector<SketchCurveName>> Cut = CutCurve(Sketch, ActiveSelection.Curve, Probe);
-        if (!Cut.Resolved)
+        // 🔴 THIS USED TO ONLY SPLIT THE CURVE and label the revision as merely preparatory -- a name
+        //    that admitted it never filleted anything. `ApplyProfileCorner` is the real rounding and chamfering,
+        //    214 lines of it, and it had no call site anywhere in the tree. The two ends are joined here.
+        //
+        // 📐 A corner belongs to a PROFILE, not to a loose curve: it is the junction of two curves in a
+        //    resolved loop. When the selection sits on a profile the corner is rounded properly; when it
+        //    does not, splitting the curve at the probe is still the honest thing to do, because that is
+        //    the operation the artist can actually have on an open chain.
+        // 📐 One authored radius for both, because bevel and chamfer differ in the SHAPE of the corner
+        //    they cut, not in how much they cut. A separate figure per tool would let the two disagree
+        //    and make switching between them silently change the size of the result.
+        constexpr double CornerRadius = 4.0;
+        const bool Chamfering = Tool == ParametricToolSubject::Chamfer;
+        bool Rounded = false;
+
+        const Deliver<ProfileCornerTarget> Targeted =
+            ResolveProfileCornerNear(Sketch, ActiveSelection.Curve, Probe);
+
+        if (Targeted.Resolved)
+        {
+            const ProfileCornerTarget Corner = Targeted.Resolve();
+            const Deliver<ProfileNameInFeature> Produced =
+                ApplyProfileCorner(Sketch, Corner.Profile, Corner.LoopIndex, Corner.CornerIndex,
+                                   CornerRadius, Chamfering);
+
+            if (Produced.Resolved)
+            {
+                // 📝 The corner solver rewrites the profile in place and issues the curves it produced;
+                //    the loop's own traversal is the authority on which those are.
+                const ProfileSpecification& Reshaped =
+                    Sketch.Profiles()[Produced.Resolve().IssuedIndex - 1u];
+
+                std::vector<SketchCurveName> ProducedCurves;
+                for (const ProfileCurveUse& Use : Reshaped.HeldLoops()[Corner.LoopIndex].Traversal)
+                    ProducedCurves.push_back({ Use.TraversedCurve.IssuedIndex });
+
+                Discard(Records.ToggleVisible(ActiveSelection.Record, false));
+                CommitCurveSet(Naming, Records, Revisions, ProducedCurves,
+                               Chamfering ? "Chamfer Corner" : "Bevel Corner", Written);
+                Rounded = true;
+            }
+        }
+
+        if (!Rounded)
+        {
+            const Deliver<std::vector<SketchCurveName>> Cut = CutCurve(Sketch, ActiveSelection.Curve, Probe);
+            if (!Cut.Resolved)
+                return false;
+            Discard(Records.ToggleVisible(ActiveSelection.Record, false));
+            CommitCurveSet(Naming, Records, Revisions, Cut.Resolve(),
+                           Chamfering ? "Chamfer Split" : "Bevel Split", Written);
+        }
+    }
+    else if (Tool == ParametricToolSubject::Cut)
+    {
+        // 📐 Cut splits at the selected point and keeps BOTH halves, which is what distinguishes it from
+        //    Trim -- Trim discards one side. Both were named in the plan and only Trim existed.
+        const Deliver<std::vector<SketchCurveName>> Divided = CutCurve(Sketch, ActiveSelection.Curve, Probe);
+        if (!Divided.Resolved)
             return false;
         Discard(Records.ToggleVisible(ActiveSelection.Record, false));
-        CommitCurveSet(Naming, Records, Revisions, Cut.Resolve(),
-                       Tool == ParametricToolSubject::Fillet ? "Fillet Preparation" : "Chamfer Preparation",
-                       Written);
+        CommitCurveSet(Naming, Records, Revisions, Divided.Resolve(), "Cut Curve", Written);
     }
     else
     {
