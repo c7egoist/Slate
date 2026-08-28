@@ -461,7 +461,9 @@ Deliver<WorkspaceRecordName> DeclarePolygon(WorkspaceNameIndex& Naming,
         //    wheel drives `SealedPlacement::Resolution` while the shape is being placed; it is clamped
         //    here as well because a sealed placement arriving from anywhere else must still be sane.
         const std::uint32_t Sides = std::clamp(Placed.Resolution, PolygonSideMinimum, PolygonSideMaximum);
-        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(Placed.Anchors[0], Radius, Sides);
+        // 📝 The drag direction is handed on, so the committed polygon is the previewed one.
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(
+            Placed.Anchors[0], Radius, Sides, Difference(Placed.Anchors[0], Placed.Anchors.back()));
         if (!Profile.Resolved)
             return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());
@@ -549,18 +551,33 @@ Deliver<WorkspaceRecordName> DeclareEllipse(WorkspaceNameIndex& Naming,
                                     PlacementJournal& Revisions,
                                     const SealedPlacement& Placed)
 {
-        const SpatialBasis Basis = ResolveSketchBasis(Sketch);
-        double CentreAlong = 0.0, CentreAcross = 0.0, HoverAlong = 0.0, HoverAcross = 0.0;
-        ResolvePlaneCoordinates(Basis, Placed.Anchors[0], CentreAlong, CentreAcross);
-        ResolvePlaneCoordinates(Basis, Placed.Anchors.back(), HoverAlong, HoverAcross);
-        const double Major = std::fabs(HoverAlong - CentreAlong);
-        double Minor = std::fabs(HoverAcross - CentreAcross);
+        // 🔴 THE COMMITTED ELLIPSE WAS NOT THE ONE PREVIEWED. This measured the drag along the
+        //    PLANE'S OWN AXES -- |Δalong| by |Δacross| -- and then declared the major axis along the
+        //    plane's `AlongDirection` regardless of where the artist had actually dragged. Dragging
+        //    to (150, 60) previewed a 161.6-long ellipse tilted 22° and committed a 150 by 60 one
+        //    lying flat, so the shape visibly jumped on release and never matched the drag. The
+        //    commit now reads the drag exactly as the preview does: the pointer lies ON the major
+        //    axis, which is the only reading under which what is dragged is what lands.
+        const SpatialDirection Span = Difference(Placed.Anchors[0], Placed.Anchors.back());
+        const double Major = std::sqrt(LengthSquared(Span));
         if (Major <= 1.0e-6)
             return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
                                                           "the ellipse major radius is too small" });
-        if (Minor <= 1.0e-6)
-            Minor = Major * 0.5;
-        const EllipseCurve Ellipse = { Placed.Anchors[0], Sketch.HeldPlane().Normal, Sketch.HeldPlane().AlongDirection, Major, Minor };
+
+        // 📝 A second anchor states the minor axis when the method asks for one; with only a centre
+        //    and a rim point there is nothing to measure it from, so it is half the major -- the
+        //    same figure the preview draws.
+        double Minor = Major * 0.5;
+        if (Placed.Anchors.size() >= 3u)
+        {
+            const double Stated = std::sqrt(LengthSquared(
+                Difference(Placed.Anchors[0], Placed.Anchors[1])));
+            if (Stated > 1.0e-6)
+                Minor = Stated;
+        }
+
+        const EllipseCurve Ellipse = { Placed.Anchors[0], Sketch.HeldPlane().Normal,
+                                       Normalize(Span), Major, Minor };
         if (Placed.Construction)
         {
             const SketchCurveName Curve = Sketch.DeclareEllipse(Ellipse);

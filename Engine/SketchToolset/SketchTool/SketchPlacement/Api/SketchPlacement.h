@@ -386,10 +386,18 @@ CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
 /// note  📝 Defers to the singular for every other subject, so there is still one table.
 /// cost  🚩
 /// tag   api, nonthrowing
+// 🔴 Declared here rather than beside `SealedPlacement` because the preview resolver below takes a
+//    side count as a defaulted argument, and a `constexpr` used as a default must already be visible.
+constexpr std::uint32_t PolygonSideMinimum = 3u;
+constexpr std::uint32_t PolygonSideMaximum = 64u;
+constexpr std::uint32_t PolygonSideDefault = 6u;
+
+/// in    Resolution  [-]  how many sides a polygon should preview with, from the wheel
 void ResolvePlacementCurves(SketchSubject Subject,
                             const std::vector<SpatialPoint>& Anchors,
                             const SpatialPoint& Hover,
-                            std::vector<CurveSpecification>& Delivered);
+                            std::vector<CurveSpecification>& Delivered,
+                            std::uint32_t Resolution = PolygonSideDefault);
 
 /// 🧩 The anchors of one finished placement, moved out of the placement that took them.
 /// note  📝 Returned by value from `Seal`, so the placement it came from is already reset. There is no
@@ -397,9 +405,6 @@ void ResolvePlacementCurves(SketchSubject Subject,
 /// tag   guarantee, owning
 /// 🧩 The side count a polygon starts at, and the range the wheel may drive it through.
 /// note 🔴 Three is the smallest shape with an area; below it a "polygon" is a line or a point.
-constexpr std::uint32_t PolygonSideMinimum = 3u;
-constexpr std::uint32_t PolygonSideMaximum = 64u;
-constexpr std::uint32_t PolygonSideDefault = 6u;
 
 struct SealedPlacement
 {

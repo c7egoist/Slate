@@ -200,14 +200,21 @@ Deliver<ProfileNameInFeature> SketchStructure::DeclareOvalProfile(const EllipseC
 
 Deliver<ProfileNameInFeature> SketchStructure::DeclareRegularPolygon(const SpatialPoint& Centre,
                                                                      double Radius,
-                                                                     std::uint32_t SideCount)
+                                                                     std::uint32_t SideCount,
+                                                                     const SpatialDirection& StartDirection)
 {
     if (!PlaneStanding || !Plane.Declared())
         return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the sketch plane is not declared" });
     if (Radius <= 0.0 || SideCount < 3u)
         return Deliver<ProfileNameInFeature>::Refuse({ RefusalReason::ContentUnsupported, "the polygon requires positive radius and three sides" });
 
-    const SpatialDirection AlongDirection = Normalize(Plane.AlongDirection);
+    // 🔴 THE FIRST CORNER GOES WHERE THE ARTIST DRAGGED. It was pinned to the plane's own
+    //    `AlongDirection`, so the committed polygon was rotated away from the one just previewed --
+    //    the shape visibly turned on release. An unstated direction still falls back to the plane's
+    //    axis, so a polygon declared from a script behaves as it always did.
+    const SpatialDirection AlongDirection = LengthSquared(StartDirection) > 1.0e-12
+                                          ? Normalize(StartDirection)
+                                          : Normalize(Plane.AlongDirection);
     const SpatialDirection AcrossDirection = Normalize(Cross(Plane.Normal, AlongDirection));
 
     ProfileSpecification Profile;
@@ -264,21 +271,33 @@ Deliver<ProfileNameInFeature> SketchStructure::DeclareSlot(const SpatialPoint& S
 
     const SketchCurveName Upper = DeclareLine(StartUpper, EndUpper);
     const SketchCurveName Lower = DeclareLine(EndLower, StartLower);
-    // ⚠️ The same five-versus-seven field slide as `DeclareCircleProfile` above: both end caps of every
-    //    slot were declared with a zero radius.
+
+    // 🔴 THE CAPS BULGED INWARDS, WHICH IS WHY A SLOT DREW AS TWO CRESCENTS BITING INTO ITS OWN BODY.
+    //    Each cap starts on one side of the axis and must reach the other side by going AROUND THE
+    //    FAR END -- away from the slot. A positive sweep turns the start direction towards the
+    //    other cap instead, so both semicircles were carved out of the rectangle rather than added
+    //    to its ends: the shape closed, so nothing downstream complained, and it simply looked
+    //    wrong. Reversing the sweep sends each cap the long way round, over the end it belongs to.
+    //
+    // 📝 `StepsForSweep` takes the magnitude, so a negative sweep tessellates exactly as densely.
+    // ⚠️ The five-versus-seven field slide this once had is why every field is named rather than
+    //    written as a brace list; a positional initialiser here silently gave both caps a zero
+    //    radius.
+    constexpr double HalfTurn = 3.141592653589793;
+
     CircularArcCurve StartCap = {};
     StartCap.Centre         = StartPoint;
     StartCap.Normal         = Plane.Normal;
     StartCap.StartDirection = Negated(SideDirection);
     StartCap.Radius         = Radius;
-    StartCap.SweepRadians   = 3.141592653589793;
+    StartCap.SweepRadians   = -HalfTurn;
 
     CircularArcCurve EndCap = {};
     EndCap.Centre         = EndPoint;
     EndCap.Normal         = Plane.Normal;
     EndCap.StartDirection = SideDirection;
     EndCap.Radius         = Radius;
-    EndCap.SweepRadians   = 3.141592653589793;
+    EndCap.SweepRadians   = -HalfTurn;
 
     const SketchCurveName StartArc = DeclareCurve(CurveSpecification::DeclareCircularArc(StartCap, { 0.0, 1.0 }));
     const SketchCurveName EndArc   = DeclareCurve(CurveSpecification::DeclareCircularArc(EndCap, { 0.0, 1.0 }));

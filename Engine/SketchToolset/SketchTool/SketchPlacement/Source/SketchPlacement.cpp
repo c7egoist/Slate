@@ -109,6 +109,23 @@ PlacementArrival SketchPlacement::Anchor(bool Terminating)
     if (Declared.Closure == PlacementClosure::Resolved && !HoverSnap.Resolved())
         return PlacementArrival::Ignored;
 
+    // 🔴 ENTER ENDS THE SHAPE, IT DOES NOT PLACE A POINT. A terminating press anchored the hover
+    //    FIRST and asked about termination afterwards, so pressing Enter to finish a polyline left a
+    //    stray anchor wherever the pointer happened to be resting -- an extra leg the artist never
+    //    clicked, on every terminated shape. When enough anchors already stand, a terminating press
+    //    is only a full stop.
+    //
+    // ⚠️ It still anchors when the count is short, because otherwise Enter on a half-drawn shape
+    //    would be silently ignored rather than taking the point that completes it.
+    // ⚠️ ONLY a growing shape. A rectangle, an ellipse and a slot complete on a fixed count, and the
+    //    press that places their last anchor may well be the second of a double-press -- swallowing
+    //    it would refuse to draw the shape at all. Those close on `Sufficient`; only `Terminated`
+    //    subjects run until the artist stops them, and only they can be ended without a new point.
+    const bool AlreadyEnough = static_cast<std::uint32_t>(Taken.size()) >= Declared.Required;
+
+    if (Terminating && Declared.Closure == PlacementClosure::Terminated && AlreadyEnough)
+        return PlacementArrival::Complete;
+
     Taken.push_back(HoverAt);
     TakenPlacements.push_back(HoverSnap);
 
@@ -191,6 +208,100 @@ std::uint32_t SketchPlacement::Remaining() const
 //------------------------------------------------------------------------------------------------------------------------
 //                                                     THE PREVIEW CURVE
 //------------------------------------------------------------------------------------------------------------------------
+
+namespace
+{
+
+// 🔴 THE PREVIEW AND THE COMMIT MUST BE THE SAME SHAPE, so the shapes that are built from several
+//    curves are built ONCE, here, and both callers ask for them. A preview that computes its own
+//    geometry is a second implementation of the shape, and it drifts -- which is exactly what
+//    happened to the ellipse, whose preview took the drag as its major axis while the commit
+//    measured along the plane's own axes and produced a visibly different figure on release.
+
+/// 🧩 The four sides of an axis-aligned rectangle spanning two opposite corners.
+void AppendRectangleSpans(const SpatialPoint& Corner, const SpatialPoint& Opposite,
+                          std::vector<CurveSpecification>& Delivered)
+{
+    // 📝 The two remaining corners, exactly as `DeclareExtentRectangle` derives them: the height is
+    //    carried by the first corner so the rectangle lies flat on the plane it is drawn on.
+    const SpatialPoint Second = { Opposite.Left, Corner.Up, Corner.Forward };
+    const SpatialPoint Fourth = { Corner.Left, Corner.Up, Opposite.Forward };
+
+    Delivered.push_back(CurveSpecification::DeclareLine(Corner, Second));
+    Delivered.push_back(CurveSpecification::DeclareLine(Second, Opposite));
+    Delivered.push_back(CurveSpecification::DeclareLine(Opposite, Fourth));
+    Delivered.push_back(CurveSpecification::DeclareLine(Fourth, Corner));
+}
+
+/// 🧩 The sides of a regular polygon about a centre, with the first vertex under the pointer.
+void AppendPolygonSpans(const SpatialPoint& Centre, const SpatialPoint& Vertex,
+                        std::uint32_t Sides, std::vector<CurveSpecification>& Delivered)
+{
+    const std::uint32_t Resolved = Sides < PolygonSideMinimum ? PolygonSideMinimum
+                                 : (Sides > PolygonSideMaximum ? PolygonSideMaximum : Sides);
+
+    const SpatialDirection Spoke = Difference(Centre, Vertex);
+    const double Radius = std::sqrt(LengthSquared(Spoke));
+    if (!(Radius > 1.0e-6))
+        return;
+
+    // 📝 Rotated about the plane's normal, which for a sketch drawn on the ground is world up. The
+    //    first vertex sits exactly under the pointer so the polygon visibly follows the drag.
+    const SpatialDirection Normal = { 0.0, 1.0, 0.0 };
+    const double Turn = 6.283185307179586 / static_cast<double>(Resolved);
+
+    SpatialPoint Previous = Vertex;
+    for (std::uint32_t Corner = 1u; Corner <= Resolved; ++Corner)
+    {
+        const SpatialPoint Next = Added(Centre,
+            Scaled(RotateAroundAxis(Normalize(Spoke), Normal, Turn * static_cast<double>(Corner)),
+                   Radius));
+        Delivered.push_back(CurveSpecification::DeclareLine(Previous, Next));
+        Previous = Next;
+    }
+}
+
+/// 🧩 The two sides and two end caps of a slot.
+/// note 🔴 The caps sweep the LONG way round, over the ends, or they bite into the slot's own body.
+void AppendSlotSpans(const SpatialPoint& StartPoint, const SpatialPoint& EndPoint, double Radius,
+                     std::vector<CurveSpecification>& Delivered)
+{
+    if (!(Radius > 1.0e-6))
+        return;
+
+    const SpatialDirection AxisOffset = Difference(StartPoint, EndPoint);
+    if (!(LengthSquared(AxisOffset) > 0.0))
+        return;
+
+    const SpatialDirection Normal = { 0.0, 1.0, 0.0 };
+    const SpatialDirection Side   = Normalize(Cross(Normal, Normalize(AxisOffset)));
+
+    Delivered.push_back(CurveSpecification::DeclareLine(
+        Added(StartPoint, Scaled(Side, Radius)), Added(EndPoint, Scaled(Side, Radius))));
+    Delivered.push_back(CurveSpecification::DeclareLine(
+        Added(EndPoint, Scaled(Side, -Radius)), Added(StartPoint, Scaled(Side, -Radius))));
+
+    constexpr double HalfTurn = 3.141592653589793;
+
+    CircularArcCurve StartCap = {};
+    StartCap.Centre         = StartPoint;
+    StartCap.Normal         = Normal;
+    StartCap.StartDirection = Negated(Side);
+    StartCap.Radius         = Radius;
+    StartCap.SweepRadians   = -HalfTurn;
+
+    CircularArcCurve EndCap = {};
+    EndCap.Centre         = EndPoint;
+    EndCap.Normal         = Normal;
+    EndCap.StartDirection = Side;
+    EndCap.Radius         = Radius;
+    EndCap.SweepRadians   = -HalfTurn;
+
+    Delivered.push_back(CurveSpecification::DeclareCircularArc(StartCap, { 0.0, 1.0 }));
+    Delivered.push_back(CurveSpecification::DeclareCircularArc(EndCap, { 0.0, 1.0 }));
+}
+
+}   // namespace
 
 CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
                                          const std::vector<SpatialPoint>& Anchors,
@@ -355,7 +466,8 @@ CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
 void ResolvePlacementCurves(SketchSubject Subject,
                             const std::vector<SpatialPoint>& Anchors,
                             const SpatialPoint& Hover,
-                            std::vector<CurveSpecification>& Delivered)
+                            std::vector<CurveSpecification>& Delivered,
+                            std::uint32_t Resolution)
 {
     Delivered.clear();
 
@@ -372,6 +484,34 @@ void ResolvePlacementCurves(SketchSubject Subject,
         for (std::size_t Index = 0u; Index + 1u < Points.size(); ++Index)
             if (LengthSquared(Difference(Points[Index], Points[Index + 1u])) > 0.0)
                 Delivered.push_back(CurveSpecification::DeclareLine(Points[Index], Points[Index + 1u]));
+        return;
+    }
+
+    // 🔴 A RECTANGLE IS FOUR SIDES AND MUST LOOK LIKE ONE FROM THE FIRST CLICK. It previewed as the
+    //    DIAGONAL -- a single line from the corner to the pointer -- so the artist saw a rectangle
+    //    only after the second click had already placed it. The four sides are built from the same
+    //    two corners the commit uses, so what is dragged out is what lands.
+    if (Subject == SketchSubject::Rectangle && Points.size() >= 2u)
+    {
+        AppendRectangleSpans(Points.front(), Points.back(), Delivered);
+        return;
+    }
+
+    // 🔴 A POLYGON PREVIEWED AS A CIRCLE, so scrolling the side count changed nothing on screen and
+    //    the artist could not see what they were choosing until it committed. It is drawn as its
+    //    actual sides, at the resolution the wheel has reached.
+    if (Subject == SketchSubject::Polygon && Points.size() >= 2u)
+    {
+        AppendPolygonSpans(Points.front(), Points.back(), Resolution, Delivered);
+        return;
+    }
+
+    // 🔴 A SLOT PREVIEWED AS ITS AXIS. Two sides and two end caps, the same construction the commit
+    //    declares -- including the caps bulging OUTWARD, which is what the commit itself got wrong.
+    if (Subject == SketchSubject::Slot && Points.size() >= 3u)
+    {
+        AppendSlotSpans(Points[0], Points[1],
+                        std::sqrt(LengthSquared(Difference(Points[1], Points[2]))), Delivered);
         return;
     }
 

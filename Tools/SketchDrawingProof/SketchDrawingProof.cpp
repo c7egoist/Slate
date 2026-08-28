@@ -603,13 +603,13 @@ int main()
                               Workplanes.Active().Normal,
                               Workplanes.Active().Along });
 
-        Tool.Declare(SketchSubject::Hermite, PlacementMethod::Extent, false);
-        for (std::uint32_t Index = 0u; Index < 5u; ++Index)
+        // 📝 Six clicks, then Enter to end the chain. Enter no longer places a seventh point.
+        for (std::uint32_t Index = 0u; Index < 6u; ++Index)
         {
+            Tool.Declare(SketchSubject::Hermite, PlacementMethod::Extent, false);
             Tool.Hover({ 40.0 * Index, 0.0, (Index % 2u) ? 50.0 : 0.0 }, {});
             static_cast<void>(Tool.Anchor(false));
         }
-        Tool.Hover({ 240.0, 0.0, 25.0 }, {});
 
         Require(Tool.Anchor(true) == PlacementArrival::Complete,
                 "Enter must complete a Hermite of any length");
@@ -927,11 +927,14 @@ int main()
             Tool.Declare(SketchSubject::Polyline, PlacementMethod::Extent, Subject.Construction);
             Tool.DeclareClosedProfile(Subject.Closed);
 
-            for (std::size_t Index = 0u; Index < Subject.Anchors.size(); ++Index)
+            // 📝 Every corner is a plain press; Enter afterwards ends the run WITHOUT placing a
+            //    further point, which is what it now does.
+            for (const SpatialPoint& Anchor : Subject.Anchors)
             {
-                Tool.Hover(Subject.Anchors[Index], {});
-                static_cast<void>(Tool.Anchor(Index + 1u == Subject.Anchors.size()));
+                Tool.Hover(Anchor, {});
+                static_cast<void>(Tool.Anchor(false));
             }
+            static_cast<void>(Tool.Anchor(true));
 
             const SealedPlacement Sealed = Tool.Seal();
             Require(Sealed.ClosedProfile == Subject.Closed,
@@ -990,11 +993,12 @@ int main()
 
         Tool.Declare(SketchSubject::Polyline, PlacementMethod::Extent, false);
         Tool.DeclareClosedProfile(true);
-        for (std::size_t Index = 0u; Index < Bent.size(); ++Index)
+        for (const SpatialPoint& Corner : Bent)
         {
-            Tool.Hover(Bent[Index], {});
-            static_cast<void>(Tool.Anchor(Index + 1u == Bent.size()));
+            Tool.Hover(Corner, {});
+            static_cast<void>(Tool.Anchor(false));
         }
+        static_cast<void>(Tool.Anchor(true));
 
         const SealedPlacement Sealed = Tool.Seal();
         const Deliver<WorkspaceRecordName> Committed =
@@ -1023,6 +1027,254 @@ int main()
 
         std::printf("  concave fill: 4 triangles covering %.0f units (the L's true area is 6400)\n",
                     Covered);
+    }
+
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 WHAT IS PREVIEWED IS WHAT IS COMMITTED. Every defect in this group was the same defect:
+    //    the preview computed one shape and the commit computed another, so the figure the artist
+    //    dragged out jumped into a different one the instant they released. An ellipse dragged to
+    //    (150,60) previewed 161.6 long tilted 22 degrees and committed 150 by 60 lying flat; a
+    //    polygon previewed a circle and committed a hexagon rotated off the drag. The two are
+    //    compared as SHAPES -- the tessellated outlines must lie on top of one another -- because
+    //    comparing parameters would pass for two shapes that merely happen to share a radius.
+    //--------------------------------------------------------------------------------------------
+    {
+        struct Agreement
+        {
+            SketchSubject             Subject;
+            PlacementMethod           Method;
+            std::vector<SpatialPoint> Anchors;
+            const char*               Naming;
+        };
+
+        const Agreement Every[] = {
+            { SketchSubject::Ellipse,   PlacementMethod::Centred,
+              { { 0.0, 0.0, 0.0 }, { 150.0, 0.0, 60.0 } }, "ellipse" },
+            { SketchSubject::Circle,    PlacementMethod::Centred,
+              { { 0.0, 0.0, 0.0 }, { 90.0, 0.0, 40.0 } },  "circle" },
+            { SketchSubject::Polygon,   PlacementMethod::Centred,
+              { { 0.0, 0.0, 0.0 }, { 120.0, 0.0, 45.0 } }, "polygon" },
+            { SketchSubject::Rectangle, PlacementMethod::Extent,
+              { { -20.0, 0.0, -10.0 }, { 130.0, 0.0, 95.0 } }, "rectangle" },
+            { SketchSubject::Slot,      PlacementMethod::Extent,
+              { { 0.0, 0.0, 0.0 }, { 200.0, 0.0, 0.0 }, { 200.0, 0.0, 50.0 } }, "slot" },
+        };
+
+        for (const Agreement& Subject : Every)
+        {
+            SketchStructure           Sketch;
+            WorkspaceRecordStructure  Records;
+            WorkspaceRevisionSequence Revisions;
+            WorkspaceNameIndex        Naming;
+            WorkplaneCatalogue        Workplanes;
+            SketchPlacement           Tool;
+            WorkspaceRecordName       Pending;
+
+            Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                                  Workplanes.Active().Normal,
+                                  Workplanes.Active().Along });
+
+            // ① The preview, as the host draws it on the frame before the last click.
+            const std::vector<SpatialPoint> Held(Subject.Anchors.begin(), Subject.Anchors.end() - 1u);
+            std::vector<CurveSpecification> Spans;
+            ResolvePlacementCurves(Subject.Subject, Held, Subject.Anchors.back(), Spans,
+                                   PolygonSideDefault);
+            Require(!Spans.empty(), "every one of these subjects must preview");
+
+            // ⚠️ `AppendCurvePolyline` CLEARS its output despite the name, so several spans must be
+            //    gathered through a scratch vector or only the last one survives.
+            std::vector<SpatialPoint> Previewed;
+            for (const CurveSpecification& Span : Spans)
+            {
+                std::vector<SpatialPoint> Scratch;
+                AppendCurvePolyline(Span, Scratch, 64u);
+                Previewed.insert(Previewed.end(), Scratch.begin(), Scratch.end());
+            }
+            Require(Previewed.size() >= 4u, "and must preview as a real outline");
+
+            // ② The commit, from those same anchors.
+            // 📝 Every anchor is a plain press: these shapes complete on a count, exactly as the
+            //    host drives them.
+            Tool.Declare(Subject.Subject, Subject.Method, false);
+            for (const SpatialPoint& Anchor : Subject.Anchors)
+            {
+                Tool.Hover(Anchor, {});
+                static_cast<void>(Tool.Anchor(false));
+            }
+
+            const SealedPlacement Sealed = Tool.Seal();
+            const Deliver<WorkspaceRecordName> Committed =
+                CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);
+            Require(Committed.Resolved, "and must commit");
+            AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Committed, Pending);
+
+            std::vector<SpatialPoint> Delivered;
+            for (const DeclaredSketchCurve& Curve : Sketch.Curves())
+            {
+                std::vector<SpatialPoint> Scratch;
+                AppendCurvePolyline(Curve.Geometry, Scratch, 64u);
+                Delivered.insert(Delivered.end(), Scratch.begin(), Scratch.end());
+            }
+            Require(Delivered.size() >= 4u, "the committed shape must have an outline");
+
+            // ③ Every previewed point must lie ON the committed outline, and the reverse. One
+            //    direction alone would pass for a shape drawn twice over half the figure.
+            //
+            // ⚠️ MEASURED TO THE NEAREST SEGMENT, NOT THE NEAREST VERTEX. The two outlines are
+            //    tessellated independently -- an ellipse previews as one curve and commits as four
+            //    quarter arcs -- so their sample points land in different places along the SAME
+            //    figure. A vertex-to-vertex distance therefore reports the sampling interval rather
+            //    than any disagreement, and reported 7.9 units for two shapes that were identical.
+            const auto FromOutline = [](const SpatialPoint& Point,
+                                        const std::vector<SpatialPoint>& Outline)
+            {
+                double Nearest = 1.0e30;
+                for (std::size_t Index = 0u; Index + 1u < Outline.size(); ++Index)
+                {
+                    const SpatialDirection Span  = Difference(Outline[Index], Outline[Index + 1u]);
+                    const SpatialDirection Reach = Difference(Outline[Index], Point);
+                    const double Length = LengthSquared(Span);
+
+                    double Along = Length > 0.0 ? Dot(Reach, Span) / Length : 0.0;
+                    Along = Along < 0.0 ? 0.0 : (Along > 1.0 ? 1.0 : Along);
+
+                    Nearest = std::min(Nearest, LengthSquared(Difference(
+                        Added(Outline[Index], Scaled(Span, Along)), Point)));
+                }
+                return std::sqrt(Nearest);
+            };
+
+            double Worst = 0.0;
+            for (const SpatialPoint& Point : Previewed)
+                Worst = std::max(Worst, FromOutline(Point, Delivered));
+            for (const SpatialPoint& Point : Delivered)
+                Worst = std::max(Worst, FromOutline(Point, Previewed));
+
+            // 📝 A quarter unit on shapes 150 to 200 units across -- far below anything visible, and
+            //    now that the measure is to the outline rather than to its samples, far above what
+            //    tessellation noise can produce.
+            Require(Worst < 0.25,
+                    "the previewed shape and the committed shape must be the same shape");
+        }
+
+        std::printf("  preview and commit agree for ellipse, circle, polygon, rectangle and slot\n");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 A SLOT'S END CAPS BULGE OUTWARD. Both swept the short way round, so the semicircles were
+    //    carved OUT of the slot's body instead of capping its ends -- two crescents biting into it.
+    //    The outline still closed, so nothing downstream complained; it simply looked wrong.
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure    Sketch;
+        WorkplaneCatalogue Workplanes;
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
+
+        const double Radius = 50.0;
+        static_cast<void>(Sketch.DeclareSlot({ 0.0, 0.0, 0.0 }, { 200.0, 0.0, 0.0 }, Radius));
+
+        // 🔴 The slot runs 0 to 200 along X with radius 50, so its true extent is -50 to 250. Caps
+        //    that bulge inward leave it 0 to 200 -- the rectangle alone.
+        double Lowest = 1.0e30, Highest = -1.0e30;
+        for (const DeclaredSketchCurve& Curve : Sketch.Curves())
+        {
+            std::vector<SpatialPoint> Outline;
+            AppendCurvePolyline(Curve.Geometry, Outline, 48u);
+            for (const SpatialPoint& Point : Outline)
+            {
+                Lowest  = std::min(Lowest, Point.Left);
+                Highest = std::max(Highest, Point.Left);
+            }
+        }
+
+        Require(std::fabs(Lowest + Radius) < 0.5,
+                "the start cap must bulge out beyond the axis, not bite into the slot");
+        Require(std::fabs(Highest - (200.0 + Radius)) < 0.5,
+                "and so must the end cap");
+
+        std::printf("  slot: extent %.0f to %.0f for an axis of 0 to 200, radius 50\n",
+                    Lowest, Highest);
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 A SPLINE ENDS AT ITS LAST POINT, NOT BACK AT ITS FIRST. A clamped basis is a half-open
+    //    interval, so at exactly the last knot every basis function was zero, the weight sum with
+    //    it, and the evaluator's divide-by-zero guard returned the FIRST control point. The curve
+    //    therefore leapt home on its final step and drew a long straight line from end to start
+    //    that was on screen the whole time the artist was drawing.
+    //--------------------------------------------------------------------------------------------
+    {
+        const std::vector<SpatialPoint> Held = {
+            { 0.0, 0.0, 0.0 }, { 40.0, 0.0, 90.0 }, { 120.0, 0.0, 120.0 }, { 200.0, 0.0, 40.0 } };
+        const SpatialPoint Hover = { 260.0, 0.0, 100.0 };
+
+        const SketchSubject Splines[] = { SketchSubject::Bezier, SketchSubject::BasisSpline,
+                                          SketchSubject::RationalSpline };
+
+        for (const SketchSubject Subject : Splines)
+        {
+            std::vector<CurveSpecification> Spans;
+            ResolvePlacementCurves(Subject, Held, Hover, Spans);
+            Require(!Spans.empty(), "every spline must preview");
+
+            std::vector<SpatialPoint> Outline;
+            AppendCurvePolyline(Spans.front(), Outline, 64u);
+            Require(Outline.size() >= 4u, "and must tessellate");
+
+            // 🔴 The last point must be the pointer, which for a clamped spline is where the curve
+            //    ends. Landing on the FIRST control point instead is the defect.
+            Require(std::sqrt(LengthSquared(Difference(Outline.back(), Hover))) < 1.0,
+                    "a spline must end under the pointer, not leap back to its start");
+            Require(std::sqrt(LengthSquared(Difference(Outline.back(), Held.front()))) > 1.0,
+                    "and must not end where it began");
+
+            // 🔴 NOR MAY IT PASS THROUGH THE START ON ITS WAY. A single stray sample at the origin
+            //    draws the same phantom line as an endpoint there.
+            std::uint32_t Strays = 0u;
+            for (std::size_t Index = 1u; Index < Outline.size(); ++Index)
+                if (std::sqrt(LengthSquared(Difference(Outline[Index], Held.front()))) < 1.0)
+                    ++Strays;
+            Require(Strays == 0u, "no interior sample may sit on the curve's own start");
+        }
+
+        std::printf("  splines end under the pointer, with no closing chord\n");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 ENTER ENDS THE SHAPE, IT DOES NOT PLACE A POINT. A terminating press anchored the hover
+    //    first and asked about termination afterwards, so finishing a polyline left a stray anchor
+    //    wherever the pointer happened to rest -- an extra leg the artist never clicked.
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchPlacement Tool;
+        Tool.Declare(SketchSubject::Polyline, PlacementMethod::Extent, false);
+
+        for (std::uint32_t Click = 0u; Click < 4u; ++Click)
+        {
+            Tool.Hover({ 40.0 * Click, 0.0, 0.0 }, {});
+            static_cast<void>(Tool.Anchor(false));
+        }
+        Require(Tool.Anchors().size() == 4u, "four clicks take four anchors");
+
+        // 📝 The pointer has moved on since the last click, as it always has in practice.
+        Tool.Hover({ 500.0, 0.0, 300.0 }, {});
+        Require(Tool.Anchor(true) == PlacementArrival::Complete, "Enter must finish the polyline");
+        Require(Tool.Anchors().size() == 4u,
+                "and must NOT leave a fifth anchor under the resting pointer");
+
+        // 🔴 But Enter on a shape that has not got enough anchors yet must still take the point that
+        //    completes it, or the artist would press Enter and see nothing happen.
+        SketchPlacement Short;
+        Short.Declare(SketchSubject::Polyline, PlacementMethod::Extent, false);
+        Short.Hover({ 0.0, 0.0, 0.0 }, {});
+        static_cast<void>(Short.Anchor(false));
+        Short.Hover({ 90.0, 0.0, 0.0 }, {});
+        Require(Short.Anchor(true) == PlacementArrival::Complete,
+                "Enter must complete a polyline that needs this point");
+        Require(Short.Anchors().size() == 2u, "taking the point that completes it");
     }
 
     std::printf("[SketchDrawingProof] %u claims, %u failures\n", Claims, Failures);

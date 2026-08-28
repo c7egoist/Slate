@@ -90,7 +90,21 @@ namespace
     {
         const std::vector<double> Knots = BuildClampedKnots(Degree, ControlPoints.size(), Periodic);
         const double Maximum = Knots[Knots.size() - Degree - 1u];
-        const double Local = Parameter * Maximum;
+
+        // 🔴 THE LAST POINT OF EVERY SPLINE JUMPED BACK TO THE FIRST, drawing a long straight line
+        //    from the end of the curve to its start that was always on screen while drawing -- the
+        //    reported "from the moment i start drawing that line is always connecting start to end".
+        //    A clamped basis is a HALF-OPEN interval: the span tests are `Knot <= t < Next`, so at
+        //    exactly the upper knot EVERY basis function evaluates to zero, the weight sum with it,
+        //    and the guard below returned `ControlPoints.front()` -- the start of the curve, at the
+        //    parameter that should have produced its end.
+        //
+        // 📝 Nudged just inside the last span rather than special-cased: the limit of the curve as
+        //    the parameter approaches the end IS the last control point for a clamped basis, so this
+        //    lands on it to well within a pixel without a second code path to keep correct.
+        const double Local = Parameter >= 1.0
+                           ? Maximum * (1.0 - 1.0e-12)
+                           : Parameter * Maximum;
 
         SpatialPoint Sum = {};
         double WeightSum = 0.0;

@@ -1134,10 +1134,14 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     {
                                         // 📝 Static: reused every tick, like the packet beside it.
                                         static std::vector<CurveSpecification> PreviewSpans;
+                                        // 📝 The wheel-chosen side count reaches the preview, so
+                                        //    scrolling a polygon redraws it at the new resolution
+                                        //    instead of showing an unchanging circle.
                                         ResolvePlacementCurves(SketchTool.Subject(),
                                                                SketchTool.Anchors(),
                                                                SketchTool.HoverPosition(),
-                                                               PreviewSpans);
+                                                               PreviewSpans,
+                                                               SketchTool.Resolution());
                                         static_cast<void>(ProjectPlacementPreview(
                                             Sketch, PreviewSpans,
                                             SketchTool.Anchors(), SketchTool.HoverPosition(),
