@@ -41,6 +41,59 @@ namespace
         if (OpenWindowCount == 0u)
             glfwTerminate();
     }
+
+    // 📝 ⏱️ The wheel is the one input GLFW reports ONLY through a callback — there is no
+    //    `glfwGetScroll`. The flag is raised here and consumed by the next Drain.
+    // ⚠️ Deliberately NOT the window user pointer: the interface backend is entitled to that, and two
+    //    owners of one slot is a defect that shows up as whichever ran second silently winning.
+    // 🔴 Installed BEFORE the interface attaches, so the backend chains to this rather than replacing
+    //    it. GLFW keeps one callback per window; the backend preserves the one it found.
+    constexpr std::uint32_t StirCapacity = 8u;
+
+    struct WheelWatch
+    {
+        GLFWwindow* Window  = nullptr;
+        bool        Stirred = false;
+    };
+
+    WheelWatch WheelWatches[StirCapacity] = {};
+
+    WheelWatch* WatchFor(GLFWwindow* Window)
+    {
+        for (std::uint32_t Index = 0u; Index < StirCapacity; ++Index)
+        {
+            if (WheelWatches[Index].Window == Window)
+                return &WheelWatches[Index];
+        }
+
+        return nullptr;
+    }
+
+    void WheelTurned(GLFWwindow* Window, double, double)
+    {
+        if (WheelWatch* const Watch = WatchFor(Window))
+            Watch->Stirred = true;
+    }
+
+    void WatchWheel(GLFWwindow* Window)
+    {
+        for (std::uint32_t Index = 0u; Index < StirCapacity; ++Index)
+        {
+            if (WheelWatches[Index].Window != nullptr)
+                continue;
+
+            WheelWatches[Index].Window  = Window;
+            WheelWatches[Index].Stirred = false;
+            glfwSetScrollCallback(Window, WheelTurned);
+            return;
+        }
+    }
+
+    void ForgetWheel(GLFWwindow* Window)
+    {
+        if (WheelWatch* const Watch = WatchFor(Window))
+            *Watch = WheelWatch{};
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -71,6 +124,7 @@ Deliver<bool> WindowInterchange::Open(DisplayExtent RequestedExtent, const char*
     }
 
     WindowSlot = OpenedWindow;
+    WatchWheel(OpenedWindow);
     Drain();
     AdoptExtent();
 
@@ -82,6 +136,7 @@ WindowInterchange::~WindowInterchange()
     if (WindowSlot == nullptr)
         return;
 
+    ForgetWheel(static_cast<GLFWwindow*>(WindowSlot));
     glfwDestroyWindow(static_cast<GLFWwindow*>(WindowSlot));
     WindowSlot = nullptr;
     ReleaseWindowSystem();
@@ -118,6 +173,72 @@ void WindowInterchange::Drain()
         KeyWas[KeyIndex]  = KeyDown[KeyIndex];
         KeyDown[KeyIndex] = glfwGetKey(OpenedWindow, DiagnosticKeyCodes[KeyIndex]) == GLFW_PRESS;
     }
+
+    // ⏱️ The wake rule's evidence, sampled straight from the window system so that it keeps reporting
+    //    while the host is asleep and recording nothing.
+    PointerWasX = PointerX;
+    PointerWasY = PointerY;
+    glfwGetCursorPos(OpenedWindow, &PointerX, &PointerY);
+
+    // ⚠️ The first sample has no predecessor, so it would read as a jump from the origin and wake a
+    //    frame for nothing. Seeded once, then compared honestly.
+    if (!PointerFresh)
+    {
+        PointerWasX  = PointerX;
+        PointerWasY  = PointerY;
+        PointerFresh = true;
+    }
+
+    ContactWas  = ContactDown;
+    ContactDown = glfwGetMouseButton(OpenedWindow, GLFW_MOUSE_BUTTON_LEFT)   == GLFW_PRESS
+               || glfwGetMouseButton(OpenedWindow, GLFW_MOUSE_BUTTON_RIGHT)  == GLFW_PRESS
+               || glfwGetMouseButton(OpenedWindow, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
+
+    // 📝 A span rather than every key: this asks whether the artist is typing at all, and the interface
+    //    decides what the keystroke MEANS. Printable keys, the modifiers, the arrows, Enter and the
+    //    function row all fall inside the one contiguous GLFW range.
+    TypingWas  = TypingDown;
+    TypingDown = false;
+    for (int KeyCode = GLFW_KEY_SPACE; KeyCode <= GLFW_KEY_LAST; ++KeyCode)
+    {
+        if (glfwGetKey(OpenedWindow, KeyCode) == GLFW_PRESS)
+        {
+            TypingDown = true;
+            break;
+        }
+    }
+
+    FocusWas  = FocusHeld;
+    FocusHeld = glfwGetWindowAttrib(OpenedWindow, GLFW_FOCUSED) == GLFW_TRUE;
+
+    // 📝 Consumed here: the callback raised it at some point since the previous Drain, and this Drain is
+    //    the tick that gets to act on it.
+    if (const WheelWatch* const Watch = WatchFor(OpenedWindow))
+    {
+        WheelStirred = Watch->Stirred;
+        WatchFor(OpenedWindow)->Stirred = false;
+    }
+}
+
+bool WindowInterchange::Stirred() const
+{
+    if (WindowSlot == nullptr)
+        return false;
+
+    // 🔴 Motion, contact, typing, the wheel and focus — level OR edge. A held button with the pointer
+    //    still is a drag the artist expects to see answered, so the level counts as much as the edge.
+    // ⚠️ CLOSURE AND RESIZE ARE STIRRING TOO, and omitting them is a hang rather than a missed frame.
+    //    A host that dozes on this rule and is never told the window closed sleeps through the artist
+    //    clicking the X; one never told the extent moved sleeps with a stale chain. Both self-clear —
+    //    closure ends the loop, and the adopted extent is restated when the display is re-established.
+    return PointerX    != PointerWasX
+        || PointerY    != PointerWasY
+        || ContactDown || ContactWas
+        || TypingDown  || TypingWas
+        || WheelStirred
+        || FocusHeld   != FocusWas
+        || ClosurePosed
+        || ExtentAltered();
 }
 
 bool WindowInterchange::KeyDescended(DiagnosticKey Declared) const

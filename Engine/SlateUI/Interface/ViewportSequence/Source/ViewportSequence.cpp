@@ -84,6 +84,19 @@ Deliver<bool> ViewportSequence::Advance(double ElapsedMilliseconds)
         // 📝 🔴 Rearrange now returns immediately unless the extent moved. Calling it every tick — which is
         //    what this line used to do — re-applied every spring onto its pose coordinate and released the live
         //    grab, so a drag was erased one tick after it began and no drawer could ever be dragged.
+        // 🔴 ⏱️ A MOVED EXTENT MARKS EVERY PANEL. `Rearrange` returns immediately unless the extent
+        //    actually moved, so the mark is raised on the same question rather than every tick — a
+        //    mark every tick is a rule that never sleeps, which is the idle cost this exists to remove.
+        if (Display.Width        != MarkedWidth
+         || Display.Height       != MarkedHeight
+         || Display.DisplayScale != MarkedScale)
+        {
+            MarkedWidth  = Display.Width;
+            MarkedHeight = Display.Height;
+            MarkedScale  = Display.DisplayScale;
+            MarksOwned.MarkEvery(RedrawMark::Rearrange);
+        }
+
         DrawersOwned.Rearrange(Display);
     }
 
@@ -229,6 +242,12 @@ void ViewportSequence::Retint(const ThemeSelection& Selected)
     //    is reapplied unchanged, so a colour edit cannot move a length.
     Resolved = ResolveTinted(Resolved.Measure.DisplayScale, InterfaceScale, 0.0f, Chosen);
     RestateTypography(Resolved);
+
+    // 🔴 ⏱️ MARKED, OR THE NEW THEME IS NEVER DRAWN. The wake rule sleeps on an idle editor, and a
+    //    colour change arrives through this call rather than through the pointer — so without a mark
+    //    the artist picks a theme and the window keeps showing the old one until they happen to move
+    //    the mouse. Every panel: the appearance moved under all of them.
+    MarksOwned.MarkEvery(RedrawMark::Recolour);
 }
 
 bool ViewportSequence::ApplyInterfaceScale(std::uint32_t Percentage)
@@ -305,7 +324,7 @@ bool ViewportSequence::Moving() const
     return DrawersOwned.Moving() || Motion.Moving();
 }
 
-bool ViewportSequence::Waking() const
+bool ViewportSequence::Waking(bool ArtistStirred) const
 {
     // ⚠️ Before the first tick nothing has ever been recorded, so there is no correct image to leave
     //    on screen. Blocking here shows the artist an empty window until they happen to move the
@@ -313,29 +332,11 @@ bool ViewportSequence::Waking() const
     if (!DrawersConstructed)
         return true;
 
-    const PointerCondition&   Pointer = SurfaceOwned.Pointer();
-    const TextInputCondition& Typed   = SurfaceOwned.TextInput();
-
-    // 🔴 ARRIVAL IS AN EDGE OR A HELD STATE, NEVER A POSITION. Comparing `PositionX` against the
-    //    previous tick's would report an arrival forever once the pointer rests anywhere but the
-    //    origin, which is a wake rule that never sleeps.
-    const bool PointerArrived = Pointer.TravelX != 0.0f
-                             || Pointer.TravelY != 0.0f
-                             || Pointer.WheelY  != 0.0f
-                             || Pointer.ContactHeld
-                             || Pointer.ContactPressed
-                             || Pointer.ContactReleased
-                             || Pointer.SecondaryHeld
-                             || Pointer.SecondaryPressed
-                             || Pointer.SecondaryReleased;
-
-    const bool TextArrived = Typed.IntakeCount != 0u
-                          || Typed.AcceptPressed    || Typed.CancelPressed
-                          || Typed.BackspacePressed || Typed.DeletePressed
-                          || Typed.HomePressed      || Typed.EndPressed
-                          || Typed.LeftPressed      || Typed.RightPressed;
-
-    return MarksOwned.Waking(Moving(), PointerArrived || TextArrived);
+    // 🔴 THE ARRIVAL COMES FROM THE WINDOW SYSTEM, NOT FROM THE INTERFACE. See the header: the
+    //    interface's own pointer and text records are filled by `ImGui::NewFrame`, which runs after
+    //    this question inside `Advance`. Reading them here asks about the last frame that recorded,
+    //    which stops changing the moment the host sleeps — and the host then never wakes.
+    return MarksOwned.Waking(Moving(), ArtistStirred);
 }
 
 //------------------------------------------------------------------------------------------------------------------------

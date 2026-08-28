@@ -21,12 +21,28 @@
 #include "SlateUI/Interface/RedrawScheduler/Api/RedrawScheduler.h"
 
 #include <cstdio>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 namespace
 {
 
 std::uint32_t Claims = 0u;
 std::uint32_t Failures = 0u;
+
+// 📝 The wiring claims read the source text, so the proof needs the repository root. It is run from
+//    there by its own runner, which is why a plain relative path is enough.
+std::string ReadWhole(const char* Path)
+{
+    std::ifstream Stream(Path);
+    if (!Stream)
+        return std::string();
+
+    std::ostringstream Gathered;
+    Gathered << Stream.rdbuf();
+    return Gathered.str();
+}
 
 void Require(bool Held, const char* Naming)
 {
@@ -121,6 +137,63 @@ int main()
         Require(Scheduler.Current(First.Delivered) == RedrawMark::Rearrange
              && Scheduler.Current(Second.Delivered) == RedrawMark::Rearrange,
                 "a resize marks every registered panel, not the one that noticed");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────────────
+    //  ⑥ THE WIRING, NOT THE RULE.
+    //
+    //  🔴 EVERY CLAIM ABOVE PASSED WHILE THE EDITOR WAS UNUSABLE. The rule was correct in isolation and
+    //     wrong in place, twice over, and a unit proof that only ever calls the rule cannot see either:
+    //
+    //       ① `Waking` was handed the interface's OWN pointer record, which `ImGui::NewFrame` fills —
+    //          and `NewFrame` runs inside `Advance`, AFTER the wake question. So the rule was asked
+    //          "did anything happen during the last frame we drew?". Once the startup eases settled the
+    //          record froze, the answer was "no" forever, and the host slept through every later click.
+    //
+    //       ② The idle path then called `Complete`, which opens the display scope the host never opened
+    //          — and that scope carries `LOAD_OP_CLEAR`. Surrendering an unrecorded tick PRESENTED THE
+    //          CLEAR GROUND. The window wiped itself to the clear ink every idle tick and stayed there
+    //          with its chrome alive: the editor flashed the viewport once and went black.
+    //
+    //  📝 Both are questions about which call sits before which, so they are claimed against the source
+    //     text. A behavioural proof would need a device, a window and an artist not touching the mouse.
+    // ─────────────────────────────────────────────────────────────────────────────────────────────────
+    {
+        const std::string Session  = ReadWhole("Engine/SlateRuntime/Session/SessionSequence/Source/SessionSequence.cpp");
+        const std::string Viewport = ReadWhole("Engine/SlateUI/Interface/ViewportSequence/Source/ViewportSequence.cpp");
+
+        Require(!Session.empty() && !Viewport.empty(), "the two wiring sources are readable");
+
+        // ① THE WAKE QUESTION IS ASKED BEFORE THE TICK IS OPENED.
+        const std::size_t AskedAt   = Session.find("Viewport.Waking(");
+        const std::size_t AcquireAt = Session.find("Lifetime.Await(Ground)");
+
+        Require(AskedAt != std::string::npos, "the session asks the wake rule at all");
+        Require(AcquireAt != std::string::npos, "the session opens a tick");
+        Require(AskedAt < AcquireAt,
+                "the wake question precedes the acquire, so a sleeping tick holds no display image");
+
+        // ② NO UNRECORDED TICK IS EVER SURRENDERED. `Complete` after a skipped recording presents the
+        //    clear ground; the idle path must doze instead.
+        const std::size_t DozeAt = Session.find("Lifetime.Doze(WakeIntervalSeconds)");
+        Require(DozeAt != std::string::npos, "the idle path dozes");
+        Require(DozeAt > AskedAt && DozeAt < AcquireAt,
+                "and it dozes between the question and the acquire, never after one");
+
+        // ③ THE RULE'S INPUT COMES FROM THE WINDOW SYSTEM, NOT FROM THE INTERFACE.
+        Require(Session.find("Viewport.Waking(Lifetime.Stirred())") != std::string::npos,
+                "the arrival is read live from the window system");
+        Require(Viewport.find("SurfaceOwned.Pointer()") == std::string::npos
+             || Viewport.find("MarksOwned.Waking(Moving(), ArtistStirred)") != std::string::npos,
+                "and the rule no longer sources arrival from the frame-gated pointer record");
+
+        // ④ THE MARKS MUST HAVE A CALLER. `Marked()` is one third of the rule, and for the whole of this
+        //    defect's life `Mark` and `MarkEvery` had ZERO callers outside this proof — so that third was
+        //    permanently false and the rule collapsed to "is something animating".
+        const std::string Scheduler = ReadWhole("Engine/SlateUI/Interface/RedrawScheduler/Source/RedrawScheduler.cpp");
+        Require(!Scheduler.empty(), "the scheduler source is readable");
+        Require(Viewport.find("MarksOwned.Mark") != std::string::npos,
+                "something actually marks a panel, or `Marked()` is dead weight in the rule");
     }
 
     std::printf("[IdleWakeProof] %u claims, %u failures\n", Claims, Failures);

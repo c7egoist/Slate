@@ -188,6 +188,30 @@ SessionPass SessionSequence::Await()
         return Opened;
     }
 
+    // ③·ii 🔴 ⏱️ THE WAKE QUESTION IS ASKED BEFORE THE TICK IS OPENED. Under FIFO pacing this host
+    //       rebuilt the interface and presented a fresh image sixty times a second whether or not a
+    //       pixel differed, measured at 8 to 9% of a core with the artist's hands off the input.
+    //
+    //       🔴 It must be asked HERE, not after `Lifetime.Await`. That call acquires a display image
+    //       and opens a recording; surrendering one unrecorded through `Complete` presents the CLEAR
+    //       GROUND, because the scope `Complete` opens carries `LOAD_OP_CLEAR`. Asked afterwards, every
+    //       idle tick wiped the window to the clear ink and left it there — the editor flashed once and
+    //       went black with its title bar still live.
+    //
+    //       ⚠️ Waits with a BOUND rather than blocking outright. If the wake rule ever misses a source
+    //       of change, a bounded wait costs a late frame; an unbounded one costs a window that never
+    //       redraws until the artist moves the pointer, which is reported as a hang.
+    //
+    //       ⚠️ `Standing` is tested above, so the interface exists. `Waking` reports true until the
+    //       drawers are constructed, which covers the first ticks when there is no correct image yet.
+    if (!Viewport.Waking(Lifetime.Stirred()))
+    {
+        Lifetime.Doze(WakeIntervalSeconds);
+
+        Opened.Current = SessionCondition::Idle;
+        return Opened;
+    }
+
     const TickPass Pass = Lifetime.Await(Ground);
 
     Opened.Recording           = Pass.Recording;
@@ -269,28 +293,6 @@ SessionPass SessionSequence::Await()
 
     if (Pass.Current != TickCondition::Recording)
     {
-        Opened.Current = SessionCondition::Idle;
-        return Opened;
-    }
-
-    // ③·ii 🔴 ⏱️ NOTHING CHANGED, SO NOTHING IS PRESENTED. This is the whole of the idle cost: under
-    //       FIFO pacing the host rebuilt the interface and presented a fresh image sixty times a
-    //       second whether or not a pixel differed, measured at 8 to 9% of a core with the artist's
-    //       hands off the input. `RedrawScheduler` was written for this, carries the wake rule, and
-    //       was read by nobody.
-    //
-    //       ⚠️ The recording is surrendered before returning. The vendor handed this tick a command
-    //       buffer and a display slot at `Lifetime.Await`; returning `Idle` without completing the
-    //       tick leaks the slot and the chain stalls within a few frames.
-    //
-    //       ⚠️ Waits with a BOUND rather than blocking outright. If the wake rule ever misses a
-    //       source of change, a bounded wait costs a late frame; an unbounded one costs a window
-    //       that never redraws until the artist moves the pointer, which is reported as a hang.
-    if (!Viewport.Waking())
-    {
-        Discard(Lifetime.Complete());
-        Lifetime.Window().AwaitFor(WakeIntervalSeconds);
-
         Opened.Current = SessionCondition::Idle;
         return Opened;
     }

@@ -857,8 +857,31 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
             }
         }
 
+        // 🔴 A SESSION THAT STOPS RECORDING GOES BLACK WITH THE WINDOW STILL OPEN, and says nothing.
+        //    That is exactly what "a flash of the viewport, then a black screen" looks like from the
+        //    outside: the loop is alive, `Await` keeps returning, and every tick skips the draw. The
+        //    condition is reported ONCE per run of the same value rather than every frame, because a
+        //    per-frame print floods the console and hides the transition that matters.
         if (Pass.Current != SessionCondition::Recording)
+        {
+            static SessionCondition LastReported = SessionCondition::Recording;
+            static std::uint32_t    SkippedTally = 0u;
+
+            ++SkippedTally;
+            if (Pass.Current != LastReported)
+            {
+                const char* Named = Pass.Current == SessionCondition::Idle           ? "Idle"
+                                  : Pass.Current == SessionCondition::DeviceRetiring ? "DeviceRetiring"
+                                  : Pass.Current == SessionCondition::Closed         ? "Closed"
+                                                                                     : "unknown";
+                std::printf("%s \u2014 not recording: %s (%u frame(s) skipped)\n",
+                            HostName, Named, static_cast<unsigned>(SkippedTally));
+                std::fflush(stdout);
+                LastReported = Pass.Current;
+                SkippedTally = 0u;
+            }
             continue;
+        }
 
         {
             // 🔴 The workspace is recorded FIRST and the drawers over it. One background draw list, so
@@ -1287,11 +1310,15 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
                                         // ⚠️ A popup with nothing to ask has nothing to show. Cut splits
                                         //    at the picked point and takes no parameter, so it is applied
                                         //    directly rather than through a popup holding only buttons.
-                                        if (SketchContextMenu.Standing() && BuildRowCount == 0u)
+                                        // ⚠️ ONLY CUT IS PARAMETERLESS. This first read "no rows" as
+                                        //    "apply immediately", which also caught Extend and the
+                                        //    default arm -- so choosing Add ran it with no popup and no
+                                        //    chance to decline. The tool says whether it needs asking.
+                                        if (SketchContextMenu.Standing() &&
+                                            SketchBuildTool == ParametricToolSubject::Cut)
                                         {
                                             SketchContextMenu.Close();
-                                            if (SketchBuildTool != ParametricToolSubject::Select)
-                                                SketchBuildApply = true;
+                                            SketchBuildApply = true;
                                         }
 
                                         PopupDeclaration BuildPopup;

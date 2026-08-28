@@ -508,6 +508,25 @@ TickPass HostLifecycle::Await(const float ClearInk[4])
     return Pass;
 }
 
+bool HostLifecycle::Stirred() const
+{
+    return Surface.Stirred();
+}
+
+void HostLifecycle::Doze(double Seconds)
+{
+    Surface.AwaitFor(Seconds);
+
+    // 🔴 DRAINED ON THE WAY OUT, OR THE WAKE RULE NEVER SEES THE THING THAT WOKE IT. `Stirred` reports
+    //    what the LAST drain observed, and the only other drain is inside `Await` — the call a dozing
+    //    host is not making. Without this the evidence never refreshes, the rule answers "nothing
+    //    happened" forever and the window sleeps through every click: the same deadlock as reading the
+    //    interface's frame-gated pointer, one layer down.
+    // ⚠️ Exactly one drain per pass either way: a tick that dozes does not reach `Await`, and a tick
+    //    that reaches `Await` did not doze. Two drains in one pass would consume the key edges.
+    Surface.Drain();
+}
+
 Deliver<bool> HostLifecycle::BeginDisplay()
 {
     if (!TickRecording || OpenRecording == VK_NULL_HANDLE)

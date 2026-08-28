@@ -122,6 +122,21 @@ public:
         KeyCount       = 4u    // [-] - the closed count, never a key
     };
 
+    /// 🧩 ⏱️ Whether the artist touched this window since the previous Drain — pointer, button, wheel,
+    ///    key or focus.
+    /// out   Stirred [-]  true when anything the artist did arrived in the LAST drain
+    /// note  🔴 ⏱️ THE WAKE RULE'S ONLY TRUSTWORTHY INPUT SOURCE. The interface's own pointer record is
+    ///        filled by `ImGui::NewFrame`, which runs INSIDE the recording path — so a wake rule that
+    ///        reads it asks "did anything happen during the last frame we drew?". Once the host stops
+    ///        drawing, that record freezes at whatever it last held, the rule answers "nothing happened"
+    ///        forever, and the window never redraws again. This is read straight from the window system
+    ///        every Drain, whether or not a frame was recorded, so it keeps reporting while the host sleeps.
+    /// note  ⚠️ Level-and-edge together on purpose: a held button with the pointer still is motion the
+    ///        artist can see the consequences of, so holding counts as stirring.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    bool Stirred() const;
+
     /// 🧩 Whether one diagnostic key went down since the previous Drain — the edge, never the level.
     /// note  ⚠️ Edge-triggered by declaration. A level read fires its scenario once per tick for as long as
     ///        the key is held, which for a device rebuild is a host that never draws again.
@@ -139,6 +154,20 @@ private:
     // 📝 Two levels per key so Drain can report the edge. Sized by the enumeration's closed count.
     bool           KeyDown[4]   = {};        // [-]  - down at this Drain
     bool           KeyWas[4]    = {};        // [-]  - down at the previous Drain
+
+    // 📝 ⏱️ The wake rule's evidence, refreshed every Drain whether or not a frame was recorded.
+    double         PointerX     = 0.0;       // [px] - cursor at this Drain
+    double         PointerY     = 0.0;       // [px]
+    double         PointerWasX  = 0.0;       // [px] - cursor at the previous Drain
+    double         PointerWasY  = 0.0;       // [px]
+    bool           ContactDown  = false;     // [-]  - any mouse button down at this Drain
+    bool           ContactWas   = false;     // [-]  - at the previous Drain
+    bool           TypingDown   = false;     // [-]  - any key down at this Drain
+    bool           TypingWas    = false;     // [-]  - at the previous Drain
+    bool           FocusHeld    = true;      // [-]  - the window has the window system's focus
+    bool           FocusWas     = true;      // [-]  - at the previous Drain
+    bool           WheelStirred = false;     // [-]  - the wheel turned since the previous Drain
+    bool           PointerFresh = false;     // [-]  - a cursor position has been sampled at least once
 };
 
 }   // namespace Slate

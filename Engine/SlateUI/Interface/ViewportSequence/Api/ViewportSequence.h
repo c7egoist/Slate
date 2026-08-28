@@ -198,12 +198,22 @@ public:
     ///        tessellating a 240-curve sketch measures 162 microseconds a frame, under 1% of a core;
     ///        the expense is rebuilding and presenting an unchanged interface, not computing shapes.
     ///        Measure before optimising, or the fast thing gets optimised and the idle stays.
+    /// in    ArtistStirred [-]  live from the window system: pointer, button, wheel, key or focus
     /// note  ⚠️ Asked BEFORE `Advance`, because a tick that is not waking must not open an ImGui
-    ///        frame it will never seal. All three operands the rule needs are read here rather than
-    ///        by the host: the host cannot see the drawer springs or the panel marks.
+    ///        frame it will never seal. The operands this unit CAN see — the drawer springs, the
+    ///        eases and the panel marks — are read here; the host cannot see those.
+    /// note  🔴 ⏱️ INPUT IS PASSED IN, NOT READ FROM THE INTERFACE. This first read the recording
+    ///        surface's own pointer record, which `ImGui::NewFrame` fills — and `NewFrame` runs
+    ///        inside `Advance`, AFTER this question is asked. So the rule was reading the input of
+    ///        the last frame that recorded: once the eases settled the record froze, the rule
+    ///        answered "nothing happened" forever, and the host slept through every subsequent
+    ///        click and keystroke. It presented a cleared image each tick, so the window went to
+    ///        the clear ground and stayed there with the chrome still live. The window system is
+    ///        drained every tick whether or not one is recorded, so its view is the only one that
+    ///        keeps reporting while asleep.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
-    bool Waking() const;
+    bool Waking(bool ArtistStirred) const;
 
     /// 🧩 Destroys every owned component and forgets the device handles.
     /// cost  🚩
@@ -224,6 +234,12 @@ private:
     std::uint32_t RoleWeights[8] = {600u, 600u, 500u, 400u, 500u, 400u, 500u, 600u};   // [-] - the FontProfile defaults
     DrawerSpace              DrawersOwned      = {};   // [-] - the two drawers
     RedrawScheduler          MarksOwned        = {};   // [-] - per-panel redraw marks
+    
+    // 📝 ⏱️ What the display looked like when the panels were last marked for it. A resize must mark
+    //    every panel, but only ONCE per move — marking every tick is a wake rule that never sleeps.
+    float           MarkedWidth  = 0.0f;   // [px] - the extent the marks were raised against
+    float           MarkedHeight = 0.0f;   // [px]
+    double          MarkedScale  = 0.0;    // [-]  - zero until the first tick, so the first move marks
     RecordingSurface         SurfaceOwned      = {};   // [-] - the drawing surface
     DrawerDeclaration        NorthDeclared     = {};   // [-] - remembered until the first tick
     DrawerDeclaration        SouthDeclared     = {};   // [-] - remembered until the first tick

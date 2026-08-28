@@ -196,6 +196,27 @@ public:
     /// tag   api, nonthrowing
     TickPass Await(const float ClearInk[4]);
 
+    /// 🧩 ⏱️ Whether the artist has touched this window since the previous tick — the wake rule's one
+    ///    input the interface cannot supply.
+    /// out   Stirred [-]  true when pointer, button, wheel, key or focus arrived at the last drain
+    /// note  📝 A pass-through to the window, so a host holding only a lifecycle can ask.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    bool Stirred() const;
+
+    /// 🧩 ⏱️ Sleeps in the window system until the artist does something or the interval expires.
+    /// in    Seconds [-]  the longest this may sleep
+    /// note  🔴 ⏱️ CALLED INSTEAD OF RECORDING A TICK, NEVER AFTER ACQUIRING ONE. `Await` acquires a
+    ///        display image and opens a recording; surrendering that through `Complete` without
+    ///        recording anything presents the CLEAR GROUND, because the display scope `Complete`
+    ///        opens on the host's behalf carries `LOAD_OP_CLEAR`. An idle editor built that way wipes
+    ///        itself to the clear ink and stays there with its chrome alive, which reads as a black
+    ///        window rather than as a still one. The wake question is therefore asked BEFORE the
+    ///        tick is opened, and this is what the host waits in when the answer is no.
+    /// cost  ✔️
+    /// tag   api, nonthrowing
+    void Doze(double Seconds);
+
     /// 🧩 Opens the display's dynamic-rendering scope after scene/offscreen recordings have completed.
     /// out   Result  [-]  refuses when no tick stands or when the display scope already stands
     /// note  🔴 `Await` deliberately leaves the command recording outside any render scope. Classic scene

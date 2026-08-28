@@ -30,8 +30,14 @@ struct ExtentBand
 };
 
 /// 🧩 The at-most-four disjoint bands of a clip box that a withheld box does not cover.
-/// in    ClipX0..ClipY1          [-] the box to record
-/// in    WithheldX0..WithheldY1  [-] the box to keep clear; a zero-area box yields the clip alone
+/// in    ClipX0      [-] the box to record, leading edge
+/// in    ClipY0      [-] upper edge
+/// in    ClipX1      [-] trailing edge
+/// in    ClipY1      [-] lower edge
+/// in    WithheldX0  [-] the box to keep clear; a zero-area box yields the clip alone
+/// in    WithheldY0  [-] upper edge of the withheld box
+/// in    WithheldX1  [-] trailing edge of the withheld box
+/// in    WithheldY1  [-] lower edge of the withheld box
 /// out   Bands                   [-] filled from index zero
 /// out   Result                  [-] how many bands were written: 0, 1, 2, 3 or 4
 /// note  🔴 A SCISSOR IS ONE RECTANGLE. "Everything except this box" therefore has to be recorded as
@@ -114,10 +120,14 @@ constexpr bool ExtentsIntersect(const ExtentBand& Left, const ExtentBand& Right)
 }
 
 /// 🧩 The box a menu of the given span would occupy in one corner of an anchor.
-/// in    AnchorX0..AnchorY1  [-] the tile the menu belongs to
-/// in    Width, Height       [-] the menu's own span
-/// in    Corner              [-] which side of the anchor to hang it from
-/// in    Gap                 [-] the clear distance between the anchor and the menu
+/// in    AnchorX0  [-] the tile the menu belongs to, leading edge
+/// in    AnchorY0  [-] upper edge
+/// in    AnchorX1  [-] trailing edge
+/// in    AnchorY1  [-] lower edge
+/// in    Width     [-] the menu's own span
+/// in    Height    [-] the menu's own height
+/// in    Corner    [-] which side of the anchor to hang it from
+/// in    Gap       [-] the clear distance between the anchor and the menu
 /// cost  ✔️
 /// tag   guarantee, nonallocating, nonthrowing
 constexpr ExtentBand MenuAtCorner(float AnchorX0, float AnchorY0, float AnchorX1, float AnchorY1,
@@ -139,7 +149,8 @@ constexpr ExtentBand MenuAtCorner(float AnchorX0, float AnchorY0, float AnchorX1
 ///    any occupied box, sliding it along the bounds when a corner hangs off the edge.
 /// in    Bounds        [-] the extent the menu must stay inside -- the viewport leaf, not the window
 /// in    Anchor        [-] the tile the menu was opened from
-/// in    Width, Height [-] the menu's own span
+/// in    Width         [-] the menu's own span
+/// in    Height        [-] the menu's own height
 /// in    Occupied      [-] boxes already spoken for: the widget, the footer, other menus
 /// in    OccupiedCount [-] how many of them
 /// in    Gap           [-] the clear distance between the anchor and the menu
@@ -160,7 +171,8 @@ constexpr ExtentBand MenuAtCorner(float AnchorX0, float AnchorY0, float AnchorX1
 /// note  ⚠️ The anchor itself is not treated as occupied. A menu is allowed to sit flush against the tile
 ///        that opened it; that is the point of the gap.
 /// note  When no corner of the anchor is usable the menu detaches and takes a free corner of the bounds.
-/// cost  ✔️ At most eight candidates against a short list.
+/// note  📝 At most eight candidates tested against a short list.
+/// cost  ✔️
 /// tag   guarantee, nonallocating, nonthrowing
 constexpr bool PlaceMenuClear(const ExtentBand& Bounds, const ExtentBand& Anchor,
                               float Width, float Height,
