@@ -559,4 +559,29 @@ double ResolveSnapTolerance(const ViewportStanding& View, bool Perspective)
                        : std::max(10.0 / std::max(View.OrthoScale, 0.001), 0.25);
 }
 
+double ResolvePickTolerance(const ViewportStanding& View, bool Perspective,
+                            double PixelReach, double ViewportSpan)
+{
+    // 📝 A tolerance of nothing would make the tool unusable rather than precise, so the reach is
+    //    floored before it is converted rather than after — the floor is a statement about the
+    //    ARTIST'S input, not about the world span it becomes.
+    const double Reach = PixelReach > 0.0 ? PixelReach : 1.0;
+
+    if (!Perspective)
+    {
+        // 🔴 `OrthoScale` IS pixels per world unit — it is precisely what the projection multiplies by
+        //    at ViewportProjection.cpp:180. So the conversion is a division, exactly, with no fitted
+        //    constant: 8 px at 4 px per unit is 2 units, at every zoom, in every parallel view.
+        return Reach / std::max(View.OrthoScale, 0.001);
+    }
+
+    // 🔴 In perspective the world span of a pixel depends on how far away the thing is, so this
+    //    INVERTS the projection's own focal length rather than restating it. `ProjectThroughFrame`
+    //    multiplies by `Focal = (Height/2) / tan(fov/2)`; a pixel is therefore `Depth / Focal` world
+    //    units wide. Measured at the focus, which is the depth the sketch plane sits at.
+    const double TanHalf = std::tan(View.FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+    const double Focal   = (std::max(ViewportSpan, 1.0) * 0.5) / std::max(TanHalf, 1.0e-6);
+    return Reach * std::max(View.Distance, 0.001) / Focal;
+}
+
 }   // namespace Slate

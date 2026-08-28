@@ -42,13 +42,24 @@ enum class TransformManner : std::uint32_t
 /// 🧩 What the manipulation is restricted to.
 /// note 📝 `Curve` is reached by tapping G twice rather than by a letter, because it is a manner of moving
 ///       rather than an axis to move along — the placement slides through the curve's own parameter.
+/// 🧩 What a manipulation is confined to.
+/// note  🔴 THE AXIS LETTERS ARE PLANE-RELATIVE, NOT WORLD-RELATIVE. `AxisX` is the sketch plane's Along
+///       direction and `AxisZ` its Across; on the ground plane, which is where a sketch starts, those ARE
+///       world X and Z, which is what makes `G Z 10` read the way the artist expects. On a plane the
+///       artist has re-seated they follow the plane, because a sketch that ignored its own plane would
+///       move geometry off the surface it was drawn on.
+/// note  📝 `AxisY` is the plane's NORMAL. A planar sketch cannot move a point along it — the whole
+///       structure is (Along, Across) pairs — so it is offered for rotation only, where it is not merely
+///       supported but the only rotation a plane HAS. `R Y 35` therefore names its axis honestly rather
+///       than having the letter silently dropped and the rotation happen anyway.
 enum class TransformRestriction : std::uint32_t
 {
     Free   = 0u,
     AxisX  = 1u,
     AxisZ  = 2u,
     Screen = 3u,
-    Curve  = 4u
+    Curve  = 4u,
+    AxisY  = 5u   // [-] - the plane normal; rotation only
 };
 
 /// 🧩 The most a typed amount may run to, including its terminator.

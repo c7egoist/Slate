@@ -27,6 +27,7 @@
 #include "SlateUI/Interface/ParametricTools/Api/ParametricToolsSpecification.h"
 #include "SlateUI/Interface/ParametricWorkspace/Api/ParametricWorkspaceSpecification.h"
 #include "SlateWorkspace/Discipline/PlacementCommit/Api/PlacementCommit.h"
+#include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
 #include "SlateWorkspace/Discipline/SketchPicking/Api/SketchPicking.h"
 #include "SlateWorkspace/Discipline/TransformSession/Api/TransformSession.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
@@ -129,6 +130,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
                                         const ViewportStanding& View,
                                         bool Perspective,
                                         ParametricToolSubject ActiveTool,
+                                        const SelectionOptions& Selection,
                                         WorkspaceNameIndex& Naming,
                                         const WorkspaceDirectoryProjection& Directory,
                                         const ParametricWorkspaceContext& WorkspaceApplied,

@@ -15,7 +15,9 @@
 
 #include "SlateWorkspace/Discipline/RecordDeclaration/Api/RecordDeclaration.h"
 #include "SlateWorkspace/Discipline/SketchPicking/Api/SketchPicking.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 
+#include <cmath>
 #include <cstdio>
 
 namespace
@@ -121,6 +123,39 @@ int main()
         Options.Tolerance = -1.0f;
         Require(Options.ResolvedTolerance() == SelectionOptions::ToleranceMinimum,
                 "and a negative one cannot disable picking");
+    }
+
+    // ⑥ 🔴 THE TOLERANCE IS PIXELS, AND THE CONVERSION IS THE PROJECTION'S OWN, INVERTED. A world-unit
+    //    tolerance is wrong at both ends of the zoom range: the same number that picks one vertex when
+    //    zoomed in swallows a dozen when zoomed out.
+    {
+        ViewportStanding View;
+        View.OrthoScale = 4.0;   // [px/unit] - what the projection multiplies by
+
+        // 8 px at 4 px per unit is 2 units. Exactly, with no fitted constant.
+        Require(std::fabs(ResolvePickTolerance(View, false, 8.0, 900.0) - 2.0) < 1.0e-9,
+                "an orthographic reach is the pixel radius divided by pixels-per-unit");
+
+        // 🔴 THE POINT OF THE WHOLE EXERCISE: zoom in tenfold and the same 8 px reaches a tenth as far
+        //    into the world, so it stays 8 px on the screen the artist is looking at.
+        View.OrthoScale = 40.0;
+        Require(std::fabs(ResolvePickTolerance(View, false, 8.0, 900.0) - 0.2) < 1.0e-9,
+                "and shrinks in world units exactly as the view zooms in");
+
+        // The perspective arm inverts `ProjectThroughFrame`'s focal length, so a point ONE tolerance
+        // away from the pointer projects to exactly the stated pixel radius. Verified by projecting.
+        View.OrthoScale = 1.0;
+        View.Distance = 240.0;
+        View.FieldOfViewDegrees = 60.0;
+        const double Reach = ResolvePickTolerance(View, true, 8.0, 900.0);
+        const double TanHalf = std::tan(60.0 * 0.5 * 3.14159265358979323846 / 180.0);
+        const double Pixels = Reach * ((900.0 * 0.5) / TanHalf) / 240.0;
+        Require(std::fabs(Pixels - 8.0) < 1.0e-9,
+                "a perspective reach projects back to the stated pixel radius at the focus");
+
+        // ⚠️ And a nonsense reach cannot disable picking or divide by nothing.
+        Require(ResolvePickTolerance(View, false, 0.0, 900.0) > 0.0,
+                "a reach of nothing still reaches something");
     }
 
     std::printf("[SelectionModeProof] %u claims, %u failures\n", Claims, Failures);

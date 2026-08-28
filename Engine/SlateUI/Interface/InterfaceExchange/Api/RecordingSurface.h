@@ -166,7 +166,12 @@ enum class KeySubject : std::uint32_t
     Withhold          = 21u,   // [-] - Left arrow; closes it
     Revert            = 22u,   // [-] - Z; commanded it reverts, commanded and shifted it reinstates
 
-    SubjectCount = 23u   // [-] - the closed count, never a subject
+    // 🔴 The Select tool's own key, on the same edge-triggered terms as the roster above. It is NOT a
+    //    layer-stack key, but the seam arbitrates exactly one keyboard and a second roster would give
+    //    two places to ask "did Q arrive" — which is how a key ends up handled twice or not at all.
+    ChooseSelect      = 23u,   // [-] - Q; makes Select the active tool, so nothing draws
+
+    SubjectCount = 24u   // [-] - the closed count, never a subject
 };
 
 /// 🧩 Which modifiers stood down when a key arrived, so a caller may separate `D` from `⌘D`.

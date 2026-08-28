@@ -293,6 +293,28 @@ def main() -> int:
     require("void DriveViewportSelectionAndTransform(" not in editor,
             "the editor must not define the interaction it now calls")
 
+    # 🔴 THIS CLAIM'S NEIGHBOUR ABOVE SAID "the interaction it now calls" AND NEVER CHECKED THAT IT DID.
+    #    It did not. Selection, the gizmo, the transform sessions and the whole Blender-style G/R/S
+    #    parser were implemented, unit-proven and wired to nothing — `DriveViewportSelectionAndTransform`
+    #    had zero call sites outside its own translation unit, so the Select tool did nothing at runtime
+    #    and no gate noticed. A guarantee that a host does not DEFINE something is worth very little
+    #    without the matching guarantee that it USES it: together they say the code lives in one place
+    #    AND runs.
+    #
+    # ⚠️ Every entry point below is reachable from the viewport arm. Extracting a function into a unit
+    #    and forgetting the call is a silent regression — the build stays green, the gates stay green,
+    #    and the feature is simply absent.
+    for Entry in ("DriveViewportSelectionAndTransform",
+                  "DriveDrawingWithModifiers",
+                  "ApplyWorkplaneTool"):
+        require(f"{Entry}(" in editor,
+                f"the editor must actually CALL {Entry} — an uncalled interaction is an absent feature")
+
+    # 🔴 Q IS THE SELECTION TOOL, and a shortcut is only a shortcut if something reads it.
+    require("KeySubject::ChooseSelect" in editor
+            and "ParametricToolSubject::Select" in editor,
+            "Q must reach the host and make Select the active tool")
+
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
     #    `SlateWorkspace/Discipline/CodexActivation`; the guarantees are unchanged, only their address is.

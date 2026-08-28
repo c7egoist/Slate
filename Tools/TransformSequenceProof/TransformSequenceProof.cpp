@@ -108,11 +108,33 @@ void ProveRestricting()
     Claim(Typed("z", true, TransformManner::Scale).Restriction == TransformRestriction::AxisZ,
           "z restricts a standing scale to Z");
 
-    // ⚠️ Rotation in a sketch plane has one axis, so the letters are ignored rather than obeyed.
+    // ⚠️ Rotation in a sketch plane turns about the plane NORMAL, so the two in-plane letters name no
+    //    rotation and are refused. Y is the normal and is the one that means something.
     Claim(!Typed("x", true, TransformManner::Rotate).RestrictionRequested,
-          "x must not restrict a rotation");
+          "x must not restrict a rotation — it is an in-plane direction");
     Claim(!Typed("rz").RestrictionRequested,
           "z must not restrict a rotation started in the same frame");
+
+    // 🔴 `R Y 35` IS THE ARTIST'S OWN EXAMPLE, and Y matched no branch: it fell past every test and
+    //    vanished. The rotation then happened anyway — about the normal, because that is the only
+    //    rotation a plane has — so it was right by accident and said nothing about the axis.
+    const TransformCommandIntake Turned = Typed("ry35");
+    Claim(Turned.StartRequested && Turned.StartManner == TransformManner::Rotate,
+          "R Y 35 starts a rotation");
+    Claim(Turned.RestrictionRequested && Turned.Restriction == TransformRestriction::AxisY,
+          "and the Y is READ, naming the plane normal rather than being silently dropped");
+    Claim(std::string(Turned.NumericAppend) == "35",
+          "and the 35 reaches the numeric run past the axis letter");
+
+    Claim(Typed("y", true, TransformManner::Rotate).Restriction == TransformRestriction::AxisY,
+          "y restricts a rotation already standing");
+
+    // ⚠️ And the converse: Y names no translation a planar sketch can perform, so it is refused for
+    //    move and scale exactly as X and Z are refused for rotation.
+    Claim(!Typed("y", true, TransformManner::Move).RestrictionRequested,
+          "y must not restrict a move — a planar sketch cannot travel along its own normal");
+    Claim(!Typed("y", true, TransformManner::Scale).RestrictionRequested,
+          "nor a scale");
 
     // The last axis letter wins, so an artist correcting X to Z gets Z.
     Claim(Typed("xz", true, TransformManner::Move).Restriction == TransformRestriction::AxisZ,
@@ -258,6 +280,16 @@ void ProveReadout()
     Claim(Reads(Standing) == "G", "an unrestricted move shows no restriction");
     Standing.Restriction = TransformRestriction::Screen;
     Claim(Reads(Standing) == "G", "a screen restriction is not shown either");
+
+    // 🔴 THE READOUT IS HOW THE ARTIST KNOWS THE AXIS WAS HEARD. `R Y 35` showed "R 35" while turning
+    //    about Y anyway, which is indistinguishable from the axis having been ignored.
+    Standing.Manner      = TransformManner::Rotate;
+    Standing.Restriction = TransformRestriction::AxisY;
+    Claim(Reads(Standing) == "R Y", "a rotation about the normal says so");
+    std::snprintf(Standing.Numeric, sizeof(Standing.Numeric), "35");
+    Claim(Reads(Standing) == "R Y 35", "and reads back the artist's whole command");
+    Standing.Numeric[0] = '\0';
+    Standing.Restriction = TransformRestriction::Free;
 
     Claim(std::string(TransformMannerText(TransformManner::Move)) == "Move", "Move has a word");
     Claim(std::string(TransformMannerText(TransformManner::Rotate)) == "Rotate", "Rotate has a word");

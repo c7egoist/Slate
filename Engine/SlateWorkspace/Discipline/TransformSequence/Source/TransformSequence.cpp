@@ -88,6 +88,19 @@ TransformCommandIntake ResolveTransformCommand(const char* Intake,
             continue;
         }
 
+        // 🔴 `R Y 35` TYPED ITS AXIS AND HAD IT THROWN AWAY. Y matched no branch, fell past the numeric
+        //    test, and vanished — the rotation then happened anyway, about the plane normal, because that
+        //    is the only rotation a planar sketch has. Correct by accident and silent about it: the
+        //    readout said "R 35", so the artist could not tell whether the axis had been understood.
+        //    It is accepted for rotation, where it is the true axis, and refused elsewhere.
+        if ((Character == 'y' || Character == 'Y') && MannerStanding &&
+            WorkingManner == TransformManner::Rotate)
+        {
+            Resolved.RestrictionRequested = true;
+            Resolved.Restriction          = TransformRestriction::AxisY;
+            continue;
+        }
+
         if (NumericCharacter(Character) && NumericTaken + 1u < sizeof(Resolved.NumericAppend))
             Resolved.NumericAppend[NumericTaken++] = Character;
     }
@@ -159,6 +172,7 @@ const char* TransformRestrictionText(TransformRestriction Restriction)
         case TransformRestriction::Free:   return "Free";
         case TransformRestriction::AxisX:  return "X";
         case TransformRestriction::AxisZ:  return "Z";
+        case TransformRestriction::AxisY:  return "Y";
         case TransformRestriction::Screen: return "Screen";
         case TransformRestriction::Curve:  return "Curve";
     }
@@ -184,7 +198,8 @@ void FormatTransformCommand(const TransformStanding& Standing, char* Delivered, 
     Delivered[0] = '\0';
 
     const bool ShowAxisRestriction = Standing.Restriction == TransformRestriction::AxisX
-                                  || Standing.Restriction == TransformRestriction::AxisZ;
+                                  || Standing.Restriction == TransformRestriction::AxisZ
+                                  || Standing.Restriction == TransformRestriction::AxisY;
 
     // 🔴 The slide reads as `G G` rather than `G Curve`, because that is what the artist pressed. A
     //    readout that renamed the gesture would stop matching the keys that produced it.

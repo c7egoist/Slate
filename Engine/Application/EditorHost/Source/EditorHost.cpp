@@ -22,6 +22,7 @@
 #include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 #include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
+#include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "Foundation/DeliveryGuarantee.h"
@@ -271,6 +272,26 @@ int main(int ArgumentCount, char** ArgumentValues)
     static WorkplaneCatalogue        SketchWorkplanes;
     static SketchPlacement           SketchTool;
     static WorkspaceRecordName       SketchPendingSelection;
+    // 🔴 THE SELECTION AND GIZMO PATH WAS DEFINED, PROVEN AND NEVER CALLED. Every part of it existed —
+    //    the picker, the gizmo handles, the transform sessions, the Blender-style G/R/S parser — and
+    //    `DriveViewportSelectionAndTransform` had exactly ZERO call sites outside its own translation
+    //    unit. That is why the Select tool did nothing: not a broken implementation, an unreached one.
+    //    These four are the state it needs to keep between frames.
+    static SketchPick                SketchSemanticSelection;
+    static SketchPick                SketchHoveredSelection;
+    static TransformSession          SketchTransform;
+    static double                    SketchLastMovePressed = 0.0;
+    // 📝 A monotonic run of the session, accumulated from the tick's own elapsed figure, so the
+    //    double-tap that switches a move between plane and free travel has a clock to measure against.
+    static double                    SketchSessionMilliseconds = 0.0;
+    // 📝 What the Select widget writes and the picker obeys. Vertex by default, 8 px of reach, and no
+    //    snapping — choosing a specific element and being dragged to the nearest grid line are opposite
+    //    intentions.
+    static SelectionOptions          SketchSelection;
+    static GizmoOptions              SketchGizmo;
+    // 📝 Which record the outliner has highlighted, so a selection made in the tree and one made by
+    //    clicking in the viewport are the same selection. Projected from the records each tick.
+    static WorkspaceDirectoryProjection SketchDirectoryRows;
     // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
     //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
     static ViewportStanding          SketchView;
@@ -810,6 +831,20 @@ int main(int ArgumentCount, char** ArgumentValues)
             const PlaneExtent NorthInterior = Viewport.Drawers().Interior(DrawerBearing::North);
             const PlaneExtent SouthInterior = Viewport.Drawers().Interior(DrawerBearing::South);
             const bool TabPressed = Viewport.Seam().KeyPressed(KeySubject::Summon);
+            // 🔴 Q IS THE SELECT TOOL. Read here beside Tab rather than inside the viewport arm,
+            //    because the seam's `WantTextInput` guard belongs to the seam: a Q typed into the
+            //    directory's filter field is a letter, not a tool change. Setting `ActiveSubject`
+            //    is the whole binding — `SelectedTool(Select)` resolves to `SketchSubject::None`,
+            //    so with Select active every drawing arm declines and the picker gets the press.
+            //
+            // 📝 Any half-placed shape is abandoned. Pressing Q while two anchors of a rectangle
+            //    are down and leaving them pending would draw the rectangle on the next click that
+            //    was meant to select something.
+            if (Viewport.Seam().KeyPressed(KeySubject::ChooseSelect))
+            {
+                ParametricToolsApplied.ActiveSubject = ParametricToolSubject::Select;
+                SketchTool.Abandon();
+            }
             const bool PointerBehindDrawer =
                 NorthInterior.Encloses(ForegroundPointer.PositionX, ForegroundPointer.PositionY) ||
                 SouthInterior.Encloses(ForegroundPointer.PositionX, ForegroundPointer.PositionY);
@@ -846,6 +881,7 @@ int main(int ArgumentCount, char** ArgumentValues)
 
             RegisterIntoNode = 0u;
 
+            SketchSessionMilliseconds += Pass.ElapsedMilliseconds;
             WorkspacePanels.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
 
             // 🔴 THE TOOL PANEL ADVANCES BEFORE THE VIEWPORT READS THE ACTIVE TOOL. It used to run at
@@ -1102,6 +1138,28 @@ int main(int ArgumentCount, char** ArgumentValues)
                                             ParametricToolsApplied, SketchNaming, Sketch,
                                             SketchRecords, SketchRevisions, SketchWorkplanes,
                                             SketchPendingSelection, SketchTool, PointerTaken);
+
+                                    // 🔴 THE CALL THAT WAS MISSING. Selection, the gizmo and the whole
+                                    //    Blender-style command path were implemented, gated correctly
+                                    //    on the Select tool, proven in isolation — and never invoked.
+                                    //    The tool was not broken; nothing ever ran it.
+                                    //
+                                    // 📝 It follows the drawing arm and reads `PointerTaken`, so a tool
+                                    //    that is placing anchors keeps the press. With Select active
+                                    //    `SelectedTool(...).Subject` is `None`, the drawing arm takes
+                                    //    nothing, and every press reaches the picker.
+                                    ProjectWorkspaceDirectory(SketchRecords, SketchDirectoryRows);
+                                    DriveViewportSelectionAndTransform(
+                                        LeafBody, BackgroundPointer,
+                                        Viewport.Surface().TextInput(), Viewport.Seam().Modifiers(),
+                                        SketchBasis, SketchView, LeafPerspective,
+                                        ParametricToolsApplied.ActiveSubject, SketchSelection,
+                                        SketchNaming, SketchDirectoryRows, SketchDirectoryApplied,
+                                        Sketch, SketchRecords, SketchRevisions,
+                                        SketchPendingSelection, SketchSemanticSelection,
+                                        SketchHoveredSelection, SketchTransform, LeafOverlay,
+                                        PointerTaken, SketchSessionMilliseconds,
+                                        SketchLastMovePressed);
 
                                     // 🔴 NO SECOND GRID. `RecordViewportGridOverlay` was called here and
                                     //    drew 161 CPU line segments of its OWN lattice on top of the

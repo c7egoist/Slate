@@ -497,6 +497,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
                                         const ViewportStanding& View,
                                         bool Perspective,
                                         ParametricToolSubject ActiveTool,
+                                        const SelectionOptions& Selection,
                                         WorkspaceNameIndex& Naming,
                                         const WorkspaceDirectoryProjection& Directory,
                                         const ParametricWorkspaceContext& WorkspaceApplied,
@@ -525,7 +526,15 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
     const bool Probed = ResolveViewportPlaneIntersection(Basis, View, Perspective, Extent,
                                                          Pointer.PositionX, Pointer.PositionY, Probe);
     if (Probed)
-        HoveredSelection = ResolveSketchPick(Sketch, Records, Probe, ResolveSnapTolerance(View, Perspective));
+    {
+        // 🔴 THE TOLERANCE IS A DISTANCE ON THE SCREEN, converted here to the world the probe lives in.
+        //    `ResolveSnapTolerance` answers a world span for SNAPPING, which is a different question with
+        //    a different answer: snapping asks "what would the artist have meant", selection asks "what
+        //    is under the pointer". Selecting through the snap tolerance is why reaching for one vertex
+        //    at a distant zoom picked its neighbour.
+        const double Reach = ResolvePickTolerance(View, Perspective, Selection.ResolvedTolerance(), Extent.Height());
+        HoveredSelection = ResolveSketchPickForElement(Sketch, Records, Probe, Reach, Selection.Element);
+    }
 
     const SketchPick ActiveSelection =
         EditableSelection(Sketch, Records, SelectedRecord, PendingSelection, SemanticSelection);

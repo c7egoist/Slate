@@ -421,4 +421,20 @@ bool ResolveViewportPlaneIntersection(const SpatialBasis& Basis,
 ///       because a scale of zero would otherwise divide by it.
 double ResolveSnapTolerance(const ViewportStanding& View, bool Perspective);
 
+/// 🧩 How far from an element, in plane units, a pointer that many PIXELS away reaches.
+/// in    PixelReach   [px] the artist's stated tolerance, as a radius on the screen they are looking at
+/// in    ViewportSpan [px] the leaf's height, which is what the perspective projection divides the field
+///                         of view across; ignored by the orthographic arm, which needs no such figure
+/// note  🔴 SELECTION AND SNAPPING ASK DIFFERENT QUESTIONS. `ResolveSnapTolerance` answers "how close is
+///       close enough for the artist to have MEANT that vertex", and bakes its own screen span into the
+///       formula. Selection answers "what is under the pointer", and the artist states the radius. Sharing
+///       one number made a stated tolerance of 8 px mean nothing at all.
+/// note  📝 Both arms convert the SAME pixel radius, so a tolerance chosen in a perspective view means the
+///       same thing after switching to an orthographic one. The orthographic arm divides by `OrthoScale`,
+///       which IS pixels per world unit; the perspective arm inverts the same focal length the projection
+///       multiplies by, measured at the focus — the depth the sketch plane sits at.
+/// tag   nonallocating, nonthrowing
+double ResolvePickTolerance(const ViewportStanding& View, bool Perspective,
+                            double PixelReach, double ViewportSpan);
+
 }   // namespace Slate

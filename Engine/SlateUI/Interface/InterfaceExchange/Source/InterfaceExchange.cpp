@@ -838,6 +838,7 @@ bool InterfaceExchange::KeyPressed(KeySubject Subject) const
         case KeySubject::Disclose:          Arbitrated = ImGuiKey_RightArrow; break;
         case KeySubject::Withhold:          Arbitrated = ImGuiKey_LeftArrow;  break;
         case KeySubject::Revert:            Arbitrated = ImGuiKey_Z;          break;
+        case KeySubject::ChooseSelect:      Arbitrated = ImGuiKey_Q;          break;
 
         default:                   return false;
     }
