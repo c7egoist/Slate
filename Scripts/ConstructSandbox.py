@@ -178,9 +178,23 @@ def ResolveTranslationOrder(Declared):
 
 # 📝 The mirror of Get-IncludePath. Foundation/ and Shared/ are reachable from every unit through the engine
 #    root; the partition is enforced by the link and by VerifyPartition, not by hiding headers.
+#
+# 🔴 THE REPOSITORY ROOT IS NOT AN INCLUDE ROOT, BECAUSE IT IS NOT ONE ON WINDOWS. This carried it and
+#    `Get-IncludePath` never did — so a header placed at the repository root instead of under `Engine/`
+#    resolved here and was rejected by `cl.exe` with C1083. Every sandbox gate passed and the real build
+#    stopped on the first unit that included it. A mirror more permissive than the thing it mirrors does
+#    not fail earlier than the real build; it fails LATER, on someone else's machine.
+#
+# ⚠️ `Tools/VulkanParseStub` is the ONE exception and is reached by its own path rather than by opening
+#    the repository root again. It stands in for the Vulkan SDK, which this sandbox has no copy of; on
+#    Windows that headroom comes from the real SDK under `$VulkanRoot\Include`. Adding the stub is a
+#    substitution for something the real build genuinely has — widening the root is not.
 def GetIncludePath(UnitEntry, VulkanInclude):
-    Paths = [EngineRoot, RepositoryRoot,
+    Paths = [EngineRoot,
              os.path.join(PackageRoot, 'glfw', 'include')]
+
+    if not VulkanInclude:
+        Paths.append(os.path.join(RepositoryRoot, 'Tools', 'VulkanParseStub'))
 
     if VulkanInclude:
         Paths.append(VulkanInclude)

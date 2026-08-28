@@ -163,6 +163,58 @@ def TestShellEncoding():
     return Broken
 
 
+def TestIncludeRootsReachable():
+    """🔴 Every `#include "Foundation/..."` and `#include "Shared/..."` must name a file that exists
+    UNDER `Engine/`, because `Engine/` is the only first-party include root the Windows build opens.
+
+    A header placed at the repository root instead resolves in the sandbox — which used to add the
+    repository root as well — and is rejected by `cl.exe` with C1083 on the first unit that includes
+    it. That divergence cost a whole build: 45 green gates here, a stopped build there. The sandbox
+    no longer opens the root, and this states the rule so the answer does not depend on remembering
+    which mirror is the strict one."""
+
+    Broken  = []
+    Wanted  = re.compile(r'^\s*#\s*include\s+"((?:Foundation|Shared)/[^"]+)"')
+    Skipped = ('ExternalPackages', '_AgentScratch', '.git')
+
+    for Walked, Folders, Files in os.walk(RepositoryRoot):
+        Folders[:] = [Folder for Folder in Folders if Folder not in Skipped]
+
+        for Leaf in sorted(Files):
+            if os.path.splitext(Leaf)[1].lower() not in ('.h', '.cpp'):
+                continue
+
+            Full = os.path.join(Walked, Leaf)
+
+            try:
+                with open(Full, 'r', encoding='utf-8', errors='ignore') as Reader:
+                    Lines = Reader.read().splitlines()
+            except OSError:
+                continue
+
+            for Number, Line in enumerate(Lines, start=1):
+                Found = Wanted.match(Line)
+
+                if not Found:
+                    continue
+
+                Named = Found.group(1)
+
+                if os.path.isfile(os.path.join(EngineRoot, Named.replace('/', os.sep))):
+                    continue
+
+                Where = os.path.relpath(Full, RepositoryRoot).replace(os.sep, '/')
+                Elsewhere = os.path.isfile(os.path.join(RepositoryRoot, Named.replace('/', os.sep)))
+
+                Broken.append(
+                    "{0}:{1} includes \"{2}\", which is not under Engine/{3}".format(
+                        Where, Number, Named,
+                        " -- it sits at the repository root, which is not an include root"
+                        if Elsewhere else " and was not found at all"))
+
+    return Broken
+
+
 #------------------------------------------------------------------------------------------------------------------------
 #                                                        THE VERDICT
 #------------------------------------------------------------------------------------------------------------------------
@@ -184,6 +236,18 @@ def Main(Arguments):
 
         print('')
         WriteBroken("shell encoding is wrong in {0} file(s)".format(len(Mistyped)))
+        return 1
+
+    # 🔴 Reported on its own, before the partition: an unreachable include root is a build that never
+    #    starts, and folding it into the unit-reference list names the wrong subsystem.
+    Unreachable = TestIncludeRootsReachable()
+
+    if Unreachable:
+        for Fault in Unreachable:
+            WriteBroken(Fault)
+
+        print('')
+        WriteBroken("{0} include(s) do not resolve under Engine/".format(len(Unreachable)))
         return 1
 
     Refusals = []
