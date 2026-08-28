@@ -42,7 +42,7 @@ for this and is the model to follow.
 > `DeclareBezier` hands all anchors to `SketchStructure::DeclareBezier`, so the commit path
 > changes with the preview or the two disagree — which the Task-12 agreement claims will catch.
 
-### 2. Idle CPU of 8–9% — READ, needs a runtime probe to attribute exactly
+### 2. Idle CPU of 8–9% — MEASURED, FIXED
 
 The editor never blocks. `EditorHost.cpp:713` loops on `Session.Active()` and every pass runs a
 full interface tick and a full present. `WindowInterchange::Await()` (`:151`, `glfwWaitEvents`)
@@ -107,11 +107,24 @@ interpolate. Preview and commit share the change. **Proof:** every interior anch
 small tolerance of the drawn curve, at 3, 4, 5, 6, 7 and 8 anchors — the table above, driven to
 ≈0. Plus the existing preview↔commit agreement claim.
 
-### Step 2 — Audit the frame, then stop presenting unchanged images
-Instrument the tick into named stages and report per-stage microseconds, so the answer is
-measured. Then adopt `RedrawScheduler` in the host: `Waking()` false → `Await()`.
-**Proof:** an idle tick performs no present and no interface rebuild; a tick with a pending mark
-performs both. Plus the measured stage table in the commit message.
+### Step 2 — Audit the frame, then stop presenting unchanged images — **DONE**
+Measured first. The sketch geometry was **not** the cost:
+
+| Sketch | Project to screen | Tessellate every curve | Cost at 60 fps |
+|-------:|------------------:|-----------------------:|---------------:|
+| 20 curves | 12.1 µs | 12.1 µs | 0.15% of a core |
+| 80 curves | 11.6 µs | 50.2 µs | 0.37% of a core |
+| 240 curves | 12.2 µs | 149.8 µs | 0.97% of a core |
+
+Under 1% even at 240 curves, so the 8–9% is the unconditional rebuild-and-present, exactly as
+`RedrawScheduler`'s own header predicted. `ViewportSequence::Waking()` now reads all three
+operands and `SessionSequence` sleeps the tick when it says no.
+
+**Bounded, not blocking.** `AwaitFor(0.05)` rather than `Await()`: if the wake rule ever misses a
+source of change, a bounded wait costs a late frame, while an unbounded one costs a window that
+never redraws until the artist moves the pointer — which is reported as a hang, not as a missed
+redraw. `Tools/IdleWakeProof` carries 18 claims and five sabotages, catching both a rule that
+never sleeps and a rule that sleeps when it should not.
 
 ### Step 3 — Orthographic zoom
 Probe which of the three candidates holds, fix it, and prove the behavioural claim.

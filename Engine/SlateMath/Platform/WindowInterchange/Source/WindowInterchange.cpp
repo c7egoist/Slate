@@ -1,4 +1,4 @@
-﻿//============================================================================================================================================
+//============================================================================================================================================
 //                                                          WINDOWINTERCHANGE.CPP
 //============================================================================================================================================
 // 🧩 Windowing over GLFW, linked dynamically through glfw3dll.lib against glfw3.dll.
@@ -151,6 +151,22 @@ void WindowInterchange::Await()
         return;
 
     glfwWaitEvents();
+}
+
+void WindowInterchange::AwaitFor(double Seconds)
+{
+    if (WindowSlot == nullptr)
+        return;
+
+    // ⚠️ A non-positive interval would spin, which is the behaviour this exists to remove. An
+    //    interval longer than a blink is not a wait, it is a stall the artist can feel, so the
+    //    ceiling is a tenth of a second: ten wakes a second cost nothing measurable and no source
+    //    of change outside the window system is ever seen later than that.
+    constexpr double Shortest = 0.001;
+    constexpr double Longest  = 0.1;
+
+    const double Bounded = Seconds < Shortest ? Shortest : (Seconds > Longest ? Longest : Seconds);
+    glfwWaitEventsTimeout(Bounded);
 }
 
 bool WindowInterchange::ExtentAltered() const

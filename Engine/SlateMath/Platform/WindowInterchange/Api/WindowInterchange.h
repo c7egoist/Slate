@@ -63,6 +63,21 @@ public:
     /// tag   api, nonthrowing
     void Await();
 
+    /// 🧩 ⏱️ Blocks until the window system reports something OR the interval expires.
+    /// in    Seconds  [-]  the longest this may sleep; clamped to a sane ceiling
+    /// note  🔴 ⏱️ What an idle-but-visible editor waits on, and deliberately NOT `Await`. An
+    ///        unbounded wait is correct only if the wake rule is perfect: miss one source of change
+    ///        and the window freezes until the artist happens to move the pointer, and the artist
+    ///        reports a hang, not a missed redraw. A bounded wait degrades instead — a rule that is
+    ///        wrong costs a late frame, never a locked window — and it still removes the sixty
+    ///        unchanged images a second that made the process cost 8 to 9% of a core at rest.
+    /// note  ⚠️ This is a floor on latency for anything NOT routed through the window system. A
+    ///        timer, a stream arriving on another thread, a device notification: each is seen within
+    ///        the interval rather than instantly.
+    /// cost  ✔️
+    /// tag   api, nonthrowing
+    void AwaitFor(double Seconds);
+
     /// 🧩 Whether the drawable extent moved since it was last adopted.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing

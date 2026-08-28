@@ -305,6 +305,39 @@ bool ViewportSequence::Moving() const
     return DrawersOwned.Moving() || Motion.Moving();
 }
 
+bool ViewportSequence::Waking() const
+{
+    // ⚠️ Before the first tick nothing has ever been recorded, so there is no correct image to leave
+    //    on screen. Blocking here shows the artist an empty window until they happen to move the
+    //    pointer, which reads as a host that failed to open.
+    if (!DrawersConstructed)
+        return true;
+
+    const PointerCondition&   Pointer = SurfaceOwned.Pointer();
+    const TextInputCondition& Typed   = SurfaceOwned.TextInput();
+
+    // 🔴 ARRIVAL IS AN EDGE OR A HELD STATE, NEVER A POSITION. Comparing `PositionX` against the
+    //    previous tick's would report an arrival forever once the pointer rests anywhere but the
+    //    origin, which is a wake rule that never sleeps.
+    const bool PointerArrived = Pointer.TravelX != 0.0f
+                             || Pointer.TravelY != 0.0f
+                             || Pointer.WheelY  != 0.0f
+                             || Pointer.ContactHeld
+                             || Pointer.ContactPressed
+                             || Pointer.ContactReleased
+                             || Pointer.SecondaryHeld
+                             || Pointer.SecondaryPressed
+                             || Pointer.SecondaryReleased;
+
+    const bool TextArrived = Typed.IntakeCount != 0u
+                          || Typed.AcceptPressed    || Typed.CancelPressed
+                          || Typed.BackspacePressed || Typed.DeletePressed
+                          || Typed.HomePressed      || Typed.EndPressed
+                          || Typed.LeftPressed      || Typed.RightPressed;
+
+    return MarksOwned.Waking(Moving(), PointerArrived || TextArrived);
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      RECLAIM
 //------------------------------------------------------------------------------------------------------------------------

@@ -16,6 +16,11 @@ namespace Slate
 namespace
 {
 
+// 📝 ⏱️ How long an idle tick sleeps in the window system before looking again. Twenty of these a
+//    second is imperceptible and costs nothing measurable, while still bounding the damage if the
+//    wake rule ever misses a source of change.
+constexpr double WakeIntervalSeconds = 0.05;
+
 //------------------------------------------------------------------------------------------------------------------------
 //                                                       CONTENT ROOT
 //------------------------------------------------------------------------------------------------------------------------
@@ -264,6 +269,28 @@ SessionPass SessionSequence::Await()
 
     if (Pass.Current != TickCondition::Recording)
     {
+        Opened.Current = SessionCondition::Idle;
+        return Opened;
+    }
+
+    // ③·ii 🔴 ⏱️ NOTHING CHANGED, SO NOTHING IS PRESENTED. This is the whole of the idle cost: under
+    //       FIFO pacing the host rebuilt the interface and presented a fresh image sixty times a
+    //       second whether or not a pixel differed, measured at 8 to 9% of a core with the artist's
+    //       hands off the input. `RedrawScheduler` was written for this, carries the wake rule, and
+    //       was read by nobody.
+    //
+    //       ⚠️ The recording is surrendered before returning. The vendor handed this tick a command
+    //       buffer and a display slot at `Lifetime.Await`; returning `Idle` without completing the
+    //       tick leaks the slot and the chain stalls within a few frames.
+    //
+    //       ⚠️ Waits with a BOUND rather than blocking outright. If the wake rule ever misses a
+    //       source of change, a bounded wait costs a late frame; an unbounded one costs a window
+    //       that never redraws until the artist moves the pointer, which is reported as a hang.
+    if (!Viewport.Waking())
+    {
+        Discard(Lifetime.Complete());
+        Lifetime.Window().AwaitFor(WakeIntervalSeconds);
+
         Opened.Current = SessionCondition::Idle;
         return Opened;
     }

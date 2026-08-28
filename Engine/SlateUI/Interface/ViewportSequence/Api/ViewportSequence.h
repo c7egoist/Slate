@@ -186,6 +186,25 @@ public:
     /// tag   api, nonallocating, nonthrowing
     bool Moving() const;
 
+    /// 🧩 ⏱️ Whether this tick must be recorded and presented at all, or the host may block in the
+    ///    window system until the artist does something.
+    /// out   Waking  [-]  false means present nothing; the image already on screen is still correct
+    /// note  🔴 ⏱️ THE EDITOR NEVER STOPPED PRESENTING. Under FIFO pacing the host rebuilt the whole
+    ///        interface and presented a fresh image sixty times a second forever, whether or not one
+    ///        pixel differed — measured at 8 to 9% of a core with the artist's hands off the input.
+    ///        `RedrawScheduler` was written for exactly this, carries the wake rule, is owned by this
+    ///        unit and was read by nobody; the marks were raised every tick and never asked about.
+    /// note  🔴 The sketch geometry was NOT the cost and is not what this addresses. Projecting and
+    ///        tessellating a 240-curve sketch measures 162 microseconds a frame, under 1% of a core;
+    ///        the expense is rebuilding and presenting an unchanged interface, not computing shapes.
+    ///        Measure before optimising, or the fast thing gets optimised and the idle stays.
+    /// note  ⚠️ Asked BEFORE `Advance`, because a tick that is not waking must not open an ImGui
+    ///        frame it will never seal. All three operands the rule needs are read here rather than
+    ///        by the host: the host cannot see the drawer springs or the panel marks.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    bool Waking() const;
+
     /// 🧩 Destroys every owned component and forgets the device handles.
     /// cost  🚩
     /// tag   api, nonthrowing
