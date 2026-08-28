@@ -133,19 +133,53 @@ Probe which of the three candidates holds, fix it, and prove the behavioural cla
 Find the draw, make it opaque. **Proof:** the plate's fill alpha is fully opaque wherever a
 dropdown is drawn.
 
-### Step 5 — `Q` selects, and does not draw
+### Step 5 — `Q` selects, and does not draw — **DONE**
 `Q` activates a Select tool. While it is active no placement begins on a press; the press picks.
-**Proof:** a press with Select active adds no curve and no anchor to the sketch.
 
-### Step 6 — The floating tool-options widget
-A viewport-anchored popover, per the attached HTML: a persistent panel for Select carrying
-**Vertex / Edge / Face** modes and a transform gizmo toggle, collapsing to a **pill** reading
-`Menu Name ⌄` with an SVG-style icon. Built on the existing panel and theme components, not a
-new widget stack.
+**What was actually wrong was worse than the plan assumed.** The Select tool, the gizmo, the
+transform sessions and the whole Blender-style `G`/`R`/`S` grammar were already implemented and
+already gated correctly on `SelectedTool(Select).Subject == SketchSubject::None`. The reason none
+of it worked is that **`DriveViewportSelectionAndTransform` had zero call sites** — the host never
+invoked it. Nothing was broken; nothing ran.
 
-> ⚠️ **The attached `ToolOptionsWidget.html` did not arrive in the workspace** — `/home/user/uploads/`
-> is empty. Step 6 is specified from the description alone and will be built to the file once it
-> is re-attached, so that the visual result matches rather than approximates.
+| Piece | Before | After |
+| --- | --- | --- |
+| Selection / gizmo path called by the host | never | every viewport tick |
+| `Q` bound to Select | no binding | `KeySubject::ChooseSelect`, guarded by `WantTextInput` |
+| Element mode | none — one fixed Point→Control→Curve priority | Vertex / Edge / Face, each refusing to fall back |
+| Selection tolerance | shared with the snap tolerance | stated in pixels, converted by inverting the projection |
+| `R Y 35` | the `Y` was silently dropped | read as the plane normal and shown in the readout |
+
+`ValidateHostBuildBudgets` claimed *"the interaction it now calls"* and never checked that it did.
+It checks three entry points now; deleting the call fails the gate.
+
+**Proven:** `SelectionModeProof` 20 claims, sabotaged three ways. `TransformSequenceProof` 68
+claims, sabotaged three ways.
+
+### Step 6 — The floating tool-options widget — **DONE**
+Built to `References/ToolOptionsWidget.html`, read from the repository the link names. The
+reference declares exactly four kinds of control — slider, segmented, toggle, swatches — and every
+tool's options are a table of them, so that is the whole grammar of `ToolOptionsWidget`.
+
+Select and the gizmo are **one** widget, because choosing something and then moving it is one
+thing the artist does. Its three rows are the element mode, the tolerance in pixels, and whether
+the gizmo is shown. **There is no snapping row** — choosing a specific element and being dragged
+onto the nearest grid line are opposite intentions.
+
+Two deliberate departures from the reference, both recorded in the code:
+
+- **The collapsed form is a pill, not the reference's 56 px round bubble.** A bubble shows an icon
+  and cannot answer "which tool's options are folded in here". The pill keeps the title and a
+  chevron and is sized from its own caption, so the answer always fits.
+- **The card clamps to the viewport leaf, not the window.** A widget clamped to the window could be
+  dragged behind a drawer and never dragged back.
+
+`VertexPoint`, `EdgeSegment` and `FacePlanar` were unresolved stubs and are now drawn: one
+quadrilateral with the selected part emphasised, so the three modes read as one choice about one
+thing. `CrossClose` was added for the dismiss action.
+
+**Proven:** `ToolOptionsWidgetProof` 25 claims — the edge clamp, the knob/readout round trip, the
+zero-width span, the pill sizing and the row bounds — sabotaged two ways.
 
 ### Step 7 — Context menus that avoid each other
 A context menu (Bevel, Chamfer, Trim, Cut, Add) opens in a free corner, never on top of another

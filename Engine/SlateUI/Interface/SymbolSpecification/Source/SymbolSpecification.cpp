@@ -282,6 +282,15 @@ constexpr StrokeStep CodeBracketsSteps[] =
 };
 
 // 📝 lucide `crosshair` — the bounding disc and the four axis ticks that cross it.
+// 📝 lucide `x` — two strokes through the centre of the declared square.
+constexpr StrokeStep CrossCloseSteps[] =
+{
+    {  StrokeCommand::Origin,   6.0f,  6.0f },
+    {  StrokeCommand::Segment, 18.0f, 18.0f },
+    {  StrokeCommand::Origin,  18.0f,  6.0f },
+    {  StrokeCommand::Segment,  6.0f, 18.0f }
+};
+
 constexpr StrokeStep CrosshairCentreSteps[] =
 {
     {  StrokeCommand::Disc,    12.0f, 12.0f, 10.0f },
@@ -293,6 +302,58 @@ constexpr StrokeStep CrosshairCentreSteps[] =
     {  StrokeCommand::Segment, 12.0f,  2.0f },
     {  StrokeCommand::Origin,  12.0f, 22.0f },
     {  StrokeCommand::Segment, 12.0f, 18.0f }
+};
+
+// 📐 THE THREE ELEMENT MODES SHARE ONE FIGURE so the segmented control reads as one choice about one
+//    thing. Each draws the SAME quadrilateral and emphasises the part it selects — Blender's own
+//    convention, and the reason an artist can tell the three apart at 18 px without reading the label.
+//    Drawing three unrelated pictures would have made the mode look like three different tools.
+
+// 📝 The quad's four corners, filled. The outline stays faint by drawing after the discs at the same
+//    weight — the discs are what the eye lands on.
+constexpr StrokeStep VertexPointSteps[] =
+{
+    {  StrokeCommand::Origin,   5.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f, 19.0f },
+    {  StrokeCommand::Segment,  5.0f, 19.0f },
+    {  StrokeCommand::Close,    0.0f,  0.0f },
+    {  StrokeCommand::Disc,     5.0f,  5.0f,  2.6f },
+    {  StrokeCommand::Disc,    19.0f,  5.0f,  2.6f },
+    {  StrokeCommand::Disc,    19.0f, 19.0f,  2.6f },
+    {  StrokeCommand::Disc,     5.0f, 19.0f,  2.6f }
+};
+
+// 📝 The same quad with ONE side carrying the two discs — an edge is a pair of vertices and the figure
+//    says so. The leading side is the one emphasised, matching the reference's own icon.
+constexpr StrokeStep EdgeSegmentSteps[] =
+{
+    {  StrokeCommand::Origin,   5.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f, 19.0f },
+    {  StrokeCommand::Segment,  5.0f, 19.0f },
+    {  StrokeCommand::Close,    0.0f,  0.0f },
+    {  StrokeCommand::Origin,   5.0f, 19.0f },
+    {  StrokeCommand::Segment,  5.0f,  5.0f },
+    {  StrokeCommand::Disc,     5.0f,  5.0f,  2.6f },
+    {  StrokeCommand::Disc,     5.0f, 19.0f,  2.6f }
+};
+
+// 📝 The same quad with an inner quad standing for the surface it encloses. A filled centre is not
+//    available in the stroke stream, so the interior is DECLARED by a second outline rather than
+//    implied — which also keeps the figure legible against both a light and a dark tile.
+constexpr StrokeStep FacePlanarSteps[] =
+{
+    {  StrokeCommand::Origin,   5.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f,  5.0f },
+    {  StrokeCommand::Segment, 19.0f, 19.0f },
+    {  StrokeCommand::Segment,  5.0f, 19.0f },
+    {  StrokeCommand::Close,    0.0f,  0.0f },
+    {  StrokeCommand::Origin,   9.0f,  9.0f },
+    {  StrokeCommand::Segment, 15.0f,  9.0f },
+    {  StrokeCommand::Segment, 15.0f, 15.0f },
+    {  StrokeCommand::Segment,  9.0f, 15.0f },
+    {  StrokeCommand::Close,    0.0f,  0.0f }
 };
 
 // 📝 lucide `box` — the isometric cube: the upper rhombus and the two falling edges from its near corner.
@@ -636,9 +697,9 @@ constexpr SymbolFigure Roster[static_cast<std::uint32_t>(SymbolSubject::SubjectC
     /* ArrowReturn         */ Unresolved(SymbolDiscipline::Navigation),
     /* CrosshairCentre     */ { CrosshairCentreSteps, 9u, SymbolDiscipline::Navigation, DeclaredWeight, true },
 
-    /* VertexPoint         */ Unresolved(SymbolDiscipline::Geometry),
-    /* EdgeSegment         */ Unresolved(SymbolDiscipline::Geometry),
-    /* FacePlanar          */ Unresolved(SymbolDiscipline::Geometry),
+    /* VertexPoint         */ { VertexPointSteps, 9u, SymbolDiscipline::Geometry,   DeclaredWeight, true  },
+    /* EdgeSegment         */ { EdgeSegmentSteps, 9u, SymbolDiscipline::Geometry,   DeclaredWeight, true  },
+    /* FacePlanar          */ { FacePlanarSteps, 10u, SymbolDiscipline::Geometry,   DeclaredWeight, true  },
     /* SubdivisionStep     */ Unresolved(SymbolDiscipline::Geometry),
     /* ExtrudeSpan         */ Unresolved(SymbolDiscipline::Geometry),
     /* BevelChamfer        */ Unresolved(SymbolDiscipline::Geometry),
@@ -712,7 +773,8 @@ constexpr SymbolFigure Roster[static_cast<std::uint32_t>(SymbolSubject::SubjectC
     /* LockOpen            */ { LockOpenSteps,        6u, SymbolDiscipline::LayerStack, DeclaredWeight, true },
     /* ArrowUpLine         */ { ArrowUpLineSteps,     5u, SymbolDiscipline::LayerStack, DeclaredWeight, true },
     /* ArrowDownLine       */ { ArrowDownLineSteps,   5u, SymbolDiscipline::LayerStack, DeclaredWeight, true },
-    /* HalfMask            */ { MaskStencilSteps,     2u, SymbolDiscipline::LayerStack, DeclaredWeight, true }
+    /* HalfMask            */ { MaskStencilSteps,     2u, SymbolDiscipline::LayerStack, DeclaredWeight, true },
+    /* CrossClose          */ { CrossCloseSteps,      4u, SymbolDiscipline::Workspace,  DeclaredWeight, true  }
 };
 
 // 📝 🔴 The roster is declared in discipline order and the registration spans below index into it. Two orderings
@@ -724,7 +786,7 @@ constexpr SymbolSubject DisciplineOrder[] =
     SymbolSubject::PanelSplit,          SymbolSubject::PersistDisc,
     SymbolSubject::BulbFilament,        SymbolSubject::EyeOpen,             SymbolSubject::EyeClosed,
     SymbolSubject::PlusCross,           SymbolSubject::TrashBin,            SymbolSubject::GearCog,
-    SymbolSubject::SpeakerCone,         SymbolSubject::CodeBrackets,
+    SymbolSubject::SpeakerCone,         SymbolSubject::CodeBrackets,       SymbolSubject::CrossClose,
     SymbolSubject::ChevronDown,         SymbolSubject::ChevronRight,        SymbolSubject::MagnifierLens,
     SymbolSubject::ArrowReturn,         SymbolSubject::CrosshairCentre,
     SymbolSubject::VertexPoint,         SymbolSubject::EdgeSegment,         SymbolSubject::FacePlanar,
@@ -758,13 +820,13 @@ constexpr SymbolSubject DisciplineOrder[] =
 
 constexpr std::uint32_t DisciplineFirst[static_cast<std::uint32_t>(SymbolDiscipline::DisciplineCount) + 1u] =
 {
-    0u, 13u, 18u, 27u, 32u, 37u, 42u, 46u, 50u, 54u, 58u, 62u, 66u, 83u
+    0u, 14u, 19u, 28u, 33u, 38u, 43u, 47u, 51u, 55u, 59u, 63u, 67u, 84u
 };
 
-static_assert(sizeof(DisciplineOrder) / sizeof(SymbolSubject) == 83u,
+static_assert(sizeof(DisciplineOrder) / sizeof(SymbolSubject) == 84u,
               "The discipline ordering must register every subject except the placeholder mark.");
 
-static_assert(DisciplineFirst[static_cast<std::uint32_t>(SymbolDiscipline::DisciplineCount)] == 83u,
+static_assert(DisciplineFirst[static_cast<std::uint32_t>(SymbolDiscipline::DisciplineCount)] == 84u,
               "The final registration boundary must reach the end of the discipline ordering.");
 
 }   // namespace

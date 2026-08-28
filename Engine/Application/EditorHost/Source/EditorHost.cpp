@@ -23,6 +23,7 @@
 #include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
 #include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
+#include "SlateUI/Interface/ToolOptionsWidget/Api/ToolOptionsWidget.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "Foundation/DeliveryGuarantee.h"
@@ -292,6 +293,9 @@ int main(int ArgumentCount, char** ArgumentValues)
     // 📝 Which record the outliner has highlighted, so a selection made in the tree and one made by
     //    clicking in the viewport are the same selection. Projected from the records each tick.
     static WorkspaceDirectoryProjection SketchDirectoryRows;
+    // 🔴 SELECT AND THE GIZMO ARE ONE WIDGET. Choosing something and then moving it is one thing the
+    //    artist does; two panels would put the gizmo's switch somewhere else at the moment it is wanted.
+    static ToolOptionsWidget         SketchToolOptions;
     // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
     //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
     static ViewportStanding          SketchView;
@@ -609,6 +613,13 @@ int main(int ArgumentCount, char** ArgumentValues)
         return 1;
     }
 
+    if (!SketchToolOptions.ConstructToolOptionsWidget(Viewport.MotionSource(), Viewport.Surface(),
+                                                      Viewport.Appearance()).Resolved)
+    {
+        std::printf("%s \u2014 the tool options widget was rejected\n", HostName);
+        return 1;
+    }
+
     // One shader stream index feeds both the dynamic atmosphere compute pass and the overlay pass.
     const Deliver<bool> CodecDelivery =
         OverlayCodec.AttachShaderStreams(Lifetime.DeviceExchange(), ShaderStreamDirectory());
@@ -882,6 +893,7 @@ int main(int ArgumentCount, char** ArgumentValues)
             RegisterIntoNode = 0u;
 
             SketchSessionMilliseconds += Pass.ElapsedMilliseconds;
+            SketchToolOptions.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
             WorkspacePanels.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
 
             // 🔴 THE TOOL PANEL ADVANCES BEFORE THE VIEWPORT READS THE ACTIVE TOOL. It used to run at
@@ -1062,6 +1074,58 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 {
                                     const SpatialBasis SketchBasis = ResolveSketchBasis(Sketch);
 
+                                    // 🔴 THE WIDGET IS OFFERED THE CONTACT FIRST. It floats OVER the
+                                    //    leaf, so a press that lands on it is a press on it — offering
+                                    //    it to the viewport first would drag the camera out from under
+                                    //    the slider the artist was holding, and clicking the panel
+                                    //    would deselect the very thing its options apply to.
+                                    //
+                                    // 📝 Select and the gizmo are ONE widget, so its rows are declared
+                                    //    together: the element mode and reach that govern picking, then
+                                    //    whether the gizmo is shown for what was picked.
+                                    {
+                                        static const char* const ElementCaptions[3] =
+                                            { "Vertex", "Edge", "Face" };
+                                        static const SymbolSubject ElementGlyphs[3] =
+                                            { SymbolSubject::VertexPoint,
+                                              SymbolSubject::EdgeSegment,
+                                              SymbolSubject::FacePlanar };
+
+                                        // 📝 The mode is held as an ordinal for the widget and read back
+                                        //    into the enum, so the two can never disagree about which
+                                        //    element is standing.
+                                        std::uint32_t ElementSelected =
+                                            static_cast<std::uint32_t>(SketchSelection.Element);
+
+                                        OptionDeclaration SelectRows[3] = {};
+                                        SelectRows[0].Kind        = OptionControl::Segmented;
+                                        SelectRows[0].Caption     = "Mode";
+                                        SelectRows[0].Selected      = &ElementSelected;
+                                        SelectRows[0].Options     = ElementCaptions;
+                                        SelectRows[0].Glyphs      = ElementGlyphs;
+                                        SelectRows[0].OptionCount = 3u;
+
+                                        SelectRows[1].Kind    = OptionControl::Slider;
+                                        SelectRows[1].Caption = "Tolerance";
+                                        SelectRows[1].Unit    = "px";
+                                        SelectRows[1].Reading = &SketchSelection.Tolerance;
+                                        SelectRows[1].Minimum = SelectionOptions::ToleranceMinimum;
+                                        SelectRows[1].Maximum = SelectionOptions::ToleranceMaximum;
+
+                                        SelectRows[2].Kind    = OptionControl::Toggle;
+                                        SelectRows[2].Caption = "Show gizmo";
+                                        SelectRows[2].Taken   = &SketchGizmo.Shown;
+
+                                        Discard(SketchToolOptions.Record(
+                                            LeafBody, "Select", SymbolSubject::CrosshairCentre,
+                                            SelectRows, 3u, PointerTaken));
+
+                                        if (ElementSelected <
+                                            static_cast<std::uint32_t>(SelectionElement::ElementCount))
+                                            SketchSelection.Element =
+                                                static_cast<SelectionElement>(ElementSelected);
+                                    }
+
                                     // 🔴 ONE CAMERA, NOT TWO. The orbit angles were copied straight off
                                     //    the editor camera, but the orbit arm measures yaw against the
                                     //    sketch BASIS and places the eye at `Focus - Forward*Distance`,
@@ -1153,7 +1217,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         LeafBody, BackgroundPointer,
                                         Viewport.Surface().TextInput(), Viewport.Seam().Modifiers(),
                                         SketchBasis, SketchView, LeafPerspective,
-                                        ParametricToolsApplied.ActiveSubject, SketchSelection,
+                                        ParametricToolsApplied.ActiveSubject, SketchSelection, SketchGizmo,
                                         SketchNaming, SketchDirectoryRows, SketchDirectoryApplied,
                                         Sketch, SketchRecords, SketchRevisions,
                                         SketchPendingSelection, SketchSemanticSelection,

@@ -498,6 +498,7 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
                                         bool Perspective,
                                         ParametricToolSubject ActiveTool,
                                         const SelectionOptions& Selection,
+                                        const GizmoOptions& Gizmo,
                                         WorkspaceNameIndex& Naming,
                                         const WorkspaceDirectoryProjection& Directory,
                                         const ParametricWorkspaceContext& WorkspaceApplied,
@@ -574,8 +575,12 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
         }
     }
 
+    // 🔴 A HIDDEN GIZMO OFFERS NO HANDLES. Resolving them anyway would leave invisible handles over the
+    //    geometry, swallowing presses meant for the shapes underneath — which is exactly the complaint an
+    //    artist turns the gizmo off to avoid.
     GizmoHandle HoveredHandle = GizmoHandle::None;
-    if (!Transform.Engaged() && ActiveSelection.Standing() && SelectedTool(ActiveTool).Subject == SketchSubject::None)
+    if (Gizmo.Shown && !Transform.Engaged() && ActiveSelection.Standing() &&
+        SelectedTool(ActiveTool).Subject == SketchSubject::None)
     {
         GizmoScreenBasis Screen = {};
         if (ResolveGizmoScreenBasis(Basis, View, Perspective, Extent, ActiveSelection.Position, Screen))
@@ -681,8 +686,11 @@ void DriveViewportSelectionAndTransform(const PlaneExtent& Extent,
 
     RecordViewportSelectionOverlay(Overlay, Extent, Basis, View, Perspective,
                                    Sketch, Records, HoveredSelection, ActiveSelection);
-    RecordViewportGizmo(Overlay, Extent, Basis, View, Perspective,
-                        ActiveSelection, HoveredHandle, Transform);
+    // 📝 The selection outline is drawn either way: knowing WHAT is selected is not the same question as
+    //    wanting handles on it, and hiding the gizmo must not hide the selection.
+    if (Gizmo.Shown)
+        RecordViewportGizmo(Overlay, Extent, Basis, View, Perspective,
+                            ActiveSelection, HoveredHandle, Transform);
 }
 
 }   // namespace Slate

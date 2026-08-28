@@ -160,7 +160,10 @@ enum class SymbolSubject : std::uint32_t
     ArrowUpLine         = 81u,   // 🟢 lucide `arrow-up`     — the move-up action
     ArrowDownLine       = 82u,   // 🟢 lucide `arrow-down`   — the move-down action
     HalfMask            = 83u,   // 🟢 the reference's mask  — a mask row, and the mask tool
-    SubjectCount        = 84u    // [-] - the closed count, never a subject
+    CrossClose          = 84u,   // 🟢 lucide `x`            — dismisses a widget; NOT PlusCross turned 45°,
+                                 //                            because a turned figure keeps its own extent
+                                 //                            and lands off-centre in a square button
+    SubjectCount        = 85u    // [-] - the closed count, never a subject
 };
 
 //------------------------------------------------------------------------------------------------------------------------
