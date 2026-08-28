@@ -248,6 +248,10 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                               ToolContext.ActiveSubject == ParametricToolSubject::ConstructionLine;
     Tool.Declare(Desired.Subject, Desired.Method, Construction);
 
+    // 🔴 The closed-profile choice reaches the tool, which seals it into the placement, which is what
+    //    the commit reads. A panel flag the commit cannot see would decide nothing.
+    Tool.DeclareClosedProfile(ToolContext.ClosedProfileFill);
+
     if (Desired.Subject == SketchSubject::None)
         return;
 

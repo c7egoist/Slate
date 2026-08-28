@@ -19,6 +19,7 @@
 #include "SlateShape/Sketch/SketchPolyline/Api/SketchPolyline.h"
 #include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 #include "SlateShape/Sketch/SketchSnap/Api/SketchSnap.h"
+#include "SlateWorkspace/Discipline/OrientationCube/Api/OrientationStanding.h"
 #include "SlateWorkspace/Discipline/PlacementCommit/Api/PlacementCommit.h"
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
@@ -27,6 +28,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 using namespace Slate;
 
@@ -665,6 +667,362 @@ int main()
 
         std::printf("  lens 42 deg vs 60 deg: same point at x=%.1f and x=%.1f (ratio %.4f)\n",
                     NarrowX, WideX, Ratio);
+    }
+
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 AN ORTHOGRAPHIC VIEW DRAWS ON THE PLANE IT IS LOOKING AT. Only Top agreed with the plane
+    //    being drawn on; Front and Side kept Ground active, so the artist drew on a surface seen
+    //    EDGE ON and the shape landed behind the pointer instead of under it.
+    //--------------------------------------------------------------------------------------------
+    {
+        struct Facing
+        {
+            ViewportOrientation Orientation;
+            StandingWorkplane   Plane;
+            const char*         ZeroedAxis;
+        };
+
+        // 📝 By axis, not by sign: a plane has no far side, so Front and Back share one.
+        const Facing Every[] = {
+            { ViewportOrientation::Top,    StandingWorkplane::Ground, "Y" },
+            { ViewportOrientation::Bottom, StandingWorkplane::Ground, "Y" },
+            { ViewportOrientation::Front,  StandingWorkplane::Front,  "Z" },
+            { ViewportOrientation::Back,   StandingWorkplane::Front,  "Z" },
+            { ViewportOrientation::Left,   StandingWorkplane::Side,   "X" },
+            { ViewportOrientation::Right,  StandingWorkplane::Side,   "X" },
+        };
+
+        for (const Facing& Looking : Every)
+        {
+            StandingWorkplane Viewed = StandingWorkplane::Ground;
+            Require(ResolveViewedWorkplane(Looking.Orientation, Viewed),
+                    "every axis-aligned view must name the plane it looks at");
+            Require(Viewed == Looking.Plane,
+                    "and it must be the plane square to the display, not the ground");
+            Require(std::strcmp(ResolveWorkplaneZeroedAxis(Viewed), Looking.ZeroedAxis) == 0,
+                    "the view must hold the expected axis at zero");
+
+            WorkplaneCatalogue Catalogue;
+            static_cast<void>(ActivateViewedWorkplane(Catalogue, Looking.Orientation, false));
+
+            const Workplane Expected = ResolveStandingWorkplane(Looking.Plane);
+            Require(std::fabs(Dot(Catalogue.Active().Normal, Expected.Normal) - 1.0) < 1.0e-9,
+                    "an orthographic view must activate the plane it faces");
+        }
+
+        // 🔴 Isometric is square to nothing and must leave the plane alone, or the artist's choice
+        //    would be dragged back to a standing plane every time they orbited off an axis.
+        StandingWorkplane Unused = StandingWorkplane::Ground;
+        Require(!ResolveViewedWorkplane(ViewportOrientation::Isometric, Unused),
+                "an isometric view is square to no plane and must name none");
+
+        // 🔴 Nor may a perspective view, which is a free camera by definition.
+        for (const Facing& Looking : Every)
+        {
+            WorkplaneCatalogue Catalogue;
+            Require(!ActivateViewedWorkplane(Catalogue, Looking.Orientation, true),
+                    "a perspective view must never change the plane being drawn on");
+        }
+
+        // 🔴 A plane the artist placed themselves outranks the view; they asked for that surface.
+        {
+            WorkplaneCatalogue Catalogue;
+            Workplane Mine;
+            Mine.Origin = { 5.0, 5.0, 5.0 };
+            Mine.Normal = { 0.0, 1.0, 0.0 };
+            Mine.Along  = { 1.0, 0.0, 0.0 };
+            Mine.Source = WorkplaneOrigin::Placed;
+
+            const WorkplaneName Named = Catalogue.Declare(Mine, "My Plane", true);
+            Require(!ActivateViewedWorkplane(Catalogue, ViewportOrientation::Front, false),
+                    "a placed plane must survive a change of view");
+            Require(Catalogue.ActiveName() == Named, "and must remain the active one");
+        }
+
+        std::printf("  workplanes: Top/Bottom->XZ  Front/Back->XY  Left/Right->YZ\n");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 THE ORIENTATION IS DERIVED FROM THE CAMERA, so reaching a Front view by dragging and by
+    //    clicking the cube's Front face land on the same plane. The inverse must stay an inverse.
+    //--------------------------------------------------------------------------------------------
+    {
+        const ViewportOrientation Every[] = {
+            ViewportOrientation::Top,   ViewportOrientation::Bottom,
+            ViewportOrientation::Front, ViewportOrientation::Back,
+            ViewportOrientation::Left,  ViewportOrientation::Right,
+        };
+
+        for (const ViewportOrientation Facing : Every)
+        {
+            double Yaw   = 0.0;
+            double Pitch = 0.0;
+            OrientationYawPitch(Facing, Yaw, Pitch);
+            Require(ResolveCameraOrientation(Yaw, Pitch) == Facing,
+                    "the angles a view flies to must resolve back to that same view");
+        }
+
+        // 🔴 OFF AXIS IS NOT AN AXIS VIEW. Answering one here would yank the active plane about as
+        //    the artist merely orbited.
+        Require(ResolveCameraOrientation(30.0, 20.0) == ViewportOrientation::Isometric,
+                "an off-axis camera must resolve to Isometric");
+        Require(ResolveCameraOrientation(45.0, -5.0) == ViewportOrientation::Isometric,
+                "and so must a camera part-way between two views");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 THE PROJECTION EASES BETWEEN ITS TWO ENDS RATHER THAN CUTTING. Pressing Ortho swapped the
+    //    projection between ticks and the whole scene jumped.
+    //--------------------------------------------------------------------------------------------
+    {
+        const PlaneExtent Leaf = { 0.0f, 0.0f, 800.0f, 600.0f };
+        ViewFrame Frame;
+        Frame.Eye     = { 0.0, 0.0, -10.0 };
+        Frame.Right   = { 1.0, 0.0, 0.0 };
+        Frame.Up      = { 0.0, 1.0, 0.0 };
+        Frame.Forward = { 0.0, 0.0, 1.0 };
+
+        const SpatialPoint Subject = { 30.0, 20.0, 5.0 };
+        const double Fov = 60.0, Scale = 8.0, Focus = 10.0;
+
+        // 🔴 THE ENDS MUST BE THE REAL PROJECTIONS, EXACTLY. A blend that merely approaches them
+        //    would jump on the frame it snapped to the true one -- the very defect being fixed.
+        float WantX = 0.0f, WantY = 0.0f, GotX = 0.0f, GotY = 0.0f;
+        Require(ProjectThroughFrame(Frame, Leaf, Fov, Subject, WantX, WantY),
+                "the perspective end must project");
+
+        ProjectionTransit Transit;
+        Transit.Travelled = 0.0;
+        Require(ProjectThroughTransit(Frame, Leaf, Transit, Fov, Scale, Focus, Subject, GotX, GotY),
+                "a transit at rest must project");
+        Require(std::fabs(WantX - GotX) < 1.0e-4 && std::fabs(WantY - GotY) < 1.0e-4,
+                "an unstarted transit must BE the perspective projection, not merely resemble it");
+
+        const SpatialDirection ToSubject = Difference(Frame.Eye, Subject);
+        const double OrthoX = Leaf.MinimumX + Leaf.Width() * 0.5 + Dot(ToSubject, Frame.Right) * Scale;
+        const double OrthoY = Leaf.MinimumY + Leaf.Height() * 0.5 - Dot(ToSubject, Frame.Up) * Scale;
+
+        Transit.Travelled = 1.0;
+        Require(ProjectThroughTransit(Frame, Leaf, Transit, Fov, Scale, Focus, Subject, GotX, GotY),
+                "a completed transit must project");
+        Require(std::fabs(OrthoX - GotX) < 1.0e-4 && std::fabs(OrthoY - GotY) < 1.0e-4,
+                "a completed transit must BE the orthographic projection");
+
+        // 🔴 AND THE PATH BETWEEN THEM MUST BE A PATH, not a jump. Every step moves the point
+        //    towards the far end and never past either end -- which a cross-fade of two finished
+        //    pictures would not guarantee.
+        double Previous = static_cast<double>(WantX);
+        const double Lowest  = std::min(static_cast<double>(WantX), OrthoX) - 1.0e-3;
+        const double Highest = std::max(static_cast<double>(WantX), OrthoX) + 1.0e-3;
+        double Largest = 0.0;
+
+        for (std::uint32_t Step = 1u; Step <= 100u; ++Step)
+        {
+            Transit.Travelled = static_cast<double>(Step) / 100.0;
+            Require(ProjectThroughTransit(Frame, Leaf, Transit, Fov, Scale, Focus, Subject, GotX, GotY),
+                    "every step of the transit must project");
+            Require(GotX <= Previous + 1.0e-3, "the transit must not reverse part-way");
+            Require(GotX >= Lowest && GotX <= Highest, "and must never overshoot either end");
+            Largest = std::max(Largest, std::fabs(static_cast<double>(GotX) - Previous));
+            Previous = static_cast<double>(GotX);
+        }
+
+        // 🔴 NO SINGLE FRAME MAY CARRY MOST OF THE MOVE. That is what a snap IS: one step doing all
+        //    the travel. A hundredth of the way along must move a small fraction of the distance.
+        const double Whole = std::fabs(OrthoX - static_cast<double>(WantX));
+        Require(Largest < Whole * 0.1,
+                "no single step of the transit may jump a tenth of the whole distance");
+
+        std::printf("  projection transit: %.1f px in 100 steps, largest step %.1f px\n",
+                    Whole, Largest);
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 THE TRANSIT TAKES TIME AND REVERSES FROM WHEREVER IT STANDS.
+    //--------------------------------------------------------------------------------------------
+    {
+        ProjectionTransit Transit;
+        Require(!Transit.Parallel(), "a viewport opens in perspective");
+
+        std::uint32_t Ticks = 0u;
+        while (!Transit.Parallel() && Ticks < 1000u)
+        {
+            AdvanceProjectionTransit(Transit, 1.0 / 60.0, true);
+            ++Ticks;
+        }
+        Require(Transit.Parallel(), "the transit must complete");
+        Require(Ticks > 4u, "and must take enough frames to be seen as movement, not a cut");
+
+        // 🔴 Pressing the button again mid-flight eases BACK from where it stands rather than
+        //    snapping to the far end first.
+        Transit.Travelled = 0.5;
+        AdvanceProjectionTransit(Transit, 1.0 / 60.0, false);
+        Require(Transit.Travelled < 0.5 && Transit.Travelled > 0.0,
+                "a reversed transit must ease back from the middle, not jump");
+
+        // ⚠️ A stalled frame must not teleport the projection across.
+        ProjectionTransit Stalled;
+        AdvanceProjectionTransit(Stalled, 30.0, true);
+        Require(Stalled.Travelled < 1.0, "one very long frame must not complete the whole transit");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 A SHAPE THAT CLOSES IS A REGION AND SHADES. A closed polyline committed as separate lines
+    //    that happened to meet: nothing knew it enclosed anything, so it could not be shaded and
+    //    could not be extruded or lofted.
+    //--------------------------------------------------------------------------------------------
+    {
+        struct Shape
+        {
+            const char*               Naming;
+            std::vector<SpatialPoint> Anchors;
+            bool                      Closed;
+            bool                      Construction;
+            bool                      Shades;
+        };
+
+        const std::vector<SpatialPoint> Square = {
+            { 0.0, 0.0, 0.0 }, { 100.0, 0.0, 0.0 }, { 100.0, 0.0, 100.0 },
+            { 0.0, 0.0, 100.0 }, { 0.0, 0.0, 0.0 } };
+
+        // 📝 An L and a star: both deeply concave, both of which a triangle fan fills WRONGLY and
+        //    the old code therefore refused to fill at all.
+        const std::vector<SpatialPoint> Bent = {
+            { 0.0, 0.0, 0.0 }, { 100.0, 0.0, 0.0 }, { 100.0, 0.0, 40.0 }, { 40.0, 0.0, 40.0 },
+            { 40.0, 0.0, 100.0 }, { 0.0, 0.0, 100.0 }, { 0.0, 0.0, 0.0 } };
+
+        const std::vector<SpatialPoint> Star = {
+            { 0.0, 0.0, 100.0 },   { 22.0, 0.0, 31.0 },   { 95.0, 0.0, 31.0 },
+            { 36.0, 0.0, -12.0 },  { 59.0, 0.0, -81.0 },  { 0.0, 0.0, -38.0 },
+            { -59.0, 0.0, -81.0 }, { -36.0, 0.0, -12.0 }, { -95.0, 0.0, 31.0 },
+            { -22.0, 0.0, 31.0 },  { 0.0, 0.0, 100.0 } };
+
+        const std::vector<SpatialPoint> Open = {
+            { 0.0, 0.0, 0.0 }, { 100.0, 0.0, 0.0 }, { 100.0, 0.0, 100.0 }, { 0.0, 0.0, 100.0 } };
+
+        const Shape Every[] = {
+            { "closed square",        Square, true,  false, true  },
+            { "toggle off",           Square, false, false, false },
+            { "construction",         Square, true,  true,  false },
+            { "an open run",          Open,   true,  false, false },
+            { "a concave L",          Bent,   true,  false, true  },
+            { "a five-pointed star",  Star,   true,  false, true  },
+        };
+
+        for (const Shape& Subject : Every)
+        {
+            SketchStructure           Sketch;
+            WorkspaceRecordStructure  Records;
+            WorkspaceRevisionSequence Revisions;
+            WorkspaceNameIndex        Naming;
+            WorkplaneCatalogue        Workplanes;
+            SketchPlacement           Tool;
+            WorkspaceRecordName       Pending;
+
+            Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                                  Workplanes.Active().Normal,
+                                  Workplanes.Active().Along });
+
+            Tool.Declare(SketchSubject::Polyline, PlacementMethod::Extent, Subject.Construction);
+            Tool.DeclareClosedProfile(Subject.Closed);
+
+            for (std::size_t Index = 0u; Index < Subject.Anchors.size(); ++Index)
+            {
+                Tool.Hover(Subject.Anchors[Index], {});
+                static_cast<void>(Tool.Anchor(Index + 1u == Subject.Anchors.size()));
+            }
+
+            const SealedPlacement Sealed = Tool.Seal();
+            Require(Sealed.ClosedProfile == Subject.Closed,
+                    "the closed-profile choice must reach the commit");
+
+            const Deliver<WorkspaceRecordName> Committed =
+                CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);
+            Require(Committed.Resolved, "the shape must commit");
+            AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Committed, Pending);
+
+            WorkspaceCadPacket Delivered;
+            static_cast<void>(ProjectSketchRendering(Sketch, Records, Delivered));
+
+            Require(Delivered.SegmentCount >= 3u, "every one of them draws its outline");
+
+            if (Subject.Shades)
+            {
+                Require(Sketch.Profiles().size() == 1u,
+                        "a closed shape must seal as a region, so it can be extruded");
+                Require(Delivered.FillCount > 0u,
+                        "and must shade, concave or convex");
+            }
+            else
+            {
+                Require(Sketch.Profiles().empty(),
+                        "an open, unwanted or construction shape must NOT become a region");
+                Require(Delivered.FillCount == 0u, "and must not shade");
+            }
+        }
+
+        std::printf("  closed profiles: square, concave L and star all shade; open stays open\n");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 THE FILL COVERS THE SHAPE AND NOTHING ELSE. A fan across a concave outline lays triangles
+    //    over the notches -- it would still report a fill count, so counting is not enough.
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure           Sketch;
+        WorkspaceRecordStructure  Records;
+        WorkspaceRevisionSequence Revisions;
+        WorkspaceNameIndex        Naming;
+        WorkplaneCatalogue        Workplanes;
+        SketchPlacement           Tool;
+        WorkspaceRecordName       Pending;
+
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
+
+        // 📝 The L again: 100x100 with a 60x60 bite out of the far corner, so the true area is
+        //    10000 - 3600 = 6400. A fan from vertex 0 would cover the bite as well.
+        const std::vector<SpatialPoint> Bent = {
+            { 0.0, 0.0, 0.0 }, { 100.0, 0.0, 0.0 }, { 100.0, 0.0, 40.0 }, { 40.0, 0.0, 40.0 },
+            { 40.0, 0.0, 100.0 }, { 0.0, 0.0, 100.0 }, { 0.0, 0.0, 0.0 } };
+
+        Tool.Declare(SketchSubject::Polyline, PlacementMethod::Extent, false);
+        Tool.DeclareClosedProfile(true);
+        for (std::size_t Index = 0u; Index < Bent.size(); ++Index)
+        {
+            Tool.Hover(Bent[Index], {});
+            static_cast<void>(Tool.Anchor(Index + 1u == Bent.size()));
+        }
+
+        const SealedPlacement Sealed = Tool.Seal();
+        const Deliver<WorkspaceRecordName> Committed =
+            CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);
+        AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Committed, Pending);
+
+        WorkspaceCadPacket Delivered;
+        static_cast<void>(ProjectSketchRendering(Sketch, Records, Delivered));
+
+        // 🔴 The triangles must sum to the shape's own area. Too much means the fill spilled across
+        //    the notch; too little means part of the shape is hollow.
+        double Covered = 0.0;
+        for (Unsigned32 Index = 0u; Index < Delivered.FillCount; ++Index)
+        {
+            const WorkspaceCadFillTriangle& Triangle = Delivered.Fills[Index];
+            Covered += std::fabs(
+                (static_cast<double>(Triangle.Along1) - Triangle.Along0)
+                    * (static_cast<double>(Triangle.Across2) - Triangle.Across0)
+              - (static_cast<double>(Triangle.Along2) - Triangle.Along0)
+                    * (static_cast<double>(Triangle.Across1) - Triangle.Across0)) * 0.5;
+        }
+
+        Require(Delivered.FillCount == 4u, "an L of six corners clips into four triangles");
+        Require(std::fabs(Covered - 6400.0) < 1.0,
+                "the fill must cover the shape's own area, not the notch as well");
+
+        std::printf("  concave fill: 4 triangles covering %.0f units (the L's true area is 6400)\n",
+                    Covered);
     }
 
     std::printf("[SketchDrawingProof] %u claims, %u failures\n", Claims, Failures);

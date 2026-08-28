@@ -19,6 +19,7 @@
 #pragma once
 
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
+#include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 
 #include <cstdint>
 
@@ -65,6 +66,31 @@ struct Workplane
 
 /// 🧩 One of the three planes the world always has.
 Workplane ResolveStandingWorkplane(StandingWorkplane Subject);
+
+//------------------------------------------------------------------------------------------------------------------------
+//                                         THE PLANE AN ORTHOGRAPHIC VIEW LOOKS AT
+//------------------------------------------------------------------------------------------------------------------------
+
+/// 🔴 AN ORTHOGRAPHIC VIEW IS A PLANE SEEN FACE ON, AND ONLY TOP AGREED WITH THE ONE BEING DRAWN ON.
+///    Looking down the Z axis puts the XY plane square to the display, so that is what the artist is
+///    pointing at and that is what a click should land on. Every other view kept the Ground plane
+///    active, so drawing in Front or Side placed geometry on a surface seen EDGE ON: the pointer ran
+///    along a line and the shape appeared somewhere behind it. The six axis-aligned views each name
+///    the plane they look at, and only Isometric -- which is square to nothing -- declines to.
+///
+/// 📝 The pairing is by axis, not by sign: Front and Back both look at XY, Left and Right both at YZ,
+///    Top and Bottom both at XZ. A plane has no far side to be drawn on.
+
+/// 🧩 Which of the three standing planes an orthographic view looks squarely at.
+/// out  -  [-]  false for Isometric, which is square to no plane and must leave the active one alone
+/// note ⚠️ Answering Ground for Isometric would silently reset the artist's chosen plane every time
+///       they orbited away from an axis view, which is worse than not answering at all.
+bool ResolveViewedWorkplane(ViewportOrientation Orientation, StandingWorkplane& Viewed);
+
+/// 🧩 The axis an orthographic view holds at zero: X for the YZ plane, Y for XZ, Z for XY.
+/// note 📝 The artist's own phrasing -- "set x = 0, then we work on YZ". Naming it makes the pairing
+///       legible at the call site and in the proof.
+const char* ResolveWorkplaneZeroedAxis(StandingWorkplane Subject);
 
 /// 🧩 The plane a sketch uses when the artist has not chosen one.
 /// note 🔴 The ground plane through the world origin. This is what makes "just start drawing" work.

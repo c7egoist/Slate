@@ -153,6 +153,10 @@ SealedPlacement SketchPlacement::Seal()
     Sealed.Method       = PlacingMethod;
     Sealed.Construction = ConstructionDeclared;
 
+    // 🔴 The toggle travels with the placement. Deciding at commit time from a panel the commit
+    //    cannot see is how the construction flag used to be lost.
+    Sealed.ClosedProfile = ClosedProfileDeclared;
+
     // 🔴 The wheel-chosen side count travels with the sealed placement. The commit used to declare a
     //    hardcoded six sides, so a polygon was always a hexagon whatever the artist asked for.
     Sealed.Resolution   = SideCount;

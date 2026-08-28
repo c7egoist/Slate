@@ -24,6 +24,9 @@ SUPPORTING = [
     "Engine/SlateShape/Sketch/SketchStructure/Source/SketchStructure.cpp",
     "Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp",
     "Engine/SlateWorkspace/Discipline/WorkplaneCatalogue/Source/WorkplaneCatalogue.cpp",
+    # 📝 The angle table only. The widget that DRAWS the cube lives in OrientationCube.cpp and
+    #    would drag the whole interface surface into a proof that wants trigonometry.
+    "Engine/SlateWorkspace/Discipline/OrientationCube/Source/OrientationStanding.cpp",
     "Engine/SlateWorkspace/Discipline/WorkplaneStanding/Source/WorkplaneStanding.cpp",
     "Engine/SlateWorkspace/Discipline/RecordDeclaration/Source/RecordDeclaration.cpp",
     "Engine/SlateWorkspace/Discipline/PlacementCommit/Source/PlacementCommit.cpp",

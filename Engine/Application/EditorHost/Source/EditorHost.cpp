@@ -274,6 +274,13 @@ int main(int ArgumentCount, char** ArgumentValues)
     // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
     //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
     static ViewportStanding          SketchView;
+    // 🔴 HOW FAR THE PROJECTION HAS TRAVELLED BETWEEN ITS TWO ENDS. Pressing Ortho used to swap the
+    //    projection between one tick and the next, so the whole scene jumped and the artist lost
+    //    track of where they were looking. One per leaf, because two split viewports may be part-way
+    //    through opposite transits at the same time.
+    static ProjectionTransit         LeafProjection[WorkspaceIndex::WorkspaceLimit];
+    // 📝 Which plane the sketch structure was last given, so it is re-planed only when it changes.
+    static WorkplaneName             ActiveSketchPlane;
     // 📝 Static: the packet is large and is reused every frame.
     static WorkspaceCadPacket        SketchCadPacket;
 
@@ -995,7 +1002,15 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 //    the artist's choice and nothing read it: the camera was resolved
                                 //    perspective unconditionally and every overlay below was passed a
                                 //    literal `true`. Pressing Ortho changed the label and nothing else.
-                                const bool LeafPerspective = PanelConfiguration[Index].Perspective;
+                                // 🔴 THE PROJECTION EASES, IT DOES NOT SNAP. The footer's choice is
+                                //    the DESTINATION; what is drawn is wherever the transit has got
+                                //    to. `Perspective` below therefore asks the transit, not the
+                                //    button, so the grid and the geometry flatten together over the
+                                //    same quarter second instead of both cutting on one frame.
+                                ProjectionTransit& Transit = LeafProjection[Index];
+                                AdvanceProjectionTransit(Transit, Pass.ElapsedMilliseconds / 1000.0,
+                                                         !PanelConfiguration[Index].Perspective);
+                                const bool LeafPerspective = !Transit.Parallel();
                                 const ResolvedCamera SceneCamera = ResolveFreeCamera(
                                     { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
                                       SceneApplied.CameraPosition[2] },
@@ -1040,6 +1055,36 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     //    wrong lens.
                                     SketchView.FieldOfViewDegrees =
                                         SceneApplied.ViewportSkyCamera.FieldOfViewDegrees;
+
+                                    // 🔴 AN ORTHOGRAPHIC VIEW DRAWS ON THE PLANE IT IS LOOKING AT.
+                                    //    Only Top agreed: Front and Side kept the Ground plane
+                                    //    active, so the artist drew on a surface seen EDGE ON and
+                                    //    the shape landed behind the pointer instead of under it.
+                                    //    Looking down Z holds Z at zero and works on XY; down X
+                                    //    holds X at zero and works on YZ.
+                                    //
+                                    // 📝 Derived from the camera, not from the last cube face
+                                    //    pressed, so dragging into a Front view and clicking the
+                                    //    cube's Front face reach the same plane. Perspective and
+                                    //    Isometric are square to nothing and leave the plane alone,
+                                    //    as does a plane the artist placed themselves.
+                                    SketchView.Orientation = ResolveCameraOrientation(
+                                        SceneApplied.ViewportSkyCamera.AzimuthDegrees,
+                                        SceneApplied.ViewportSkyCamera.ElevationDegrees);
+                                    static_cast<void>(ActivateViewedWorkplane(
+                                        SketchWorkplanes, SketchView.Orientation, LeafPerspective));
+
+                                    // 🔴 The sketch is re-planed onto whatever is active, or the
+                                    //    catalogue would hold one surface while the structure kept
+                                    //    projecting onto another.
+                                    if (!Sketch.PlaneDeclared() ||
+                                        SketchWorkplanes.ActiveName() != ActiveSketchPlane)
+                                    {
+                                        Sketch.DeclarePlane({ SketchWorkplanes.Active().Origin,
+                                                              SketchWorkplanes.Active().Normal,
+                                                              SketchWorkplanes.Active().Along });
+                                        ActiveSketchPlane = SketchWorkplanes.ActiveName();
+                                    }
                                     // 🔴 The workplane tool is offered the press FIRST and consumes
                                     //    it, or the click that places a plane is also read as the
                                     //    first point of a curve -- drawn onto the plane it replaced.
@@ -1203,9 +1248,17 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     // 🔴 The grid flattens with everything else. Zero keeps the
                                     //    perspective ray-march; a positive scale selects parallel rays
                                     //    so the lattice and the geometry drawn on it agree.
-                                    Pose.OrthoScale = LeafPerspective
-                                                    ? 0.0f
-                                                    : static_cast<float>(SketchView.OrthoScale);
+                                    // 🔴 THE GRID EASES WITH THE GEOMETRY. Flattening the lattice on
+                                    //    the frame the transit completes, while the shapes on it had
+                                    //    been easing for a quarter second, would put the two on
+                                    //    different projections for the whole flight -- the same
+                                    //    disagreement that made shapes look like they floated. The
+                                    //    fragment stage reads a scale, so the transit is expressed
+                                    //    as the scale that matches the blend at this instant.
+                                    Pose.OrthoScale = ResolveTransitGroundScale(
+                                        Transit, SceneApplied.ViewportSkyCamera.FieldOfViewDegrees,
+                                        SketchView.OrthoScale, SketchView.Distance,
+                                        LeafBody.Height());
                                     Pose.LineWeight   = PanelDeclared.LatticeLineWeight;
                                     Pose.DotRadius    = PanelDeclared.LatticeDotRadius;
                                     Pose.Subdivisions = PanelDeclared.Subdivisions > 0u

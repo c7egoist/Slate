@@ -150,6 +150,32 @@ WorkplaneName WorkplaneCatalogue::StandingName(StandingWorkplane Subject) const
     return HeldWorkplanes[Index].Named;
 }
 
+bool ActivateViewedWorkplane(WorkplaneCatalogue& Catalogue,
+                             ViewportOrientation Orientation,
+                             bool Perspective)
+{
+    // 🔴 A perspective view looks squarely at nothing. Choosing a plane from one would mean the
+    //    active surface changed as the artist merely orbited.
+    if (Perspective)
+        return false;
+
+    StandingWorkplane Viewed = StandingWorkplane::Ground;
+    if (!ResolveViewedWorkplane(Orientation, Viewed))
+        return false;
+
+    // ⚠️ A plane the artist placed themselves outranks the view. They asked for that surface; turning
+    //    to look along an axis is not a request to abandon it.
+    const CataloguedWorkplane* const Standing = Catalogue.Resolve(Catalogue.ActiveName());
+    if (Standing != nullptr && Standing->Surface.Source != WorkplaneOrigin::Standing)
+        return false;
+
+    const WorkplaneName Wanted = Catalogue.StandingName(Viewed);
+    if (Wanted == Catalogue.ActiveName())
+        return false;
+
+    return Catalogue.Activate(Wanted).Resolved;
+}
+
 std::string ResolveWorkplaneNaming(const WorkplaneCatalogue& Catalogue, WorkplaneOrigin Source)
 {
     // 📝 Counted rather than taken from the issued total, so removing a plane and making another does not

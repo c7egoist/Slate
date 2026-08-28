@@ -409,6 +409,13 @@ struct SealedPlacement
     std::vector<SketchSnapPlacement> Placements   = {};                       // [-] - what each anchor landed on
     bool                             Construction = false;                    // [-] - construction geometry
     std::uint32_t                    Resolution   = PolygonSideDefault;       // [-] - polygon sides only
+
+    // 🔴 WHETHER A SHAPE THAT CLOSES IS A REGION OR A RUN OF WIRES. A closed polyline drew four
+    //    separate lines that happened to meet: nothing downstream knew it enclosed anything, so it
+    //    could not be shaded and could not be extruded or lofted. Sealed as a profile it is a face
+    //    with an inside. The artist chooses, because a closed run of wire is a legitimate thing to
+    //    want -- a path to sweep along, or a boundary that must stay open.
+    bool                             ClosedProfile = true;                    // [-] - seal a closed shape as a region
 };
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -497,6 +504,18 @@ public:
     /// tag   api, nonallocating, nonthrowing
     bool Construction() const { return ConstructionDeclared; }
 
+    /// 🧩 Whether a shape that closes should be sealed as a filled region.
+    /// note 📝 Tool state, like construction, so it survives from one shape to the next: an artist
+    ///       drawing outlines to extrude sets it once rather than for every shape.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    bool ClosedProfile() const { return ClosedProfileDeclared; }
+
+    /// 🧩 Chooses whether closed shapes seal as regions.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    void DeclareClosedProfile(bool Closed) { ClosedProfileDeclared = Closed; }
+
     /// 🧩 The anchors taken so far, in the order they were taken.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
@@ -545,6 +564,9 @@ private:
     SketchSnapPlacement              HoverSnap            = {};                      // [-]
     bool                             HoverTaken           = false;                   // [-]
     bool                             ConstructionDeclared = false;                   // [-]
+    // 📝 Filled by default: a closed shape reading as a region is what an artist expects, and it is
+    //    the state the extrude and loft operations need.
+    bool                             ClosedProfileDeclared = true;                   // [-]
     std::uint32_t                    SideCount            = PolygonSideDefault;      // [-] - polygon only
 };
 

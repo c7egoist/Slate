@@ -1460,6 +1460,9 @@ void ParametricToolsPanel::RecordDetailPage(const PlaneExtent& Extent, Parametri
         RowY += 10.0f;
         const ParametricToolSubject Subject = ToolSubjectOf(Applied.ActiveBand, Applied.ActiveTool);
         ToggleSetting(RowY, "Construction", Applied.ConstructionGeometry);
+        // 📝 Beside Construction because the two answer the same kind of question about the shape
+        //    about to be drawn, rather than about one tool.
+        ToggleSetting(RowY, "Closed Profile", Applied.ClosedProfileFill);
         if (Subject == ParametricToolSubject::Line)
         {
             ToggleSetting(RowY, "Use Length", Applied.LineLengthAssist);

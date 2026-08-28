@@ -115,6 +115,26 @@ private:
     std::uint32_t                    IssuedCount     = 0u;
 };
 
+/// 🧩 Activates the standing plane an orthographic view looks squarely at.
+///
+/// in    Orientation  [-]  which way the viewport is now facing
+/// in    Perspective  [-]  whether the leaf is drawing in perspective
+/// out   -            [-]  true when the active plane CHANGED, so a caller can say so
+///
+/// note 🔴 THIS IS WHAT MAKES THE OTHER ORTHOGRAPHIC VIEWS DRAWABLE. Only Top agreed with the plane
+///       being drawn on; Front and Side left Ground active, so the artist drew on a surface seen edge
+///       on and the shape landed behind the pointer rather than under it.
+///
+/// note ⚠️ Refuses in perspective and in Isometric, both of which are square to no plane. A
+///       perspective view is a free camera and the artist's chosen plane must survive orbiting.
+///
+/// note 📝 Only the three STANDING planes are chosen this way. A plane the artist placed themselves is
+///       never overridden -- switching to a Front view while working on a placed plane leaves it
+///       alone, because they asked for that surface explicitly.
+bool ActivateViewedWorkplane(WorkplaneCatalogue& Catalogue,
+                             ViewportOrientation Orientation,
+                             bool Perspective);
+
 /// 🧩 The name a placed plane should be given, from how many already exist.
 /// note 📝 Here rather than in the host so that the name a plane gets does not depend on which product
 ///       made it.

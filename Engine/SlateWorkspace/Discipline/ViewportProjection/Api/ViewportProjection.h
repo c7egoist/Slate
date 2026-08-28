@@ -214,6 +214,102 @@ bool ProjectThroughFrame(const ViewFrame& Frame,
 constexpr double ProjectionPi = 3.14159265358979323846;
 
 //------------------------------------------------------------------------------------------------------------------------
+//                                        BETWEEN THE TWO PROJECTIONS
+//------------------------------------------------------------------------------------------------------------------------
+
+/// 🔴 THE TWO PROJECTIONS ARE NOT TWO CAMERAS, THEY ARE TWO ENDS OF ONE. Pressing Ortho swapped the
+///    projection between ticks, so the whole scene jumped: what had been a converging view became a
+///    parallel one in a single frame and the artist lost track of where they were looking. A camera
+///    that eases between them keeps that thread, and it is the same easing the editor camera already
+///    applies to its own position.
+///
+/// 📐 The two are reconciled through the FOCAL LENGTH, which both arms already have: a perspective
+///    camera's is `(height/2) / tan(fov/2)` and an orthographic camera's is its scale in pixels per
+///    unit. Blending that single quantity moves the projection continuously from one to the other,
+///    because at any point along the blend the frustum is a real frustum -- widening until its rays
+///    are parallel. Blending the two SCREEN POSITIONS instead would be a cross-fade between two
+///    pictures, which slides geometry sideways through positions no camera ever occupied.
+
+/// 🧩 How far a viewport has travelled between its two projections, and which way it is going.
+struct ProjectionTransit
+{
+    /// 🧩 Where the presentation stands: 0 is fully perspective, 1 is fully orthographic.
+    double Travelled = 0.0;
+
+    /// 🧩 Where it is heading, which is the artist's actual choice.
+    bool Orthographic = false;
+
+    /// 🧩 Whether the projection is mid-flight, and so must be drawn from the blend.
+    bool Underway() const { return Travelled > 0.0 && Travelled < 1.0; }
+
+    /// 🧩 Whether the presentation is orthographic ENOUGH to be treated as parallel.
+    /// note 📝 The blend is asked this once it has arrived, so a settled camera takes the exact
+    ///       orthographic arm rather than a blend that rounds to it.
+    bool Parallel() const { return Travelled >= 1.0; }
+};
+
+/// 🧩 How long a projection change takes to complete, in seconds.
+/// note 📝 A quarter second: long enough to read as movement rather than a cut, short enough that it
+///       never feels like waiting for the tool.
+constexpr double ProjectionTransitSeconds = 0.25;
+
+/// 🧩 Advances a projection transit by one tick.
+/// in    Seconds       [s]  how long the tick lasted
+/// in    Orthographic  [-]  the artist's current choice, from the viewport footer
+/// note ⚠️ Reverses from wherever it stands rather than restarting, so pressing the button twice
+///       quickly eases back from the middle instead of snapping to the far end first.
+void AdvanceProjectionTransit(ProjectionTransit& Transit, double Seconds, bool Orthographic);
+
+/// 🧩 How far along the transit the projection actually stands, eased.
+/// note 📐 Smoothstep rather than linear: a linear blend arrives at full speed and reads as a jolt at
+///        the far end, which is the very thing being fixed.
+double ResolveTransitEasing(const ProjectionTransit& Transit);
+
+/// 🧩 Where a point lands part-way between the two projections.
+///
+/// in    Transit             [-]       how far along, and which way
+/// in    FieldOfViewDegrees  [deg]     the perspective end's vertical angle
+/// in    OrthoScale          [px/unit] the orthographic end's scale
+/// in    FocusDistance       [-]       how far ahead of the eye the pivot sits
+/// out   -                   [-]       false when a still-converging camera cannot see the point
+///
+/// 📐 THE BLEND IS IN THE DIVISOR, NOT IN THE PICTURE. A perspective camera divides by the point's
+///    own depth; an orthographic one divides by nothing, which is the same as dividing by a CONSTANT
+///    depth. Easing the divisor from "this point's depth" to "the focus distance", and the focal from
+///    the perspective one to `OrthoScale * FocusDistance`, walks the camera through real frustums the
+///    whole way -- each one wider and further back than the last until its rays are parallel. Every
+///    intermediate frame is a picture some real camera would take, which is why nothing slides
+///    sideways. Cross-fading two finished projections instead moves geometry through positions no
+///    camera ever occupied.
+/// 🧩 The orthographic scale the analytic ground should ray-march with, part-way through a transit.
+///
+/// out  -  [px/unit]  zero while the blend is still converging, so the shader keeps its pinhole arm
+///
+/// note 🔴 THE GRID AND THE GEOMETRY MUST FLATTEN TOGETHER. The fragment stage chooses between a
+///       pinhole ray-march and parallel rays from this one number, and it has no blend of its own --
+///       so a transit that eased the geometry while the grid waited for the far end would put the
+///       shapes and the surface they sit on in different projections for the entire flight. That is
+///       the disagreement that reads as geometry floating above the grid.
+///
+/// note 📝 The switch happens at the halfway point, where the two projections are least far apart, so
+///       the one frame that cannot be blended is the one where it shows least.
+double ResolveTransitGroundScale(const ProjectionTransit& Transit,
+                                 double FieldOfViewDegrees,
+                                 double OrthoScale,
+                                 double FocusDistance,
+                                 double Height);
+
+bool ProjectThroughTransit(const ViewFrame& Frame,
+                           const PlaneExtent& Extent,
+                           const ProjectionTransit& Transit,
+                           double FieldOfViewDegrees,
+                           double OrthoScale,
+                           double FocusDistance,
+                           const SpatialPoint& Position,
+                           float& ScreenX,
+                           float& ScreenY);
+
+//------------------------------------------------------------------------------------------------------------------------
 //                                                  THE PLANE THE SKETCH IS ON
 //------------------------------------------------------------------------------------------------------------------------
 

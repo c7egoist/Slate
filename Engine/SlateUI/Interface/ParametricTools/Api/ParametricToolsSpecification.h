@@ -136,6 +136,11 @@ struct ParametricToolsContext
     bool MeasurableCondition = false;
 
     bool ConstructionGeometry = false;
+    // 🔴 WHETHER A SHAPE THAT CLOSES IS A FILLED REGION OR A RUN OF WIRE. A closed polyline drew four
+    //    lines that happened to meet, so nothing knew it enclosed anything: it could not be shaded
+    //    and could not be extruded or lofted. On, it seals as a profile. Off, it stays open wire --
+    //    which is what a sweep path or a construction boundary wants.
+    bool ClosedProfileFill = true;
     bool LineLengthAssist = false;
     bool LineAngleAssist = false;
     double LineLength = 100.0;

@@ -173,6 +173,29 @@ Deliver<WorkspaceRecordName> DeclarePoint(WorkspaceNameIndex& Naming,
                                                   "the placement does not describe a shape" });
 }
 
+// 🔴 WHETHER A RUN OF POINTS COMES BACK TO WHERE IT STARTED. The snap that lets an artist land the
+//    last point exactly on the first is what makes this exact rather than approximate, but a hand-
+//    placed point a hair away is still plainly meant to close -- so the test is scaled to the shape's
+//    own size rather than being an absolute distance. A tolerance in world units would close a
+//    millimetre-wide shape that was never meant to and refuse a kilometre-wide one that was.
+bool ClosesOnItself(const std::vector<SpatialPoint>& Anchors)
+{
+    if (Anchors.size() < 3u)
+        return false;
+
+    double Longest = 0.0;
+    for (std::size_t Index = 0u; Index + 1u < Anchors.size(); ++Index)
+        Longest = std::max(Longest, LengthSquared(Difference(Anchors[Index], Anchors[Index + 1u])));
+
+    if (Longest <= 0.0)
+        return false;
+
+    // 📝 A hundredth of the longest leg: comfortably inside snapping distance, far too small to close
+    //    a shape the artist deliberately left open.
+    const double Tolerance = std::sqrt(Longest) * 0.01;
+    return LengthSquared(Difference(Anchors.front(), Anchors.back())) <= Tolerance * Tolerance;
+}
+
 Deliver<WorkspaceRecordName> DeclarePolyline(WorkspaceNameIndex& Naming,
                                     SketchStructure& Sketch,
                                     WorkspaceRecordStructure& Records,
@@ -183,6 +206,33 @@ Deliver<WorkspaceRecordName> DeclarePolyline(WorkspaceNameIndex& Naming,
         const Deliver<bool> Declared = Sketch.DeclarePolyline(Placed.Anchors, Curves);
         if (!Declared.Resolved)
             return Deliver<WorkspaceRecordName>::Refuse(Declared.Error);
+
+        // 🔴 A POLYLINE THAT COMES BACK TO ITS START ENCLOSES SOMETHING. It committed as a run of
+        //    separate lines that happened to meet, so nothing downstream knew there was an inside:
+        //    it could not be shaded and it could not be extruded or lofted. Sealed as a profile it
+        //    is a region, and the semi-transparent fill every other closed shape already gets falls
+        //    out of the render path with no special case.
+        //
+        // ⚠️ Construction geometry is never a region -- it exists to be measured from, not filled --
+        //    and the artist can decline the region with the closed-profile toggle.
+        if (!Placed.Construction && Placed.ClosedProfile && Curves.size() >= 3u
+            && ClosesOnItself(Placed.Anchors))
+        {
+            ProfileSpecification Profile;
+            Profile.DeclarePlane({ Sketch.HeldPlane().Origin, Sketch.HeldPlane().Normal,
+                                   Sketch.HeldPlane().AlongDirection });
+            ProfileLoop Loop;
+            Loop.Orientation = ProfileLoopOrientation::Outer;
+            for (const SketchCurveName& Curve : Curves)
+                Loop.Traversal.push_back({ { Curve.IssuedIndex }, true });
+            Profile.DeclareLoop(Loop);
+
+            const WorkspaceRecordName Record =
+                DeclareWorkspaceProfile(Naming, Records, Sketch.DeclareProfile(Profile));
+            Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming),
+                           "Create Closed Polyline", { Record }, Revisions.DeclaredCount() + 1u);
+            return Deliver<WorkspaceRecordName>::Result(Record);
+        }
 
         std::vector<WorkspaceRecordName> RecordsWritten;
         RecordsWritten.reserve(Curves.size());

@@ -364,6 +364,101 @@ bool ProjectThroughFrame(const ViewFrame& Frame,
     return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+//                                        BETWEEN THE TWO PROJECTIONS
+//------------------------------------------------------------------------------------------------------------------------
+
+void AdvanceProjectionTransit(ProjectionTransit& Transit, double Seconds, bool Orthographic)
+{
+    Transit.Orthographic = Orthographic;
+
+    // ⚠️ A tick of zero or less does nothing; a very long one (a stalled frame, a debugger break, a
+    //    device rebuild) is clamped to a THIRD of the transit, so even a pathological frame leaves
+    //    two more to move through and the change is still seen rather than jumped.
+    const double Longest = ProjectionTransitSeconds / 3.0;
+    const double Step = (Seconds > 0.0 ? (Seconds < Longest ? Seconds : Longest) : 0.0)
+                      / ProjectionTransitSeconds;
+
+    // 🔴 Reversed from wherever it stands, not restarted. Pressing the button twice quickly must ease
+    //    back from the middle rather than snap to the far end and return from there.
+    Transit.Travelled += Orthographic ? Step : -Step;
+    if (Transit.Travelled < 0.0)
+        Transit.Travelled = 0.0;
+    if (Transit.Travelled > 1.0)
+        Transit.Travelled = 1.0;
+}
+
+double ResolveTransitEasing(const ProjectionTransit& Transit)
+{
+    const double Travelled = Transit.Travelled < 0.0 ? 0.0 : (Transit.Travelled > 1.0 ? 1.0 : Transit.Travelled);
+    return Travelled * Travelled * (3.0 - 2.0 * Travelled);
+}
+
+double ResolveTransitGroundScale(const ProjectionTransit& Transit,
+                                 double FieldOfViewDegrees,
+                                 double OrthoScale,
+                                 double FocusDistance,
+                                 double Height)
+{
+    const double Eased = ResolveTransitEasing(Transit);
+
+    // 📝 Still nearer the perspective end: the shader keeps ray-marching a pinhole, which is what a
+    //    zero scale selects.
+    if (Eased < 0.5)
+        return 0.0;
+
+    const double Pivot = FocusDistance > 0.01 ? FocusDistance : 0.01;
+    const double TanHalf = std::tan(FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+    const double NearFocal = (Height * 0.5) / TanHalf;
+    const double FarFocal  = OrthoScale * Pivot;
+
+    // 📐 The blend's focal length, expressed back as the scale a parallel camera would need to draw
+    //    the same picture: pixels per unit at the pivot.
+    const double Focal = NearFocal + (FarFocal - NearFocal) * Eased;
+    const double Scale = Focal / Pivot;
+    return Scale > 0.0 ? Scale : OrthoScale;
+}
+
+bool ProjectThroughTransit(const ViewFrame& Frame,
+                           const PlaneExtent& Extent,
+                           const ProjectionTransit& Transit,
+                           double FieldOfViewDegrees,
+                           double OrthoScale,
+                           double FocusDistance,
+                           const SpatialPoint& Position,
+                           float& ScreenX,
+                           float& ScreenY)
+{
+    const SpatialDirection EyeToPoint = Difference(Frame.Eye, Position);
+    const double CameraX = Dot(EyeToPoint, Frame.Right);
+    const double CameraY = Dot(EyeToPoint, Frame.Up);
+    const double CameraZ = Dot(EyeToPoint, Frame.Forward);
+
+    const double Eased = ResolveTransitEasing(Transit);
+
+    // 📝 The pivot the parallel end measures from. It must be positive or the orthographic arm would
+    //    divide by zero at the moment the blend completes.
+    const double Pivot = FocusDistance > 0.01 ? FocusDistance : 0.01;
+
+    // 📐 The two divisors, and the two focal lengths that go with them.
+    const double TanHalf = std::tan(FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+    const double NearFocal = (Extent.Height() * 0.5) / TanHalf;
+    const double FarFocal  = OrthoScale * Pivot;
+
+    const double Divisor = CameraZ + (Pivot - CameraZ) * Eased;
+    const double Focal   = NearFocal + (FarFocal - NearFocal) * Eased;
+
+    // 🔴 A point behind a still-converging eye has no screen position. Once the blend has arrived the
+    //    rays are parallel and everything is visible, which is exactly what an orthographic view
+    //    promises -- so the test relaxes as the transit completes rather than being skipped outright.
+    if (Divisor <= 0.01)
+        return false;
+
+    ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + CameraX / Divisor * Focal);
+    ScreenY = static_cast<float>(Extent.MinimumY + Extent.Height() * 0.5 - CameraY / Divisor * Focal);
+    return true;
+}
+
 bool ProjectOffsetPoint(const SpatialBasis& Basis,
                         const ViewportStanding& View,
                         bool Perspective,

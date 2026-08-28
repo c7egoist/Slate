@@ -260,6 +260,111 @@ double SignedArea(const std::vector<PlanarVertex>& Outline)
     return Sum * 0.5;
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+//                                          FILLING A SHAPE THAT IS NOT CONVEX
+//------------------------------------------------------------------------------------------------------------------------
+
+// 🔴 A TRIANGLE FAN FILLS ONLY CONVEX SHAPES, AND MOST CLOSED SHAPES ARE NOT CONVEX. The fill refused
+//    anything `ConvexOutline` rejected, so an L, a star, a crescent or any hand-drawn closed polyline
+//    drew its outline and stayed hollow -- and refusing was the RIGHT call, because fanning a concave
+//    outline from one vertex lays triangles across the notches and fills outside the shape. Ear
+//    clipping is what fills the general case: repeatedly cut off a corner that contains no other
+//    vertex, which is guaranteed to exist for any simple polygon.
+
+/// 📐 Twice the signed area of a triangle; positive when the three run counter-clockwise.
+double TurnOf(const PlanarVertex& A, const PlanarVertex& B, const PlanarVertex& C)
+{
+    return (static_cast<double>(B.Along) - static_cast<double>(A.Along))
+         * (static_cast<double>(C.Across) - static_cast<double>(A.Across))
+         - (static_cast<double>(B.Across) - static_cast<double>(A.Across))
+         * (static_cast<double>(C.Along) - static_cast<double>(A.Along));
+}
+
+/// 📐 Whether a point falls inside a triangle, edges counting as inside.
+bool WithinTriangle(const PlanarVertex& A, const PlanarVertex& B, const PlanarVertex& C,
+                    const PlanarVertex& Point)
+{
+    const double First  = TurnOf(A, B, Point);
+    const double Second = TurnOf(B, C, Point);
+    const double Third  = TurnOf(C, A, Point);
+
+    const bool AnyNegative = First < 0.0 || Second < 0.0 || Third < 0.0;
+    const bool AnyPositive = First > 0.0 || Second > 0.0 || Third > 0.0;
+    return !(AnyNegative && AnyPositive);
+}
+
+/// 🧩 Cuts a simple outline into triangles, concave or convex.
+///
+/// out  -  [-]  false when the outline is degenerate and no fill should be drawn
+///
+/// note ⚠️ The outline must already run counter-clockwise; the caller reverses it by signed area.
+/// note 📝 The guard counts down from the vertex count so a self-intersecting outline -- which has no
+///       ear anywhere and would otherwise spin forever -- gives up instead of hanging the viewport.
+bool ClipEars(const std::vector<PlanarVertex>& Outline, std::vector<Unsigned32>& Delivered)
+{
+    Delivered.clear();
+    if (Outline.size() < 3u)
+        return false;
+
+    std::vector<Unsigned32> Remaining;
+    Remaining.reserve(Outline.size());
+    for (Unsigned32 Index = 0u; Index < static_cast<Unsigned32>(Outline.size()); ++Index)
+        Remaining.push_back(Index);
+
+    std::size_t Attempts = Remaining.size() * Remaining.size() + 4u;
+
+    while (Remaining.size() > 3u && Attempts-- > 0u)
+    {
+        bool Clipped = false;
+
+        for (std::size_t Position = 0u; Position < Remaining.size(); ++Position)
+        {
+            const Unsigned32 Previous = Remaining[(Position + Remaining.size() - 1u) % Remaining.size()];
+            const Unsigned32 Current  = Remaining[Position];
+            const Unsigned32 Next     = Remaining[(Position + 1u) % Remaining.size()];
+
+            // ⚠️ A reflex corner is not an ear; cutting one would fill across the notch.
+            if (TurnOf(Outline[Previous], Outline[Current], Outline[Next]) <= 0.0)
+                continue;
+
+            // ⚠️ Nor is a corner that swallows another vertex, which would fill over the shape.
+            bool Swallows = false;
+            for (const Unsigned32 Other : Remaining)
+            {
+                if (Other == Previous || Other == Current || Other == Next)
+                    continue;
+                if (WithinTriangle(Outline[Previous], Outline[Current], Outline[Next], Outline[Other]))
+                {
+                    Swallows = true;
+                    break;
+                }
+            }
+            if (Swallows)
+                continue;
+
+            Delivered.push_back(Previous);
+            Delivered.push_back(Current);
+            Delivered.push_back(Next);
+            Remaining.erase(Remaining.begin() + static_cast<std::ptrdiff_t>(Position));
+            Clipped = true;
+            break;
+        }
+
+        // 🔴 No ear anywhere means the outline crosses itself. It is not a shape with an inside, so
+        //    there is nothing honest to fill.
+        if (!Clipped)
+            return false;
+    }
+
+    if (Remaining.size() != 3u)
+        return false;
+
+    Delivered.push_back(Remaining[0u]);
+    Delivered.push_back(Remaining[1u]);
+    Delivered.push_back(Remaining[2u]);
+    return true;
+}
+
 bool ConvexOutline(const std::vector<PlanarVertex>& Outline)
 {
     if (Outline.size() < 3u)
@@ -369,16 +474,32 @@ void AppendProfileFill(const SketchStructure& Sketch,
         return;
 
     std::vector<PlanarVertex>& Outline = Candidates.front().Outline;
-    if (!ConvexOutline(Outline))
-        return;
 
+    // 🔴 Counter-clockwise first: the ear test reads a corner's turn, so a clockwise outline would
+    //    present every corner as reflex and no ear would ever be found.
     if (SignedArea(Outline) < 0.0)
         std::reverse(Outline.begin(), Outline.end());
 
-    for (std::size_t Index = 1u; Index + 1u < Outline.size(); ++Index)
-        Delivered.AddFill(Outline[0u].Along, Outline[0u].Across,
-                          Outline[Index].Along, Outline[Index].Across,
-                          Outline[Index + 1u].Along, Outline[Index + 1u].Across,
+    // 📝 A convex outline still fans, which is fewer triangles and no search. Ear clipping is what
+    //    the general case falls back to rather than what every shape pays for.
+    if (ConvexOutline(Outline))
+    {
+        for (std::size_t Index = 1u; Index + 1u < Outline.size(); ++Index)
+            Delivered.AddFill(Outline[0u].Along, Outline[0u].Across,
+                              Outline[Index].Along, Outline[Index].Across,
+                              Outline[Index + 1u].Along, Outline[Index + 1u].Across,
+                              Packed);
+        return;
+    }
+
+    std::vector<Unsigned32> Triangles;
+    if (!ClipEars(Outline, Triangles))
+        return;
+
+    for (std::size_t Index = 0u; Index + 2u < Triangles.size(); Index += 3u)
+        Delivered.AddFill(Outline[Triangles[Index]].Along,      Outline[Triangles[Index]].Across,
+                          Outline[Triangles[Index + 1u]].Along, Outline[Triangles[Index + 1u]].Across,
+                          Outline[Triangles[Index + 2u]].Along, Outline[Triangles[Index + 2u]].Across,
                           Packed);
 }
 

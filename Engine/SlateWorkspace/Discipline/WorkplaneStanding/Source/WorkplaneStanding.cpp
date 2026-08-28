@@ -62,6 +62,48 @@ Workplane ResolveStandingWorkplane(StandingWorkplane Subject)
     return Resolved;
 }
 
+bool ResolveViewedWorkplane(ViewportOrientation Orientation, StandingWorkplane& Viewed)
+{
+    switch (Orientation)
+    {
+        // 📝 Down the Y axis: the XZ plane, which is the ground the grid draws and the default.
+        case ViewportOrientation::Top:
+        case ViewportOrientation::Bottom:
+            Viewed = StandingWorkplane::Ground;
+            return true;
+
+        // 📝 Down the Z axis, so Z is held at zero and the artist works on XY.
+        case ViewportOrientation::Front:
+        case ViewportOrientation::Back:
+            Viewed = StandingWorkplane::Front;
+            return true;
+
+        // 📝 Down the X axis, so X is held at zero and the artist works on YZ.
+        case ViewportOrientation::Left:
+        case ViewportOrientation::Right:
+            Viewed = StandingWorkplane::Side;
+            return true;
+
+        // 🔴 Square to no plane. Answering anything here would drag the active plane back to a
+        //    standing one the moment the artist orbited off an axis.
+        case ViewportOrientation::Isometric:
+            break;
+    }
+    return false;
+}
+
+const char* ResolveWorkplaneZeroedAxis(StandingWorkplane Subject)
+{
+    switch (Subject)
+    {
+        case StandingWorkplane::Ground: return "Y";   // the XZ plane
+        case StandingWorkplane::Front:  return "Z";   // the XY plane
+        case StandingWorkplane::Side:   return "X";   // the YZ plane
+        case StandingWorkplane::SubjectCount: break;
+    }
+    return "";
+}
+
 Workplane ResolveDefaultWorkplane()
 {
     return ResolveStandingWorkplane(StandingWorkplane::Ground);
