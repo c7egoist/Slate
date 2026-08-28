@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
 #include "SlateShape/Record/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 #include "SlateShape/Sketch/SketchSelection/Api/SketchSelection.h"
 #include "SlateShape/Sketch/SketchSnap/Api/SketchSnap.h"
@@ -123,6 +124,28 @@ SketchPick ResolveSketchPick(const SketchStructure& Sketch,
                              const WorkspaceRecordStructure& Records,
                              const SpatialPoint& Probe,
                              double MaximumDistance);
+
+/// 🧩 What the artist pointed at, restricted to ONE KIND of element.
+/// in    Element          [-]  the only kind of element this pick may return
+/// in    MaximumDistance  [-]  how far a candidate may be and still count, in plane units
+/// note  🔴 THE ARTIST ASKED FOR SPECIFIC SELECTION. The unrestricted search above returns whatever kind
+///        of element wins its priority order, so reaching for an edge with a vertex sitting near it was a
+///        matter of luck and of how far the view happened to be zoomed. Under a mode the wanted kind is
+///        the ONLY candidate: a near edge cannot take a wanted vertex, and a near vertex cannot take a
+///        wanted edge.
+/// note  ⚠️ REFUSES rather than falling back. A mode that returned "the nearest thing of another kind"
+///        when its own kind was out of range would be the unrestricted search wearing a hat, and the
+///        artist would be back to guessing which one they were about to get.
+/// note  📝 `Vertex` admits an endpoint OR a Bezier control handle, in that order, because both are things
+///        the artist grabs and drags and neither is an edge. That ordering is the one place inside a mode
+///        where a priority still applies.
+/// cost  🚩
+/// tag   api, nonthrowing
+SketchPick ResolveSketchPickForElement(const SketchStructure& Sketch,
+                                       const WorkspaceRecordStructure& Records,
+                                       const SpatialPoint& Probe,
+                                       double MaximumDistance,
+                                       SelectionElement Element);
 
 /// 🧩 The pick a directory record corresponds to, for a selection made in the outliner rather than the
 ///    viewport.

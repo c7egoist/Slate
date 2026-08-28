@@ -302,6 +302,95 @@ SketchPick ResolveSketchPick(const SketchStructure& Sketch,
     return {};
 }
 
+SketchPick ResolveSketchPickForElement(const SketchStructure& Sketch,
+                                       const WorkspaceRecordStructure& Records,
+                                       const SpatialPoint& Probe,
+                                       double MaximumDistance,
+                                       SelectionElement Element)
+{
+    double Distance = MaximumDistance;
+
+    // ⚠️ EACH ARM RETURNS OR FALLS OUT — none of them falls through to another KIND. That is the whole
+    //    difference from the unrestricted search above, and it is what the artist asked for: with a mode
+    //    standing, the wanted kind is the only candidate and a miss is a miss.
+    switch (Element)
+    {
+        case SelectionElement::Vertex:
+        {
+            // 📝 An endpoint, then a Bezier control handle. Both are grabbed and dragged and neither is
+            //    an edge, so both are vertices to the artist; the order between them is the same
+            //    smallest-target-first rule the unrestricted search uses.
+            SketchPointPlacement Point = {};
+            if (ResolveNearestSketchPoint(Sketch, Probe, MaximumDistance, Point, Distance))
+            {
+                SketchPick Pick = {};
+                Pick.Subject  = SketchPickSubject::Point;
+                Pick.Point    = Point.Name;
+                Pick.Curve    = Point.SourceCurve;
+                Pick.Position = Point.Position;
+                Pick.Record   = ResolveRecordForPoint(Records, Point.Name);
+                if (Pick.Record.Assigned())
+                    return Pick;
+            }
+
+            SketchControlPlacement Control = {};
+            Distance = MaximumDistance;
+            if (ResolveNearestSketchControl(Sketch, Probe, MaximumDistance, Control, Distance))
+            {
+                SketchPick Pick = {};
+                Pick.Subject  = SketchPickSubject::Control;
+                Pick.Control  = Control.Name;
+                Pick.Curve    = Control.SourceCurve;
+                Pick.Position = Control.Position;
+                Pick.Record   = ResolveRecordForCurve(Sketch, Records, Control.SourceCurve);
+                if (Pick.Record.Assigned())
+                    return Pick;
+            }
+            return {};
+        }
+
+        case SelectionElement::Edge:
+        {
+            SketchCurveName Curve = {};
+            if (ResolveNearestSketchCurve(Sketch, Probe, MaximumDistance, Curve, Distance))
+            {
+                SketchPick Pick = {};
+                Pick.Subject = SketchPickSubject::Curve;
+                Pick.Curve   = Curve;
+                Pick.Record  = ResolveRecordForCurve(Sketch, Records, Curve);
+                ResolveCurvePivot(Sketch, Curve, Pick.Position);
+                if (Pick.Record.Assigned())
+                    return Pick;
+            }
+            return {};
+        }
+
+        case SelectionElement::Face:
+        {
+            // 📝 A face is the closed region a set of curves bounds, and what names it is the RECORD the
+            //    curve belongs to. Picking the curve and returning its owner as a record pick is
+            //    therefore the same act, reported at the coarser grain the artist asked for.
+            SketchCurveName Curve = {};
+            if (ResolveNearestSketchCurve(Sketch, Probe, MaximumDistance, Curve, Distance))
+            {
+                SketchPick Pick = {};
+                Pick.Subject = SketchPickSubject::Record;
+                Pick.Curve   = Curve;
+                Pick.Record  = ResolveRecordForCurve(Sketch, Records, Curve);
+                ResolveCurvePivot(Sketch, Curve, Pick.Position);
+                if (Pick.Record.Assigned())
+                    return Pick;
+            }
+            return {};
+        }
+
+        case SelectionElement::ElementCount:
+            break;
+    }
+
+    return {};
+}
+
 bool ResolvePickForRecord(const SketchStructure& Sketch,
                           const WorkspaceRecordStructure& Records,
                           WorkspaceRecordName Record,
