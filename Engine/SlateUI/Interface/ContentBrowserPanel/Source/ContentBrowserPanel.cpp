@@ -963,7 +963,7 @@ void ContentBrowserPanel::RecordLattice(const PlaneExtent& Extent, ContentLibrar
 
         // 📐 `border ... overflow-hidden` — the border box clips its children, so the edge is in FRONT of
         //    everything the card holds. Recorded last for that reason.
-        // 🔴 Recorded before the plate it reads over, the taken card's white/60 edge was overpainted along
+        // 🔴 Recorded before the plate it reads over, the taken card's white/60 edge was overdrawn along
         //    its whole upper run by the plate's own ground, and a taken card was then indistinguishable
         //    from an untaken one down the three sides the caption did not cover.
         if (!MaterialCard)

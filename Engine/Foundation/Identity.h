@@ -69,7 +69,7 @@ constexpr bool operator!=(Identity<Subject> LeftIdentity, Identity<Subject> Righ
 
 using OwnerIdentity  = Identity<OwnerSubject>;    // [-] - one owner of the document population
 using PartitionIdentity = Identity<PartitionSubject>;   // [-] - one partition of one owner's topology
-using SurfaceIdentity   = Identity<SurfaceSubject>;     // [-] - one paintable surface domain
+using SurfaceIdentity   = Identity<SurfaceSubject>;     // [-] - one texturable surface domain
 using RecordingIdentity = Identity<RecordingSubject>;   // [-] - one slot of the recording rotation
 using WorkIdentity      = Identity<WorkSubject>;        // [-] - one declaration in `34`'s work sequence
 using LayerIdentity     = Identity<LayerSubject>;       // [-] - one entry of a surface's layer sequence
@@ -78,6 +78,6 @@ using GeometryRenderingIdentity = Identity<GeometryRenderingSubject>; // [-] - o
 
 // 📝 🔴 `56` §8 requires an entry to carry `10` §2.1's integer pair rather than a bare position: a collision
 //    reorders a surface, and a position alone collides with whichever entry later occupies it. Tagged apart from
-//    an owner because a painted layer is not one — only a placement is registered in the population.
+//    an owner because a textured layer is not one — only a placement is registered in the population.
 
 }   // namespace Slate

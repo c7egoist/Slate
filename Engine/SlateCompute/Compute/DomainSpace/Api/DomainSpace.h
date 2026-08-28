@@ -22,7 +22,7 @@ namespace Slate
 /// 🧩 The least gap between two adjacent charts, in domain units.
 /// note  🔴 `68` §5: at least `20` §1's `PhysicalTileApron`, measured at the maximum working extent. A gap
 ///        narrower than the apron means a tile's duplicated border reads texels belonging to a different chart,
-///        and every chart edge in the painted result carries a fringe of a neighbouring chart's content.
+///        and every chart edge in the textured result carries a fringe of a neighbouring chart's content.
 /// note  🔴 Both constants are read from `Foundation/` as numbers. Nothing here consults `20`'s subdivision, its
 ///        residency or its promotion — that is the whole content of `00` §10 conflict 30's resolution, and it is
 ///        what makes this document precede `20` rather than depend on it.
@@ -65,7 +65,7 @@ struct ChartPlacement
 /// note  ⚠️ `ChartArrangement` is the retired spelling. `Arrangement` is not in `SKILL-Naming`'s closed suffix
 ///        list, and what the mechanism does is subdivide the parametric domain — which is `Space`.
 /// note  🔴 Charts are packed at a **common scale** by default: one texel of domain covers the same topology area
-///        on every chart. A per-chart scale packs more tightly and makes one surface's paint finer than
+///        on every chart. A per-chart scale packs more tightly and makes one surface's texture finer than
 ///        another's on the same object, which the artist reads as an inconsistent brush.
 /// tag   owning
 class DomainSpace

@@ -24,7 +24,7 @@ enum class FeatureSubject : std::uint32_t
     Fillet = 6u,
     Chamfer = 7u,
     Offset = 8u,
-    Draft = 9u,
+    Taper = 9u,
     SubjectCount = 10u
 };
 

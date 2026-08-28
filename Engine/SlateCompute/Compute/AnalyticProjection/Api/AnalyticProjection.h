@@ -109,8 +109,8 @@ constexpr double ToleranceAtLevel(std::uint32_t Level)
 ///        resolved per rotation, not per pixel, and not into a resolution-independent representation that is then
 ///        sampled. A finer level is therefore a re-resolution rather than a magnification, which is the whole of
 ///        what "resolution-free source" means and the reason `20` §4 may evict what this produces.
-/// note  🔴 The **whole** sequence is resolved, painted entries included. `20` §2.1 lists three reconstruction
-///        sources and a mixed sequence needs all three composed; a resolver that skipped painted entries would
+/// note  🔴 The **whole** sequence is resolved, textured entries included. `20` §2.1 lists three reconstruction
+///        sources and a mixed sequence needs all three composed; a resolver that skipped textured entries would
 ///        hand `20` a partial tile it has no route to complete. `PromotionScheduler::Estimate` already charges
 ///        both measures for exactly this case.
 /// note  🔴 Every source resolves identically here and on the device — `00` §11 gates the agreement at Tier B

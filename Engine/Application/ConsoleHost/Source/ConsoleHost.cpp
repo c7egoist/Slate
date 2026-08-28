@@ -913,11 +913,11 @@ void VerifyDocument()
     Slate::RevisionSequence Revisions;
 
     Report("An open transaction is absent",
-           Revisions.Open("", "PaintStroke").Resolved && Revisions.Committed().empty(),
+           Revisions.Open("", "TextureStroke").Resolved && Revisions.Committed().empty(),
            "[-] nothing enters the sequence until Seal");
 
     Report("A second open is rejected",
-           !Revisions.Open("", "PaintStroke").Resolved,
+           !Revisions.Open("", "TextureStroke").Resolved,
            "[-] one transaction is open at a time");
 
     Discard(Revisions.Seal(1000000000ull, false));
@@ -2719,7 +2719,7 @@ void VerifyIntake()
 //------------------------------------------------------------------------------------------------------------------------
 
 // 📐 The stroke is verified at the coarsest reduction level, whose cells `20` §3 keeps permanently resident. That
-//    makes the whole path exercisable without a promotion budget, and the deferral check below then paints at the
+//    makes the whole path exercisable without a promotion budget, and the deferral check below then textures at the
 //    finest level — where nothing is resident — so both halves of `22` §2's rule are measured rather than assumed.
 void VerifyStroke()
 {
@@ -2741,7 +2741,7 @@ void VerifyStroke()
            Residency.ConstructSurfaceTiles(0u, 16u, 64u).Resolved,
            "[-] the permanent levels are resident");
 
-    // 📝 One painted entry at the coarsest extent, three components — a colour channel and nothing else. The
+    // 📝 One textured entry at the coarsest extent, three components — a colour channel and nothing else. The
     //    placement is supplied rather than derived, per `00` §12's open packing row.
     Slate::SurfaceLayerSequence Content;
 
@@ -2754,7 +2754,7 @@ void VerifyStroke()
 
     const Slate::Deliver<Slate::LayerIdentity> Appended = Content.Append(Texturing);
 
-    Report("A painted entry appends", Appended.Resolved, "[-] at the declared extent");
+    Report("A textured entry appends", Appended.Resolved, "[-] at the declared extent");
 
     if (!Appended.Resolved)
         return;
@@ -2825,7 +2825,7 @@ void VerifyStroke()
 
     // 📐 A straight path of length 0.4 at a spacing of 0.25 × 0.1 places one impression at the origin and one
     //    every 0.025 thereafter — seventeen in all. Measured rather than asserted, because the spacing comes
-    //    from the previously resolved brush and an off-by-one there is invisible in the painted result.
+    //    from the previously resolved brush and an off-by-one there is invisible in the textured result.
     const Slate::TickSequence StrokeTimeline;
 
     Slate::StrokeArrival Beginning;
@@ -2838,7 +2838,7 @@ void VerifyStroke()
 
     Report("The first arrival places an impression",
            Stroke.ImpressionCount() == 1u,
-           "[-] a tap paints; it does not wait for a tangent");
+           "[-] a tap lays down colour; it does not wait for a tangent");
 
     Slate::StrokeArrival Ending = Beginning;
     Ending.PositionX        = 0.7;
@@ -2854,7 +2854,7 @@ void VerifyStroke()
            std::fabs(Stroke.PathLength() - 0.4) < 1.0e-9,
            "[-] resampled in the domain, never in pixels");
 
-    // 🔴 A break must not interpolate. A stroke that leaves the surface and returns paints no line between the
+    // 🔴 A break must not interpolate. A stroke that leaves the surface and returns textures no line between the
     //    two places, and the artist cannot undo half of one stroke to remove one.
     const std::uint32_t BeforeBreak = Stroke.ImpressionCount();
 
@@ -2873,7 +2873,7 @@ void VerifyStroke()
 
     Report("A broken path interpolates nothing",
            Stroke.ImpressionCount() == BeforeBreak,
-           "[-] the gap is not painted across");
+           "[-] the gap is not textured across");
 
     Slate::RequestQueue Requesting;
 
@@ -2902,7 +2902,7 @@ void VerifyStroke()
 
     Report("The gate is withdrawn at Seal",
            Residency.Cells().UncommittedCount() == 0u,
-           "[-] the paint is in `56`; the tile is a projection again");
+           "[-] the texture is in `56`; the tile is a projection again");
 
     Report("The seed travelled with the transaction",
            Sealed.Resolved && Sealed.Resolve().Recorded.StrokeSeed == 7u,
@@ -2928,7 +2928,7 @@ void VerifyStroke()
         && Content.Resolve(Appended.Resolve()).Resolve()->Textured.Texels[Centre] == 0.0f,
            "[-] extent-bounded, and replayed rather than snapshotted");
 
-    // 🔴 `22` §2's other half: an impression whose cells are not resident at the painting level demands and
+    // 🔴 `22` §2's other half: an impression whose cells are not resident at the texturing level demands and
     //    defers. Nothing is dropped and nothing resolves coarse, so the pending count survives the rotation.
     Slate::SurfaceLayerSequence FineContent;
 
@@ -2953,7 +2953,7 @@ void VerifyStroke()
 
     Report("A non-resident cell defers rather than coarsening",
            Waiting.Resolved && Waiting.Resolve().DeferredCount == 1u && Deferred.PendingCount() == 1u,
-           "[-] paint at the wrong resolution is permanently wrong");
+           "[-] texture at the wrong resolution is permanently wrong");
 
     Report("The deferral recorded a demand",
            Requesting.RecordedCount() > DemandedBefore,

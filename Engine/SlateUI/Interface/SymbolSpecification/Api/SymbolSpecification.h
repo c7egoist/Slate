@@ -34,7 +34,7 @@ enum class SymbolDiscipline : std::uint32_t
     Simulation           =  9u,   // [-] - cloth, fluid, rigid collision, particles
     Assembly             = 10u,   // [-] - layer merge, alpha masks, colour, junction graphs
     Measurement          = 11u,   // [-] - pulse traces, rulers, histograms, readouts
-    LayerStack           = 12u,   // [-] - the texture-paint stack: undo, blend, mask, add actions
+    LayerStack           = 12u,   // [-] - the texture-texture stack: undo, blend, mask, add actions
     DisciplineCount      = 13u    // [-] - the closed count, never a discipline
 };
 

@@ -787,7 +787,7 @@ SpatialSpan Perturbed(const ResolvedChannelSet& Resolved, const ReconstructedSur
 
 // 📐 The normal-incidence reflectance per component. A dielectric's is derived from channel 4 by the standard
 //    quadratic, and a conductor's is its own albedo; metallic interpolates between them rather than selecting,
-//    because an artist painting a rusted edge paints the interpolant and not a decision.
+//    because an artist texturing a rusted edge textures the interpolant and not a decision.
 SpatialSpan NormalIncidence(const ResolvedChannelSet& Resolved)
 {
     const SpatialSpan Albedo   = TripleOf(Resolved, ChannelSubject::AlbedoColour);

@@ -356,7 +356,7 @@ TickPass HostLifecycle::Await(const float ClearInk[4])
         return Pass;
     }
 
-    // ③ 🔴 Re-establish the chain the moment the extent moved, before anything reads it. `PaintHost` never
+    // ③ 🔴 Re-establish the chain the moment the extent moved, before anything reads it. The texturing host never
     //    performed this test at all, so a resize did nothing until the vendor rejected an acquire — which it
     //    reports as an out-of-date chain one or more ticks after the window actually moved.
     if (Surface.ExtentAltered())
@@ -634,7 +634,7 @@ Deliver<bool> HostLifecycle::Complete()
         return Submitted;
     }
 
-    // 🔴 A rejected present re-establishes the chain rather than ending the loop. `PaintHost` broke out of
+    // 🔴 A rejected present re-establishes the chain rather than ending the loop. The texturing host broke out of
     //    its tick loop here, so a resize incoming between the acquire and the present closed the
     //    application — reported to the artist as the program vanishing.
     // 🔴 The delivered VALUE is read as well as the delivery. `Present` reports a presentation against a

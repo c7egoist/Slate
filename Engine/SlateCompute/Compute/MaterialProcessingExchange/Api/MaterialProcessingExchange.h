@@ -175,7 +175,7 @@ public:
                                        const MaterialProcessingSnapshot& Current) const;
 
     /// 🧩 Resolves one channel through PreviewProjection, preserving its one-resolver and non-mutating guarantees.
-    /// This is for immediate paint/material presentation; persistent browser previews use a later bake route.
+    /// This is for immediate texture/material presentation; persistent browser previews use a later bake route.
     Deliver<MaterialLiveChannelPreview> ResolveLiveChannelPreview(
         const MaterialProcessingSnapshot& Snapshot,
         const PreviewProjection& Preview,
@@ -186,7 +186,7 @@ public:
         std::uint32_t Level) const;
 
     /// 🧩 Resolves the current pass' supported mask shape: uniform/generator coverage with optional inversion and
-    /// channel targeting. Image and painted mask data keep their declarations but resolve through this placeholder.
+    /// channel targeting. Image and textured mask data keep their declarations but resolve through this placeholder.
     Deliver<MaterialLayerCoveragePreview> ResolveLayerCoveragePreview(
         const MaterialProcessingSnapshot& Snapshot,
         LayerIdentity Layer,

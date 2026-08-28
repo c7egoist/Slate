@@ -35,7 +35,7 @@ CubeBasis CubeBasisFromYawPitch(double YawDegrees, double PitchDegrees)
 double CubeAxisDepth(const CubeBasis& Basis, const double Axis[3])
 {
     // The HTML reference (References/Cad/js/viewport3d.js::vp3Basis/vp3Gizmo) uses
-    // camera-forward = target - eye for depth ordering. Editor/Paint yaw-pitch stores
+    // camera-forward = target - eye for depth ordering. the hosts' yaw-pitch stores
     // the eye ray in Basis.Forward, while Parametric passes an already camera-forward
     // frame, so the public gizmo projection always normalizes depth through this helper
     // instead of letting each host guess front/back differently.

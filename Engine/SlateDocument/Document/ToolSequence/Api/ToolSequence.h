@@ -168,7 +168,7 @@ struct PointerCapture
 
 /// 🧩 Every item of state `14` §4.1 places beside the document, with one owner and one copy.
 /// note  🔴 Nothing here is a transaction and nothing here enters `RevisionSequence` — `14` §4.1. Undo must not
-///        step back through a colour change: the artist who picks a colour, paints, and undoes expects the stroke
+///        step back through a colour change: the artist who picks a colour, textures, and undoes expects the stroke
 ///        to disappear and the colour to remain.
 /// note  🔴 Held in `SlateDocument.lib` because **both** `SlateCompute` and `SlateUI` read it and `SlateCompute`
 ///        cannot link `SlateUI` — `00` §2. This is `86` §3's reasoning about the register, one layer up: the

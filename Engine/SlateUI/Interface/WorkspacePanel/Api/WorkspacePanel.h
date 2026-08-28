@@ -19,14 +19,14 @@ namespace Slate
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 What one workspace is for, which decides what it is called and what a host opens by default.
-/// note  🔴 The subject is the workspace's own, not the host's. `32` §3 ships one painting host, and an
+/// note  🔴 The subject is the workspace's own, not the host's. `32` §3 ships one texturing host, and an
 ///        editor presents every subject at once — so a host that inferred the subject from itself could
 ///        not carry two kinds of workspace, which is the whole reason the editor exists.
 /// tag   guarantee
 enum class WorkspaceSubject : std::uint32_t
 {
     Vacant       = 0u,   // [-] - opened blank; the editor's default
-    Texturing     = 1u,   // [-] - a paint surface; the painting host's default
+    Texturing     = 1u,   // [-] - a texture surface; the texturing host's default
     Modelling    = 2u,   // [-] - a sketch or solid workspace
     Parametric   = 3u,   // [-] - a dedicated CAD workspace
     SubjectCount = 4u    // [-] - the closed count, never a subject
@@ -73,7 +73,7 @@ public:
     /// in    Titled      [-]   the active workspace's title, or nullptr when the panel carries none
     /// out   Result     [-]   refuses with CapabilityAbsent before Construct
     /// note  🔴 The body is recorded BEFORE the footer and the footer draws its edge on top. The sheet gives
-    ///        `.panelfooter` a `border-top` and `z-index: 2`, so a body that painted over it would lose the
+    ///        `.panelfooter` a `border-top` and `z-index: 2`, so a body that textured over it would lose the
     ///        one line separating the workspace from the strip below it.
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing

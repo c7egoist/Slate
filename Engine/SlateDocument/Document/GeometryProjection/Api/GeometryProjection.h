@@ -2,7 +2,7 @@
 //                                                       GEOMETRYPROJECTION.H
 //============================================================================================================================================
 // 🧩 Exact-solid projection into the standing polygon document topology. This adapter belongs outside
-//    SlateShape so the exact kernel remains independent of the current polygon, paint and render pipeline.
+//    SlateShape so the exact kernel remains independent of the current polygon, texture and render pipeline.
 
 #pragma once
 

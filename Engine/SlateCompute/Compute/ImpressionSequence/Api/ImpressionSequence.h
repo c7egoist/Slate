@@ -27,10 +27,10 @@ namespace Slate
 //                                                   THE PAINTING LEVEL
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Which reduction level a declared working extent paints at.
+/// 🧩 Which reduction level a declared working extent textures at.
 /// in    WorkingExtent  [px] texels per edge of the surface's authored content
 /// out   Result        [-]  refuses with ContentUnsupported when no level has that extent
-/// note  🔴 `22` §2: paint is authored content and lands at **one** level — the level whose texel grid is the
+/// note  🔴 `22` §2: texture is authored content and lands at **one** level — the level whose texel grid is the
 ///        working extent. Resolving a stroke against a coarser level is not a lower-quality stroke, it is a
 ///        stroke recorded at a resolution the artist did not choose, and no later promotion recovers it.
 /// note  📐 Level L holds `VirtualCellsPerEdge >> L` cells of `CoverageTileTexels` each, so its extent is
@@ -75,7 +75,7 @@ struct ImpressionSample
 ///        Upstream, and `00` §11 gates that a declared edge is a real read. The same choice `28` made for the
 ///        sun direction, for the same reason.
 /// note  🔴 `SurfaceResolved` is false where the pointer left the surface, and the path **breaks** there rather
-///        than interpolating across the gap. A stroke that leaves an object and returns must not paint a line
+///        than interpolating across the gap. A stroke that leaves an object and returns must not texture a line
 ///        between the two points, and the artist has no way to undo half of one stroke.
 /// tag   nonallocating, nonthrowing
 struct StrokeArrival
@@ -95,9 +95,9 @@ struct StrokeArrival
 struct StrokeDeclaration
 {
     std::vector<ChannelPlacement>  Placements     = {};      // [-]  - one per brush channel — never derived
-    LayerIdentity                  Subject        = {};      // [-]  - the `56` entry the stroke paints into
+    LayerIdentity                  Subject        = {};      // [-]  - the `56` entry the stroke textures into
     std::uint32_t                  SurfaceIndex = 0u;      // [-]  - which residency demands name
-    std::uint32_t                  WorkingExtent  = 0u;      // [px] - texels per edge of the painted entry
+    std::uint32_t                  WorkingExtent  = 0u;      // [px] - texels per edge of the textured entry
     std::uint32_t                  ComponentCount = 1u;      // [-]  - components per texel the entry holds
     std::uint32_t                  StrokeSeed     = 1u;      // [-]  - `58` §6; recorded with the transaction
     bool                           Speculative    = false;   // [-]  - `22` §4.1; never commits, never pins a tile
@@ -115,7 +115,7 @@ struct StrokeDeclaration
 struct ResolvedRun
 {
     std::uint32_t  ResolvedCount = 0u;   // [-] - impressions accumulated this rotation
-    std::uint32_t  DeferredCount = 0u;   // [-] - impressions whose cells are not resident at the painting level
+    std::uint32_t  DeferredCount = 0u;   // [-] - impressions whose cells are not resident at the texturing level
     std::uint32_t  PendingCount  = 0u;   // [-] - impressions still owed resolution after this rotation
 };
 
@@ -125,7 +125,7 @@ struct ResolvedRun
 
 /// 🧩 One committed stroke's inverse, bounded by the extents the stroke touched.
 /// note  🔴 `22` §4 and `10` §2.3: the inverse records the prior contents of the **touched extents only**. A
-///        surface-wide snapshot per stroke makes a painting session's revision sequence proportional to the
+///        surface-wide snapshot per stroke makes a texturing session's revision sequence proportional to the
 ///        surface times the stroke count, and the artist runs out of memory rather than out of undo.
 /// note  📝 Whole tiles are recorded rather than only the texels whose coverage was non-zero. The tile is
 ///        already the granularity the stroke claimed, and a sparse inverse would have to carry a texel mask
@@ -214,9 +214,9 @@ public:
     /// out   Result          [-]  refuses with HostDenied before Open
     /// post  🔴 a deferred impression stays owed; nothing is dropped and nothing resolves coarse
     /// note  🔴 `22` §2: an impression touching a non-resident cell **demands and defers**. It is not resolved
-    ///        against the coarse level, because paint applied at the wrong resolution is authored content that
+    ///        against the coarse level, because texture applied at the wrong resolution is authored content that
     ///        is permanently wrong — unlike a display sample, which is merely briefly coarse.
-    /// note  ⚠️ That rule binds **painted** impressions only. Placed content and tiling resolve through `70` at
+    /// note  ⚠️ That rule binds **textured** impressions only. Placed content and tiling resolve through `70` at
     ///        whatever level is promoted and may refine later, because for them the authored thing is the
     ///        source and the transform rather than the texels. A speculative stroke follows the derived rule
     ///        for the same reason: nothing speculative is authored, so nothing speculative can be wrong.
@@ -236,7 +236,7 @@ public:
     void Abandon(SurfaceTileSpace& Residency);
 
     /// 🧩 Ends the stroke, applying it once and sealing one transaction.
-    /// in    Content    [-]  the layer sequence holding the painted entry
+    /// in    Content    [-]  the layer sequence holding the textured entry
     /// in    Revised    [-]  where the transaction is recorded
     /// in    Residency  [-]  the tiles pinned by the stroke, released here
     /// in    SealedAt   [ns] the arrival stamp the transaction carries
@@ -258,7 +258,7 @@ public:
 
     /// 🧩 Discards the accumulation without ending the stroke — a speculative extent's per-slot reclaim.
     /// note  🔴 `22` §4.1: a speculative extent is discarded and re-resolved each rotation. Refuses for a
-    ///        committed stroke, whose accumulation is the only record of what has been painted so far.
+    ///        committed stroke, whose accumulation is the only record of what has been textured so far.
     /// out   Result  [-]  refuses with HostDenied for a committed stroke
     /// cost  🚩
     /// tag   api, nonthrowing
@@ -299,7 +299,7 @@ private:
     double                         TravelledDistance   = 0.0;     // [-] - path length up to the last arrival
     double                         PendingDistance     = 0.0;     // [-] - walked since the last impression
     double                         NextSpacing         = 0.0;     // [-] - to the next impression, from the last
-    std::uint32_t                  Level               = 0u;      // [-] - the painting level
+    std::uint32_t                  Level               = 0u;      // [-] - the texturing level
     std::uint32_t                  ResolvedTotal       = 0u;      // [-] - impressions accumulated this stroke
     bool                           OpenDeclared        = false;   // [-] - Open delivered, Seal has not
     bool                           PathBegun           = false;   // [-] - one arrival has been accepted

@@ -240,28 +240,35 @@ def main() -> int:
             if Source.suffix not in (".h", ".cpp"):
                 continue
             Body = Source.read_text(encoding="utf-8", errors="ignore")
-            # ⚠️ TWO USES OF "Draft" ARE NOT THE BANNED WORD AND MUST SURVIVE.
-            #    ① `"Draft", "0°"` on Extrude and Revolve is the CAD DRAFT ANGLE — the taper a moulded
-            #       part needs to leave its die. It is standard manufacturing vocabulary with no
-            #       synonym, and renaming it would make the property meaningless to the artist.
-            #    ② `CodexProfile::Drafting = 10u` is bound to the `.draft` FILE EXTENSION. That token
-            #       is matched against documents already on disk, so renaming it is a format break of
-            #       exactly the kind the `DatumPlane` enumerator note forbids.
-            #    A banned-word gate that cannot tell a vocabulary choice from a domain term or a
-            #    persisted token would force a real defect to be introduced in order to pass.
+            # 🔴 THE TWO EXEMPTIONS THAT USED TO LIVE HERE WERE BOTH WRONG, AND EACH KEPT A BANNED
+            #    WORD ALIVE FOR A REASON THAT DID NOT HOLD.
+            #    ① The CAD angle was said to have "no synonym". It has one, and it is the word the
+            #       standards use: TAPER. The property now reads `"Taper", "0°"` and means the same
+            #       thing to the artist.
+            #    ② The profile enumerator was said to be "matched against documents already on
+            #       disk". It is not: `ProfileOf` classifies a PATH by its suffix and the enumerator
+            #       name never reaches the file. The VALUE `10u` is what is persisted, and it has not
+            #       moved. `.draft` is still classified, so old documents still open — only the
+            #       C++ spelling changed, to `CodexProfile::Parametric`.
+            #    An exemption is a claim about the code, and a claim nobody rechecks becomes a place
+            #    for exactly the thing the gate exists to prevent.
             for Line in Body.splitlines():
                 Code = Line.split("//", 1)[0]
                 Stripped = Code.strip()
                 if not Stripped:
                     continue
-                if '"Draft", "0' in Code or ".draft" in Code or "CodexProfile::Drafting" in Code:
+                # 📝 `.draft` survives as a READ-ONLY suffix so documents saved under it keep
+                #    opening. It is a string compared against a path, not a name in the source.
+                if '".draft"' in Code:
                     continue
                 for Banned in ("Draught", "Draft"):
                     require(Banned not in Code,
                             f"{Source.name} carries the banned word {Banned}: {Stripped[:70]}")
-            # 📝 `Paint` survives only inside prose that explains why it was removed, and in the
-            #    persisted revision label `"PaintStroke"`, which is compared by string against
-            #    documents already written. Renaming that is a format change, not a rename.
+            # 🔴 `"PaintStroke"` was exempted here as a "persisted revision label ... compared by
+            #    string against documents already written". It is neither persisted nor compared:
+            #    `RevisionSequence::Open` takes it as `OperationName`, "the mechanism's spelling",
+            #    to caption the undo entry, and no encoder writes it. It is now `"TextureStroke"`.
+            #    The word survives in this engine only where prose explains why it was retired.
             for Line in Body.splitlines():
                 # 📝 A trailing comment is prose too. Checking the whole line flagged
                 #    `TextureFacetCount = 8u;  // [-] - Paint … Filter`, where the code is clean and
@@ -269,7 +276,7 @@ def main() -> int:
                 #    by mangling a perfectly good declaration.
                 Code = Line.split("//", 1)[0]
                 Stripped = Code.strip()
-                if not Stripped or "PaintStroke" in Code:
+                if not Stripped:
                     continue
                 require("Paint" not in Code,
                         f"{Source.name} carries the banned word Paint in code: {Stripped[:70]}")

@@ -130,7 +130,7 @@ struct DerivedProjection
 
 /// 🧩 What changed, so that only what it reaches is rebuilt.
 /// note  🔴 `60` §4: a projection is world-referred and is rebuilt when **what it sees** changes, and not
-///        otherwise. A camera move rebuilds nothing but the directional subdivision, and a paint stroke rebuilds
+///        otherwise. A camera move rebuilds nothing but the directional subdivision, and a texture stroke rebuilds
 ///        nothing at all — these are the two things the artist does constantly, and a projection set that
 ///        rebuilt on either is a workspace that stutters while being used rather than while being changed.
 /// tag   guarantee
@@ -366,7 +366,7 @@ public:
 
     /// 🧩 Whether anything is owed a rebuild.
     /// note  🔴 What the schedule's contributor reads to decide whether ③ records at all. `60` §4's table exists
-    ///        so that the ordinary rotation — a camera the artist is orbiting, a stroke they are painting —
+    ///        so that the ordinary rotation — a camera the artist is orbiting, a stroke they are texturing —
     ///        rebuilds nothing.
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing

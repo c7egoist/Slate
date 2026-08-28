@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                           TEXTUREPAINTPANEL.H
 //============================================================================================================================================
-// 🧩 The editor's texture-paint layer stack — a dedicated sibling of
+// 🧩 The editor's texture-texture layer stack — a dedicated sibling of
 //    SceneDirectoryPanel, presenting the LayerstackV1 reference inside a
 //    workspace leaf, appearance and interactions faithful to the HTML:
 //
@@ -19,7 +19,7 @@
 //             density · INV sub run, chips and menu.
 //    FOLDERS  children indented with the colour guide line.
 //    FOOTER   the crumb, the blend pill + opacity slider, and the action bar
-//             (paint / fill / adjustment / filter / decal / pattern · group /
+//             (texture / fill / adjustment / filter / decal / pattern · group /
 //             duplicate / lock · move up / move down · delete).
 //
 //    🔴 WHAT THE PANEL IS. The stack page is the HTML's. A row's trailing V
@@ -68,14 +68,14 @@ namespace Slate
 //                                                   WHAT THE HOST OWNS
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Every datum the texture-paint panel presents, owned by the host and written through by the panel.
+/// 🧩 Every datum the texture-texture panel presents, owned by the host and written through by the panel.
 ///    The per-row working copies (opacity, blend, lock, mask, tag hue) are seeded from the rows at
 ///    bring-up and synchronised back through `TexturingStack::ApplyRequest` — the rows stay the model.
 /// tag   guarantee
 struct TexturingContext
 {
     static constexpr std::uint32_t TextureRetentionLimit = 48u;  // [-] - the search run, terminator included
-    static constexpr std::uint32_t TextureFacetCount      = 8u;    // [-] - Paint … Filter
+    static constexpr std::uint32_t TextureFacetCount      = 8u;    // [-] - Covering … Filter
     /// 🔴 This was 3 — "Base, Maps, Output" — a set of captions that appears
     ///    nowhere in the schema, and the card used it only to HIDE rows. The
     ///    reference's chips region is not a view filter at all: each chip is one

@@ -110,7 +110,7 @@ Deliver<ResolvedRun> PreviewProjection::ResolveImpression(SurfaceTileSpace& Resi
     // 🔴 `82` §1's separating property is discharged here and it is discharged by **absence**. `20`'s
     //    `DeclareUncommitted` is the only thing in the engine that blocks an eviction, it is not called on this
     //    path, and `22`'s own resolution skips it for a speculative stroke. A preview that pinned would exhaust
-    //    residency while the artist hovers across a surface without painting anything.
+    //    residency while the artist hovers across a surface without texturing anything.
     return Previewing.Resolve(Residency, Requesting, RecordingIndex);
 }
 

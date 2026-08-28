@@ -25,7 +25,7 @@ namespace Slate
 //    file exists and why it is this short.
 //
 // 📝 Declared now rather than when it is needed, for one reason learned on the sketch side: a vocabulary
-//    with no owner gets declared twice. `SharedCadDraftSubject` and `ParametricDraftSubject` were the same
+//    with no owner gets declared twice. `SharedCadSketchSubject` and `ParametricSketchSubject` were the same
 //    twenty-two members in two files, reconciled by casting through the underlying integer, and no
 //    validator noticed for as long as they both existed. Naming the owner before the second copy is
 //    written costs one file; unifying two copies afterwards cost a full step.
@@ -37,7 +37,7 @@ namespace Slate
 /// 🧩 What a texturing tool does to the texels it touches.
 /// note  🔴 The word is `Texture`, never the retired gesture word — which named what the ARTIST does. What
 ///        the mechanism does is write texels into a layer through an impression, and whether that reads as
-///        painting, stencilling or masking is presentation. `SymbolDiscipline::Texturing` spells it so.
+///        texturing, stencilling or masking is presentation. `SymbolDiscipline::Texturing` spells it so.
 /// note  📝 These are the operations `ImpressionSequence` can already carry — the enumeration names them,
 ///        it does not add them. A member is added here only when the compute side can honour it, which is
 ///        the rule the sketch side broke by offering `DiameterCircle` before anything could commit one.
@@ -85,7 +85,7 @@ struct TextureToolDeclaration
 /// out   Declared  [-]  the declaration; an empty naming for `None`
 /// note  🔴 `ReadsSurface` is the one that matters to the compute side: a tool that samples the layer it is
 ///        writing into cannot be resolved from a stale residency, so `ImpressionSequence` must have the
-///        painted extents resident before the gesture resolves rather than after. Smudge, blur and clone
+///        textured extents resident before the gesture resolves rather than after. Smudge, blur and clone
 ///        all read; deposit and erase do not.
 /// cost  ✔️
 /// tag   api, constexpr, nonallocating, nonthrowing

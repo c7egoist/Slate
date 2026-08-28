@@ -436,7 +436,7 @@ Deliver<bool> UvSurfaceDepot::Accept(SurfaceDepot&     Depot,
                                     std::uint64_t     RecordingIndex) const
 {
     // 🔴 Declared an analytic resolution, which `56` §3 classifies as reconstructible — so the depot accepts it as
-    //    evictable. Nothing painted is ever declared here: paint is a layer above the transfer in `56`'s sequence
+    //    evictable. Nothing textured is ever declared here: texture is a layer above the transfer in `56`'s sequence
     //    and stays there, rather than the transfer mutating into authored content underneath it.
     return Depot.Declare(Keyed, LayerContentSource::AnalyticResolution, ByteExtent, RecordingIndex);
 }

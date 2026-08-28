@@ -226,7 +226,7 @@ ChartLocality BuildLocality(const TopologyStructure&           Imported,
 //                                                    FOLD DETECTION
 //------------------------------------------------------------------------------------------------------------------------
 
-// 🔴 `68` §4.1: a fold maps two topology positions to one domain position, so painting one paints both. It is a
+// 🔴 `68` §4.1: a fold maps two topology positions to one domain position, so texturing one textures both. It is a
 //    **failure** and not a distortion value, which is why it is classified exactly rather than measured.
 bool FoldDetected(const ChartLocality& Local, const std::vector<PlanarPosition>& Flattened)
 {

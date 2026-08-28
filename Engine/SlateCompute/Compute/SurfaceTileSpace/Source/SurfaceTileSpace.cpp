@@ -319,7 +319,7 @@ Deliver<bool> SurfaceTileSpace::DeclareUncommitted(std::uint32_t CellIndex, bool
     if (UncommittedDeclared && !Held_.Resident)
     {
         return Deliver<bool>::Refuse(
-            { RefusalReason::HostDenied, "a cell with no tile cannot hold uncommitted paint" });
+            { RefusalReason::HostDenied, "a cell with no tile cannot hold uncommitted texture" });
     }
 
     if (Held_.Uncommitted == UncommittedDeclared)
@@ -522,7 +522,7 @@ Deliver<bool> SurfaceTileSpace::Evict(std::uint32_t CellIndex, std::uint64_t Rec
     if (Held_.Uncommitted)
     {
         return Deliver<bool>::Refuse(
-            { RefusalReason::ContentUnsupported, "the tile holds paint no transaction has sealed" });
+            { RefusalReason::ContentUnsupported, "the tile holds texture no transaction has sealed" });
     }
 
     const std::uint32_t SlotIndex = Held_.SlotIndex;

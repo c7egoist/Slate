@@ -138,7 +138,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 
 /// 🧩 The partitioning one owner's topology currently stands at, and the identities `42` registered against it.
 /// note  🔴 `16` §1: derived once when the topology changes and **never** per rotation. A camera move, an
-///        owner move and a paint stroke re-derive nothing here — the extents and the cone are in object space
+///        owner move and a texture stroke re-derive nothing here — the extents and the cone are in object space
 ///        and none of the three touches object space.
 /// tag   owning
 class PartitionStructure

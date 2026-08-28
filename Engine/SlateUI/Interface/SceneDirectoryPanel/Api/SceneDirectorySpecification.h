@@ -90,7 +90,7 @@ struct ShellMetric
     float  LayerSpineX =  30.0f;   // [px] - w-[30px], the spine gutter
     float  LayerSpineWidth =   3.0f;   // [px] - w-[3px], the spine itself
     float  LayerBadge      =  20.0f;   // [px] - the w-[20px] ordinal badge
-    float  LayerSwatch     =  26.0f;   // [px] - the w-[26px] paint swatch
+    float  LayerSwatch     =  26.0f;   // [px] - the w-[26px] texture swatch
     float  LayerAction     =  20.0f;   // [px] - a w-[20px] eye, cross or bin
     float  LayerGap        =   6.0f;   // [px] - gap-[6px]
     float  LayerRowPad     =   6.0f;   // [px] - px-[6px]

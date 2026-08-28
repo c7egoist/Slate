@@ -449,7 +449,7 @@ bool DrawerSpace::Advance(const PointerCondition& Sampled, double Elapsed, bool 
 
 bool DrawerSpace::Grab(const ContactTravel& Contact)
 {
-    // 📝 Tested in reverse paint order, so the drawer drawn on top is the drawer a contact reaches first.
+    // 📝 Tested in reverse texture order, so the drawer drawn on top is the drawer a contact reaches first.
     const bool          SouthAbove = (Slots[1].Current == DrawerPose::Open);
     const DrawerBearing Order[2]   = { SouthAbove ? DrawerBearing::South : DrawerBearing::North,
                                        SouthAbove ? DrawerBearing::North : DrawerBearing::South };

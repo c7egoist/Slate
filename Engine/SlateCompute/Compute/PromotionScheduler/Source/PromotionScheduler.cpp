@@ -71,8 +71,8 @@ PromotionCost Estimate(const SurfaceLayerSequence& Sequence, std::uint64_t TileB
         Costing.EvaluationUnits += EvaluationUnitsPerEntry;
     }
 
-    // 📝 The painted layers of one tile transfer one tile's worth however many of them there are, because they
-    //    accumulate into the same texels. Charging per painted entry would make a surface with thirty painted
+    // 📝 The textured layers of one tile transfer one tile's worth however many of them there are, because they
+    //    accumulate into the same texels. Charging per textured entry would make a surface with thirty textured
     //    layers unpromotable, which is the case `18` §8's resolved-channel rule exists to keep affordable.
     if (TexturedHeld)
         Costing.TransferBytes = TileBytes;

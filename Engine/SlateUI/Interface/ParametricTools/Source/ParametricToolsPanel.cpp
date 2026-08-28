@@ -253,7 +253,7 @@ const ToolEntry SweepTools[] =
     { "Extrude", "E", SymbolSubject::ExtrudeSpan, ParametricToolDimension::Wire,
       true, false, false, false, false, false, false, false, false, false, false, false, false, false,
       1u, 0u, 0u, 0u, 0u, 0u, 0u,
-      { { "Length", "50 mm" }, { "Direction", "Normal" }, { "Draft", "0°" }, { "Along", "Free" } }, 4u },
+      { { "Length", "50 mm" }, { "Direction", "Normal" }, { "Taper", "0°" }, { "Along", "Free" } }, 4u },
 
     { "Revolve", "⇧R", SymbolSubject::RevolveAxis, ParametricToolDimension::Wire,
       true, false, false, false, true, false, false, false, false, false, false, false, false, false,
@@ -273,7 +273,7 @@ const ToolEntry SweepTools[] =
     { "Boss", "", SymbolSubject::ExtrudeSpan, ParametricToolDimension::Wire,
       true, false, false, false, false, false, false, false, true, false, false, false, false, false,
       1u, 0u, 1u, 0u, 0u, 0u, 0u,
-      { { "Length", "20 mm" }, { "Extent", "Blind" }, { "Draft", "0°" } }, 3u },
+      { { "Length", "20 mm" }, { "Extent", "Blind" }, { "Taper", "0°" } }, 3u },
 };
 
 const ToolEntry CurveTools[] =

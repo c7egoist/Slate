@@ -52,7 +52,7 @@ Deliver<LayerIdentity> SurfaceLayerSequence::Append(const LayerSpecification& De
         if (Declaring.Textured.ExtentTexels == 0u || Declaring.Textured.Texels.size() != Required)
         {
             return Deliver<LayerIdentity>::Refuse(
-                { RefusalReason::ContentUnsupported, "the painted span does not match its declared extent" });
+                { RefusalReason::ContentUnsupported, "the textured span does not match its declared extent" });
         }
 
         if (Declaring.Textured.ExtentTexels > MaximumWorkingEdge)
@@ -248,7 +248,7 @@ namespace
 {
 
 // 📐 Bilinear over the interleaved span, clamped at the edges. Nearest would preserve every texel exactly and
-//    would also shear every diagonal the artist painted; bilinear softens uniformly, which is the failure mode
+//    would also shear every diagonal the artist textured; bilinear softens uniformly, which is the failure mode
 //    that reads as a resampling rather than as a defect.
 float SampleBilinear(const TexturedContent& Held,
                      double                PositionX,
@@ -310,7 +310,7 @@ void ResampleContent(TexturedContent&                                           
 
             // 📝 A position the remapping cannot answer occupied no chart in the former domain, so it is left at
             //    zero rather than filled from the nearest thing. A fabricated value here is content the artist
-            //    never painted, appearing exactly where a chart boundary moved.
+            //    never textured, appearing exactly where a chart boundary moved.
             if (!Remapping(PositionX, PositionY, FormerX, FormerY))
                 continue;
 
@@ -370,13 +370,13 @@ Deliver<bool> SurfaceLayerSequence::Resample(
 
     // 🔴 `86` §4's `56` §3.1 row, and the register's most consequential entry. It is the one operation in the
     //    engine that resamples authored content, and presenting it at the same weight as a residency total is a
-    //    line the artist scrolls past before discovering their paint softened.
+    //    line the artist scrolls past before discovering their texture softened.
     if (ResampledCount != 0u)
     {
         ReportSpecification Amended;
         Amended.Origin         = "56 §3.1 SurfaceLayerSequence";
         Amended.Subject        = "TexturedResampling";
-        Amended.Detail         = "a re-partition moved the domain; painted texels were resampled into it";
+        Amended.Detail         = "a re-partition moved the domain; textured texels were resampled into it";
         Amended.SubjectIndex = IncomingRevision;
         Amended.Verdict    = ReportVerdict::Amended;
         Amended.Arrival        = Sampled;

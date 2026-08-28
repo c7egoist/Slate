@@ -87,7 +87,7 @@ public:
     /// in    LeafY0   [px]
     /// in    LeafX1   [px]
     /// in    LeafY1   [px]
-    /// in    ScissorX0 [px] the visible sub-rectangle -- what is allowed to be painted
+    /// in    ScissorX0 [px] the visible sub-rectangle -- what is allowed to be textured
     /// in    ScissorY0 [px]
     /// in    ScissorX1 [px]
     /// in    ScissorY1 [px]

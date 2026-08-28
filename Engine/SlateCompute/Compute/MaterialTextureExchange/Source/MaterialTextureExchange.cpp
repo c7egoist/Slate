@@ -36,11 +36,11 @@ Deliver<LayerIdentity> MaterialTextureExchange::CreateTexturedLayer(
     const MaterialTextureLayerDeclaration& Declaring) const
 {
     if (Declaring.ChannelMask == 0u)
-        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer writes no channel" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a textured material layer writes no channel" });
     if (Declaring.WorkingExtent == 0u || Declaring.WorkingExtent > MaximumWorkingEdge)
-        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the painted layer extent is unsupported" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ExtentExhausted, "the textured layer extent is unsupported" });
     if (Declaring.ComponentCount == 0u)
-        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a painted material layer has no components" });
+        return Deliver<LayerIdentity>::Refuse({ RefusalReason::ContentUnsupported, "a textured material layer has no components" });
 
     LayerSpecification Layer;
     Layer.Name = Declaring.Name.empty() ? "Texture Layer" : Declaring.Name;
@@ -67,9 +67,9 @@ Deliver<StrokeDeclaration> MaterialTextureExchange::DeclareStroke(const SurfaceL
     const Deliver<const LayerSpecification*> Layer = Layers.Resolve(Subject);
     if (!Layer.Resolved) return Deliver<StrokeDeclaration>::Refuse(Layer.Error);
     if (Layer.Resolve()->Source != LayerContentSource::TexturedImpressions)
-        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke target is not a painted layer" });
+        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke target is not a textured layer" });
     if (Layer.Resolve()->Textured.ExtentTexels != WorkingExtent || Layer.Resolve()->Textured.ComponentCount != ComponentCount)
-        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke declaration does not match the painted layer extent" });
+        return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the stroke declaration does not match the textured layer extent" });
 
     StrokeDeclaration Declared;
     Declared.Subject = Subject;
@@ -86,7 +86,7 @@ Deliver<StrokeDeclaration> MaterialTextureExchange::DeclareStroke(const SurfaceL
 
         const std::uint32_t Span = SpanFor(Channel);
         if (Cursor + Span > ComponentCount)
-            return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush channels do not fit the painted layer packing" });
+            return Deliver<StrokeDeclaration>::Refuse({ RefusalReason::ContentUnsupported, "the brush channels do not fit the textured layer packing" });
 
         ChannelPlacement Placement;
         Placement.Channel = Channel.Channel;
@@ -133,7 +133,7 @@ Deliver<MaterialTextureCommitReport> MaterialTextureExchange::CommitResolvedStro
     const MaterialProcessingSnapshot* Previous) const
 {
     if (!Stroke.StrokeOpen())
-        return Deliver<MaterialTextureCommitReport>::Refuse({ RefusalReason::HostDenied, "no material paint stroke is open" });
+        return Deliver<MaterialTextureCommitReport>::Refuse({ RefusalReason::HostDenied, "no material texture stroke is open" });
 
     const Deliver<SealedStroke> Sealed = Stroke.Seal(Layers, Revisions, Residency, SealedAt);
     if (!Sealed.Resolved) return Deliver<MaterialTextureCommitReport>::Refuse(Sealed.Error);

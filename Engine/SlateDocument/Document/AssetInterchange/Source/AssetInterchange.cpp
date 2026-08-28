@@ -162,7 +162,7 @@ Deliver<bool> AssetInterchange::IntakeTopology(const DecodedTopology& Decoded,
         return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "the source declared no face indexing" });
 
     // 📝 🔴 Validated in full before anything is registered. `50` §8: a partially failed intake registers nothing,
-    //    because half a topology registered as an owner is an owner the artist will paint on and export.
+    //    because half a topology registered as an owner is an owner the artist will texture on and export.
     for (const std::vector<std::uint32_t>& Face : Decoded.Faces)
     {
         if (Face.size() < 3u)
@@ -285,7 +285,7 @@ Deliver<bool> AssetInterchange::IntakeImage(const DecodedImage& Decoded, IntakeI
     Recording.Subject    = "Imagery";
 
     // 🔴 `36` §3: content that declares nothing produces a recorded assumption and an `86` report. The working
-    //    space is the assumption, because an image assumed linear and painted with is at least consistent — and
+    //    space is the assumption, because an image assumed linear and textured with is at least consistent — and
     //    the record is what lets the artist correct it from the retained original rather than from the result.
     if (!Decoded.SpaceDeclared)
     {

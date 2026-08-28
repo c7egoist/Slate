@@ -26,7 +26,7 @@ enum class LeafSubject : std::uint32_t
     Uv         = 1u,   // [-] - the selected geometry's parametric render target
     Outliner   = 2u,   // [-] - the scene outline
     Property   = 3u,   // [-] - the selected record's properties
-    LayerStack = 4u,   // [-] - the texture-paint layer stack
+    LayerStack = 4u,   // [-] - the texture-texture layer stack
     SubjectCount
 };
 

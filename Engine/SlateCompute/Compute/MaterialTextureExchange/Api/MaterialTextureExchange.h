@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                        MATERIALPAINTEXCHANGE.H
 //============================================================================================================================================
-// 🧩 Material painting command seam: painted layer creation, committed-stroke dirty regions, and snapshot dirtiness.
+// 🧩 Material texturing command seam: textured layer creation, committed-stroke dirty regions, and snapshot dirtiness.
 //    UI tools stay outside this component; this is document/compute plumbing only.
 
 #pragma once
@@ -50,11 +50,11 @@ struct MaterialTextureCommitReport
 class MaterialTextureExchange
 {
 public:
-    /// 🧩 Creates a document-owned painted layer with a full authored texel span and stable layer identity.
+    /// 🧩 Creates a document-owned textured layer with a full authored texel span and stable layer identity.
     Deliver<LayerIdentity> CreateTexturedLayer(SurfaceLayerSequence& Layers,
                                               const MaterialTextureLayerDeclaration& Declaring) const;
 
-    /// 🧩 Builds the stroke declaration for a painted material layer without reading UI state.
+    /// 🧩 Builds the stroke declaration for a textured material layer without reading UI state.
     Deliver<StrokeDeclaration> DeclareStroke(const SurfaceLayerSequence& Layers,
                                              LayerIdentity Subject,
                                              const BrushSpecification& Brush,

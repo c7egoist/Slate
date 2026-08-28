@@ -26,7 +26,7 @@ inline constexpr std::uint32_t AbsentTile = 0xFFFFFFFFu;   // [-] - no tile slot
 /// note  🔴 `20` §1: the apron duplicates the neighbouring tiles' border texels so that filtered sampling and
 ///        brush impressions near a tile edge read valid neighbours without a residency test per texel. Four
 ///        texels covers trilinear filtering plus the widest impression footprint at the levels that are stored.
-/// note  ⚠️ Without it every seam in the domain is visible in the painted result, and the artist reads that as
+/// note  ⚠️ Without it every seam in the domain is visible in the textured result, and the artist reads that as
 ///        a defect in their brush rather than as a defect in residency.
 inline constexpr std::uint32_t StoredTexelsPerEdge = PhysicalTileTexels + 2u * PhysicalTileApron;   // [-] - 136
 
@@ -61,7 +61,7 @@ public:
     /// 🧩 Reservations one free slot.
     /// out   Result  [-]  refuses with ExtentExhausted when every slot is claimed or quarantined
     /// note  🔴 A refusal is **not** a failure — `20` §2.2 and `86` §5. Every slot claimed means the promotion
-    ///        must evict first, and exhaustion during ordinary painting is residency policy operating as
+    ///        must evict first, and exhaustion during ordinary texturing is residency policy operating as
     ///        designed. Reporting it would mean the register is never quiet.
     /// cost  ✔️
     /// tag   api, nonthrowing

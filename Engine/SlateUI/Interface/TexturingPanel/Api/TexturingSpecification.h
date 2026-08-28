@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                         TEXTUREPAINTGUARANTEE.H
 //============================================================================================================================================
-// 🧩 The editor's texture-paint layer stack — the shared guarantee between the
+// 🧩 The editor's texture-texture layer stack — the shared guarantee between the
 //    host's data and the TexturingPanel's presentation: what a layer is,
 //    what a mask is, and which filter category each belongs to.
 //
@@ -33,14 +33,14 @@ namespace Slate
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 What one layer in the stack is, which decides its glyph, its hue and its filter category.
-/// note  📐 The reference's `TYPE` record from `LayerstackV1.html`, in its own order: paint, fill,
+/// note  📐 The reference's `TYPE` record from `LayerstackV1.html`, in its own order: texture, fill,
 ///        adjustment, filter, folder, decal, pattern — with `Generator` and `Material` appended, as
 ///        the ChannelPropertyPanel reference presents them.
 /// tag   guarantee
 enum class TextureLayerClassification : std::uint32_t
 {
     Brushed     = 0u,   // [-] - brush strokes over the atlas
-                        // ⚠️ The NAME changed with the Paint ban; the VALUE 0u must not,
+                        // ⚠️ The NAME changed with the texturing rename; the VALUE 0u must not,
                         //    because saved documents store the number, not the name.
     Fill        = 1u,   // [-] - a solid or gradient fill
     Decal       = 2u,   // [-] - a 3D-placed decal entity
@@ -246,7 +246,7 @@ inline constexpr const char* const TextureMaskSourceNames[5] =
 enum class TexturingRequest : std::uint32_t
 {
     None          = 0u,   // [-] - nothing stood pressed
-    AddTexturing      = 1u,   // [-] - a paint layer
+    AddTexturing      = 1u,   // [-] - a texture layer
     AddFill       = 2u,   // [-] - a fill layer
     AddAdjustment = 3u,   // [-] - an adjustment layer
     AddFilter     = 4u,   // [-] - a filter layer

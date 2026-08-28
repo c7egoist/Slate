@@ -98,7 +98,7 @@ SLATE_SHARED bool ReprojectionDepthRejected(Real64 HeldDepth, Real64 IncomingDep
 /// in    MaximumComponent [-] the greatest among it
 /// out   Bounded         [-]  the history, brought inside the neighbourhood
 /// note  🔴 This is what handles illumination that changed without the surface moving — an illuminant
-///        brightened, a stroke painted. `22`'s painting invalidates nothing here explicitly; the bound resolves
+///        brightened, a stroke textured. `22`'s texturing invalidates nothing here explicitly; the bound resolves
 ///        it — `64` §4.
 /// note  ⚠️ Bounded rather than rejected, because a refusal resets the count and a lighting change that merely
 ///        brightened a surface does not warrant discarding its whole convergence.

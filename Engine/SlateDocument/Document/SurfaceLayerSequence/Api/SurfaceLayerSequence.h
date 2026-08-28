@@ -55,10 +55,10 @@ constexpr bool SourceReconstructible(LayerContentSource Source)
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 The one thing in a document that is stored as texels rather than as a description.
-/// note  🔴 `56` §3: painted texels are stored at the surface's **working extent** and are the one content a
+/// note  🔴 `56` §3: textured texels are stored at the surface's **working extent** and are the one content a
 ///        change of working extent or a domain re-partition resamples. Everything else is re-resolved, and
 ///        re-resolution is exact where resampling is not.
-/// note  💾 Held interleaved, one span per entry, so that a surface with thirty painted layers is thirty
+/// note  💾 Held interleaved, one span per entry, so that a surface with thirty textured layers is thirty
 ///        allocations rather than thirty times the channel count.
 /// tag   owning
 struct TexturedContent
@@ -72,7 +72,7 @@ struct TexturedContent
 //                                                 WHERE A CHANNEL LANDS
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Which components of one painted entry a channel occupies.
+/// 🧩 Which components of one textured entry a channel occupies.
 /// note  🔴 Declared here rather than in `22`, because it describes the layout of a `TexturedContent` and `22` is
 ///        not the only reader. `70` resolves into the same components and sits below `22` in `00` §9.1's strata,
 ///        so a declaration held there would be a back edge from stratum 7 to stratum 9.
@@ -97,8 +97,8 @@ struct ChannelPlacement
 /// note  🔴 `56` §5: coverage is **content**, and is revised through `RevisionSequence` like any other content.
 ///        Texturing coverage is a stroke, undone by `22` §4's extent-bounded inverse, and nothing about it is a
 ///        separate mechanism.
-/// note  📝 It carries the same four sources §3 declares, because it may be painted, placed, tiled or resolved
-///        analytically. A coverage that could only be painted would make a tiled mask impossible.
+/// note  📝 It carries the same four sources §3 declares, because it may be textured, placed, tiled or resolved
+///        analytically. A coverage that could only be textured would make a tiled mask impossible.
 /// tag   owning
 struct CoverageSpecification
 {
@@ -172,7 +172,7 @@ public:
     /// 🧩 Appends one entry at the end of the sequence, issuing its identity.
     /// in    Declaring  [-]  every one of §2's four fields
     /// out   Result    [-]  refuses with ContentUnsupported for a nested entry beyond the declared depth, for
-    ///                       painted content whose span does not match its declared extent, and with
+    ///                       textured content whose span does not match its declared extent, and with
     ///                       ExtentExhausted at the entry ceiling
     /// post  the entry sits last, which is topmost
     /// cost  🚩
@@ -247,7 +247,7 @@ public:
     /// tag   api, nonthrowing
     Deliver<std::uint32_t> Nest();
 
-    /// 🧩 Resamples every painted entry into a re-partitioned domain, on the tick.
+    /// 🧩 Resamples every textured entry into a re-partitioned domain, on the tick.
     /// in    IncomingRevision  [-]  the partition revision `68` advanced to
     /// in    Remapping         [-]  supplied by the caller: a position in the new domain, answered with the
     ///                              position it occupied in the old one
@@ -260,7 +260,7 @@ public:
     /// note  🔴 This is the **one operation in the engine that resamples authored content**, and it is reported
     ///        for exactly that reason. Everything else is re-resolved, and re-resolution is exact where
     ///        resampling is not.
-    /// note  ⚠️ Sampling is bilinear, so a re-partition softens paint. That is a property of the operation and
+    /// note  ⚠️ Sampling is bilinear, so a re-partition softens texture. That is a property of the operation and
     ///        not a defect in it; what would be a defect is performing it without saying so.
     /// cost  🔴
     /// tag   api, nonthrowing
@@ -275,7 +275,7 @@ public:
     /// tag   api, nonthrowing
     Deliver<const LayerSpecification*> Resolve(LayerIdentity Subject) const;
 
-    /// 🧩 One entry's painted texels, for the one mechanism permitted to amend them.
+    /// 🧩 One entry's textured texels, for the one mechanism permitted to amend them.
     /// out   Result  [-]  refuses with IdentityStale when the entry no longer resolves, and with
     ///                     ContentUnsupported when its source is not TexturedImpressions
     /// note  🔴 `22` is the only caller. Textured texels are the one content this sequence stores rather than
@@ -328,7 +328,7 @@ public:
     /// tag   api, nonallocating, nonthrowing
     std::uint32_t NestingDepth() const;
 
-    /// 🧩 The partition revision the painted content currently addresses.
+    /// 🧩 The partition revision the textured content currently addresses.
     /// cost  ✔️
     /// tag   api, nonallocating, nonthrowing
     std::uint64_t AddressedRevision() const;

@@ -91,7 +91,7 @@ struct SessionPass
 ///        behaviour — the tick prologue is `EditorHost`'s, which was the only copy that answered every
 ///        recovery correctly.
 /// note  ⚠️ The order this component enforces is not a convenience. Every refusal is resolved BEFORE the
-///        display image is acquired, so no path returns with a recording open. `PaintHost` opened its
+///        display image is acquired, so no path returns with a recording open. the texturing host opened its
 ///        recording before building the interface tick and had five escape paths that returned with a
 ///        command buffer still recording; that class of defect is unreachable through this surface.
 /// note  🔴 A product must call `Complete` for every `Await` that reported `Recording`, and must not call

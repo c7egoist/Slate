@@ -68,7 +68,7 @@ Deliver<bool> WorkspacePanel::Record(const PlaneExtent& Extent, const char* Titl
     Surface->Ground(Extent, Colour.BodyGround);
 
     // ⚠️ The strip extent is still reported, because the `+` and the dock space are applied against it.
-    //    It measures where the node's own tab bar stands; it is no longer painted.
+    //    It measures where the node's own tab bar stands; it is no longer textured.
     StripExtent = { Extent.MinimumX,
                     Extent.MinimumY,
                     Extent.MaximumX,

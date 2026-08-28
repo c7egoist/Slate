@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the first hardening pass for sketch drafting, snapping, constraints, and edit hooks.
+"""Validate the first hardening pass for sketch parametric, snapping, constraints, and edit hooks.
 
 The checks are intentionally small and deterministic: they exercise the same ordinary and edge-case
 geometry relationships that the C++ host now wires into the exact sketch path, and they emit an SVG

@@ -488,7 +488,7 @@ Deliver<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
             //    projection for it is a scene where dragging one object costs what rebuilding the lighting does.
             // ⚠️ Cutout coverage takes the same row and is the exception `62` §2 declares: cutout coverage is
             //    resolved at `16` §3.1, so a cutout owner already occludes correctly here — and a change to
-            //    its coverage channel is therefore a change to what a projection sees, unlike every other paint.
+            //    its coverage channel is therefore a change to what a projection sees, unlike every other texture.
             for (DerivedProjection& Current : Projections)
             {
                 if (Current.Faces.empty())
@@ -524,7 +524,7 @@ Deliver<bool> OcclusionProjectionSpace::Invalidate(InvalidationSubject Declared,
         {
             // 🔴 Nothing. `44` §2's extent is **declared** rather than derived from the magnitude, so brightening
             //    an illuminant cannot enlarge what it reaches; and occlusion reads topology rather than channels,
-            //    so a paint stroke changes nothing a projection can see. These are the two things the artist does
+            //    so a texture stroke changes nothing a projection can see. These are the two things the artist does
             //    constantly, and both are accepted here so a caller may declare every change it makes without
             //    knowing which ones matter — which is the only arrangement in which the ones that do not matter
             //    stay free.

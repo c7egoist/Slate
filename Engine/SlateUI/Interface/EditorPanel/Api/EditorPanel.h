@@ -155,7 +155,7 @@ public:
     /// 🧩 Records the deferred popups (subject, division, lattice, shading and gizmo menus) the last
     ///    `Record` withheld when `DeferPopups` was declared.
     /// note  🔴 The host calls this AFTER recording its leaf content: a popup recorded before the leaf
-    ///        content is painted over by the sky quad and the split menus become unreadable — which was
+    ///        content is textured over by the sky quad and the split menus become unreadable — which was
     ///        the reported defect. Other hosts that never fill the leaves keep `Record`'s default and
     ///        never call this.
     /// note  ⚠️ Valid only between the `Record` that deferred and the next one.
@@ -164,7 +164,7 @@ public:
     void RecordDeferredPopups(PanelStructure& Partition, EditorPanelConfiguration& Configuration);
 
     /// 🧩 Whether any popup (subject, division, lattice, shading or gizmo menu) stands right now.
-    /// note  🔴 The GPU overlay pass records AFTER the interface, so an open popup would be painted
+    /// note  🔴 The GPU overlay pass records AFTER the interface, so an open popup would be textured
     ///        over by the grid and the axes — the reported "the lines draw on the menus". The host
     ///        tests this and withholds the leaf overlays while a popup stands.
     /// cost  ✔️

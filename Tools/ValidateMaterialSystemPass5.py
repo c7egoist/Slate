@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Static validation for Material System Pass 5 painted-layer and dirty-tile plumbing."""
+"""Static validation for Material System Pass 5 textured-layer and dirty-tile plumbing."""
+# ⚠️ Strings quoted from documents under References/ are matched VERBATIM against files this
+#    gate does not own. A vocabulary sweep must not rewrite them: renaming the quotation only
+#    stops the gate finding the line, it does not rename the document.
 from __future__ import annotations
 
 from pathlib import Path
@@ -44,8 +47,8 @@ def main() -> int:
         "DirtyTilesOf",
     )
     require("ParametricSketchHost" not in header and "TexturingPanel" not in header,
-            "paint exchange must not depend on parametric host or texture-paint UI")
-    require("Asset" not in header, "paint exchange must avoid banned Asset naming")
+            "texture exchange must not depend on parametric host or texturing UI")
+    require("Asset" not in header, "texture exchange must avoid banned Asset naming")
 
     source = require_text(
         "Engine/SlateCompute/Compute/MaterialTextureExchange/Source/MaterialTextureExchange.cpp",
@@ -59,12 +62,12 @@ def main() -> int:
         "Processing.Compare(*Previous, Current)",
     )
     require("ParametricSketchHost" not in source and "TexturingPanel" not in source,
-            "paint exchange source must stay host/UI independent")
+            "texture exchange source must stay host/UI independent")
 
     # The existing stroke path must still enforce one transaction, speculative refusal, and inverse extents.
     require_text(
         "Engine/SlateCompute/Compute/ImpressionSequence/Source/ImpressionSequence.cpp",
-        "Revised.Open(\"\", \"PaintStroke\")",
+        "Revised.Open(\"\", \"TextureStroke\")",
         "a speculative extent never enters the revision sequence",
         "PriorTexels.assign",
         "Residency.DeclareUncommitted(CellIndex, false)",
@@ -79,7 +82,7 @@ def main() -> int:
         "Engine/SlateCompute/Compute/MaterialProcessingExchange/Source/MaterialProcessingExchange.cpp",
     ], cwd=ROOT, check=True)
 
-    print("[MaterialSystemPass5] painted layers, stroke declarations, commit sealing and dirty tiles hold")
+    print("[MaterialSystemPass5] textured layers, stroke declarations, commit sealing and dirty tiles hold")
     return 0
 
 

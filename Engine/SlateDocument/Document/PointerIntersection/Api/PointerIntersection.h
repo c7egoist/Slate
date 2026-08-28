@@ -75,7 +75,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Bounded, PrecisionGuarantee::Bounde
 ///        would also put a `SlateCompute` component in this file's Upstream, which the peer partition forbids —
 ///        the same reasoning `72`'s `ProjectPlacementExtent` already applies to the same run.
 /// note  📝 Every field but the owner may be absent. An owner accepted with no topology is pickable by
-///        extent and resolves no domain position, which is what an owner carrying no paintable surface is.
+///        extent and resolves no domain position, which is what an owner carrying no texturable surface is.
 /// note  ⚠️ Nothing here is owned. The caller keeps the topology, the coordinate run and the placement
 ///        subdivision alive for as long as the owner stands, exactly as `40`'s `AcceptedOwner` requires of
 ///        its `BoundingStructure`.

@@ -97,9 +97,9 @@ public:
     /// in    RecordingIndex [-]  the rotation it was derived on
     /// out   Result     [-]  refuses with ContentUnsupported for an unreconstructible source, and with
     ///                        ExtentExhausted when the artefact alone exceeds the whole ceiling
-    /// note  🔴 A painted source is rejected. `20` §4: painted texels are authored content and live in `56`'s
+    /// note  🔴 A textured source is rejected. `20` §4: textured texels are authored content and live in `56`'s
     ///        layer sequence; accepting them here would make the artist's work evictable, and it would be
-    ///        evicted under exactly the memory pressure a long painting session produces.
+    ///        evicted under exactly the memory pressure a long texturing session produces.
     /// cost  🚩
     /// tag   api, nonthrowing
     Deliver<bool> Declare(const ContentKey&  Keyed,

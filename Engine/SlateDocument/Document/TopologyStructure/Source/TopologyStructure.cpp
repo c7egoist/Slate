@@ -139,7 +139,7 @@ Deliver<bool> TopologyStructure::Seal()
         return Deliver<bool>::Result(true);
 
     if (FaceFirstCorners.empty())
-        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "a topology with no face is not paintable" });
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted, "a topology with no face is not texturable" });
 
     // 📝 One material for the whole owner where the source declared none — `50` §3's last-resort row. It is a
     //    default rather than an assumption, so nothing is reported: the artist assigns materials afterwards.

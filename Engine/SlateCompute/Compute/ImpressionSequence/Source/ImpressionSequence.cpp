@@ -43,7 +43,7 @@ constexpr double RotationReference     = 360.0;  // [deg] - one whole barrel tur
 
 // 📐 Coverage as a function of normalised radius. Every profile is unity at the centre and zero at the edge, so
 //    a brush that declares one and a brush that declares another differ in how they fall away and in nothing
-//    else — which is what lets the artist compare two profiles by painting with them.
+//    else — which is what lets the artist compare two profiles by texturing with them.
 double ProfileCoverage(ProfileSubject Declared, double NormalisedRadius)
 {
     if (NormalisedRadius >= 1.0)
@@ -91,7 +91,7 @@ Deliver<bool> ImpressionSequence::Open(const StrokeDeclaration& Declaring, const
         return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported, "an entry of no component holds nothing" });
 
     if (!Declaring.Subject.IdentityDeclared())
-        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the stroke names no entry to paint into" });
+        return Deliver<bool>::Refuse({ RefusalReason::IdentityStale, "the stroke names no entry to texture into" });
 
     // 🚧 `58` §3's imagery and outline sources need `50` and `52` intake, which are unbuilt. Rejected at Open
     //    rather than substituted, because `58` §8 promises the preview and the committed impression share one
@@ -259,7 +259,7 @@ Deliver<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
         return Deliver<bool>::Refuse({ RefusalReason::HostDenied, "no stroke is open" });
 
     // 🔴 The pointer left the surface. The path breaks here and the next resolved arrival begins a new segment
-    //    rather than interpolating across the gap — a stroke that leaves an object and returns must not paint a
+    //    rather than interpolating across the gap — a stroke that leaves an object and returns must not texture a
     //    line between the two places, and the artist cannot undo half a stroke to remove one.
     if (!Incoming.SurfaceResolved)
     {
@@ -281,7 +281,7 @@ Deliver<bool> ImpressionSequence::Amend(const StrokeArrival& Incoming)
         {
             // 📝 The first impression has no preceding segment and therefore no tangent, so a path-relative
             //    rotation reads the brush's fixed angle for it alone. Withholding it until a tangent exists
-            //    would mean a tap paints nothing, which is not what a tap means.
+            //    would mean a tap lays down nothing, which is not what a tap means.
             const ResolvedAxes Axes = ProjectAxes(Incoming.Incoming, 0.0, 0.0, 0.0, 0.0);
 
             Emit(Incoming.PositionX, Incoming.PositionY, 0.0, 0.0, Axes, 0.0);
@@ -382,7 +382,7 @@ Deliver<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
     const double Edge   = static_cast<double>(WorkingExtent);
 
     // 📐 The impression's domain extent, clamped into the unit square. `68` §5 packs every chart strictly inside
-    //    the domain with a gap, so a clamp at the edge writes into an apron the artist cannot paint on rather
+    //    the domain with a gap, so a clamp at the edge writes into an apron the artist cannot texture on rather
     //    than into a neighbouring chart's content.
     const double MinimumX    = Impressing.PositionX  - Extent;
     const double MinimumY   = Impressing.PositionY - Extent;
@@ -427,8 +427,8 @@ Deliver<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
                 return Deliver<bool>::Refuse(Sampled.Error);
 
             // 🔴 `22` §2's rule, and the one comparison that carries it. `Sample` has already recorded the demand
-            //    for the level that was wanted; a resolved level coarser than the painting level means the cell
-            //    is not resident **here**, and the impression waits rather than painting at the wrong extent.
+            //    for the level that was wanted; a resolved level coarser than the texturing level means the cell
+            //    is not resident **here**, and the impression waits rather than texturing at the wrong extent.
             // ⚠️ A speculative extent skips the wait entirely — `22` §4.1. Nothing speculative is authored, so
             //    nothing speculative can be permanently wrong, and a preview that waited for residency would
             //    show the artist nothing exactly while they were deciding.
@@ -500,10 +500,10 @@ Deliver<bool> ImpressionSequence::ResolveOne(ImpressionSample& Impressing,
                 return Deliver<bool>::Refuse(TileIndex.Error);
 
             // 🔴 `20` §5's gate, declared per cell as the stroke first touches it and withdrawn at Seal. No tile
-            //    holding uncommitted paint is evicted; without it the artist's own stroke is the pressure that
-            //    evicts the tile it is being painted into.
+            //    holding uncommitted texture is evicted; without it the artist's own stroke is the pressure that
+            //    evicts the tile it is being textured into.
             // ⚠️ A speculative extent never declares it — `22` §4.1. A brush preview that pinned every tile the
-            //    cursor passed over would exhaust residency while the artist painted nothing.
+            //    cursor passed over would exhaust residency while the artist textured nothing.
             if (!Declared.Speculative)
                 Discard(Residency.DeclareUncommitted(CellIndex.Resolve(), true));
 
@@ -633,7 +633,7 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
 
     // 🔴 One transaction, opened here and sealed once — `10` §2.4 and `22` §4. Every channel the brush declared
     //    is written inside it, so `22` §5's multi-channel stroke undoes as the single thing the artist did.
-    const Deliver<bool> Opened = Revised.Open("", "PaintStroke");
+    const Deliver<bool> Opened = Revised.Open("", "TextureStroke");
 
     if (!Opened.Resolved)
         return Deliver<SealedStroke>::Refuse(Opened.Error);
@@ -733,7 +733,7 @@ Deliver<SealedStroke> ImpressionSequence::Seal(SurfaceLayerSequence& Content,
             }
         }
 
-        // 🔴 Cancelled here rather than after the transaction seals. `20` §5: at this point the paint is in `56`
+        // 🔴 Cancelled here rather than after the transaction seals. `20` §5: at this point the texture is in `56`
         //    and the tile is a projection of it again, so the tile is evictable and re-resolvable — holding the
         //    gate open past the write would pin tiles for a stroke that has already committed.
         Discard(Residency.DeclareUncommitted(CellIndex, false));

@@ -229,7 +229,7 @@ private:
 /// 🧩 Every material in the document, addressed by identity and shared by many owners.
 /// note  🔴 `42` §6: editing a material changes every owner registered in it, in one transaction. The `56` layer
 ///        sequence beneath a layered channel belongs to the **surface** and not to the material — two owners
-///        sharing a material and each painted differently is the ordinary case.
+///        sharing a material and each textured differently is the ordinary case.
 /// tag   owning
 class MaterialIndex
 {

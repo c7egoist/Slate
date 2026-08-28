@@ -39,7 +39,7 @@ Deliver<bool> SurfaceDepot::Declare(const ContentKey&  Keyed,
     if (!SourceReconstructible(Source))
     {
         return Deliver<bool>::Refuse(
-            { RefusalReason::ContentUnsupported, "painted texels are authored content and are never evictable" });
+            { RefusalReason::ContentUnsupported, "textured texels are authored content and are never evictable" });
     }
 
     if (ByteExtent == 0u)

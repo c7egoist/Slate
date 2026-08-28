@@ -348,7 +348,7 @@ constexpr StrokeStep LayerMergeSteps[] =
     {  StrokeCommand::Segment, 22.0f, 17.0f }
 };
 
-// 📝 lucide `brush` — the paint-layer glyph, from the LayerstackV1 reference's own `brush` path.
+// 📝 lucide `brush` — the texture-layer glyph, from the LayerstackV1 reference's own `brush` path.
 constexpr StrokeStep BristleSteps[] =
 {
     {  StrokeCommand::Origin,   9.5f, 14.5f },

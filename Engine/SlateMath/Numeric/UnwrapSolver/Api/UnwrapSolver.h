@@ -44,7 +44,7 @@ struct UnwrapSpecification
 /// 🧩 Area and angle distortion, measured apart from each other.
 /// note  🔴 `68` §4 reports them **separately** and this structure is why it can. They trade against each other
 ///        and no single number expresses both: a surface flattened to preserve angles stretches in area, and an
-///        artist painting a repeating pattern cares about area while one placing a decal cares about angle.
+///        artist texturing a repeating pattern cares about area while one placing a decal cares about angle.
 /// note  📐 Area distortion is measured as a ratio against the chart's own mean ratio, so it is scale-free. A
 ///        raw ratio would report the packing scale as though it were a defect of the flattening.
 /// tag   nonallocating, nonthrowing
@@ -67,7 +67,7 @@ struct DistortionMeasure
 ///                       an out-of-range corner, a boundary loop shorter than three, or a boundary of no extent
 /// note  🔴 Convergent, per `02` §5. The result carries its residual, its iteration count and its termination
 ///        cause, because a solver that returns its last iterate at the ceiling is indistinguishable from one
-///        that converged — and `68` §4's specific consequence is an artist painting on a domain whose distortion
+///        that converged — and `68` §4's specific consequence is an artist texturing on a domain whose distortion
 ///        nobody measured.
 /// note  📐 The boundary is mapped to a circle by chord length and the interior is relaxed toward the mean-value
 ///        weighted average of its neighbours. Mean-value weights are strictly positive, so a convex boundary

@@ -252,7 +252,7 @@ public:
     /// out   Accepted   [-]  true when at least one character was appended
     /// note  🔴 The filter fields are recorded as PRIMITIVES and not as vendor widgets. A vendor `InputText`
     ///        opens its own window draw list, which composites above every shell layer — that is precisely
-    ///        the defect that left the reference's panels legible and pressable through a ground painted
+    ///        the defect that left the reference's panels legible and pressable through a ground textured
     ///        over the whole display. Taking the characters here and stroking the run through
     ///        `RecordingSurface` keeps the whole panel inside one list, in one order.
     /// note  ⚠️ ASCII printable only. A codepoint above 0x7E is dropped rather than truncated mid-sequence,

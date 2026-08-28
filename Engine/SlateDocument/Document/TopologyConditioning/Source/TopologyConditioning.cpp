@@ -662,7 +662,7 @@ void TopologyConditioning::DeriveExtents(const TopologyStructure& Imported)
 
         // 🔴 Rounded outward by one representable step on every face of the extent. `38` §6: an inward-rounded
         //    extent excludes a face from traversal, and the artist meets it as a surface with a thin band along
-        //    one edge that cannot be selected or painted.
+        //    one edge that cannot be selected or textured.
         Minimum.PositionX    = std::nextafter(Minimum.PositionX,    -HUGE_VAL);
         Minimum.PositionY    = std::nextafter(Minimum.PositionY,    -HUGE_VAL);
         Minimum.PositionZ    = std::nextafter(Minimum.PositionZ,    -HUGE_VAL);

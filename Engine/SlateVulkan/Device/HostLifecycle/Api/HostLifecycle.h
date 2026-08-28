@@ -140,14 +140,14 @@ struct TickPass
 
 /// 🧩 Constructs the five lifetimes in `32` §1's order, recovers them, and unwinds them in the exact reverse.
 /// note  🔴 This component exists because three hosts had written the same bring-up, the same recovery and
-///        the same teardown, and the three copies had drifted. `PaintHost` never tested `ExtentAltered`, so
+///        the same teardown, and the three copies had drifted. the texturing host never tested `ExtentAltered`, so
 ///        resizing did nothing until the vendor rejected; it left the tick loop on a rejected present rather
 ///        than re-establishing the chain; and it opened its command recording **before** building the
 ///        interface tick, so five of its escape paths returned to the top of the loop with a command buffer
 ///        still recording and a display image still acquired. A second windowed host had none of those, and
 ///        the only thing separating the two was which copy a reader happened to edit.
 /// note  📝 That second host was `EditorHost`, and once this component held the bring-up it was byte-identical
-///        to `PaintHost` but for its name and window caption. `32` §3 ships two hosts — `PaintHost` and the
+///        to the texturing host but for its name and window caption. `32` §3 ships two hosts — texturing and the
 ///        headless `ConsoleHost` — and named it in neither, so it was retired rather than left as a second
 ///        copy of one program waiting to drift again.
 /// note  🔴 ⏱️ The ordering that prevents the whole class of defect is stated once, here: **every refusal

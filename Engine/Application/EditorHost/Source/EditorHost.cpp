@@ -11,7 +11,7 @@
 //            the outliner | details column in an outliner leaf, the
 //            properties / camera-bookmark pages in a properties leaf).
 //    The retired validation-shell prototype once duplicated the options rail,
-//    texture-paint stack, drafting directory, and inspector. Runtime UI belongs
+//    texture-texture stack, parametric directory, and inspector. Runtime UI belongs
 //    only to the standing panels named above; the editor's sky lives in the
 //    viewport LEAF.
 
@@ -333,7 +333,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     PlaneExtent              ViewportLeafRects[PanelStructure::RecordLimit]    = {};
     std::uint32_t            ViewportLeafTally = 0u;
 
-    // 📝 The texture-paint leaves, for the Tab arbitration: the layer stack consumes Tab only when
+    // 📝 The texture-texture leaves, for the Tab arbitration: the layer stack consumes Tab only when
     //    the pointer is over one of its leaves.
     PlaneExtent              LayerLeafRects[PanelStructure::RecordLimit] = {};
     std::uint32_t            LayerLeafTally = 0u;
@@ -448,9 +448,9 @@ int main(int ArgumentCount, char** ArgumentValues)
     SceneApplied.Environment.AtmosphereScaleHeight = 1.0;
     SceneApplied.EntityTaken = 2u;   // [-] - the sun, taken at bring-up
 
-    // 📝 The texture-paint layer stack — the reference's own tree from LayerstackV1.html, seeded as
+    // 📝 The texture-texture layer stack — the reference's own tree from LayerstackV1.html, seeded as
     //    the editor's mock: a folder holding an adjustment, a decal and two fills (one with a
-    //    generator mask), then a fill with a paint mask, a pattern, and a second folder of materials.
+    //    generator mask), then a fill with a texture mask, a pattern, and a second folder of materials.
     //    The row detail runs are the small sub-lines the stack page shows; the full settings live on
     //    the properties page.
     static const char* const StackChannels[TextureChannelLimit] =
@@ -472,7 +472,7 @@ int main(int ArgumentCount, char** ArgumentValues)
           1u, 0u, 0u, true, "decal stencil warning", false, "", false, 2003u },
         { "Scratches",       TextureLayerClassification::Brushed,    "Screen",     38u, 0xB0E64Cu, 0xB0E64Cu,
           true,   88u, false, "Generator", "2048px \u00B7 RGBA 8", { StackChannels[0], StackChannels[2] }, 2u,
-          1u, 0u, 0u, true, "paint scratches grunge", false, "Blur", false, 2004u },
+          1u, 0u, 0u, true, "texture scratches grunge", false, "Blur", false, 2004u },
         { "Edge Wear",       TextureLayerClassification::Fill,     "Multiply",   82u, 0xF76B15u, 0xF76B15u,
           true,  100u, false, "Generator", "2048px \u00B7 RGBA 8", { StackChannels[1], StackChannels[2] }, 2u,
           1u, 0u, 0u, true, "fill edge wear rust", false, "", false, 2005u },
@@ -564,7 +564,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     if (!Texturing.ConstructTexturingPanel(SceneInteraction, Viewport.MotionSource(), Viewport.Surface(),
                               Viewport.Appearance()).Resolved)
     {
-        std::printf("%s \u2014 the texture paint panel was rejected\n", HostName);
+        std::printf("%s \u2014 the texturing panel was rejected\n", HostName);
         return 1;
     }
 
@@ -696,7 +696,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     ApplyReferenceContent(ContentApplied);
     PopulateImportDirectory(ContentBrowserApplied, EngineContentRoot);
 
-    // 📝 🔴 The editor opens a VACANT workspace, where the painting host opens a canvas. This is the one
+    // 📝 🔴 The editor opens a VACANT workspace, where the texturing host opens a canvas. This is the one
     //    thing that distinguishes the two hosts, and it is the reason there are two: the editor carries
     //    every subject and cannot presume which the artist wants, so it presents a blank one and lets them
     //    say. A host that guessed would open a canvas for someone who came to sketch.
@@ -800,7 +800,7 @@ int main(int ArgumentCount, char** ArgumentValues)
         {
             // 🔴 The workspace is recorded FIRST and the drawers over it. One background draw list, so
             //    the order of recording IS the z-order — and the previous arrangement recorded the
-            //    workspace after `RecordDrawers`, which painted the whole surface over the control
+            //    workspace after `RecordDrawers`, which textured the whole surface over the control
             //    centre and the asset browser.
             const PlaneExtent Whole = Spanning(0.0f, 0.0f,
                                                static_cast<float>(Pass.Width),
@@ -953,7 +953,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 {
                     Discard(Viewport.Surface().SwitchToWindow());
                     // 🔴 The popups are deferred: the chrome's split/subject menus must record AFTER
-                    //    the leaf content, or the sky quad paints over them and the menus become
+                    //    the leaf content, or the sky quad textures over them and the menus become
                     //    unreadable — the reported defect when splitting a panel.
                     Discard(WorkspacePanels.Record(PanelExtent,
                                                       PanelPartitions[Index],
@@ -1824,7 +1824,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    in their own straight-alpha GPU pass — no ImGui tessellation, vivid colours.
                 //    Each viewport leaf's geometry is uploaded at most once per generation change
                 //    and drawn with a scissor clipped to that leaf's box, so the overlay never
-                //    paints over the outliner, the properties or any other panel.
+                //    textures over the outliner, the properties or any other panel.
                 // 🔴 THE SKETCH, RASTERISED ON THE GPU. The packet is uploaded once per generation
                 //    change -- not per frame and not per leaf -- and each viewport leaf records it with
                 //    its own projection. This is the pass the deleted host used and the one whose
@@ -1864,7 +1864,7 @@ int main(int ArgumentCount, char** ArgumentValues)
                 //    Both drawers are full-width horizontal bands: North descends from the top edge,
                 //    South rises from the bottom. So the uncovered region is a band, and clipping the
                 //    scissor to it keeps the grid everywhere it is legitimately visible while still
-                //    refusing to paint a single pixel over a drawer page.
+                //    refusing to texture a single pixel over a drawer page.
                 const float UncoveredTop    = NorthInterior.MaximumY > 0.0f
                                             ? std::max(0.0f, NorthInterior.MaximumY) : 0.0f;
                 const float UncoveredBottom = SouthInterior.MinimumY < static_cast<float>(Pass.Height)

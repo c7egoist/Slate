@@ -60,7 +60,7 @@ struct EmittedTexels
 /// 🧩 What an emission resolves through, borrowed and never owned.
 /// note  🔴 The same `70` a promotion reads and the same one `82` previews through. Three consumers, one
 ///        resolver: an export that resolved by a second implementation would ship an asset that disagrees with
-///        what the artist was shown while painting it, and they would have no way to tell which one was wrong.
+///        what the artist was shown while texturing it, and they would have no way to tell which one was wrong.
 /// tag   nonallocating, nonthrowing
 struct EmissionSources
 {

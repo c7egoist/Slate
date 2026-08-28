@@ -25,7 +25,7 @@ namespace Slate
 
 constexpr std::uint32_t FeatureWorld      = 1u << 0u;   // [-] - camera, sky, lighting, ground lattice
 constexpr std::uint32_t FeatureCodexScene = 1u << 1u;   // [-] - scene import, codex activation
-constexpr std::uint32_t FeatureTexture    = 1u << 2u;   // [-] - texture paint: brushes, layer stack
+constexpr std::uint32_t FeatureTexture    = 1u << 2u;   // [-] - texturing: brushes, layer stack
 constexpr std::uint32_t FeatureParametric = 1u << 3u;   // [-] - parametric CAD: sketch, constraints, features
 
 #if defined(SLATE_COMBINED_AUTHORING)

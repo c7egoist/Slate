@@ -103,7 +103,7 @@ struct ViewFrame
 //    `ViewportStanding` and could not be handed to the projection above.
 //
 // 🔴 THAT SINGLE MISSING CONVERSION IS WHY THE PROJECTION WAS WRITTEN THREE TIMES. `EditorHost` and
-//    `PaintHost` each grew a private perspective divide — and, on top of it, a private copy of the scene
+//    the texturing host each grew a private perspective divide — and, on top of it, a private copy of the scene
 //    proxy drawing that used it. ~250 duplicated lines, all descending from the fact that the shared
 //    function only accepted one of the two ways of describing a camera.
 //

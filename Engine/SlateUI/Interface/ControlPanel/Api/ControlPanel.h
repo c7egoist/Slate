@@ -116,7 +116,7 @@ struct RevisionDeclaration
 //                                                       THE PANEL
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Presents the shared controls used by drafting, painting and world-editor inspectors.
+/// 🧩 Presents the shared controls used by parametric, texturing and world-editor inspectors.
 /// note  🔴 Every artist-visible datum arrives by reference and is written through that reference. The panel
 ///       retains only borrowed recording facilities; the host or application owns every selected condition.
 /// tag   owning

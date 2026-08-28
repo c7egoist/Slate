@@ -149,7 +149,7 @@ struct PreviewSources
 ///        The brush preview is the only one that touches a mutating component at all, and it holds that component
 ///        with `StrokeDeclaration::Speculative` declared, which is what makes `22`'s own Seal refuse it.
 /// note  📝 The domain view of `82` §4 is **not** a fifth preview. It is the content preview over the whole domain,
-///        presented two-dimensionally by `14`, and that is what discharges §6's gate that domain-view painting and
+///        presented two-dimensionally by `14`, and that is what discharges §6's gate that domain-view texturing and
 ///        placement go through the same paths as their three-dimensional forms: there is one path, so they cannot
 ///        differ. A separate domain resolution would have been the second path the gate forbids.
 /// tag   owning

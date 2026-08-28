@@ -1,4 +1,4 @@
-﻿//============================================================================================================================================
+//============================================================================================================================================
 //                                                            REVISIONSEQUENCE.H
 //============================================================================================================================================
 // 🧩 Ordered, scrubbable sequence of committed transactions, with the drag lifecycle every edit uses.
@@ -35,7 +35,7 @@ enum class TransactionPhase : std::uint32_t
 //------------------------------------------------------------------------------------------------------------------------
 
 /// 🧩 One committed transaction — the forward operation and the inverse that undoes it.
-/// note  Scrubbing backwards replays inverses rather than restoring snapshots, which is what lets a paint
+/// note  Scrubbing backwards replays inverses rather than restoring snapshots, which is what lets a texture
 ///       stroke's inverse be bounded by the extent the stroke touched rather than by the whole surface.
 /// tag   owning
 struct CommittedTransaction

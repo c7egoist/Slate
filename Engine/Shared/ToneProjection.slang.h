@@ -63,8 +63,8 @@ SLATE_SHARED Real64 ProjectToneCompressed(Real64 Magnitude, Real64 WhiteMagnitud
 /// in    PreservationBlend [-]  nought compresses per channel; one preserves hue entirely
 /// out   OutRed/Green/Blue [-]  display-range magnitudes
 /// note  🔴 `66` §3.1: compressing the three channels independently rotates hue as it desaturates, so a saturated
-///        red highlight becomes orange as it brightens. That is not a preference — an artist painting a saturated
-///        colour and watching it shift as they brighten it cannot tell whether the shift is in their paint or in
+///        red highlight becomes orange as it brightens. That is not a preference — an artist texturing a saturated
+///        colour and watching it shift as they brighten it cannot tell whether the shift is in their texture or in
 ///        the display, and every correction they make is a correction to the wrong thing.
 /// note  📐 Hue preservation compresses the **greatest** component and scales the other two by the same factor,
 ///        so the ratio between them is untouched and the hue is exactly preserved. The blend between the two

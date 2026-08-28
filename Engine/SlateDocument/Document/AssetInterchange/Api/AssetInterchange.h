@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                           ASSETINTERCHANGE.H
 //============================================================================================================================================
-// 🧩 Topology and imagery in, painted channels out — one guarantee, and intake that never repairs.
+// 🧩 Topology and imagery in, textured channels out — one guarantee, and intake that never repairs.
 
 #pragma once
 
@@ -152,7 +152,7 @@ std::string ResolveName(const std::string& Pattern,
 /// note  🔴 `50` §2: intake is three steps and they are separate. ① decodes faithfully — the codec's. ② registers
 ///        owners — this document's. ③ derives companions — `38`'s, through `34`, and where the cost lives.
 /// note  🔴 `50` §8: a partially failed intake **registers nothing**. Half a topology registered as an owner is an
-///        owner the artist will paint on and export.
+///        owner the artist will texture on and export.
 /// tag   owning
 class AssetInterchange
 {

@@ -148,7 +148,7 @@ public:
 
     /// 🧩 Adopts an appearance read from a stream, replacing every declaration the interface draws from.
     /// in    Incoming  [-]  a whole archive; partial adoption is not offered, because a half-applied
-    ///                      appearance is the one outcome no panel can present honestly
+    ///                      appearance is the one delivery no panel can present honestly
     /// post  every later Theme and Accent call reads the adopted declarations
     /// note  ⚠️ References previously returned by Theme or Accent remain valid — the storage is static and is
     ///        overwritten in place — but the colours behind them change. Nothing should retain one across a tick.

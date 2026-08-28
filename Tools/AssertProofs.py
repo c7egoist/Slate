@@ -31,31 +31,31 @@ GATES = [
         (150, 188, 0x232327, 8, "retained SK_BasePlate taken row"),
         (150, 250, 0x17171A, 8, "unretained Bodies row vacant"),
     ]),
-    # ④ PanelValidationHost — texture paint, layers.
+    # ④ PanelValidationHost — texture texture, layers.
     ("VisualProof/PanelValidationHost/texturepaint-layers.png", [
         (200, 160, 0x121214, 8, "stack head"),
         (700, 205, 0x141414, 8, "add layer ground"),
         (1000, 160, 0x0E0E0E, 8, "channel head"),
         (1500, 350, 0x0E0E0E, 8, "chips region"),
     ]),
-    # ⑤ PanelValidationHost — texture paint, mask.
+    # ⑤ PanelValidationHost — texture texture, mask.
     ("VisualProof/PanelValidationHost/texturepaint-mask.png", [
         (1000, 160, 0x0E0E0E, 8, "mask head"),
         (798, 400, 0x1C1C1C, 12, "section hair edge"),
         (1200, 840, 0x0E0E0E, 8, "mask foot"),
     ]),
-    # ⑥ PanelValidationHost — texture paint, reorder drag.
+    # ⑥ PanelValidationHost — texture texture, reorder drag.
     ("VisualProof/PanelValidationHost/texturepaint-reorder.png", [
         (400, 347, 0x4A90E2, 14, "insertion rail"),
     ]),
-    # ⑦ PanelValidationHost — CAD drafting, properties page.
+    # ⑦ PanelValidationHost — CAD parametric, properties page.
     ("VisualProof/PanelValidationHost/cad-properties.png", [
         (200, 160, 0x17171A, 8, "directory column ground"),
         (500, 160, 0x101012, 8, "properties bar column"),
         (1046, 217, 0x4A90E2, 16, "carousel properties underline"),
         (900, 263, 0x0A0A0B, 10, "record card ground"),
     ]),
-    # ⑧ PanelValidationHost — CAD drafting, history page.
+    # ⑧ PanelValidationHost — CAD parametric, history page.
     ("VisualProof/PanelValidationHost/cad-history.png", [
         (1394, 217, 0x4A90E2, 16, "carousel history underline"),
         (889, 270, 0x4FD18B, 16, "cylinder revision bubble"),

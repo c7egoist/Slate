@@ -417,7 +417,11 @@ Deliver<CodexProfile> CodexInterchange::ProfileOf(const std::string& OriginPath)
         { ".terrain",     CodexProfile::Terrain },
         { ".impulse",     CodexProfile::Impulse },
         { ".solid",       CodexProfile::Solid },
-        { ".draft",       CodexProfile::Drafting },
+        // 📝 `.parametric` is what this profile is written as now. `.taper` is still CLASSIFIED
+        //    because documents saved under the old suffix exist on disk and must keep opening --
+        //    this table only reads a path, it never names a file being written.
+        { ".parametric",  CodexProfile::Parametric },
+        { ".taper",       CodexProfile::Parametric },
         { ".sketch",      CodexProfile::Sketch },
         { ".assembly",    CodexProfile::Assembly },
         { ".fabrication", CodexProfile::Fabrication },

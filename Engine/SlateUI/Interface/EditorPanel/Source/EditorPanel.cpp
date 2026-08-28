@@ -177,7 +177,7 @@ Deliver<bool> EditorPanel::Record(const PlaneExtent& Extent,
     RecordBranch(PanelStructure::RootIndex, Extent, Partition, Configuration);
 
     // 🔴 The popups are deferred when the caller fills the leaves itself: recorded before the leaf
-    //    content, a split or subject menu is painted over by the caller's sky quad and becomes
+    //    content, a split or subject menu is textured over by the caller's sky quad and becomes
     //    unreadable. The host records its content between the two calls.
     if (!DeferPopups)
         RecordDeferred(Partition, Configuration);
@@ -786,7 +786,7 @@ void EditorPanel::RecordDeferred(PanelStructure& Partition, EditorPanelConfigura
     }
 
     // Component controls inside an editor popup (notably Grid Type) defer their own roster until
-    // their parent card has been painted. Without this pass the field could disclose but no choices
+    // their parent card has been textured. Without this pass the field could disclose but no choices
     // were ever recorded.
     SharedControls.RecordDeferred();
 
@@ -815,11 +815,11 @@ void EditorPanel::RecordSubjectMenu(std::uint32_t RecordIndex,
     Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, Measure.MenuRadius, CornerAll);
 
     // 📐 Ordered as the workspace reads: the two viewers, the scene tree, then
-    //    the paint stack.
+    //    the texture stack.
     // 🔴 Properties is NOT offered here. It records the Properties record
     //    inspector, which belongs to the shell's Scene Directory and not to an
     //    editor leaf; choosing it in the editor put a Properties pane inside a
-    //    Texture Paint workspace. The subject and its host case remain so an
+    //    Texturing workspace. The subject and its host case remain so an
     //    existing layout that already holds one still draws, but it can no
     //    longer be newly chosen.
     const PanelSubject Subjects[6] = { PanelSubject::Viewport, PanelSubject::Uv,

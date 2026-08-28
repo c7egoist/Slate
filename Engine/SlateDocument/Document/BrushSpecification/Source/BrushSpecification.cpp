@@ -21,7 +21,7 @@ namespace
 
 // 📐 Each progression carries the closed unit interval to itself and fixes both ends, so a dynamic at its low end
 //    gives the declared lower factor exactly and at its high end the upper one. A progression that did not fix
-//    the ends would make a brush at full pressure paint something other than its declared maximum.
+//    the ends would make a brush at full pressure texture something other than its declared maximum.
 double Progress(ProgressionSubject Declared, double Fraction)
 {
     const double Bounded = Fraction < 0.0 ? 0.0 : (Fraction > 1.0 ? 1.0 : Fraction);

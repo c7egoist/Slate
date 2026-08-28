@@ -55,7 +55,7 @@ struct PersistenceConclusion
 ///        half-finished drag is not a state the artist asked to keep — and a document that reopened mid-drag
 ///        would present a stroke the artist never let go of.
 /// note  🔴 `34` §2: the whole point of this being a captured copy is that the save runs off the tick and the
-///        artist keeps painting while it does. A save that read the live document would read it mid-transaction
+///        artist keeps texturing while it does. A save that read the live document would read it mid-transaction
 ///        on whichever machine happened to be slow enough, and `48` §3's non-blocking rule would be the cause.
 /// tag   owning
 struct SealedContent

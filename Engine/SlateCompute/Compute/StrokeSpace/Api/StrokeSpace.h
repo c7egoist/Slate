@@ -65,7 +65,7 @@ public:
     /// out   Result      [-]  refuses with ContentUnsupported outside the span, and with ExtentExhausted at
     ///                         the declared tile ceiling
     /// note  📝 Exhaustion is structurally unreachable at the finest level, where the ceiling equals the cell
-    ///        count. It is a guard against a coarser level being painted at with a miscomputed ordinal, and it
+    ///        count. It is a guard against a coarser level being textured at with a miscomputed ordinal, and it
     ///        refuses rather than growing so that a defect there is a refusal instead of an allocation storm.
     /// cost  🚩
     /// tag   api, nonthrowing

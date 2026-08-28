@@ -51,7 +51,7 @@ Deliver<bool> EmissionSequence::ConstructEmissionSequence(const EmissionSources&
 {
     // 🔴 The same `70` a promotion reads and `82` previews through. An absent resolver is not an export that
     //    degrades to something simpler — it is an export that would have to invent a second implementation, and
-    //    the asset it shipped would disagree with what the artist was shown while painting it.
+    //    the asset it shipped would disagree with what the artist was shown while texturing it.
     if (Supplied.Resolution == nullptr)
     {
         return Deliver<bool>::Refuse({RefusalReason::ContentUnsupported,
@@ -110,7 +110,7 @@ Deliver<bool> EmissionSequence::Open(const EmissionSpecification& Declaring,
     Arrangement = ProjectPlacements(Arranged);
 
     // 📝 Allocated once, whole, so no band reallocates mid-emission. A run that grew per band would move every
-    //    texel already resolved, and it would do it under a `Background` worker while the artist is painting.
+    //    texel already resolved, and it would do it under a `Background` worker while the artist is texturing.
     Producing.ExtentTexels   = Arranged.ExtentTexels;
     Producing.ComponentCount = static_cast<std::uint32_t>(ComponentSpan);
     Producing.SpaceIdentity  = Arranged.SpaceIdentity;

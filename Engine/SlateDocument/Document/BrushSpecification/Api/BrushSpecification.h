@@ -170,7 +170,7 @@ struct VaryingSpecification
 /// 🧩 One of `42`'s channels and the value the brush writes to it.
 /// note  🔴 `58` §2: a brush declares a **channel set with a value per channel**, never a single colour. `22`
 ///        §5's multi-channel stroke is one transaction because one brush wrote both channels; a brush carrying
-///        only a colour would make painting roughness a separate tool with separate presets and separate undo.
+///        only a colour would make texturing roughness a separate tool with separate presets and separate undo.
 /// tag   nonallocating, nonthrowing
 struct BrushChannelValue
 {
@@ -247,7 +247,7 @@ public:
     /// out   Result  [-]  refuses with ContentUnsupported for a non-positive spacing
     /// post  the floor's having been reached is recorded, and is reported through `86` by `Report`
     /// note  🔴 The floor is applied and **said**, never applied silently — `58` §5. A brush quietly coarsened
-    ///        below its declared spacing paints a stroke the artist did not ask for and cannot account for.
+    ///        below its declared spacing textures a stroke the artist did not ask for and cannot account for.
     /// cost  ✔️
     /// tag   api, nonthrowing
     Deliver<bool> DeclareSpacing(double RelativeSpacing);
@@ -287,7 +287,7 @@ public:
     ///        and the sequence `22` resolves with are the same sequence. One that disagreed would give a preview
     ///        whose variation is not the variation the artist gets.
     /// note  🔴 An absent axis takes its dynamic's declared fallback. Reading zero would make a pressure brush
-    ///        paint nothing on a mouse and a tilt brush behave as though every stylus were flat.
+    ///        texture nothing on a mouse and a tilt brush behave as though every stylus were flat.
     /// cost  🚩
     /// tag   api, nonallocating, nonthrowing
     ResolvedBrush Resolve(const ResolvedAxes& Axes,

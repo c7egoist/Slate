@@ -76,7 +76,7 @@ constexpr double CombineValue(CombineSpecification Declared,
 /// out   Combined          [-]  the resolved coverage, in the closed unit interval
 /// note  🔴 Erase is the one combination that reduces coverage, and it leaves the value untouched. An eraser that
 ///        wrote a value would leave the artist's colour underneath whatever they erased with, visible the moment
-///        anything painted over it again.
+///        anything textured over it again.
 /// cost  ✔️
 /// tag   api, guarantee, nonallocating, nonthrowing
 constexpr double CombineCoverage(CombineSpecification Declared,

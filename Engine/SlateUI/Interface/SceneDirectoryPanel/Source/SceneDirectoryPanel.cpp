@@ -1227,7 +1227,7 @@ void SceneDirectoryPanel::RecordOutliner(const PlaneExtent& Extent, SceneDirecto
     SeatPagePointer(0u);
     Surface->Confine(Extent);
 
-    // 📐 The directory and its immediate details use the validation drafting split, constrained to 60%
+    // 📐 The directory and its immediate details use the validation parametric split, constrained to 60%
     //    on narrow leaves so both panes remain readable.
     const float OutlinerX = (Scaled.OutlinerX < DirectoryExtent.Width() * 0.6f)
                           ? Scaled.OutlinerX : DirectoryExtent.Width() * 0.6f;
@@ -2687,7 +2687,7 @@ void SceneDirectoryPanel::RecordGizmo(const PlaneExtent& Extent, SceneDirectoryC
 {
     // 📐 The ground grid and all 3 world axes (Red X, Green Y, Blue Z) are rendered 100%
     //    on the GPU by the overlay pass fragment shader (WorkspaceOverlayFragment.slang). The host records
-    //    the shared screen-space orientation gizmo so Editor, Paint and ParametricSketch cannot diverge.
+    //    the shared screen-space orientation gizmo so every workspace shares one gizmo.
     static_cast<void>(Applied);
     static_cast<void>(Overlay);
     static_cast<void>(Extent);
@@ -2701,7 +2701,7 @@ void SceneDirectoryPanel::RecordOverlayFallback(const PlaneExtent& Extent,
 
     // 📐 The SAME record the GPU pass would draw, drawn through the interface instead — the fallback
     //    when the pass could not stand. Everything is confined to the leaf, exactly as the pass's
-    //    scissor clips its own draw: the grid, the axes and the gizmo never paint over the panels.
+    //    scissor clips its own draw: the grid, the axes and the gizmo never texture over the panels.
     Surface->Confine(Extent);
 
     const auto Token = [](std::uint32_t Packed) -> ThemeToken

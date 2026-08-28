@@ -49,7 +49,7 @@ def byte(v): return bytes([1 if v else 0])
 def colour(red, green, blue, space=1):
     return f64(red) + f64(green) + f64(blue) + u32(space)
 
-def painted():
+def textured():
     return u32(0) + u32(1) + u32(0)
 
 def scalar_channel(value, default):
@@ -65,12 +65,12 @@ def absent_channel():
             f64(0.) + colour(0., 0., 0., 0) + f64(0.) + f64(1.) + byte(False))
 
 def coverage():
-    return u32(3) + u32(0) + painted() + f64(1.) + u32(0) + byte(False) + byte(False)
+    return u32(3) + u32(0) + textured() + f64(1.) + u32(0) + byte(False) + byte(False)
 
 def material_layer():
     channel_mask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7)
     return (u32(0) + u32(1) + u32(5) + u32(0) + u32(0) + u32(channel_mask) + u32(0) +
-            coverage() + painted() + run("Base Material") + byte(True) + byte(True) + byte(False))
+            coverage() + textured() + run("Base Material") + byte(True) + byte(True) + byte(False))
 
 def material_record(reference):
     channels = []

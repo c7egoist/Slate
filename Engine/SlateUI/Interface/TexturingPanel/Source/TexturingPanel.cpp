@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                           TEXTUREPAINTPANEL.CPP
 //============================================================================================================================================
-// 🧩 The editor's texture-paint layer stack — the LayerstackV1 reference's own
+// 🧩 The editor's texture-texture layer stack — the LayerstackV1 reference's own
 //    header, tools, rows, mask rows, folders and footer inside the workspace
 //    leaf, with the selection-driven properties page behind the carousel.
 //    See TexturingPanel.h for the flow: a layer row + Tab → channel
@@ -104,7 +104,7 @@ const char* const StackFacetOptions[TexturingContext::TextureFacetCount] =
 
 const ThemeToken StackFacetColours[TexturingContext::TextureFacetCount] =
 {
-    Covering(0xF97316u),   // [-] - Paint
+    Covering(0xF97316u),   // [-] - Covering
     Covering(0x3B82F6u),   // [-] - Fill
     Covering(0xEF4444u),   // [-] - Decal
     Covering(0x10B981u),   // [-] - Pattern
@@ -964,7 +964,7 @@ Deliver<bool> TexturingPanel::ConstructTexturingPanel(ControlIndex& IncomingInte
     if (Interaction != nullptr)
     {
         return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
-                                       "the texture paint panel is already constructed" });
+                                       "the texturing panel is already constructed" });
     }
 
     Interaction     = &IncomingInteraction;
@@ -977,7 +977,7 @@ Deliver<bool> TexturingPanel::ConstructTexturingPanel(ControlIndex& IncomingInte
     {
         Reset();
         return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
-                                       "the texture paint controls were rejected" });
+                                       "the texturing controls were rejected" });
     }
 
     if (!StackFacets.ConstructFacetPanel(Integrator, IncomingSurface, Resolved).Resolved ||
@@ -986,7 +986,7 @@ Deliver<bool> TexturingPanel::ConstructTexturingPanel(ControlIndex& IncomingInte
     {
         Reset();
         return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent,
-                                       "the texture paint filters were rejected" });
+                                       "the texturing filters were rejected" });
     }
 
     ControlIdentity* const Every[] =
@@ -1153,7 +1153,7 @@ std::uint32_t TexturingPanel::PropertyTabCount(const TexturingContext& Applied,
     //    offers the mask page alone; a layer offers Channels, its Mask (when declared), and its
     //    Settings (decal / pattern / generator / the generic layer settings).
     // 🔴 ONE SELECTION SHOWED TWO OR THREE PANELS. A layer offered Channels, Mask and
-    //    Settings; a decal offered Decal and Settings. Taking a paint layer is a
+    //    Settings; a decal offered Decal and Settings. Taking a texture layer is a
     //    request to edit THAT layer's channels, and taking a mask is a request to
     //    edit THAT mask — the strip then asked a second question the selection had
     //    already answered, and the artist had to choose a tab to see the thing they
@@ -3180,10 +3180,10 @@ void TexturingPanel::RecordStackFooter(const PlaneExtent& Footer, TexturingConte
         bool            Always;
     };
 
-    // 🔴 THE BAR'S FIRST SIX CELLS WERE THE + MENU, SPELLED TWICE. Paint, Fill,
+    // 🔴 THE BAR'S FIRST SIX CELLS WERE THE + MENU, SPELLED TWICE. Covering, Fill,
     //    Adjustment, Filter, Decal and Pattern are exactly the six declarations the
     //    Add menu offers — same requests, same glyphs, two places to press for one
-    //    outcome, and the menu names them in words while the bar left the artist to
+    //    delivery, and the menu names them in words while the bar left the artist to
     //    infer six icons. Withdrawn: adding a layer is the + button's job.
     //
     //    📐 Measured before removing them, not assumed — proof/BarMain.cpp presses
@@ -4220,7 +4220,7 @@ float TexturingPanel::RecordValueBody(const PlaneExtent& Extent, TexturingContex
 float TexturingPanel::RecordTextureBody(const PlaneExtent& Extent, TexturingContext& Applied,
                                            std::uint32_t Channel)
 {
-    // 🧩 Texture: the painted-stroke slot, then the imported base beneath it.
+    // 🧩 Texture: the textured-stroke slot, then the imported base beneath it.
     const std::uint32_t Layer = Applied.LayerTaken;
     const TextureChannelSlot& Slot = TextureChannelAt(Channel);
 
@@ -4393,7 +4393,7 @@ float TexturingPanel::RecordChannelBody(const PlaneExtent& Extent, TexturingCont
     if (Slot.Edit == TextureChannelEdit::Derived)
     {
         Surface->TextRun(Extent.MinimumX, Sweep + Scaled.PanePad, Tinted.Faint,
-                         "Derived from the painted height. No value to author.", Scaled.RunFine);
+                         "Derived from the textured height. No value to author.", Scaled.RunFine);
 
         Sweep += Scaled.RunFine * 1.6f + Scaled.PanePad;
 

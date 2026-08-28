@@ -6,7 +6,7 @@
 //
 // 🔴 ALL THREE HOSTS DREW CODEX SCENE PROXIES, AND ALL THREE PROJECTED THE POINTS THEMSELVES.
 //    `ParametricSketchHost` had `RecordCodexSceneProxy`, `EditorHost` has `RecordWorkspaceCodexProxy` and
-//    `ProjectWorkspaceCodexPoint`, `PaintHost` has `ProjectPaintScenePoint`. Three copies of one idea, each
+//    `ProjectWorkspaceCodexPoint`, the texturing host had its own copy. Three copies of one idea, each
 //    with its own projection, which is how they came to disagree about where a box belongs.
 //
 // 🔴 THE OTHER HALF CAME OUT OF `Application/Api/SketchSceneDirectoryBridge.h`, a header two hosts included

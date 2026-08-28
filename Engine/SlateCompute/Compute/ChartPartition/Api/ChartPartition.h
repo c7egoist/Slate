@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                           CHARTPARTITION.H
 //============================================================================================================================================
-// 🧩 The parametric domain every paintable surface addresses — cut, flattened, arranged, and measured.
+// 🧩 The parametric domain every texturable surface addresses — cut, flattened, arranged, and measured.
 
 #pragma once
 
@@ -137,7 +137,7 @@ SLATE_DECLARES_PRECISION(PrecisionGuarantee::Convergent, PrecisionGuarantee::Con
 ///        while `20` promotes against it. Re-partitioning moves domain positions, so every derived artefact
 ///        addressed in the old domain is invalid — and the revision is what makes that discoverable rather than
 ///        silent.
-/// note  🔴 A camera move, an owner move and a paint stroke re-derive nothing here. The domain is parametric
+/// note  🔴 A camera move, an owner move and a texture stroke re-derive nothing here. The domain is parametric
 ///        rather than world-referred, which is `68` §6's table read from the storage side.
 /// tag   owning
 class ChartPartition

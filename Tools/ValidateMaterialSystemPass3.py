@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """Static validation for Material System Pass 3 image-reference material sources."""
+# ⚠️ Strings quoted from documents under References/ are matched VERBATIM against files this
+#    gate does not own. A vocabulary sweep must not rewrite them: renaming the quotation only
+#    stops the gate finding the line, it does not rename the document.
 from __future__ import annotations
 
 from pathlib import Path

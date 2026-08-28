@@ -160,7 +160,7 @@ Deliver<bool> PointerIntersection::Accept(const AcceptedSurface& Incoming)
 
     // 🔴 Confirmed here rather than at the hit. A run one corner short reads past its end at whichever triangle
     //    happens to touch the last corner, which is a pick that is correct almost everywhere — and the artist
-    //    meets it as one face of a model painting somewhere else.
+    //    meets it as one face of a model texturing somewhere else.
     if (Incoming.Imported != nullptr && Incoming.CornerCoordinates != nullptr
      && static_cast<std::uint32_t>(Incoming.CornerCoordinates->size()) != Incoming.Imported->CornerCount())
     {

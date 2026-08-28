@@ -376,7 +376,7 @@ Deliver<bool> WorkspaceOverlayPass::ConstructWorkspaceOverlayPass(const VulkanEx
         Naming.Declare(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<std::uint64_t>(VertexBuffer),
                        "WorkspaceOverlayPass.Geometry"))
     {
-        // 📝 Every object named; nothing else to do with the outcome.
+        // 📝 Every object named; nothing else to do with the delivery.
     }
 
     return Deliver<bool>::Result(true);
@@ -487,7 +487,7 @@ void WorkspaceOverlayPass::Record(VkCommandBuffer Command, std::uint32_t Width, 
         .maxDepth = 1.0f
     };
 
-    // 🔴 The scissor IS the viewport leaf's box: the grid, the axes and the gizmo must never paint
+    // 🔴 The scissor IS the viewport leaf's box: the grid, the axes and the gizmo must never texture
     //    over the outliner, the properties or any other panel — they are drawn only inside the leaf
     //    that produced the geometry. The box is clamped to the display so a leaf at the window edge
     //    cannot push the scissor past the target.

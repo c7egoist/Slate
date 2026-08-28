@@ -27,7 +27,9 @@ enum class CodexProfile : std::uint32_t
     Terrain     = 7u,
     Impulse     = 8u,
     Solid       = 9u,
-    Drafting    = 10u,
+    // ⚠️ The NAME changed when this vocabulary was retired; the VALUE 10u is written into every
+    //    existing document and must never move.
+    Parametric  = 10u,
     Sketch      = 11u,
     Assembly    = 12u,
     Fabrication = 13u,

@@ -183,7 +183,7 @@ public:
     /// in    RecordingIndex  [-]  the rotation it was derived on
     /// out   Result          [-]  refuses with whatever the depot rejected
     /// note  🔴 Declared as an analytic resolution and therefore reconstructible and evictable — `24` §5's last
-    ///        gate. Nothing painted is ever stored here: a transferred result that has been painted over is a
+    ///        gate. Nothing textured is ever stored here: a transferred result that has been textured over is a
     ///        layer above it in `56`, and the two are addressed at their own levels rather than merged.
     /// cost  🚩
     /// tag   api, nonthrowing

@@ -7,8 +7,24 @@ import sys
 RepositoryRoot = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EngineRoot = os.path.join(RepositoryRoot, "Engine")
 Extensions = {".h", ".hpp", ".cpp", ".c", ".slang"}
+# \U0001f534 THE BAN LIVES HERE, NOT IN ANYONE'S MEMORY. Four words were agreed as retired and then merely
+#    AVOIDED rather than listed -- so `DraftSolver` sat in the tree, in a banned spelling, passing a green
+#    gate. A word that is not in this tuple is not banned, whatever anyone intended.
+#
+# \U0001f4dd Each is spelled by concatenation so that this file, which must name the words in order to
+#    forbid them, does not match its own search when it is scanned.
 Retired = ("Ceiling", "Ordinal", "Choice", "Boundary", "Region",
-           "Con" + "tract", "con" + "tract", "Led" + "ger", "led" + "ger")
+           "Con" + "tract", "con" + "tract", "Led" + "ger", "led" + "ger",
+           "Dra" + "ft", "dra" + "ft", "Dra" + "ught", "dra" + "ught",
+           "Pain" + "t", "pain" + "t", "Out" + "come", "out" + "come")
+
+# \U0001f534 ONE FILE MAY DISCUSS ONE WORD, AND ONLY WHERE THE BAN ITSELF IS RECORDED. `DeliveryGuarantee.h`
+#    explains WHY the fallible return is not spelled the retired way, so it must name it; a bulk rename once
+#    corrupted that sentence into "`Deliver` and not `Deliver`". The exemption is a single file paired with a
+#    single word, not a blanket skip, so no other retired spelling can hide behind it.
+Discussed = {
+    "Foundation/DeliveryGuarantee.h": {"Out" + "come", "out" + "come"},
+}
 VendorBindingTokens = {
     "VkDescriptorSetLayoutBinding", "pBindings", "dstBinding",
 }
@@ -24,8 +40,9 @@ for Walked, Folders, Files in os.walk(EngineRoot):
         with open(Path, "r", encoding="utf-8-sig", errors="replace") as Reader:
             for LineNumber, Line in enumerate(Reader, 1):
                 SlateText = Line.replace("GetContentRegionAvail", "")
+                Permitted = Discussed.get(Relative.replace("Engine/", "", 1), set())
                 for Word in Retired:
-                    if Word in SlateText:
+                    if Word in SlateText and Word not in Permitted:
                         Failures.append((Relative, LineNumber, Word))
                 if re.search(r"\bConstruct\s*\(", Line):
                     Failures.append((Relative, LineNumber, "plain Construct method"))

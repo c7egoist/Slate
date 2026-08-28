@@ -32,7 +32,7 @@ struct PromotionBudget
 };
 
 /// 🧩 What promoting one tile would cost, against both measures at once.
-/// note  📝 A tile is rarely one or the other. A surface with painted layers beneath a placed decal charges
+/// note  📝 A tile is rarely one or the other. A surface with textured layers beneath a placed decal charges
 ///        transfer for the first and evaluation for the second, and both must fit — which is why the two are
 ///        carried together rather than resolved to whichever dominates.
 /// tag   nonallocating, nonthrowing

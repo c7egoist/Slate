@@ -32,7 +32,7 @@ inline constexpr std::uint32_t AbsentDisplayImage = 0xFFFFFFFFu;   // [-] - noth
 ///        owns the choice. The choice is declared here as two named intents rather than as a vendor mode,
 ///        because the vendor's modes are three per driver and not all of them are present on every device —
 ///        a caller naming one directly has named something a second machine declines.
-/// note  ⚠️ `Immediate` is not offered. A painting application shows the artist a surface with a torn edge
+/// note  ⚠️ `Immediate` is not offered. A texturing application shows the artist a surface with a torn edge
 ///        halfway down it, and the tear is read as a defect in the brush rather than as an absent wait.
 /// tag   guarantee
 enum class LatencyIntent : std::uint32_t

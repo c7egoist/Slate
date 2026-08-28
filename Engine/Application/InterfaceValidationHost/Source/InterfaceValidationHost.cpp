@@ -71,7 +71,7 @@ struct ValidationConfiguration
     bool           EntryFour      = false;   // [-]
     std::uint32_t  SizeTaken       = 2u;      // [-]   - the taken stop is L
     bool           InspectorDocked = true;    // [-]   - reference switch begins taken
-    std::uint32_t  WorkspaceTaken  = 1u;      // [-]   - Texture Paint
+    std::uint32_t  WorkspaceTaken  = 1u;      // [-]   - Texturing
     std::uint32_t  InspectorTaken  = 0u;      // [-]   - Properties
     bool           TransformOpen   = true;    // [-]   - folding property card
     std::uint32_t  ShadingTaken    = 0u;      // [-]   - dropdown selection
@@ -446,7 +446,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     TooltipDeclaration TooltipDark = TooltipLight;
     TooltipDark.Appearance         = TooltipAppearance::Dark;
 
-    const char* WorkspaceCaptions[] = { "Drafting", "Texturing", "Game Editor" };
+    const char* WorkspaceCaptions[] = { "Parametric", "Texturing", "Game Editor" };
     const char* InspectorCaptions[] = { "Properties", "History" };
 
     SwitchDeclaration InspectorDock;

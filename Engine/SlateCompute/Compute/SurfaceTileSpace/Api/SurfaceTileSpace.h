@@ -1,7 +1,7 @@
 //============================================================================================================================================
 //                                                           SURFACETILESPACE.H
 //============================================================================================================================================
-// 🧩 Resolution-independent paintable surfaces — the cell subdivision, its residency, and the sample that never stalls.
+// 🧩 Resolution-independent texturable surfaces — the cell subdivision, its residency, and the sample that never stalls.
 
 #pragma once
 
@@ -129,7 +129,7 @@ struct CellRecord
     std::uint64_t  PromotedAt       = 0u;           // [-] - the rotation it became resident
     bool           Resident         = false;        // [-] - a slot is claimed for it
     bool           ApronWritten     = false;        // [-] - `20` §5's gate, per tile
-    bool           Uncommitted      = false;        // [-] - holds paint no transaction has sealed — never evicted
+    bool           Uncommitted      = false;        // [-] - holds texture no transaction has sealed — never evicted
     bool           Permanent        = false;        // [-] - a coarsest level; never evicted
 };
 
@@ -208,7 +208,7 @@ struct SampledCell
 //                                                    THE RESIDENCY
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 One paintable surface's residency — the reduction chain, its cells, and the tiles backing them.
+/// 🧩 One texturable surface's residency — the reduction chain, its cells, and the tiles backing them.
 /// note  🔴 `20`'s whole claim: a stroke is recorded against the surface's parametric domain, not against a
 ///        texel population, and the texels backing it are a residency decision made independently and revisable
 ///        without touching the stroke. Every routine here addresses the domain; none addresses a texel.
@@ -265,11 +265,11 @@ public:
     /// tag   api, nonthrowing
     Deliver<SampledCell> SampleGuaranteed(double PositionX, double PositionY) const;
 
-    /// 🧩 Declares whether one cell holds paint no transaction has sealed.
+    /// 🧩 Declares whether one cell holds texture no transaction has sealed.
     /// out   Result  [-]  refuses with ContentUnsupported outside the span, and with HostDenied when a
     ///                     non-resident cell is declared uncommitted
-    /// note  🔴 `20` §5 and `22` §4: no tile holding uncommitted paint is evicted. `22` declares it at the
-    ///        stroke's Open and withdraws it at Seal, at which point the paint is in `56` and the tile is a
+    /// note  🔴 `20` §5 and `22` §4: no tile holding uncommitted texture is evicted. `22` declares it at the
+    ///        stroke's Open and withdraws it at Seal, at which point the texture is in `56` and the tile is a
     ///        projection again.
     /// note  ⚠️ `82`'s speculative extents never call this. `22` §4.1 declares that a speculative extent never
     ///        blocks eviction, and this is the only thing in the engine that blocks one — so the gate holds by
@@ -307,7 +307,7 @@ public:
     ///                     non-resident cell
     /// note  🔴 `20` §5: every resident tile carries a written apron. Declared rather than assumed, so a
     ///        promotion path that forgot to write one is caught by `ResidencyValid` rather than by an artist
-    ///        finding a seam in a painted result.
+    ///        finding a seam in a textured result.
     /// cost  ✔️
     /// tag   api, nonthrowing
     Deliver<bool> DeclareApronWritten(std::uint32_t CellIndex);

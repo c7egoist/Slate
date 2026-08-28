@@ -201,7 +201,7 @@ public:
     /// out   Result  [-]  refuses with ExtentExhausted at the ceiling
     /// post  the new session is presented when it is the first one, and is otherwise not
     /// note  📝 Opening a second document does not steal the display from the first. An artist importing a
-    ///        reference file mid-stroke would otherwise lose the workspace they were painting in.
+    ///        reference file mid-stroke would otherwise lose the workspace they were texturing in.
     /// cost  🚩
     /// tag   api, nonthrowing
     Deliver<std::uint32_t> Open();

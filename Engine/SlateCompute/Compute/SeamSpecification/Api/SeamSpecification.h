@@ -54,7 +54,7 @@ constexpr SeamEdge DeclareEdge(std::uint32_t FirstVertex, std::uint32_t SecondVe
 /// note  🔴 Derived seams are **added** to the authored set, never substituted for it, and survive only until the
 ///        next partition. Where a surface will not flatten within the declared distortion using the authored set
 ///        alone, the shortfall is cut and the addition is reported through `86` — a silent extra cut is a seam
-///        the artist finds later in the painted result.
+///        the artist finds later in the textured result.
 /// tag   owning
 class SeamSpecification
 {

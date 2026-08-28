@@ -64,8 +64,8 @@ void AcceptColour(ResolvedSample& Writing, const ColourSpecification& Declared, 
     Writing.SampleResolved = true;
 }
 
-// 📐 Bilinear over a painted entry's interleaved run, clamped at the edges. Nearest would preserve every texel
-//    exactly and would also shear every diagonal the artist painted, which reads as a defect rather than as a
+// 📐 Bilinear over a textured entry's interleaved run, clamped at the edges. Nearest would preserve every texel
+//    exactly and would also shear every diagonal the artist textured, which reads as a defect rather than as a
 //    resampling — `56` §3.1 chooses bilinear for the same reason and this is the same choice one layer down.
 double SampleTextured(const TexturedContent& Held,
                      double                PositionX,
@@ -564,7 +564,7 @@ Deliver<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
         {
             // 🔴 Textured entries are resolved here, in the same walk, per the class note. `20` §2.1 lists three
             //    reconstruction sources and a mixed sequence needs all three composed; a resolver that skipped
-            //    painted entries would hand `20` a partial tile it has no route to complete.
+            //    textured entries would hand `20` a partial tile it has no route to complete.
             if (Held.Textured.ExtentTexels == 0u || Held.Textured.Texels.empty())
                 return Deliver<ResolvedSample>::Result(Resolved);
 
@@ -634,7 +634,7 @@ Deliver<ResolvedSample> AnalyticProjection::ResolveEntryAt(const LayerSpecificat
         return Deliver<ResolvedSample>::Result(Resolved);
 
     // 🔴 Coverage restricts where the entry applies and is resolved through the **same four sources** its content
-    //    is — `56` §5. A coverage that could only be painted would make a tiled mask impossible, and an artist
+    //    is — `56` §5. A coverage that could only be textured would make a tiled mask impossible, and an artist
     //    masking a pattern with a pattern is the ordinary case rather than the exotic one.
     double Covered = Held.Coverage.UniformStrength;
 
@@ -740,7 +740,7 @@ std::uint64_t AnalyticProjection::ContentRevision(const SurfaceLayerSequence& Co
             FoldRevision(Folded, ContentRevision(*Nesting.Resolve()));
     }
 
-    // ⚠️ 🚧 A painted amendment is **not** observable here. `56` exposes a painted entry's texels for amendment
+    // ⚠️ 🚧 A textured amendment is **not** observable here. `56` exposes a textured entry's texels for amendment
     //    and advances no counter over them, so a stroke sealed into an entry folds to the number it already had
     //    and `SurfaceTileSpace::Promote` answers `AlreadyResident`. `22`'s Seal must therefore evict or re-resolve
     //    the cells it recorded directly, and `56` §10's open row is what closes this properly.

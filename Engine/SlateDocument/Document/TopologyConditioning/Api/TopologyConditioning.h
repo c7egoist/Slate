@@ -53,7 +53,7 @@ struct ConditionedExtent
 //                                                  THE CONDITIONING
 //------------------------------------------------------------------------------------------------------------------------
 
-/// 🧩 Everything imported topology needs before it can be painted on, derived beside it and never into it.
+/// 🧩 Everything imported topology needs before it can be textured on, derived beside it and never into it.
 /// note  🔴 `38`'s opening rule: conditioning **derives**; it never mutates. The imported arrays are untouched and
 ///        an index into them means the same thing after conditioning as before. An importer that repairs its
 ///        input is an importer whose output the artist cannot reconcile with the file they gave it.
