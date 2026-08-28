@@ -15,6 +15,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OWNED = [
     "Tools/ToolOptionsWidgetProof/ToolOptionsWidgetProof.cpp",
     "Engine/SlateUI/Interface/ToolOptionsWidget/Source/ToolOptionsWidget.cpp",
+    "Engine/SlateUI/Interface/ToolContextMenu/Source/ToolContextMenu.cpp",
+    "Engine/SlateUI/Interface/OptionControls/Source/OptionControls.cpp",
 ]
 
 INCLUDES = ["-I", ".", "-I", "Engine", "-I", "Tools/VulkanParseStub"]

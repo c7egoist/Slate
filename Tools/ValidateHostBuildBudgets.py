@@ -350,7 +350,15 @@ def main() -> int:
     require("SketchContextMenu.Open(" in editor,
             "a context menu nothing opens is a context menu that does not exist")
     require("SketchContextMenu.Record(" in editor,
-            "the context menu must be recorded, or it is declared and never drawn")
+            "the context popup must be recorded, or it is declared and never drawn")
+
+    # 🔴 AND IT MUST ASK FOR A FIGURE, NOT LIST COMMANDS. The popup was first built as five rows naming
+    #    Bevel, Chamfer, Trim, Cut and Add -- a second way to start commands the tool catalogue already
+    #    offers, and not what the reference sheet describes. What the artist could not say was HOW FAR.
+    require("SketchCornerDistance" in editor,
+            "the bevel and chamfer popup must carry a distance the artist can set")
+    require("OptionControl::Slider" in editor,
+            "the popup's parameters must use the reference's own controls")
     require("SketchContextMenu.Avoid(SketchToolOptions.Occupies())" in editor,
             "the menu must be told the options widget's ACTUAL box, or it cannot avoid it")
 
@@ -366,8 +374,10 @@ def main() -> int:
     #    identical on screen to one that works, which is precisely how the earlier orphans survived review.
     require("ApplyViewportEditTool(" in editor,
             "the construction rows must call the edit tool, not discard the taken index")
-    require("BuildTools[BuildTaken]" in editor,
-            "the row the artist took must select the tool, or every row does the same thing")
+    require("PopupVerdict::Applied" in editor,
+            "the operation must run on Apply, not on the popup merely standing")
+    require("SketchBuildTool" in editor,
+            "the chosen construction tool must be remembered while its popup asks for parameters")
     require("SketchSemanticSelection.Standing()" in editor,
             "the rows must be gated on an ACTUAL pick, not on the element mode, which is always set")
 

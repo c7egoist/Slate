@@ -258,6 +258,30 @@ rather than trusted. Sabotaged four ways: flush treated as overlap (4 failures),
 first blocked corner (10), never refusing (2), dropping the slide (6). Three gate claims guard the
 wiring, each sabotaged.
 
+### Step 7 correction — the popup is a parameter panel, not a command list
+The first build of step 7 read "context menu" as a menu of commands and shipped five rows — Bevel,
+Chamfer, Trim, Cut, Add. **That was wrong twice over.** The tool catalogue already has tiles for those
+commands, so the menu was a second way to start the same operation; and `ToolOptionsWidget.html`, the
+sheet this work is built to, describes a panel of **controls**, not a list of verbs.
+
+What the artist had no way to say was *how far*. So the popup now carries the chosen tool's
+parameters and ends in Apply / Cancel:
+
+| Tool | The popup asks |
+| --- | --- |
+| Bevel, Chamfer | `Distance`, a slider in world units |
+| Trim | `Keep`, a segmented Start / End |
+| Cut | nothing — it splits at the picked point, so it is applied directly rather than through a popup holding only buttons |
+
+The controls are the reference's own four, and they are now **one implementation**: `OptionControls`
+holds the slider, segmented row, toggle and colour bar, and both the options widget and this popup
+draw through it. Two copies of a slider is two sliders that disagree the first time one is adjusted.
+
+The gesture: choosing a construction tile raises the popup at the last viewport click, anchored on the
+work rather than on the toolbar. A stationary right-click reopens the active tool's parameters. The
+placement rules from step 7 are unchanged — it still takes the first free corner and never covers
+another widget.
+
 ### Step 8 — Construction tools — **DONE**
 `Bevel`, `Chamfer`, `Trim`, `Cut`, `Add`, reached from the step-7 menu and acting on the current pick.
 

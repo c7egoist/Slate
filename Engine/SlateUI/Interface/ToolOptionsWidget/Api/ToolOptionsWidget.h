@@ -5,7 +5,7 @@
 //    pill that still names what it holds.
 //
 // 📐 Built to `References/ToolOptionsWidget.html`. The reference declares exactly four kinds of control —
-//    a slider, a segmented choice, a toggle and a colour bar — and every tool's options are a table of
+//    a slider, a segmented option, a toggle and a colour bar — and every tool's options are a table of
 //    them. That is the whole grammar, so it is the whole grammar here: a widget that grew a fifth kind
 //    per tool would be five widgets wearing one name.
 //
@@ -25,6 +25,7 @@
 #include "SlateUI/Interface/ControlIndex/Api/ControlIndex.h"
 #include "SlateUI/Interface/InterfaceExchange/Api/RecordingSurface.h"
 #include "SlateUI/Interface/MotionIntegrator/Api/MotionIntegrator.h"
+#include "SlateUI/Interface/OptionControls/Api/OptionControls.h"
 
 #include <cstdint>
 
@@ -34,42 +35,6 @@ namespace Slate
 //------------------------------------------------------------------------------------------------------------------------
 //                                                    WHAT A CONTROL IS
 //------------------------------------------------------------------------------------------------------------------------
-
-/// 🧩 The four kinds of control the reference declares, and the only four.
-/// tag   guarantee
-enum class OptionControl : std::uint32_t
-{
-    Slider    = 0u,   // [-] - a value pill beside a track with a dragged knob
-    Segmented = 1u,   // [-] - one of a short row of named choices
-    Toggle    = 2u,   // [-] - a switch, on or off
-    Swatches  = 3u    // [-] - one of a row of colours
-};
-
-/// 🧩 One row of the widget's body, borrowed from the caller for a single tick.
-/// note  ⚠️ `Reading` POINTS AT THE CALLER'S DATUM and is written through. The widget owns no options; it
-///        edits the ones the tool already has, so there is never a second copy to fall out of step with
-///        the first. `Selected` is the same arrangement for the three discrete kinds.
-/// note  📝 `Unit` is drawn in its own darker cell exactly as the reference does, which is what stops a
-///        number and its unit reading as one longer number.
-/// tag   guarantee, nonallocating, nonthrowing
-struct OptionDeclaration
-{
-    OptionControl       Kind        = OptionControl::Slider;
-    const char*         Caption     = "";        // [-] - the row's label
-    const char*         Unit        = "";        // [-] - drawn beside a slider's value; empty draws no cell
-
-    float*              Reading     = nullptr;   // [-] - the caller's datum, for a slider
-    float               Minimum     = 0.0f;      // [-]
-    float               Maximum     = 1.0f;      // [-]
-
-    std::uint32_t*      Selected      = nullptr;   // [-] - the caller's index, for a segmented row or swatches
-    const char* const*  Options     = nullptr;   // [-] - the segmented captions
-    const SymbolSubject* Glyphs     = nullptr;   // [-] - optional, one per option; drawn instead of the caption
-    const ThemeToken*   Colours     = nullptr;   // [-] - the swatch colours
-    std::uint32_t       OptionCount = 0u;
-
-    bool*               Taken       = nullptr;   // [-] - the caller's flag, for a toggle
-};
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                                      THE WIDGET
@@ -85,7 +50,7 @@ class ToolOptionsWidget
 public:
 
     static constexpr std::uint32_t RowLimit    = 8u;      // [-] - bounded rows per tool
-    static constexpr std::uint32_t OptionLimit = 8u;      // [-] - bounded choices per row
+    static constexpr std::uint32_t OptionLimit = 8u;      // [-] - bounded options per row
 
     // 📐 The reference's own measures, at a display scale of one.
     static constexpr float PanelWidth   = 300.0f;   // [px] - `--panel-w`
@@ -145,10 +110,6 @@ private:
 
     void RecordHeader(const PlaneExtent& Header, const char* Title, SymbolSubject Glyph, bool& PointerTaken);
     void RecordPill(const PlaneExtent& Bounds, const char* Title, SymbolSubject Glyph, bool& PointerTaken);
-    void RecordSlider(const PlaneExtent& Row, OptionDeclaration& Declared, std::uint32_t Index, bool& PointerTaken);
-    void RecordSegmented(const PlaneExtent& Row, OptionDeclaration& Declared, std::uint32_t Index, bool& PointerTaken);
-    void RecordToggle(const PlaneExtent& Row, OptionDeclaration& Declared, std::uint32_t Index, bool& PointerTaken);
-    void RecordSwatches(const PlaneExtent& Row, OptionDeclaration& Declared, std::uint32_t Index, bool& PointerTaken);
     bool Pressed(ControlIdentity Target, const PlaneExtent& Extent);
 
     MotionIntegrator*   Motion     = nullptr;
@@ -156,6 +117,10 @@ private:
     const ThemeProfile* Appearance = nullptr;
     ControlIndex        Interaction = {};
     PointerCondition    Pointer    = {};
+
+    // 🔴 THE CONTROLS ARE SHARED, NOT COPIED. The context popup presents the same four kinds; two
+    //    implementations of a slider is two sliders that will disagree the first time one is touched.
+    OptionControlPalette Controls = {};
 
     // 📝 One identity per row plus the header's three actions, registered once at construction. Rows are
     //    addressed by ordinal, so a tool with fewer rows simply leaves the tail unused.

@@ -303,6 +303,17 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    artist does; two panels would put the gizmo's switch somewhere else at the moment it is wanted.
     static ToolOptionsWidget         SketchToolOptions;
     static ToolContextMenu           SketchContextMenu;
+
+// 📐 The construction tool awaiting its parameters, and the figures it asks for. These live beside the
+//    popup rather than inside it because the popup edits the caller's data in place -- it owns nothing,
+//    so the numbers have to belong to someone, and the host is who runs the operation.
+static ParametricToolSubject     SketchBuildTool     = ParametricToolSubject::Select;
+static bool                      SketchBuildApply    = false;
+static float                     SketchCornerDistance = 4.0f;
+static std::uint32_t             SketchTrimKeep      = 0u;
+constexpr float                  SketchCornerMinimum = 0.1f;
+constexpr float                  SketchCornerMaximum = 50.0f;
+static const char* const         SketchTrimSides[2]  = { "Start", "End" };
     // 📝 A right-press is a look while it travels and a menu when it does not. The distance is summed
     //    across the hold, because on the release tick the per-tick travel has already fallen to zero.
     static float SecondaryTravel = 0.0f;   // [px] - summed over the current secondary hold
@@ -1109,9 +1120,15 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                       BackgroundPointer.PositionY))
                                 {
                                     // 📐 The pointer itself is the anchor: a right-click has no tile, so
-                                    //    the menu hangs off a point rather than a button.
-                                    SketchContextMenu.Open(Spanning(SecondaryOpenX, SecondaryOpenY,
-                                                                    1.0f, 1.0f));
+                                    //    the popup hangs off a point rather than a button.
+                                    // 📝 A stationary right-click REOPENS the active construction tool's
+                                    //    parameters, which is how the artist adjusts a distance after
+                                    //    dismissing the popup without having to reselect the tool. With
+                                    //    no construction tool active there is nothing to ask about, so
+                                    //    nothing opens.
+                                    if (SketchBuildTool != ParametricToolSubject::Select)
+                                        SketchContextMenu.Open(Spanning(SecondaryOpenX, SecondaryOpenY,
+                                                                        1.0f, 1.0f));
                                 }
 
                                 // 🔴 A WHEEL NOTCH IN A PARALLEL VIEW CHANGED NOTHING, IN ALL FOUR OF
@@ -1217,73 +1234,109 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         //    widget it was trying to miss.
                                         SketchContextMenu.Avoid(SketchToolOptions.Occupies());
 
-                                        // 📐 The construction commands, in the plan's own order. Each is
-                                        //    disabled until a selection exists, because every one of them
-                                        //    acts on one: offering Trim with nothing picked invites the
-                                        //    artist to press it and watch nothing happen.
-                                        // 🔴 THE GATE IS THE ACTUAL PICK, NOT THE ELEMENT MODE.
-                                        //    `SketchSelection.Element` is which KIND of thing the artist
-                                        //    is picking and is always set; it says nothing about whether
-                                        //    anything is currently selected. Reading it here would have
-                                        //    every row permanently enabled and every command refuse.
-                                        const bool Picked = SketchSemanticSelection.Standing() &&
-                                                            SketchSemanticSelection.Curve.Assigned();
+                                        // 📐 THE POPUP ASKS FOR A FIGURE, IT DOES NOT LIST COMMANDS.
+                                        //    This arm first held five rows -- Bevel, Chamfer, Trim, Cut,
+                                        //    Add -- which was a second way to start commands the tool
+                                        //    catalogue already offers. What the artist had no way to say
+                                        //    was HOW FAR. So the popup carries the active tool's
+                                        //    parameters and applies on Apply.
+                                        OptionDeclaration BuildRows[2] = {};
+                                        const char* BuildTitle = "";
+                                        SymbolSubject BuildGlyph = SymbolSubject::SubjectCount;
+                                        std::uint32_t BuildRowCount = 0u;
 
-                                        MenuItem BuildRows[5] = {};
-                                        BuildRows[0].Caption = "Bevel";
-                                        BuildRows[0].Glyph   = SymbolSubject::BevelChamfer;
-                                        BuildRows[0].Enabled = Picked;
-                                        BuildRows[1].Caption = "Chamfer";
-                                        BuildRows[1].Glyph   = SymbolSubject::BevelChamfer;
-                                        BuildRows[1].Enabled = Picked;
-                                        BuildRows[2].Caption = "Trim";
-                                        BuildRows[2].Enabled = Picked;
-                                        BuildRows[2].Divides = true;
-                                        BuildRows[3].Caption = "Cut";
-                                        BuildRows[3].Enabled = Picked;
-                                        // ⚠️ The plan defines trim and cut in its own words but leaves
-                                        //    "add" undefined. Extend is its literal opposite -- trim takes
-                                        //    length away, extend gives it back -- it is the classic pairing,
-                                        //    and unlike offset it is already implemented for real. The row
-                                        //    is captioned for what it does rather than the bare word, so
-                                        //    nobody has to guess which of the two it turned out to be.
-                                        BuildRows[4].Caption = "Add (Extend)";
-                                        BuildRows[4].Enabled = Picked;
-
-                                        MenuDeclaration BuildMenu;
-                                        BuildMenu.Title     = "Construct";
-                                        BuildMenu.Items     = BuildRows;
-                                        BuildMenu.ItemCount = 5u;
-
-                                        std::uint32_t BuildTaken = 0u;
-                                        if (SketchContextMenu.Record(LeafBody, BuildMenu,
-                                                                     BuildTaken, PointerTaken).Resolve())
+                                        switch (SketchBuildTool)
                                         {
-                                            // 📐 The rows, in the order they are declared above. Bevel and
-                                            //    Chamfer differ only in the shape of the cut, which is why
-                                            //    they are one branch in the edit tool and two rows here.
-                                            constexpr ParametricToolSubject BuildTools[5] = {
-                                                ParametricToolSubject::Fillet,
-                                                ParametricToolSubject::Chamfer,
-                                                ParametricToolSubject::Trim,
-                                                ParametricToolSubject::Cut,
-                                                ParametricToolSubject::Extend,
-                                            };
-
-                                            if (BuildTaken < 5u)
+                                            case ParametricToolSubject::Fillet:
+                                            case ParametricToolSubject::Chamfer:
                                             {
-                                                // 🔴 `ApplyViewportEditTool` was 90 correct lines with no
-                                                //    call site -- the fifth such function found in this
-                                                //    tree. The probe is the selection's own position, so
-                                                //    the command acts where the artist picked rather than
-                                                //    where the menu happened to be dismissed.
-                                                static_cast<void>(ApplyViewportEditTool(
-                                                    BuildTools[BuildTaken],
-                                                    SketchSemanticSelection.Position,
-                                                    SketchBasis, SketchNaming, Sketch, SketchRecords,
-                                                    SketchRevisions, SketchSemanticSelection,
-                                                    SketchPendingSelection));
+                                                const bool Chamfering =
+                                                    SketchBuildTool == ParametricToolSubject::Chamfer;
+                                                BuildTitle = Chamfering ? "Chamfer" : "Bevel";
+                                                BuildGlyph = SymbolSubject::BevelChamfer;
+
+                                                BuildRows[0].Kind    = OptionControl::Slider;
+                                                BuildRows[0].Caption = "Distance";
+                                                BuildRows[0].Unit    = "u";
+                                                BuildRows[0].Reading = &SketchCornerDistance;
+                                                BuildRows[0].Minimum = SketchCornerMinimum;
+                                                BuildRows[0].Maximum = SketchCornerMaximum;
+                                                BuildRowCount = 1u;
+                                                break;
                                             }
+                                            case ParametricToolSubject::Trim:
+                                                BuildTitle = "Trim";
+                                                // 📝 Trim's only real question is which side survives, and
+                                                //    that is a choice rather than a figure.
+                                                BuildRows[0].Kind        = OptionControl::Segmented;
+                                                BuildRows[0].Caption     = "Keep";
+                                                BuildRows[0].Selected    = &SketchTrimKeep;
+                                                BuildRows[0].Options     = SketchTrimSides;
+                                                BuildRows[0].OptionCount = 2u;
+                                                BuildRowCount = 1u;
+                                                break;
+                                            case ParametricToolSubject::Cut:
+                                                BuildTitle = "Cut";
+                                                BuildRowCount = 0u;
+                                                break;
+                                            default:
+                                                BuildRowCount = 0u;
+                                                break;
+                                        }
+
+                                        // ⚠️ A popup with nothing to ask has nothing to show. Cut splits
+                                        //    at the picked point and takes no parameter, so it is applied
+                                        //    directly rather than through a popup holding only buttons.
+                                        if (SketchContextMenu.Standing() && BuildRowCount == 0u)
+                                        {
+                                            SketchContextMenu.Close();
+                                            if (SketchBuildTool != ParametricToolSubject::Select)
+                                                SketchBuildApply = true;
+                                        }
+
+                                        PopupDeclaration BuildPopup;
+                                        BuildPopup.Title    = BuildTitle;
+                                        BuildPopup.Glyph    = BuildGlyph;
+                                        BuildPopup.Rows     = BuildRows;
+                                        BuildPopup.RowCount = BuildRowCount;
+
+                                        if (SketchContextMenu.Record(LeafBody, BuildPopup,
+                                                                     PointerTaken).Resolve() ==
+                                            PopupVerdict::Applied)
+                                            SketchBuildApply = true;
+
+                                        // 🔴 THE OPERATION STILL NEEDS SOMETHING TO ACT ON. The gate is
+                                        //    the ACTUAL pick, not `SketchSelection.Element`, which is
+                                        //    which KIND of thing is being picked and is always set --
+                                        //    reading that would let every command run against nothing.
+                                        const bool BuildPicked = SketchSemanticSelection.Standing() &&
+                                                                 SketchSemanticSelection.Curve.Assigned();
+
+                                        if (SketchBuildApply && BuildPicked)
+                                        {
+                                            SketchBuildApply = false;
+
+                                            // 🔴 `ApplyViewportEditTool` was 90 correct lines with no call
+                                            //    site -- the fifth such function found in this tree. The
+                                            //    probe is the selection's own position, so the command
+                                            //    acts where the artist picked rather than where the popup
+                                            //    happened to be dismissed.
+                                            static_cast<void>(ApplyViewportEditTool(
+                                                SketchBuildTool,
+                                                SketchSemanticSelection.Position,
+                                                SketchBasis, SketchNaming, Sketch, SketchRecords,
+                                                SketchRevisions, SketchSemanticSelection,
+                                                SketchPendingSelection));
+
+                                            SketchBuildTool = ParametricToolSubject::Select;
+                                        }
+                                        else if (SketchBuildApply)
+                                        {
+                                            // ⚠️ Applied with nothing selected: disarm rather than hold
+                                            //    the request, or it would fire against the next thing
+                                            //    the artist happened to pick.
+                                            SketchBuildApply = false;
+                                            SketchBuildTool  = ParametricToolSubject::Select;
                                         }
                                     }
 
@@ -1600,8 +1653,36 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 break;
 
                             case PanelSubject::ParametricTools:
+                            {
+                                const ParametricToolSubject Before = ParametricToolsApplied.ActiveSubject;
                                 ParametricTools.Record(LeafBody, ParametricToolsApplied);
+
+                                // 🔴 CHOOSING A CONSTRUCTION TOOL RAISES ITS POPUP. This is the whole
+                                //    gesture: the tile starts the operation, the popup asks how far, and
+                                //    Apply performs it. Watching for the CHANGE rather than the current
+                                //    value matters -- reading the value alone would reopen the popup
+                                //    every frame the tile stayed active, including the frame after the
+                                //    artist cancelled it.
+                                const ParametricToolSubject Chosen = ParametricToolsApplied.ActiveSubject;
+                                const bool Constructing =
+                                    Chosen == ParametricToolSubject::Fillet  ||
+                                    Chosen == ParametricToolSubject::Chamfer ||
+                                    Chosen == ParametricToolSubject::Trim    ||
+                                    Chosen == ParametricToolSubject::Cut     ||
+                                    Chosen == ParametricToolSubject::Extend;
+
+                                if (Chosen != Before && Constructing)
+                                {
+                                    SketchBuildTool = Chosen;
+
+                                    // 📐 Anchored on the SELECTION, not on the tile: the popup belongs to
+                                    //    the corner being cut, and a popup opening over on the toolbar
+                                    //    makes the artist look away from the thing they are shaping.
+                                    SketchContextMenu.Open(Spanning(SecondaryOpenX, SecondaryOpenY,
+                                                                    1.0f, 1.0f));
+                                }
                                 break;
+                            }
 
                             case PanelSubject::Outliner:
                                 if (PanelConfiguration[Index].FooterDemand == EditorFooterDemand::SceneImport ||

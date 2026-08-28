@@ -1,8 +1,8 @@
 //============================================================================================================================================
 //                                                        TOOLCONTEXTMENU.CPP
 //============================================================================================================================================
-// 📐 Colours and measures follow `References/ToolOptionsWidget.html`, so a context menu and the options
-//    widget read as one family rather than two panels that happen to share a viewport.
+// 📐 The frame is this unit's; the controls inside it are `OptionControls`, the same ones the options
+//    widget presents. Placement is `PlaceMenuClear` in Foundation.
 
 #include "SlateUI/Interface/ToolContextMenu/Api/ToolContextMenu.h"
 
@@ -12,32 +12,26 @@ namespace Slate
 namespace
 {
 
-// 📐 The reference's own tokens, the subset a menu needs.
-constexpr ThemeToken PanelGround   = Covering(0x131315u);          // --panel-bg
-constexpr ThemeToken PanelHead     = Covering(0x1b1b1eu);          // --panel-head
-constexpr ThemeToken PanelOutline  = Partial (0xFFFFFFu, 0.22);    // --outline
-constexpr ThemeToken RowHovered    = Covering(0x232326u);          // --value-bg
-constexpr ThemeToken ColourPrimary = Covering(0xe9e9ecu);          // --text-primary
-constexpr ThemeToken ColourMuted   = Covering(0x7b7b82u);          // --text-muted
+// 📐 A lighter accent for the hovered Apply, so the primary action answers the pointer the way every
+//    other control in this family does.
+constexpr ThemeToken AccentHover = Covering(0x5d9ee8u);
 
-constexpr float MenuPadX     = 12.0f;
-constexpr float RowGlyph     = 14.0f;
-constexpr float RowGlyphGap  = 10.0f;
-constexpr float TitlePoint   = 11.0f;
-constexpr float RowPoint     = 13.0f;
-constexpr float RowRadius    =  8.0f;
-
-/// 🔴 The two spellings of a box meet here and nowhere else. `PlaneExtent` is the interface's; `ExtentBand`
-///    is Foundation's, which the placement arithmetic speaks because its other caller is device-side and
-///    may not name an interface type. Converting in one pair of functions keeps that seam from spreading.
-constexpr ExtentBand AsBand(const PlaneExtent& Extent)
+// 📐 Converts between the interface's extent and the layer-neutral band the placement arithmetic uses.
+//    This is the only seam between the two, deliberately: `Foundation` may not name an interface type.
+ExtentBand AsBand(const PlaneExtent& Extent)
 {
-    return ExtentBand{ Extent.MinimumX, Extent.MinimumY, Extent.MaximumX, Extent.MaximumY };
+    ExtentBand Band;
+    Band.MinimumX = Extent.MinimumX;
+    Band.MinimumY = Extent.MinimumY;
+    Band.MaximumX = Extent.MaximumX;
+    Band.MaximumY = Extent.MaximumY;
+    return Band;
 }
 
-constexpr PlaneExtent AsExtent(const ExtentBand& Band)
+PlaneExtent AsExtent(const ExtentBand& Band)
 {
-    return PlaneExtent{ Band.MinimumX, Band.MinimumY, Band.MaximumX, Band.MaximumY };
+    return Spanning(Band.MinimumX, Band.MinimumY,
+                    Band.MaximumX - Band.MinimumX, Band.MaximumY - Band.MinimumY);
 }
 
 }   // namespace
@@ -60,17 +54,37 @@ Deliver<bool> ToolContextMenu::ConstructToolContextMenu(MotionIntegrator& Incomi
 
     if (!Interaction.AttachMotion(IncomingMotion).Resolved)
         return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
-                                       "tool context menu interaction was rejected" });
+                                       "context menu interaction was rejected" });
 
-    // 📝 Registered up front and addressed by ordinal, as the options widget does: a row registered on
-    //    demand would change identity the moment a tool offered one more command, and the hover fade
-    //    would follow the ordinal instead of the row.
-    for (std::uint32_t Index = 0u; Index < ItemLimit; ++Index)
+    if (!Controls.Attach(IncomingSurface, Interaction, IncomingAppearance).Resolved)
+        return Deliver<bool>::Refuse({ RefusalReason::ExtentExhausted,
+                                       "the option controls were rejected" });
+
+    // 📝 Registered up front and addressed by ordinal, so a popup with fewer rows leaves the tail unused
+    //    rather than giving a row a different identity as the tool above it changes.
+    for (std::uint32_t Index = 0u; Index < RowLimit; ++Index)
     {
         const Deliver<ControlIdentity> Registered = Interaction.Register();
         if (!Registered.Resolved)
             return Deliver<bool>::Refuse(Registered.Error);
-        Rows[Index] = Registered.Resolve();
+        RowControls[Index] = Registered.Resolve();
+    }
+
+    for (std::uint32_t Index = 0u; Index < RowLimit * OptionLimit; ++Index)
+    {
+        const Deliver<ControlIdentity> Registered = Interaction.Register();
+        if (!Registered.Resolved)
+            return Deliver<bool>::Refuse(Registered.Error);
+        SelectedControls[Index] = Registered.Resolve();
+    }
+
+    ControlIdentity* const Actions[2] = { &ApplyAction, &CancelAction };
+    for (ControlIdentity* Action : Actions)
+    {
+        const Deliver<ControlIdentity> Registered = Interaction.Register();
+        if (!Registered.Resolved)
+            return Deliver<bool>::Refuse(Registered.Error);
+        *Action = Registered.Resolve();
     }
 
     return Deliver<bool>::Result(true);
@@ -79,8 +93,35 @@ Deliver<bool> ToolContextMenu::ConstructToolContextMenu(MotionIntegrator& Incomi
 void ToolContextMenu::Advance(const PointerCondition& Sampled, double Elapsed)
 {
     Pointer = Sampled;
+    Controls.Observe(Sampled);
     Interaction.Advance(Sampled, Elapsed);
 }
+
+void ToolContextMenu::Reset()
+{
+    Interaction.Reset();
+    Opened     = false;
+    AvoidCount = 0u;
+    Occupied   = {};
+}
+
+float ToolContextMenu::Scale() const
+{
+    return Appearance != nullptr ? static_cast<float>(Appearance->Measure.DisplayScale) : 1.0f;
+}
+
+bool ToolContextMenu::Pressed(ControlIdentity Target, const PlaneExtent& Extent)
+{
+    const bool Hovered = Extent.Encloses(Pointer.PositionX, Pointer.PositionY);
+    Interaction.DeclareHovered(Target, Hovered, 130.0);
+    if (Hovered && Pointer.ContactPressed)
+        Interaction.Grab(Target, ControlPart::Body);
+    return Hovered && Pointer.ContactReleased && Interaction.Holding(Target);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//                                                      OPEN AND CLOSE
+//------------------------------------------------------------------------------------------------------------------------
 
 void ToolContextMenu::Open(const PlaneExtent& Anchor)
 {
@@ -94,196 +135,197 @@ void ToolContextMenu::Close()
     Occupied = {};
 }
 
-void ToolContextMenu::Reset()
-{
-    Interaction.Reset();
-    Close();
-    Anchored   = {};
-    AvoidCount = 0u;
-}
-
 void ToolContextMenu::Avoid(const PlaneExtent& Extent)
 {
-    // 📝 A zero-area box is not a widget. Admitting one would make every placement avoid the origin.
+    // ⚠️ A zero-area box is not a widget. Admitting one would make the placement search refuse corners
+    //    against a widget that is not on screen.
     if (Extent.Width() <= 0.0f || Extent.Height() <= 0.0f)
         return;
-
-    if (AvoidCount < AvoidLimit)
-        Avoided[AvoidCount++] = Extent;
+    if (AvoidCount >= AvoidLimit)
+        return;
+    Avoided[AvoidCount++] = Extent;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-//                                                        MEASURING
+//                                                        MEASURE
 //------------------------------------------------------------------------------------------------------------------------
 
-float ToolContextMenu::Scale() const
-{
-    return Appearance != nullptr ? static_cast<float>(Appearance->Measure.DisplayScale) : 1.0f;
-}
-
-float ToolContextMenu::MeasureHeight(const MenuDeclaration& Declared) const
+float ToolContextMenu::MeasureBody(const PopupDeclaration& Declared) const
 {
     const float Applied = Scale();
-    const std::uint32_t Rows_ = Declared.ItemCount < ItemLimit ? Declared.ItemCount : ItemLimit;
+    const std::uint32_t Rows = Declared.RowCount < RowLimit ? Declared.RowCount : RowLimit;
+    if (Rows == 0u)
+        return 0.0f;
 
-    float Height = MenuPadY * 2.0f * Applied + RowHeight * static_cast<float>(Rows_) * Applied;
-
-    if (Declared.Title != nullptr && Declared.Title[0] != '\0')
-        Height += HeadHeight * Applied;
-
-    // 📝 A rule occupies the gap above its row rather than a row of its own.
-    for (std::uint32_t Index = 0u; Index < Rows_; ++Index)
-        if (Declared.Items[Index].Divides && Index != 0u)
-            Height += 7.0f * Applied;
-
-    return Height;
-}
-
-bool ToolContextMenu::Pressed(ControlIdentity Target, const PlaneExtent& Extent)
-{
-    const bool Hovered = Extent.Encloses(Pointer.PositionX, Pointer.PositionY);
-    if (Hovered && Pointer.ContactPressed)
-        Interaction.Grab(Target, ControlPart::Body);
-    Interaction.DeclareHovered(Target, Hovered, 130.0);
-    return Hovered && Interaction.Released(Target);
+    float Total = BodyPadding * 2.0f * Applied;
+    for (std::uint32_t Index = 0u; Index < Rows; ++Index)
+    {
+        // 📝 A caption line above a control, exactly as the widget lays it out, and the control's height
+        //    comes from the palette so the two cannot disagree about what a segmented row costs.
+        Total += (CaptionPoint + CaptionGap) * Applied;
+        Total += Controls.RowHeightFor(Declared.Rows[Index]);
+        if (Index + 1u < Rows)
+            Total += BodyGap * Applied;
+    }
+    return Total;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-//                                                        RECORDING
+//                                                        RECORD
 //------------------------------------------------------------------------------------------------------------------------
 
-Deliver<bool> ToolContextMenu::Record(const PlaneExtent& Bounds,
-                                      const MenuDeclaration& Declared,
-                                      std::uint32_t& Taken,
-                                      bool& PointerTaken)
+Deliver<PopupVerdict> ToolContextMenu::Record(const PlaneExtent& Bounds,
+                                              const PopupDeclaration& Declared,
+                                              bool& PointerTaken)
 {
-    if (Surface == nullptr || Appearance == nullptr)
-        return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
-                                       "the menu was recorded before it was constructed" });
+    const std::uint32_t Rows = Declared.RowCount < RowLimit ? Declared.RowCount : RowLimit;
 
-    // 🔴 The avoid list is spent by this call. It states what was drawn THIS tick, and a list that
-    //    survived into the next one would have the menu dodging widgets that have since moved.
-    const std::uint32_t Avoiding = AvoidCount;
+    // 🔴 THE AVOID LIST IS SPENT BY EVERY RECORD, taken or not. Boxes are declared from what was actually
+    //    drawn this tick, so carrying them forward would steer the popup around a widget that has since
+    //    moved or gone.
+    const std::uint32_t Declaredkeep = AvoidCount;
     AvoidCount = 0u;
 
-    if (!Opened || Declared.ItemCount == 0u)
+    if (!Opened || Declared.Rows == nullptr || Rows == 0u)
     {
         Occupied = {};
-        return Deliver<bool>::Result(false);
+        return Deliver<PopupVerdict>::Result(PopupVerdict::Standing);
     }
 
     const float Applied = Scale();
-    const float Width   = MenuWidth * Applied;
-    const float Height  = MeasureHeight(Declared);
+    const float Width   = PopupWidth * Applied;
+    const float Height  = HeadHeight * Applied + MeasureBody(Declared) + FootHeight * Applied;
 
-    ExtentBand Avoidance[AvoidLimit] = {};
-    for (std::uint32_t Index = 0u; Index < Avoiding; ++Index)
-        Avoidance[Index] = AsBand(Avoided[Index]);
+    // 📐 The placement arithmetic is layer-neutral and lives in Foundation, so it can be proven without
+    //    a surface. Here it is only fed and its answer converted back.
+    ExtentBand Blocked[AvoidLimit] = {};
+    for (std::uint32_t Index = 0u; Index < Declaredkeep; ++Index)
+        Blocked[Index] = AsBand(Avoided[Index]);
 
-    ExtentBand Chosen = {};
-    const bool Placed = PlaceMenuClear(AsBand(Bounds), AsBand(Anchored), Width, Height,
-                                       Avoidance, Avoiding, AnchorGap * Applied, Chosen);
-
-    // 🔴 NOWHERE FREE MEANS NOTHING DRAWN. Recording it anyway is precisely the defect this unit exists
-    //    to prevent, and half-drawing it over a widget would be worse than not opening at all.
-    if (!Placed)
+    ExtentBand Placed = {};
+    if (!PlaceMenuClear(AsBand(Bounds), AsBand(Anchored), Width, Height,
+                        Blocked, Declaredkeep, AnchorGap * Applied, Placed))
     {
+        // ⚠️ NOTHING IS DRAWN WHEN NOTHING FITS. Drawing it anyway over a widget is the one thing this
+        //    unit exists to prevent, and a popup that silently half-appears is worse than one that does
+        //    not open at all.
         Occupied = {};
-        Close();
-        return Deliver<bool>::Result(false);
+        Opened   = false;
+        return Deliver<PopupVerdict>::Result(PopupVerdict::Cancelled);
     }
 
-    const PlaneExtent Menu = AsExtent(Chosen);
-    Occupied = Menu;
+    const PlaneExtent Frame = AsExtent(Placed);
+    Occupied = Frame;
 
-    // 📝 A press outside both the menu and its tile dismisses it. The tile is excluded so the press that
-    //    opened the menu does not immediately close it again.
-    if (Pointer.ContactPressed &&
-        !Menu.Encloses(Pointer.PositionX, Pointer.PositionY) &&
-        !Anchored.Encloses(Pointer.PositionX, Pointer.PositionY))
+    const PlaneExtent Head = Spanning(Frame.MinimumX, Frame.MinimumY, Frame.Width(), HeadHeight * Applied);
+
+    Surface->Ground(Frame, PanelGround, PopupRadius * Applied, CornerAll);
+    Surface->Edge(Frame, PanelOutline, 1.0f, PopupRadius * Applied, CornerAll);
+    Surface->Ground(Head, PanelHead, PopupRadius * Applied, CornerLeadingUpper | CornerTrailingUpper);
+
+    // 📝 The heading names the operation, because a popup asking for a distance with no title is a box of
+    //    numbers. The glyph is the tool's own, so it matches the tile that raised it.
+    const float MiddleY = (Head.MinimumY + Head.MaximumY) * 0.5f;
+    float TitleX = Head.MinimumX + BodyPadding * Applied;
+
+    if (Declared.Glyph != SymbolSubject::SubjectCount)
     {
-        Close();
-        return Deliver<bool>::Result(false);
+        const float Side = 16.0f * Applied;
+        Surface->Stroke(Declared.Glyph,
+                        Spanning(TitleX, MiddleY - Side * 0.5f, Side, Side), ColourPrimary);
+        TitleX += Side + 8.0f * Applied;
     }
 
-    Surface->Ground(Menu, PanelGround, MenuRadius * Applied, CornerAll);
-    Surface->Edge(Menu, PanelOutline, 1.0f, MenuRadius * Applied, CornerAll);
+    Surface->TextRun(TitleX, MiddleY + 5.0f * Applied, ColourPrimary, Declared.Title,
+                     14.0f * Applied, 0.0f, false, FontWeight::Semibold);
 
-    float Cursor = Menu.MinimumY + MenuPadY * Applied;
+    Surface->Confine(Frame);
 
-    if (Declared.Title != nullptr && Declared.Title[0] != '\0')
+    float Cursor = Frame.MinimumY + HeadHeight * Applied + BodyPadding * Applied;
+    for (std::uint32_t Index = 0u; Index < Rows; ++Index)
     {
-        Surface->TextRun(Menu.MinimumX + MenuPadX * Applied,
-                         Cursor + (HeadHeight * 0.5f - TitlePoint * 0.7f) * Applied,
-                         ColourMuted, Declared.Title, TitlePoint * Applied, 0.0f, false);
-        Cursor += HeadHeight * Applied;
+        OptionDeclaration& Row = Declared.Rows[Index];
+
+        Surface->TextRun(Frame.MinimumX + BodyPadding * Applied,
+                         Cursor + CaptionPoint * Applied,
+                         ColourMuted, Row.Caption, CaptionPoint * Applied);
+        Cursor += (CaptionPoint + CaptionGap) * Applied;
+
+        const float RowTall = Controls.RowHeightFor(Row);
+        const PlaneExtent Extent = Spanning(Frame.MinimumX + BodyPadding * Applied, Cursor,
+                                            Width - BodyPadding * 2.0f * Applied, RowTall);
+
+        Controls.Record(Extent, Row, RowControls[Index],
+                        &SelectedControls[Index * OptionLimit], OptionLimit, PointerTaken);
+
+        Cursor += RowTall + BodyGap * Applied;
     }
 
-    const std::uint32_t Rows_ = Declared.ItemCount < ItemLimit ? Declared.ItemCount : ItemLimit;
-    bool Chose = false;
+    // 📐 Apply and Cancel, side by side along the foot. Apply carries the accent because it is the one
+    //    the artist came for; Cancel is quiet but the same size, since a smaller target for the escape
+    //    route is a trap.
+    const float FootY   = Frame.MaximumY - FootHeight * Applied;
+    const float Gutter  = 8.0f * Applied;
+    const float Usable  = Width - BodyPadding * 2.0f * Applied - Gutter;
+    const float Each    = Usable * 0.5f;
+    const float ActionY = FootY + (FootHeight * Applied - ActionHeight * Applied) * 0.5f;
 
-    Surface->Confine(Menu);
+    const PlaneExtent CancelExtent = Spanning(Frame.MinimumX + BodyPadding * Applied, ActionY,
+                                              Each, ActionHeight * Applied);
+    const PlaneExtent ApplyExtent  = Spanning(CancelExtent.MaximumX + Gutter, ActionY,
+                                              Each, ActionHeight * Applied);
 
-    for (std::uint32_t Index = 0u; Index < Rows_; ++Index)
-    {
-        const MenuItem& Item = Declared.Items[Index];
+    const bool OverCancel = CancelExtent.Encloses(Pointer.PositionX, Pointer.PositionY);
+    const bool OverApply  = ApplyExtent.Encloses(Pointer.PositionX, Pointer.PositionY);
 
-        if (Item.Divides && Index != 0u)
-        {
-            Cursor += 3.0f * Applied;
-            Surface->Ground(Spanning(Menu.MinimumX + MenuPadX * Applied, Cursor,
-                                     Menu.Width() - MenuPadX * 2.0f * Applied, 1.0f),
-                            PanelOutline);
-            Cursor += 4.0f * Applied;
-        }
+    Surface->Ground(CancelExtent, OverCancel ? ValueGround : ValueBlack, ActionRadius * Applied, CornerAll);
+    Surface->Ground(ApplyExtent, OverApply ? AccentHover : AccentGround, ActionRadius * Applied, CornerAll);
 
-        const PlaneExtent Row = Spanning(Menu.MinimumX + 4.0f * Applied, Cursor,
-                                         Menu.Width() - 8.0f * Applied, RowHeight * Applied);
+    const float CancelRun = Surface->MeasureRun("Cancel", CaptionPoint * Applied);
+    Surface->TextRun(CancelExtent.MinimumX + (CancelExtent.Width() - CancelRun) * 0.5f,
+                     (CancelExtent.MinimumY + CancelExtent.MaximumY) * 0.5f + CaptionPoint * 0.36f * Applied,
+                     OverCancel ? ColourPrimary : ColourMuted, "Cancel", CaptionPoint * Applied);
 
-        // 🔴 A disabled row is drawn and never taken. Omitting it instead would make the menu's height
-        //    change with the selection, and the artist would lose the muscle memory of where Trim sits.
-        const bool Hovered = Item.Enabled && Row.Encloses(Pointer.PositionX, Pointer.PositionY);
-
-        if (Hovered)
-            Surface->Ground(Row, RowHovered, RowRadius * Applied, CornerAll);
-
-        float TextX = Row.MinimumX + (MenuPadX - 4.0f) * Applied;
-
-        if (Item.Glyph != SymbolSubject::SubjectCount)
-        {
-            const float MiddleY = (Row.MinimumY + Row.MaximumY) * 0.5f;
-            Surface->Stroke(Item.Glyph,
-                            Spanning(TextX, MiddleY - RowGlyph * 0.5f * Applied,
-                                     RowGlyph * Applied, RowGlyph * Applied),
-                            Item.Enabled ? ColourPrimary : ColourMuted, 1.6f);
-            TextX += (RowGlyph + RowGlyphGap) * Applied;
-        }
-
-        Surface->TextRun(TextX, (Row.MinimumY + Row.MaximumY) * 0.5f - RowPoint * 0.7f * Applied,
-                         Item.Enabled ? ColourPrimary : ColourMuted,
-                         Item.Caption, RowPoint * Applied, 0.0f, false);
-
-        if (Item.Enabled && Pressed(Rows[Index], Row))
-        {
-            Taken = Index;
-            Chose = true;
-        }
-
-        Cursor += RowHeight * Applied;
-    }
+    const float ApplyRun = Surface->MeasureRun("Apply", CaptionPoint * Applied);
+    Surface->TextRun(ApplyExtent.MinimumX + (ApplyExtent.Width() - ApplyRun) * 0.5f,
+                     (ApplyExtent.MinimumY + ApplyExtent.MaximumY) * 0.5f + CaptionPoint * 0.36f * Applied,
+                     ColourPrimary, "Apply", CaptionPoint * Applied,
+                     0.0f, false, FontWeight::Semibold);
 
     Surface->Release();
 
-    // 📝 The contact is claimed whenever it is over the menu, taken or not, so a press on a disabled row
-    //    or on the padding does not fall through and start a drag in the scene behind.
-    if (Menu.Encloses(Pointer.PositionX, Pointer.PositionY))
+    const bool TookApply  = Pressed(ApplyAction, ApplyExtent);
+    const bool TookCancel = Pressed(CancelAction, CancelExtent);
+
+    // 🔴 THE WHOLE FRAME SWALLOWS THE CONTACT. Without this a press that misses every control but lands
+    //    on the popup falls through to the viewport and deselects the very thing the popup is about to
+    //    operate on.
+    if (Frame.Encloses(Pointer.PositionX, Pointer.PositionY))
         PointerTaken = true;
 
-    // 🔴 Taking a row closes the menu. One dismissal, not two.
-    if (Chose)
+    if (TookApply)
+    {
         Close();
+        return Deliver<PopupVerdict>::Result(PopupVerdict::Applied);
+    }
 
-    return Deliver<bool>::Result(Chose);
+    if (TookCancel)
+    {
+        Close();
+        return Deliver<PopupVerdict>::Result(PopupVerdict::Cancelled);
+    }
+
+    // 📝 A press outside the popup and outside what it was opened from is a dismissal. Testing the anchor
+    //    too means pressing the tile that raised it does not immediately cancel what it raised.
+    if (Pointer.ContactPressed &&
+        !Frame.Encloses(Pointer.PositionX, Pointer.PositionY) &&
+        !Anchored.Encloses(Pointer.PositionX, Pointer.PositionY))
+    {
+        Close();
+        return Deliver<PopupVerdict>::Result(PopupVerdict::Cancelled);
+    }
+
+    return Deliver<PopupVerdict>::Result(PopupVerdict::Standing);
 }
 
 }   // namespace Slate

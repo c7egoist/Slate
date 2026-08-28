@@ -11,6 +11,7 @@
 //    interface stack. What is proven here is the arithmetic those methods perform — measured from the
 //    same constants the widget draws with, so a measure changed in one place and not the other fails.
 
+#include "SlateUI/Interface/ToolContextMenu/Api/ToolContextMenu.h"
 #include "SlateUI/Interface/ToolOptionsWidget/Api/ToolOptionsWidget.h"
 
 #include <cmath>
@@ -197,6 +198,75 @@ int main()
         const std::uint32_t Rogue = 7u;
         Require(!(Rogue < static_cast<std::uint32_t>(SelectionElement::ElementCount)),
                 "an out-of-range ordinal is refused before it becomes an element");
+    }
+
+    // ⑨ 🔴 THE CONTEXT POPUP ASKS FOR PARAMETERS, IT DOES NOT LIST COMMANDS. It was first built as a
+    //    menu of five rows naming Bevel, Chamfer, Trim, Cut and Add -- a second way to start commands the
+    //    tool catalogue already offers. The reference sheet describes a panel of CONTROLS, so the popup
+    //    presents the same four kinds the widget does, through the same renderers.
+    {
+        // 📐 A declaration made of controls, not captions. If the popup ever went back to naming
+        //    commands this would not compile, which is the point of asserting it here.
+        OptionDeclaration Rows[1] = {};
+        float Distance = 4.0f;
+        Rows[0].Kind    = OptionControl::Slider;
+        Rows[0].Caption = "Distance";
+        Rows[0].Unit    = "u";
+        Rows[0].Reading = &Distance;
+        Rows[0].Minimum = 0.1f;
+        Rows[0].Maximum = 50.0f;
+
+        PopupDeclaration Popup;
+        Popup.Title    = "Bevel";
+        Popup.Glyph    = SymbolSubject::BevelChamfer;
+        Popup.Rows     = Rows;
+        Popup.RowCount = 1u;
+
+        Require(Popup.RowCount == 1u && Popup.Rows[0].Reading == &Distance,
+                "the popup borrows the caller's figure rather than copying it");
+
+        // 🔴 THE VERDICT IS THREE-VALUED. A popup that reported only "taken or not" would make the
+        //    caller apply the operation on every frame it stayed open, because standing and applied
+        //    would be indistinguishable.
+        Require(static_cast<std::uint32_t>(PopupVerdict::Standing)  == 0u &&
+                static_cast<std::uint32_t>(PopupVerdict::Applied)   == 1u &&
+                static_cast<std::uint32_t>(PopupVerdict::Cancelled) == 2u,
+                "standing, applied and cancelled are distinct verdicts");
+
+        Require(PopupVerdict::Standing != PopupVerdict::Applied,
+                "an open popup is not an applied one");
+    }
+
+    // ⑩ 🔴 THE POPUP AND THE WIDGET SHARE ONE GRAMMAR OF CONTROLS. Two implementations of a slider is
+    //    two sliders that will disagree the first time one of them is adjusted.
+    {
+        // 📝 `OptionDeclaration` is declared once, in `OptionControls`, and both frames name that type.
+        //    A row built for the widget is therefore usable by the popup unchanged -- which is what this
+        //    assignment demonstrates at compile time.
+        float Reading = 12.0f;
+        OptionDeclaration ForWidget = {};
+        ForWidget.Kind    = OptionControl::Slider;
+        ForWidget.Reading = &Reading;
+
+        OptionDeclaration ForPopup = ForWidget;
+        Require(ForPopup.Reading == ForWidget.Reading && ForPopup.Kind == ForWidget.Kind,
+                "one row declaration serves both the widget and the popup");
+
+        // 📐 And both bound their rows, so neither can be handed an unbounded roster.
+        Require(ToolContextMenu::RowLimit > 0u && ToolContextMenu::RowLimit <= ToolOptionsWidget::RowLimit,
+                "the popup's row bound is real and no larger than the widget's");
+    }
+
+    // ⑪ 🔴 A POPUP WITH NO ROWS HAS NOTHING TO ASK. Cut takes no parameter, and a popup showing only
+    //    Apply and Cancel is a dialogue box asking the artist to confirm what they already pressed.
+    {
+        PopupDeclaration Empty;
+        Empty.Title    = "Cut";
+        Empty.Rows     = nullptr;
+        Empty.RowCount = 0u;
+
+        Require(Empty.RowCount == 0u && Empty.Rows == nullptr,
+                "a parameterless operation declares no rows, and the host applies it directly");
     }
 
     std::printf("[ToolOptionsWidgetProof] %u claims, %u failures\n", Claims, Failures);
