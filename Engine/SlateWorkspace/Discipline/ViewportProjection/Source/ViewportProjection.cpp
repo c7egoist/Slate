@@ -192,7 +192,9 @@ bool ProjectViewportPoint(const SpatialBasis& Basis,
     if (CameraZ <= 0.01)
         return false;
 
-    const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+    // 🔴 The standing's lens. A constant here is what put sketch geometry on a different lens from the
+    //    analytic ground, so shapes drew above the grid cells they were placed on.
+    const double TanHalf = std::tan(View.FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
     const double Focal   = (Extent.Height() * 0.5) / TanHalf;
 
     ScreenX = static_cast<float>(Extent.MinimumX + Extent.Width() * 0.5 + CameraX / CameraZ * Focal);
@@ -227,7 +229,9 @@ bool ProjectSpatialPoint(const SpatialBasis& Basis,
         return true;
     }
 
-    return ProjectThroughFrame(Frame, Extent, CadPerspectiveFieldOfViewDegrees, Position, ScreenX, ScreenY);
+    // 🔴 The standing's lens, not a constant: the analytic ground is posed with the scene camera's
+    //    field of view, and a sketch projected through a different one floats off the grid it sits on.
+    return ProjectThroughFrame(Frame, Extent, View.FieldOfViewDegrees, Position, ScreenX, ScreenY);
 }
 
 ViewFrame ResolveFreeViewFrame(const SpatialPoint& Eye, double YawDegrees, double PitchDegrees)
@@ -254,7 +258,7 @@ ResolvedCamera ResolveOrbitCamera(const SpatialBasis& Basis, const ViewportStand
     Camera.Basis              = Basis;
     Camera.Frame              = ResolveViewportFrame(Basis, View, Perspective);
     Camera.Perspective        = Perspective;
-    Camera.FieldOfViewDegrees = CadPerspectiveFieldOfViewDegrees;
+    Camera.FieldOfViewDegrees = View.FieldOfViewDegrees;
     Camera.OrthoScale         = View.OrthoScale;
     return Camera;
 }
@@ -405,7 +409,9 @@ bool ResolveViewportPlaneIntersection(const SpatialBasis& Basis,
     }
     else
     {
-        const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+        // 🔴 The ray the pointer casts must use the SAME lens the geometry is drawn through, or the
+        //    point lands where the artist did not click.
+        const double TanHalf = std::tan(View.FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
         const double Aspect  = Extent.Width() / Extent.Height();
         RayOrigin    = Frame.Eye;
         RayDirection = Normalize(Added(Added(Scaled(Frame.Right, NdcX * TanHalf * Aspect),

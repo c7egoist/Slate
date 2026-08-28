@@ -75,7 +75,10 @@ std::uint32_t RetiredRequiredAnchors(RetiredSubject Subject)
         case RetiredSubject::Slot:
         case RetiredSubject::BasisSpline:
         case RetiredSubject::RationalSpline:     return 3u;
-        case RetiredSubject::Hermite:            return 4u;
+        // 🔴 TWO, NOT FOUR. A Hermite is a chain through every anchor and grows with each click, so
+        //    it starts from the same two points a line needs. Four was the {start, end, tangent,
+        //    tangent} reading that spent four clicks drawing one span.
+        case RetiredSubject::Hermite:
         case RetiredSubject::Bezier:
         case RetiredSubject::Polyline:
         case RetiredSubject::LinearDimension:    return 2u;
@@ -495,11 +498,22 @@ void ProveClosures()
     Claim(Polyline.Anchors().size() == 9u, "the polyline should hold nine anchors");
     Claim(Place(Polyline, 9.0, true) == PlacementArrival::Complete, "a double-press should end the polyline");
 
+    // 🔴 A HERMITE ENDS WHEN THE ARTIST SAYS SO. It is terminated, like a polyline: two anchors are
+    //    enough to draw with and every further click extends the chain by another span.
     SketchPlacement Hermite;
     Hermite.Declare(SketchSubject::Hermite);
     Place(Hermite, 0.0);
-    Claim(Place(Hermite, 1.0, true) == PlacementArrival::Anchored,
-          "a Hermite must not end on a double-press with two of its four anchors");
+    Claim(Place(Hermite, 1.0, true) == PlacementArrival::Complete,
+          "a double-press should end a Hermite once it has two anchors to span");
+
+    SketchPlacement LongHermite;
+    LongHermite.Declare(SketchSubject::Hermite);
+    for (int Click = 0; Click < 7; ++Click)
+        Place(LongHermite, static_cast<double>(Click));
+    Claim(LongHermite.Anchors().size() == 7u,
+          "a Hermite must keep every anchor it is given, not stop at four");
+    Claim(Place(LongHermite, 7.0, true) == PlacementArrival::Complete,
+          "and end on a double-press at any length");
 
     SketchPlacement Dimension;
     Dimension.Declare(SketchSubject::Dimension);

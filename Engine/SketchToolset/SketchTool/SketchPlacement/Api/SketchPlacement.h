@@ -233,7 +233,11 @@ constexpr PlacementDeclaration DeclaredPlacement(SketchSubject Subject,
         case SketchSubject::Bezier:         return { 2u, PlacementClosure::Terminated, false, "Bezier" };
         case SketchSubject::BasisSpline:    return { 3u, PlacementClosure::Terminated, false, "Basis Spline" };
         case SketchSubject::RationalSpline: return { 3u, PlacementClosure::Terminated, false, "NURBS Curve" };
-        case SketchSubject::Hermite:        return { 4u, PlacementClosure::Terminated, false, "Hermite" };
+        // 🔴 TWO, NOT FOUR. A Hermite is a chain of spans through every anchor, so it needs the same
+        //    two points a line does and grows with each further click until the artist ends it.
+        //    Requiring four was the {start, end, tangent, tangent} reading that made the tool consume
+        //    four clicks to draw one span and ignore everything after.
+        case SketchSubject::Hermite:        return { 2u, PlacementClosure::Terminated, false, "Hermite" };
         case SketchSubject::Dimension:      return { 2u, PlacementClosure::Resolved,   false, "Dimension" };
         // 📝 `Polygon` is absent by design: `AcceptedBy` refuses it under `Extent`, so this arm is
         //    unreachable. It is listed rather than left to a `default` so that -Wswitch keeps reporting
@@ -368,6 +372,24 @@ enum class PlacementArrival : std::uint32_t
 CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
                                          const std::vector<SpatialPoint>& Anchors,
                                          const SpatialPoint& Hover);
+
+/// 🧩 Every curve an in-progress placement describes, for the subjects that draw more than one.
+/// in    Subject    [-]  what is being placed
+/// in    Anchors    [-]  the anchors taken so far
+/// in    Hover      [-]  where the pointer is now, treated as the next anchor
+/// out   Delivered  [-]  cleared, then filled; empty when nothing can be drawn yet
+/// note  🔴 A HERMITE IS A CHAIN AND EVERY OTHER SUBJECT IS ONE CURVE. Read as
+///        {start, end, tangent, tangent}, a Hermite spent FOUR clicks on ONE span and ignored every
+///        click after — the reported "renders the first 2 points as a curve, other places are just
+///        points". Each anchor is now a point the curve passes THROUGH, with Catmull-Rom tangents
+///        inferred from its neighbours, so the spans meet smoothly and the Nth click extends it.
+/// note  📝 Defers to the singular for every other subject, so there is still one table.
+/// cost  🚩
+/// tag   api, nonthrowing
+void ResolvePlacementCurves(SketchSubject Subject,
+                            const std::vector<SpatialPoint>& Anchors,
+                            const SpatialPoint& Hover,
+                            std::vector<CurveSpecification>& Delivered);
 
 /// 🧩 The anchors of one finished placement, moved out of the placement that took them.
 /// note  📝 Returned by value from `Seal`, so the placement it came from is already reset. There is no

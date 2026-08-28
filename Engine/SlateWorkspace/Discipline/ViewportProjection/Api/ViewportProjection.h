@@ -57,6 +57,9 @@ enum class ViewportOrientation : std::uint32_t
     Isometric = 6u
 };
 
+/// 🧩 The vertical angle a perspective viewport subtends by default, in degrees.
+constexpr double CadPerspectiveFieldOfViewDegrees = 42.0;
+
 /// 🧩 Everything the viewport remembers about where it is looking from.
 struct ViewportStanding
 {
@@ -66,6 +69,18 @@ struct ViewportStanding
     double              OrthoScale  = 3.0;
     double              OrbitYaw    = 45.0;
     double              OrbitPitch  = 30.0;
+
+    // 🔴 SHAPES FLOATED OFF THE GRID BECAUSE THE LENS WAS NOT SHARED. Sketch geometry projected
+    //    through a hardcoded `CadPerspectiveFieldOfViewDegrees` of 42°, while the analytic ground
+    //    ray-marched the SCENE camera's 60°. Same eye, same orientation, two different lenses --
+    //    tan(30°)/tan(21°) = 1.504, so a point the grid drew halfway up the leaf, the sketch drew
+    //    three quarters of the way up. The geometry was never in mid-air; it was drawn through a
+    //    narrower lens than the surface underneath it, and the gap grew with distance from centre.
+    //
+    // 🔴 The angle travels WITH the standing now, so every projection that reads a standing reads the
+    //    same lens the ground was posed with. It defaults to the CAD angle, which is what a viewport
+    //    with no scene camera should use.
+    double              FieldOfViewDegrees = CadPerspectiveFieldOfViewDegrees;   // [deg] - vertical
 };
 
 /// 🧩 The camera the standing view resolves to: where the eye is and which way is right, up and forward.
@@ -76,9 +91,6 @@ struct ViewFrame
     SpatialDirection Up      = { 0.0, 0.0, 1.0 };
     SpatialDirection Forward = { 0.0, -1.0, 0.0 };
 };
-
-/// 🧩 The vertical angle a perspective viewport subtends, in degrees.
-constexpr double CadPerspectiveFieldOfViewDegrees = 42.0;
 
 //------------------------------------------------------------------------------------------------------------------------
 //                                            TWO WAYS TO SAY WHERE THE EYE IS

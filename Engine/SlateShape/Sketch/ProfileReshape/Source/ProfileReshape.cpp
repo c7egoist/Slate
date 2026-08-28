@@ -378,7 +378,8 @@ Deliver<SketchCurveName> TrimCurve(SketchStructure& Declared,
                 return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                     CurveSpecification::DeclareCircularArc({ Arc.Centre, Arc.Normal, Arc.StartDirection, Arc.ThroughPoint, false, Arc.Radius, Sweep }, Geometry->Interval())));
             }
-            const SpatialDirection EndDirection = Normalize(RotateAroundAxis(StartDirection, Arc.Normal, Arc.SweepRadians));
+            // 📝 The arc that survives starts where the trim landed, so the direction it originally
+            //    ended at plays no part -- computing it was dead work the compiler rightly flagged.
             const double EndSweep = Arc.SweepRadians - Sweep;
             return Deliver<SketchCurveName>::Result(Declared.DeclareCurve(
                 CurveSpecification::DeclareCircularArc({ Arc.Centre, Arc.Normal, TrimDirection, Arc.ThroughPoint, false, Arc.Radius, EndSweep }, Geometry->Interval())));

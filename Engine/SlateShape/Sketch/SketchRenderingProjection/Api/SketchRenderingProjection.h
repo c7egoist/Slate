@@ -53,7 +53,7 @@ Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
 /// 🧩 What the shape being drawn RIGHT NOW looks like, appended to the same packet the committed shapes
 ///    are rasterised from — so the preview is drawn by the same GPU pass, in the same pixels.
 /// in    Sketch     [-]  supplies the plane the anchors are mapped through
-/// in    Geometry   [-]  the curve the anchors and the hover describe, already built by the caller
+/// in    Geometry   [-]  the curves the anchors and the hover describe, already built by the caller
 /// in    Anchors    [-]  every anchor taken so far, drawn as control markers
 /// in    Hover      [-]  where the pointer is; drawn as the moving control marker
 /// in    Delivered  [-]  APPENDED TO, never reset — the committed shapes are already in it
@@ -70,7 +70,7 @@ Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
 /// cost  🚩
 /// tag   api, nonthrowing
 bool ProjectPlacementPreview(const SketchStructure& Sketch,
-                             const CurveSpecification& Geometry,
+                             const std::vector<CurveSpecification>& Geometry,
                              const std::vector<SpatialPoint>& Anchors,
                              const SpatialPoint& Hover,
                              WorkspaceCadPacket& Delivered,

@@ -492,7 +492,7 @@ Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
 }
 
 bool ProjectPlacementPreview(const SketchStructure& Sketch,
-                             const CurveSpecification& Geometry,
+                             const std::vector<CurveSpecification>& Geometry,
                              const std::vector<SpatialPoint>& Anchors,
                              const SpatialPoint& Hover,
                              WorkspaceCadPacket& Delivered,
@@ -511,10 +511,16 @@ bool ProjectPlacementPreview(const SketchStructure& Sketch,
     //    Hermite, basis spline, NURBS, arc, line -- is tessellated by the same evaluator the committed
     //    shape will use, at the same length-adaptive density. Adding a curve subject now costs nothing
     //    here, which is the whole reason four spline subjects previously previewed as nothing at all.
-    if (Geometry.Declared())
+    // 🔴 A LIST, BECAUSE A HERMITE IS A CHAIN OF SPANS. One specification cannot express more than
+    //    one span, which is why the shipped tool drew the first two Hermite points as a curve and
+    //    left every later click as a bare point.
+    for (const CurveSpecification& Span : Geometry)
     {
+        if (!Span.Declared())
+            continue;
+
         std::vector<SpatialPoint> Polyline;
-        AppendCurvePolyline(Geometry, Polyline, ResolveCurveStepCount(Geometry, Style.CurveSteps));
+        AppendCurvePolyline(Span, Polyline, ResolveCurveStepCount(Span, Style.CurveSteps));
 
         for (std::size_t Index = 0u; Index + 1u < Polyline.size(); ++Index)
         {

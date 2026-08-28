@@ -19,6 +19,8 @@ OWNED = [
 
 SUPPORTING = [
     "Engine/SlateShape/Geometry/CurveSpecification/Source/CurveSpecification.cpp",
+    # 📝 The Hermite commit builds its chain of spans with the placement resolver.
+    "Engine/SketchToolset/SketchTool/SketchPlacement/Source/SketchPlacement.cpp",
     "Engine/SlateShape/Geometry/ProfileSpecification/Source/ProfileSpecification.cpp",
     "Engine/SlateShape/Record/WorkspaceDirectoryProjection/Source/WorkspaceDirectoryProjection.cpp",
     "Engine/SlateShape/Record/WorkspaceNameIndex/Source/WorkspaceNameIndex.cpp",

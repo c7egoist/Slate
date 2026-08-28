@@ -60,7 +60,9 @@ WorkspaceCadProjection ResolveCadProjection(const SpatialBasis& Basis,
             return;
         }
 
-        const double TanHalf = std::tan(CadPerspectiveFieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
+        // 🔴 The GPU CAD pass gets the standing's lens too, so the rasterised sketch and the
+        //    analytic ground are drawn through one camera rather than two.
+        const double TanHalf = std::tan(View.FieldOfViewDegrees * 0.5 * ProjectionPi / 180.0);
         const double Focal = (Extent.Height() * 0.5) / TanHalf;
         const SpatialDirection EyeToOrigin = Difference(Frame.Eye, Origin);
         const double BaseX = Dot(EyeToOrigin, Frame.Right);

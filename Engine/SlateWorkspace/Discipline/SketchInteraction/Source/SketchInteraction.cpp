@@ -275,13 +275,19 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     if (Tool.Resolve(Pointer.WheelY))
         PointerTaken = true;
 
-    // 🔴 The placement in progress is offered its OWN anchors to snap to, which is what lets a polyline
-    //    or a spline close back onto the point it started from. Until it seals, that geometry exists
+    // 🔴 SNAPPING IS HELD, NOT SUFFERED. Control USED to suspend it, which meant every pointer move
+    //    was silently dragged onto the nearest endpoint, midpoint, intersection or grid corner whether
+    //    the artist wanted it or not -- placing a point in open space meant holding a key to be left
+    //    alone. It is off by default now and Control turns it on for as long as it is held, so the
+    //    unmodified pointer means exactly where the pointer is.
+    //
+    // 🔴 The placement in progress is offered its OWN anchors, which is what lets a polyline or a
+    //    spline close back onto the point it started from. Until it seals, that geometry exists
     //    nowhere else.
     const SketchSnapPlacement Placement = Modifiers.Commanded
-                                        ? SketchSnapPlacement{}
-                                        : ResolveNearestSnap(Sketch, Raw, SnapTolerance, {}, 10.0,
-                                                             Tool.Anchors());
+                                        ? ResolveNearestSnap(Sketch, Raw, SnapTolerance, {}, 10.0,
+                                                             Tool.Anchors())
+                                        : SketchSnapPlacement{};
 
     SpatialPoint Hover = Placement.Resolved() ? Placement.Position : Raw;
     Hover = ApplySketchToolSettings(Tool, Basis, ToolContext, Hover);

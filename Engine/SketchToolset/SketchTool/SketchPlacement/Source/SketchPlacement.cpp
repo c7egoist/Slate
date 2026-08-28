@@ -205,6 +205,36 @@ CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
                 return CurveSpecification::DeclareLine(Points.front(), Points.back());
             break;
 
+        // 🔴 A polyline previews its LAST leg here; the finished legs are drawn by the plural, which
+        //    returns one line per pair. Falling through to `default` left the tool with no preview at
+        //    all, so an artist mid-polyline saw nothing follow the pointer.
+        case SketchSubject::Polyline:
+            if (Points.size() >= 2u)
+                return CurveSpecification::DeclareLine(Points[Points.size() - 2u], Points.back());
+            break;
+
+        // 🔴 An elliptical arc previews as the ellipse it is being cut from until three anchors state
+        //    the sweep, which is far better feedback than the nothing it previewed before.
+        case SketchSubject::EllipticalArc:
+            if (Points.size() >= 2u)
+            {
+                const SpatialDirection Span = Difference(Points[0], Points[1]);
+                const double Major = std::sqrt(LengthSquared(Span));
+                if (Major > 1.0e-6)
+                {
+                    EllipseCurve Round;
+                    Round.Centre         = Points[0];
+                    Round.Normal         = { 0.0, 1.0, 0.0 };
+                    Round.MajorDirection = Normalize(Span);
+                    Round.MajorRadius    = Major;
+                    Round.MinorRadius    = Points.size() >= 3u
+                        ? std::max(std::sqrt(LengthSquared(Difference(Points[0], Points[2]))), 1.0e-6)
+                        : Major * 0.5;
+                    return CurveSpecification::DeclareEllipse(Round);
+                }
+            }
+            break;
+
         case SketchSubject::Arc:
             if (Points.size() >= 3u)
                 return CurveSpecification::DeclareThreePointArc(Points[0], Points[1], Points[2]);
@@ -244,30 +274,21 @@ CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
             }
             break;
 
-        // 🔴 A Hermite takes four anchors as two endpoints and two tangent targets, exactly as its
-        //    commit reads them. Before the third click there is no tangent yet, so the span previews as
-        //    the straight line it currently is.
+        // 🔴 A HERMITE IS A CHAIN OF SPANS, and the chain is built by `ResolvePlacementCurves`.
+        //    A single `CurveSpecification` cannot express more than one span, which is exactly why
+        //    the shipped tool drew the first two points as a curve and left every later click as a
+        //    bare point. This arm answers for the FIRST span only; callers that want the whole chain
+        //    ask for the plural.
         case SketchSubject::Hermite:
-            if (Points.size() >= 4u)
+            if (Points.size() >= 2u)
             {
                 HermiteCurve Span;
                 Span.StartPoint   = Points[0];
                 Span.EndPoint     = Points[1];
-                Span.StartTangent = Difference(Points[0], Points[2]);
-                Span.EndTangent   = Difference(Points[1], Points[3]);
+                Span.StartTangent = Difference(Points[0], Points[1]);
+                Span.EndTangent   = Span.StartTangent;
                 return CurveSpecification::DeclareHermite(Span, { 0.0, 1.0 });
             }
-            if (Points.size() == 3u)
-            {
-                HermiteCurve Span;
-                Span.StartPoint   = Points[0];
-                Span.EndPoint     = Points[1];
-                Span.StartTangent = Difference(Points[0], Points[2]);
-                Span.EndTangent   = Difference(Points[0], Points[2]);
-                return CurveSpecification::DeclareHermite(Span, { 0.0, 1.0 });
-            }
-            if (Points.size() == 2u)
-                return CurveSpecification::DeclareLine(Points[0], Points[1]);
             break;
 
         case SketchSubject::Circle:
@@ -287,11 +308,102 @@ CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
             }
             break;
 
+        // 🔴 THE ELLIPSE HAD NO ARM AND FELL THROUGH TO `default`, so it previewed as NOTHING while
+        //    being dragged. What the artist saw was the COMMITTED shape appearing on release -- and
+        //    because a committed ellipse is four quarter arcs whose fill needs a convex loop, an
+        //    almost-closed outline with an open tip is exactly the failure that reads as "draws
+        //    almost completely, but open at the tip". One ellipse curve previews closed by
+        //    construction.
+        case SketchSubject::Ellipse:
+            if (Points.size() >= 2u)
+            {
+                const SpatialDirection Span = Difference(Points[0], Points[1]);
+                const double Major = std::sqrt(LengthSquared(Span));
+                if (Major > 1.0e-6)
+                {
+                    EllipseCurve Round;
+                    Round.Centre         = Points[0];
+                    Round.Normal         = { 0.0, 1.0, 0.0 };
+                    Round.MajorDirection = Normalize(Span);
+                    Round.MajorRadius    = Major;
+                    // 📝 Matches the commit: a minor axis that has not been stated is half the major.
+                    Round.MinorRadius    = Major * 0.5;
+                    return CurveSpecification::DeclareEllipse(Round);
+                }
+            }
+            break;
+
+        // 📝 A rectangle and a slot preview as their diagonal until they are committed; drawing the
+        //    four sides needs a profile, which only the commit declares.
+        case SketchSubject::Rectangle:
+        case SketchSubject::Slot:
+            if (Points.size() >= 2u)
+                return CurveSpecification::DeclareLine(Points.front(), Points.back());
+            break;
+
         default:
             break;
     }
 
     return {};
+}
+
+void ResolvePlacementCurves(SketchSubject Subject,
+                            const std::vector<SpatialPoint>& Anchors,
+                            const SpatialPoint& Hover,
+                            std::vector<CurveSpecification>& Delivered)
+{
+    Delivered.clear();
+
+    std::vector<SpatialPoint> Points = Anchors;
+    Points.push_back(Hover);
+
+    // 🔴 ONLY A HERMITE IS A CHAIN. Every other subject is one curve, so the plural defers to the
+    //    singular rather than duplicating twenty-two arms of the same table.
+    // 🔴 A POLYLINE IS A CHAIN TOO. Every leg already taken must stay on screen while the next one
+    //    follows the pointer -- previewing only the last leg would make the shape appear to be a
+    //    single moving line rather than the run of segments it is.
+    if (Subject == SketchSubject::Polyline && Points.size() >= 2u)
+    {
+        for (std::size_t Index = 0u; Index + 1u < Points.size(); ++Index)
+            if (LengthSquared(Difference(Points[Index], Points[Index + 1u])) > 0.0)
+                Delivered.push_back(CurveSpecification::DeclareLine(Points[Index], Points[Index + 1u]));
+        return;
+    }
+
+    if (Subject != SketchSubject::Hermite || Points.size() < 3u)
+    {
+        const CurveSpecification Single = ResolvePlacementCurve(Subject, Anchors, Hover);
+        if (Single.Declared())
+            Delivered.push_back(Single);
+        return;
+    }
+
+    // 🔴 CATMULL-ROM TANGENTS. Every anchor is a point the curve passes THROUGH, and the tangent at
+    //    an interior point is half the vector between its neighbours -- so the spans meet with equal
+    //    tangents and the chain is continuous and smooth. The end points reuse their only chord,
+    //    which makes the first and last spans behave like the two-point case.
+    //
+    // 🔴 This is what makes the tool usable. Read as {start, end, tangent, tangent}, a Hermite spent
+    //    FOUR clicks on ONE span and ignored every click after that -- the reported "renders the
+    //    first 2 points as a curve, other places are just points". Now the Nth click adds the
+    //    (N-1)th span and the whole chain redraws.
+    for (std::size_t Index = 0u; Index + 1u < Points.size(); ++Index)
+    {
+        const SpatialPoint& From = Points[Index];
+        const SpatialPoint& To   = Points[Index + 1u];
+
+        const SpatialPoint& Before = Index == 0u ? From : Points[Index - 1u];
+        const SpatialPoint& After  = Index + 2u < Points.size() ? Points[Index + 2u] : To;
+
+        HermiteCurve Span;
+        Span.StartPoint   = From;
+        Span.EndPoint     = To;
+        Span.StartTangent = Scaled(Difference(Before, To), 0.5);
+        Span.EndTangent   = Scaled(Difference(From, After), 0.5);
+
+        Delivered.push_back(CurveSpecification::DeclareHermite(Span, { 0.0, 1.0 }));
+    }
 }
 
 } // namespace Slate

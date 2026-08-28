@@ -1028,6 +1028,18 @@ int main(int ArgumentCount, char** ArgumentValues)
                                         SceneApplied.ViewportSkyCamera.ElevationDegrees,
                                         SketchBasis);
                                     SketchView.OrthoScale = PreservedScale;
+
+                                    // 🔴 ONE LENS FOR THE SKETCH AND THE GROUND IT SITS ON. The
+                                    //    analytic grid is posed below with the scene camera's field
+                                    //    of view; sketch geometry used a hardcoded CAD angle of 42°
+                                    //    against the scene's 60°. Same eye, same orientation, two
+                                    //    lenses -- tan(30°)/tan(21°) = 1.504, so a shape the grid
+                                    //    placed halfway up the leaf was drawn three quarters of the
+                                    //    way up, and the error grew with distance from the centre.
+                                    //    That is the "floating in mid-air": not a wrong plane, a
+                                    //    wrong lens.
+                                    SketchView.FieldOfViewDegrees =
+                                        SceneApplied.ViewportSkyCamera.FieldOfViewDegrees;
                                     // 🔴 The workplane tool is offered the press FIRST and consumes
                                     //    it, or the click that places a plane is also read as the
                                     //    first point of a curve -- drawn onto the plane it replaced.
@@ -1074,13 +1086,18 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     //    subject through the same evaluator the commit uses, and the
                                     //    anchors come back as markers.
                                     if (SketchTool.Standing() && SketchTool.HoverStanding())
+                                    {
+                                        // 📝 Static: reused every tick, like the packet beside it.
+                                        static std::vector<CurveSpecification> PreviewSpans;
+                                        ResolvePlacementCurves(SketchTool.Subject(),
+                                                               SketchTool.Anchors(),
+                                                               SketchTool.HoverPosition(),
+                                                               PreviewSpans);
                                         static_cast<void>(ProjectPlacementPreview(
-                                            Sketch,
-                                            ResolvePlacementCurve(SketchTool.Subject(),
-                                                                  SketchTool.Anchors(),
-                                                                  SketchTool.HoverPosition()),
+                                            Sketch, PreviewSpans,
                                             SketchTool.Anchors(), SketchTool.HoverPosition(),
                                             SketchCadPacket));
+                                    }
 
                                     // 🔴 THE FALLBACK IS A FALLBACK. It walks every segment and fill
                                     //    through the interface's draw lists, which ImGui tessellates on

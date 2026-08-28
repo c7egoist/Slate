@@ -109,7 +109,7 @@ def main() -> int:
             ("ProjectSketchRendering(", "sketch curves must be projected into the CAD packet"),
             ("RecordCadFallback(", "curves must still draw when the GPU CAD pass is not standing"),
             ("ProjectPlacementPreview(", "the tool in flight must show its preview"),
-            ("ResolvePlacementCurve(", "every curve subject must preview, not the seven with a branch")):
+            ("ResolvePlacementCurves(", "every curve subject must preview, not the seven with a branch")):
         require(Drawn in editor, f"{Why} -- {Drawn} is not called by the host that ships")
 
     # 🔴 THE PREVIEW IS NOT DRAWN ON THE CPU. `RecordPlacementPreview` walked the shape under the
@@ -119,6 +119,17 @@ def main() -> int:
     #    a projection into the same packet the GPU pass already rasterises.
     require("RecordPlacementPreview(" not in editor,
             "the CPU placement preview is gone; the preview belongs in the CAD packet")
+
+    # 🔴 SNAPPING IS HELD, NOT SUFFERED. Control used to SUSPEND snapping, so every pointer move was
+    #    dragged onto the nearest endpoint, midpoint or grid corner whether the artist wanted it or
+    #    not. It is off by default and Control turns it on, which is the opposite arrangement.
+    interaction = read("Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp")
+    require("Modifiers.Commanded\n                                        ? ResolveNearestSnap(" in interaction
+            or ("? ResolveNearestSnap(" in interaction and ": SketchSnapPlacement{};" in interaction),
+            "Control must ENABLE snapping, not suspend it")
+
+    # 📝 The plural is checked above: a Hermite and a polyline draw more than one span, and asking for
+    #    the singular is what drew the first two Hermite points and left the rest as bare points.
 
     # 🔴 EXACTLY ONE GRID, AND IT IS THE ANALYTIC ONE. `RecordViewportGridOverlay` draws a SECOND
     #    lattice as CPU line segments on top of the ground the overlay pass already renders, and

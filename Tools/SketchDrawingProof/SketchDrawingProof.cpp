@@ -69,9 +69,9 @@ void DrivePreview(SketchSubject Subject,
     }
     Tool.Hover({ 30.0 * Clicks, 0.0, 20.0 }, {});
 
-    const CurveSpecification Geometry =
-        ResolvePlacementCurve(Tool.Subject(), Tool.Anchors(), Tool.HoverPosition());
-    CurveDeclared = Geometry.Declared();
+    std::vector<CurveSpecification> Geometry;
+    ResolvePlacementCurves(Tool.Subject(), Tool.Anchors(), Tool.HoverPosition(), Geometry);
+    CurveDeclared = !Geometry.empty() && Geometry.front().Declared();
 
     static_cast<void>(ProjectPlacementPreview(Sketch, Geometry, Tool.Anchors(),
                                               Tool.HoverPosition(), Delivered));
@@ -174,10 +174,10 @@ int main()
         static_cast<void>(Tool.Anchor(false));
         Tool.Hover({ 80.0, 0.0, 90.0 }, {});
 
+        std::vector<CurveSpecification> PreviewSpans;
+        ResolvePlacementCurves(Tool.Subject(), Tool.Anchors(), Tool.HoverPosition(), PreviewSpans);
         static_cast<void>(ProjectPlacementPreview(
-            Sketch,
-            ResolvePlacementCurve(Tool.Subject(), Tool.Anchors(), Tool.HoverPosition()),
-            Tool.Anchors(), Tool.HoverPosition(), Delivered));
+            Sketch, PreviewSpans, Tool.Anchors(), Tool.HoverPosition(), Delivered));
 
         // 🔴 APPENDED, NOT REPLACED. The committed geometry must survive the preview being added, or
         //    the shape under the pointer would blank everything already drawn.
@@ -456,6 +456,215 @@ int main()
         Require(std::fabs(Seeing.Position.Left) < 1.0e-9 &&
                 std::fabs(Seeing.Position.Forward) < 1.0e-9,
                 "the first loop must close exactly on the point it started from");
+    }
+
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 EVERY DRAWABLE SUBJECT PREVIEWS WHILE IT IS BEING DRAWN. `ResolvePlacementCurve` answered
+    //    for seven subjects and let the rest fall to `default`, so Ellipse, EllipticalArc and
+    //    Polyline previewed as NOTHING -- the artist saw only the committed shape appear on release,
+    //    which is exactly "it only shows at the end".
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure    Sketch;
+        WorkplaneCatalogue Workplanes;
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
+
+        struct Drawable { SketchSubject Subject; const char* Naming; };
+        const Drawable Every[] = {
+            { SketchSubject::Line,           "line" },
+            { SketchSubject::Polyline,       "polyline" },
+            { SketchSubject::Rectangle,      "rectangle" },
+            { SketchSubject::Circle,         "circle" },
+            { SketchSubject::Arc,            "arc" },
+            { SketchSubject::Ellipse,        "ellipse" },
+            { SketchSubject::EllipticalArc,  "elliptical arc" },
+            { SketchSubject::Polygon,        "polygon" },
+            { SketchSubject::Slot,           "slot" },
+            { SketchSubject::Bezier,         "Bezier" },
+            { SketchSubject::BasisSpline,    "basis spline" },
+            { SketchSubject::RationalSpline, "NURBS" },
+            { SketchSubject::Hermite,        "Hermite" },
+            { SketchSubject::Dimension,      "dimension" },
+        };
+
+        for (const Drawable& Subject : Every)
+        {
+            const std::vector<SpatialPoint> Anchors = { { 0.0, 0.0, 0.0 } };
+            std::vector<CurveSpecification> Spans;
+            ResolvePlacementCurves(Subject.Subject, Anchors, { 100.0, 0.0, 60.0 }, Spans);
+
+            WorkspaceCadPacket Delivered;
+            static_cast<void>(ProjectPlacementPreview(Sketch, Spans, Anchors,
+                                                      { 100.0, 0.0, 60.0 }, Delivered));
+
+            Require(Delivered.SegmentCount >= 1u,
+                    "every drawable subject must preview from its first anchor onwards");
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 AN ELLIPSE PREVIEWS AS ONE CLOSED CURVE. It had no arm at all and fell to `default`.
+    //--------------------------------------------------------------------------------------------
+    {
+        const std::vector<SpatialPoint> Anchors = { { 0.0, 0.0, 0.0 } };
+        std::vector<CurveSpecification> Spans;
+        ResolvePlacementCurves(SketchSubject::Ellipse, Anchors, { 100.0, 0.0, 60.0 }, Spans);
+
+        Require(Spans.size() == 1u, "an ellipse previews as exactly one curve");
+        Require(!Spans.empty() && Spans.front().Subject() == CurveSubject::Ellipse,
+                "and that curve is an ellipse, not a circle or a line");
+
+        if (!Spans.empty())
+        {
+            std::vector<SpatialPoint> Outline;
+            AppendCurvePolyline(Spans.front(), Outline,
+                                ResolveCurveStepCount(Spans.front(), 48u));
+
+            Require(Outline.size() >= 3u, "the previewed ellipse must tessellate");
+
+            // 🔴 THE OPEN TIP. First and last point must coincide, or the outline shows a gap.
+            const double Gap = std::sqrt(LengthSquared(
+                Difference(Outline.front(), Outline.back())));
+            Require(Gap < 1.0e-9, "the previewed ellipse must close on itself, with no open tip");
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 A HERMITE IS A CONTINUOUS CHAIN THAT GROWS WITH EVERY CLICK. Read as
+    //    {start, end, tangent, tangent} it spent four clicks on ONE span and ignored the rest --
+    //    "it renders the first 2 points as a curve, other places are just points".
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure    Sketch;
+        WorkplaneCatalogue Workplanes;
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
+
+        for (std::uint32_t Clicks = 2u; Clicks <= 6u; ++Clicks)
+        {
+            std::vector<SpatialPoint> Anchors;
+            for (std::uint32_t Index = 0u; Index < Clicks; ++Index)
+                Anchors.push_back({ 40.0 * Index, 0.0, (Index % 2u) ? 50.0 : 0.0 });
+
+            const SpatialPoint Hover = { 40.0 * Clicks, 0.0, 25.0 };
+
+            std::vector<CurveSpecification> Spans;
+            ResolvePlacementCurves(SketchSubject::Hermite, Anchors, Hover, Spans);
+
+            // 🔴 One span per gap between points: N anchors plus the hover give N spans.
+            Require(Spans.size() == Clicks,
+                    "each further Hermite click must add a further span");
+
+            // 🔴 CONTINUITY. Every span must begin exactly where the last one ended, or the curve
+            //    is the row of disconnected pieces that was reported.
+            double Worst = 0.0;
+            for (std::size_t Index = 0u; Index + 1u < Spans.size(); ++Index)
+            {
+                std::vector<SpatialPoint> Before, After;
+                AppendCurvePolyline(Spans[Index], Before, 16u);
+                AppendCurvePolyline(Spans[Index + 1u], After, 16u);
+                if (Before.empty() || After.empty())
+                    continue;
+                Worst = std::max(Worst, std::sqrt(LengthSquared(
+                    Difference(Before.back(), After.front()))));
+            }
+            Require(Worst < 1.0e-9, "the Hermite chain must be continuous across every span");
+
+            // 🔴 AND IT MUST PASS THROUGH THE ANCHORS THE ARTIST CLICKED, not merely near them.
+            std::vector<SpatialPoint> First;
+            AppendCurvePolyline(Spans.front(), First, 16u);
+            Require(!First.empty() && std::sqrt(LengthSquared(
+                        Difference(First.front(), Anchors.front()))) < 1.0e-9,
+                    "the chain must start at the first anchor");
+        }
+
+        std::printf("  Hermite: 2..6 clicks give 2..6 continuous spans\n");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 THE HERMITE CHAIN SURVIVES ENTER. The commit read four anchors and discarded the rest.
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure           Sketch;
+        WorkspaceRecordStructure  Records;
+        WorkspaceRevisionSequence Revisions;
+        WorkspaceNameIndex        Naming;
+        WorkplaneCatalogue        Workplanes;
+        SketchPlacement           Tool;
+        WorkspaceRecordName       Pending;
+
+        Sketch.DeclarePlane({ Workplanes.Active().Origin,
+                              Workplanes.Active().Normal,
+                              Workplanes.Active().Along });
+
+        Tool.Declare(SketchSubject::Hermite, PlacementMethod::Extent, false);
+        for (std::uint32_t Index = 0u; Index < 5u; ++Index)
+        {
+            Tool.Hover({ 40.0 * Index, 0.0, (Index % 2u) ? 50.0 : 0.0 }, {});
+            static_cast<void>(Tool.Anchor(false));
+        }
+        Tool.Hover({ 240.0, 0.0, 25.0 }, {});
+
+        Require(Tool.Anchor(true) == PlacementArrival::Complete,
+                "Enter must complete a Hermite of any length");
+
+        const SealedPlacement Sealed = Tool.Seal();
+        Require(Sealed.Anchors.size() == 6u, "every anchor taken must reach the commit");
+
+        const Deliver<WorkspaceRecordName> Committed =
+            CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);
+        Require(Committed.Resolved, "the Hermite chain must commit");
+        AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Committed, Pending);
+
+        // 🔴 FIVE SPANS FROM SIX ANCHORS. One curve was the defect.
+        Require(Sketch.Curves().size() == 5u,
+                "six anchors must commit as five spans, not one");
+
+        WorkspaceCadPacket Delivered;
+        static_cast<void>(ProjectSketchRendering(Sketch, Records, Delivered));
+        Require(Delivered.SegmentCount > 100u, "the committed chain must project as a curve");
+    }
+
+    //--------------------------------------------------------------------------------------------
+    // 🔴 ONE LENS FOR THE SKETCH AND THE GROUND. The standing carries the field of view now; a
+    //    constant there is what drew shapes through a 42° lens onto a 60° grid.
+    //--------------------------------------------------------------------------------------------
+    {
+        const SpatialBasis Basis = { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
+        const PlaneExtent  Leaf  = { 0.0f, 0.0f, 800.0f, 600.0f };
+
+        ViewportStanding Narrow;
+        Narrow.Orientation = ViewportOrientation::Isometric;
+        Narrow.Focus       = { 0.0, 0.0, 0.0 };
+        Narrow.Distance    = 240.0;
+        Narrow.FieldOfViewDegrees = 42.0;
+
+        ViewportStanding Wide = Narrow;
+        Wide.FieldOfViewDegrees = 60.0;
+
+        float NarrowX = 0.0f, NarrowY = 0.0f, WideX = 0.0f, WideY = 0.0f;
+        const bool GotNarrow = ProjectViewportPoint(Basis, Narrow, true, Leaf, 50.0, 50.0, NarrowX, NarrowY);
+        const bool GotWide   = ProjectViewportPoint(Basis, Wide,   true, Leaf, 50.0, 50.0, WideX,   WideY);
+
+        Require(GotNarrow && GotWide, "both lenses must project the same point");
+
+        // 🔴 THE LENSES MUST DISAGREE, or the field of view is being ignored and the fix is inert.
+        Require(std::fabs(NarrowX - WideX) > 1.0,
+                "the field of view must actually change where a point lands");
+
+        // 📝 tan(21°)/tan(30°) = 0.665: the wider lens puts the same point nearer the centre.
+        const double Centre  = static_cast<double>(Leaf.MinimumX) + Leaf.Width() * 0.5;
+        const double Ratio   = (static_cast<double>(WideX) - Centre)
+                             / (static_cast<double>(NarrowX) - Centre);
+        Require(std::fabs(Ratio - 0.6653) < 0.01,
+                "the offset from centre must scale by the ratio of the two lenses");
+
+        std::printf("  lens 42 deg vs 60 deg: same point at x=%.1f and x=%.1f (ratio %.4f)\n",
+                    NarrowX, WideX, Ratio);
     }
 
     std::printf("[SketchDrawingProof] %u claims, %u failures\n", Claims, Failures);

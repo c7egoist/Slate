@@ -317,13 +317,27 @@ Deliver<WorkspaceRecordName> DeclareHermite(WorkspaceNameIndex& Naming,
                                     PlacementJournal& Revisions,
                                     const SealedPlacement& Placed)
 {
-        HermiteCurve CurveData;
-        CurveData.StartPoint = Placed.Anchors[0];
-        CurveData.EndPoint = Placed.Anchors[1];
-        CurveData.StartTangent = Difference(Placed.Anchors[0], Placed.Anchors[2]);
-        CurveData.EndTangent = Difference(Placed.Anchors[1], Placed.Anchors[3]);
-        const SketchCurveName Curve = Sketch.DeclareHermite(CurveData);
-        const WorkspaceRecordName Record = DeclareWorkspaceCurve(Naming, Records, Curve, Placed.Construction);
+        // 🔴 THE WHOLE CHAIN, NOT ONE SPAN. This read the four anchors as
+        //    {start, end, tangent, tangent}, so a Hermite spent four clicks producing ONE span and
+        //    silently discarded every anchor after the fourth -- the artist placed eight points and
+        //    got one short curve plus a row of stray points. Every anchor is a point the curve passes
+        //    THROUGH, and the tangents come from its neighbours, which is what `ResolvePlacementCurves`
+        //    already previews. Preview and commit must agree, so both build it the same way.
+        std::vector<CurveSpecification> Spans;
+        ResolvePlacementCurves(SketchSubject::Hermite,
+                               { Placed.Anchors.begin(), Placed.Anchors.end() - 1u },
+                               Placed.Anchors.back(), Spans);
+        if (Spans.empty())
+            return Deliver<WorkspaceRecordName>::Refuse({ RefusalReason::ContentUnsupported,
+                                                          "a Hermite curve requires two distinct positions" });
+
+        WorkspaceRecordName Record = {};
+        for (const CurveSpecification& Span : Spans)
+        {
+            const SketchCurveName Curve = Sketch.DeclareCurve(Span);
+            Record = DeclareWorkspaceCurve(Naming, Records, Curve, Placed.Construction);
+        }
+
         Revisions.Seal("Declared " + std::string(Records.Resolve(Record)->Naming), "Create Hermite Curve", { Record },
                        Revisions.DeclaredCount() + 1u);
         return Deliver<WorkspaceRecordName>::Result(Record);
@@ -672,7 +686,7 @@ constexpr CommitRow CommitTable[] =
     { SketchSubject::Bezier,         PlacementMethod::Extent,     2u, DeclareBezier },
     { SketchSubject::BasisSpline,    PlacementMethod::Extent,     3u, DeclareBasisSpline },
     { SketchSubject::RationalSpline, PlacementMethod::Extent,     3u, DeclareRationalSpline },
-    { SketchSubject::Hermite,        PlacementMethod::Extent,     4u, DeclareHermite },
+    { SketchSubject::Hermite,        PlacementMethod::Extent,     2u, DeclareHermite },
     { SketchSubject::Dimension,      PlacementMethod::Extent,     2u, DeclareDimension },
     { SketchSubject::Slot,           PlacementMethod::Extent,     3u, DeclareSlot },
 
