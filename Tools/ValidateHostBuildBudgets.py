@@ -315,6 +315,21 @@ def main() -> int:
             and "ParametricToolSubject::Select" in editor,
             "Q must reach the host and make Select the active tool")
 
+    # 🔴 AND NOTHING ELSE MAY OWN Q AT THE SAME TIME. The fly camera bound Q to "descend" and read its
+    #    keys whenever the artist was not typing, so pressing Q to choose the Select tool ALSO sank the
+    #    camera — two features silently sharing one key. The fly keys now belong to the fly gesture,
+    #    which is what every reference fly-cam this was modelled on does and why an editor can afford
+    #    to spend letters on tools at all.
+    seam = read("Engine/SlateUI/Interface/InterfaceExchange/Source/InterfaceExchange.cpp")
+    require("if (!Typing && Current.LookHeld)" in seam,
+            "WASDEQ must be read only while the look gesture is held, or Q drives two features at once")
+
+    # 🔴 ORTHOGRAPHIC ZOOM MUST BE DRIVEN BY SOMETHING. `OrthoScale` was written in exactly one place in
+    #    the whole tree — a function with no call sites — so a wheel notch in a parallel view changed
+    #    nothing at all, in every one of the seven orientations.
+    require("SketchView.OrthoScale = std::clamp(" in editor,
+            "the host must drive OrthoScale from the wheel, or a parallel view cannot zoom")
+
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
     #    `SlateWorkspace/Discipline/CodexActivation`; the guarantees are unchanged, only their address is.

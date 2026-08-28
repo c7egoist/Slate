@@ -38,10 +38,18 @@ void DriveViewport(const PlaneExtent& Extent,
 
     if (PointerOverViewport && Pointer.WheelY != 0.0f)
     {
+        // 🔴 RECIPROCALS, NOT 1.1 AND 0.9. Those two are not inverses — their product is 0.99 — so
+        //    rocking the wheel in and out drifted the view smaller by 1% a pair. Dividing by the same
+        //    factor that multiplies makes a zoom in and back out land exactly where it began.
+        constexpr double ZoomStep = 1.1;
         if (Perspective)
-            View.Distance = std::clamp(View.Distance * (Pointer.WheelY > 0.0f ? 0.9 : 1.1), 20.0, 4000.0);
+            View.Distance = std::clamp(Pointer.WheelY > 0.0f ? View.Distance / ZoomStep
+                                                             : View.Distance * ZoomStep,
+                                       20.0, 4000.0);
         else
-            View.OrthoScale = std::clamp(View.OrthoScale * (Pointer.WheelY > 0.0f ? 1.1 : 0.9), 0.05, 40.0);
+            View.OrthoScale = std::clamp(Pointer.WheelY > 0.0f ? View.OrthoScale * ZoomStep
+                                                               : View.OrthoScale / ZoomStep,
+                                         0.05, 40.0);
     }
 
     if (!Pointer.SecondaryHeld)

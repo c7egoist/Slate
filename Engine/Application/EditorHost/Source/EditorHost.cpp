@@ -1059,6 +1059,36 @@ int main(int ArgumentCount, char** ArgumentValues)
                                 AdvanceProjectionTransit(Transit, Pass.ElapsedMilliseconds / 1000.0,
                                                          !PanelConfiguration[Index].Perspective);
                                 const bool LeafPerspective = !Transit.Parallel();
+
+                                // 🔴 A WHEEL NOTCH IN A PARALLEL VIEW CHANGED NOTHING, IN ALL FOUR OF
+                                //    THEM. `OrthoScale` was written in exactly one place in the whole
+                                //    tree — `DriveViewport`, which has no call sites — so it sat at its
+                                //    default of 3.0 for the entire session. The projection arithmetic
+                                //    was never wrong: a 10-unit span measures 30.0 px at scale 3.0 and
+                                //    43.9 px at 4.392, correctly. Nothing ever moved the number.
+                                //
+                                // 📝 A parallel view has no eye to fly towards, so zoom IS the scale;
+                                //    a perspective view keeps flying the camera, which already works.
+                                //    Gated on the pointer being over this leaf so a split viewport
+                                //    zooms the half the artist is pointing at, and not the other one.
+                                if (!LeafPerspective && BackgroundPointer.WheelY != 0.0f &&
+                                    LeafBody.Encloses(BackgroundPointer.PositionX,
+                                                      BackgroundPointer.PositionY))
+                                {
+                                    // 🔴 THE TWO DIRECTIONS ARE EXACT RECIPROCALS. The unreached arm
+                                    //    used 1.1 and 0.9, which are not inverses — 1.1 x 0.9 = 0.99,
+                                    //    so every in-then-out pair lost a further 1% and an artist
+                                    //    rocking the wheel to inspect something drifted steadily
+                                    //    smaller. Forty pairs left the view a third smaller than it
+                                    //    started. Dividing by the factor that multiplies makes the
+                                    //    round trip exact.
+                                    constexpr double ZoomStep = 1.1;
+                                    SketchView.OrthoScale = std::clamp(
+                                        BackgroundPointer.WheelY > 0.0f
+                                            ? SketchView.OrthoScale * ZoomStep
+                                            : SketchView.OrthoScale / ZoomStep,
+                                        0.05, 40.0);
+                                }
                                 const ResolvedCamera SceneCamera = ResolveFreeCamera(
                                     { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
                                       SceneApplied.CameraPosition[2] },

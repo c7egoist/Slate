@@ -126,8 +126,31 @@ never redraws until the artist moves the pointer — which is reported as a hang
 redraw. `Tools/IdleWakeProof` carries 18 claims and five sabotages, catching both a rule that
 never sleeps and a rule that sleeps when it should not.
 
-### Step 3 — Orthographic zoom
-Probe which of the three candidates holds, fix it, and prove the behavioural claim.
+### Step 3 — Orthographic zoom — **DONE**
+None of the three candidates was the cause. **`OrthoScale` was written in exactly one place in the
+whole tree** — `DriveViewport`, a function with **no call sites** — so the value sat at its default
+of `3.0` for the entire session and the wheel drove nothing. The projection arithmetic was never
+wrong: a 10-unit span measures 30.0 px at scale 3.0 and 43.9 px at 4.392, correctly, all along.
+
+That answers the question I had been holding for the user: **it failed in every orientation**, not
+some, because the wheel never reached the value at all. Same class of defect as Task 15 — working
+code with nothing calling it.
+
+Two further defects fell out of writing the proof:
+
+| Defect | Effect on the artist |
+| --- | --- |
+| `1.1` and `0.9` used as the two wheel directions | They are not reciprocals — their product is `0.99`, so every zoom-in-then-out pair shrank the view 1%. Forty pairs left it a third smaller and the zoom appeared to wander. Now `× 1.1` and `÷ 1.1`. |
+| The fly camera read `WASDEQ` whenever the artist was not typing | `Q` both chose the Select tool **and** sank the camera. The fly keys now belong to the fly gesture, as in every reference fly-cam this was modelled on. |
+
+A probe span of `(10, 0, 0)` is invisible from the Left and Right views — it points at the eye and
+projects to zero length. That looked like two more zoom failures and was a badly chosen probe; the
+span now has a component on all three axes.
+
+**Proven:** `OrthographicZoomProof` 30 claims across **all seven** orientations, sabotaged three
+ways — a dead wheel (9 failures), the non-reciprocal ratio (4), a missing bound (3).
+`ValidateHostBuildBudgets` gained two claims: that the host drives `OrthoScale`, and that the fly
+keys are gated on the look gesture. Both sabotaged.
 
 ### Step 4 — Opaque dropdown plates
 Find the draw, make it opaque. **Proof:** the plate's fill alpha is fully opaque wherever a

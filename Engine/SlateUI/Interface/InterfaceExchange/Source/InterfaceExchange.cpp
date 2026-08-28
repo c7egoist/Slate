@@ -897,7 +897,19 @@ CameraCondition InterfaceExchange::CameraInput(bool LookPermitted)
     //    right button; the panels own the left one.
     const bool Typing = Sampled.WantTextInput;
 
-    if (!Typing)
+    // 📐 The look gesture is the right button held: while it stands, the pointer's travel is the
+    //    camera's turn, exactly as the reference fly-cams read it.
+    Current.LookHeld = LookPermitted && ImGui::IsMouseDown(ImGuiMouseButton_Right);
+
+    // 🔴 THE FLY KEYS BELONG TO THE FLY GESTURE. They were read whenever the artist was not typing,
+    //    so W A S D E Q moved the camera at all times -- and Q, which is the Select tool, ALSO sank the
+    //    camera every time it was pressed. Every reference fly-cam this was modelled on (Unreal, Unity)
+    //    reads WASD only while the right button is held, for exactly this reason: an editor needs its
+    //    letters for tools.
+    //
+    // ⚠️ `Typing` still gates them, because a right-drag with a text field focused must not type
+    //    into it AND fly. The two guards answer different questions and both are needed.
+    if (!Typing && Current.LookHeld)
     {
         Current.ForwardHeld  = ImGui::IsKeyDown(ImGuiKey_W);
         Current.BackwardHeld = ImGui::IsKeyDown(ImGuiKey_S);
@@ -907,10 +919,6 @@ CameraCondition InterfaceExchange::CameraInput(bool LookPermitted)
         Current.DownHeld     = ImGui::IsKeyDown(ImGuiKey_Q);
         Current.ShiftHeld    = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
     }
-
-    // 📐 The look gesture is the right button held: while it stands, the pointer's travel is the
-    //    camera's turn, exactly as the reference fly-cams read it.
-    Current.LookHeld = LookPermitted && ImGui::IsMouseDown(ImGuiMouseButton_Right);
     Current.SpeedSteps = Current.LookHeld ? Sampled.MouseWheel : 0.0f;
 
     // 🔴 THE LOOK TRACKS THE OS CURSOR ITSELF and never reads `io.MouseDelta`. ImGui's delta is
