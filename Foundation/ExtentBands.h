@@ -83,4 +83,160 @@ constexpr std::uint32_t ExtentBandsAround(float ClipX0, float ClipY0, float Clip
     return Written;
 }
 
+
+//------------------------------------------------------------------------------------------------------------------------
+//                                                   PLACING A BOX CLEAR OF OTHERS
+//------------------------------------------------------------------------------------------------------------------------
+
+/// 🧩 Where a menu is placed relative to the tile that opened it.
+/// note  🔴 THE ORDER IS THE PREFERENCE ORDER and the enumerators are tried in it. Below-trailing is
+///        first because it is where a pointer already is after pressing a tile, and because a menu that
+///        drops down and to the right never covers the tile the artist is still looking at.
+enum class MenuCorner : std::uint32_t
+{
+    BelowTrailing = 0u,   // [-] - down and to the right of the anchor; the default
+    BelowLeading  = 1u,   // [-] - down and to the left
+    AboveTrailing = 2u,   // [-] - up and to the right
+    AboveLeading  = 3u,   // [-] - up and to the left
+    CornerCount   = 4u    // [-] - the closed count, never a corner
+};
+
+/// 🧩 Whether two boxes share any area. Touching edges do not count as sharing.
+/// note  ⚠️ Half-open on both axes, matching `Encloses`. Two boxes that merely abut are NOT intersecting,
+///        so a menu may sit flush against a widget's edge -- which is the tightest legal placement and the
+///        one a corner search should be allowed to find.
+/// cost  ✔️
+/// tag   guarantee, nonallocating, nonthrowing
+constexpr bool ExtentsIntersect(const ExtentBand& Left, const ExtentBand& Right)
+{
+    return Left.MinimumX < Right.MaximumX && Right.MinimumX < Left.MaximumX &&
+           Left.MinimumY < Right.MaximumY && Right.MinimumY < Left.MaximumY;
+}
+
+/// 🧩 The box a menu of the given span would occupy in one corner of an anchor.
+/// in    AnchorX0..AnchorY1  [-] the tile the menu belongs to
+/// in    Width, Height       [-] the menu's own span
+/// in    Corner              [-] which side of the anchor to hang it from
+/// in    Gap                 [-] the clear distance between the anchor and the menu
+/// cost  ✔️
+/// tag   guarantee, nonallocating, nonthrowing
+constexpr ExtentBand MenuAtCorner(float AnchorX0, float AnchorY0, float AnchorX1, float AnchorY1,
+                                  float Width, float Height, MenuCorner Corner, float Gap)
+{
+    const bool Below   = Corner == MenuCorner::BelowTrailing || Corner == MenuCorner::BelowLeading;
+    const bool Trailing = Corner == MenuCorner::BelowTrailing || Corner == MenuCorner::AboveTrailing;
+
+    // 📐 The menu hangs from an EDGE of the anchor and is aligned to the opposite one, so a trailing
+    //    menu starts at the anchor's leading edge and grows right. That keeps a menu visually attached to
+    //    its tile instead of floating off one corner of it.
+    const float X0 = Trailing ? AnchorX0 : AnchorX1 - Width;
+    const float Y0 = Below ? AnchorY1 + Gap : AnchorY0 - Gap - Height;
+
+    return ExtentBand{ X0, Y0, X0 + Width, Y0 + Height };
+}
+
+/// 🧩 Places a menu in the first corner of its anchor where it neither leaves the bounds nor touches
+///    any occupied box, sliding it along the bounds when a corner hangs off the edge.
+/// in    Bounds        [-] the extent the menu must stay inside -- the viewport leaf, not the window
+/// in    Anchor        [-] the tile the menu was opened from
+/// in    Width, Height [-] the menu's own span
+/// in    Occupied      [-] boxes already spoken for: the widget, the footer, other menus
+/// in    OccupiedCount [-] how many of them
+/// in    Gap           [-] the clear distance between the anchor and the menu
+/// out   Placed        [-] the chosen box; untouched when the result is false
+/// out   Result        [-] false when no corner fits, so the caller can decide rather than be given a lie
+/// note  🔴 A MENU MUST NEVER DRAW ON TOP OF ANOTHER WIDGET. The corners are tried in preference order
+///        and the FIRST clear one wins.
+/// note  🔴 A CORNER THAT HANGS OFF THE EDGE IS SLID BACK ON, NOT DISCARDED. Four rigid corners is too
+///        few: a tile near the top-left of the leaf has three of them off the edge, so a single blocked
+///        corner meant refusing outright. Sliding along the offending axis keeps the menu attached to the
+///        side of the anchor it was asked for while making the placement reachable, and turns four
+///        candidates into four that can actually be used. The SIDE is the intent; the exact ordinate is not.
+/// note  ⚠️ Sliding cannot rescue a menu larger than the bounds, which still refuses -- the clamp would
+///        otherwise invert the box and hand back a negative span.
+/// note  🔴 REFUSAL IS A REAL ANSWER. When every corner is blocked this returns false rather than
+///        quietly returning the least-bad overlap -- a placement that "mostly" avoids a widget is the
+///        defect this exists to prevent, wearing a hat. The caller falls back deliberately and visibly.
+/// note  ⚠️ The anchor itself is not treated as occupied. A menu is allowed to sit flush against the tile
+///        that opened it; that is the point of the gap.
+/// note  When no corner of the anchor is usable the menu detaches and takes a free corner of the bounds.
+/// cost  ✔️ At most eight candidates against a short list.
+/// tag   guarantee, nonallocating, nonthrowing
+constexpr bool PlaceMenuClear(const ExtentBand& Bounds, const ExtentBand& Anchor,
+                              float Width, float Height,
+                              const ExtentBand* Occupied, std::uint32_t OccupiedCount,
+                              float Gap, ExtentBand& Placed)
+{
+    // A menu wider or taller than the bounds can never be placed, and sliding it would invert the box.
+    if (Width > Bounds.MaximumX - Bounds.MinimumX || Height > Bounds.MaximumY - Bounds.MinimumY)
+        return false;
+
+    for (std::uint32_t Index = 0u; Index < static_cast<std::uint32_t>(MenuCorner::CornerCount); ++Index)
+    {
+        ExtentBand Candidate = MenuAtCorner(Anchor.MinimumX, Anchor.MinimumY,
+                                            Anchor.MaximumX, Anchor.MaximumY,
+                                            Width, Height,
+                                            static_cast<MenuCorner>(Index), Gap);
+
+        // 📐 Slide back inside on each axis independently. The menu keeps the SIDE of the anchor it was
+        //    asked for -- a below menu stays below -- and gives up only its exact ordinate along the edge.
+        const float SlideX = Candidate.MinimumX < Bounds.MinimumX ? Bounds.MinimumX - Candidate.MinimumX
+                           : Candidate.MaximumX > Bounds.MaximumX ? Bounds.MaximumX - Candidate.MaximumX
+                           : 0.0f;
+        const float SlideY = Candidate.MinimumY < Bounds.MinimumY ? Bounds.MinimumY - Candidate.MinimumY
+                           : Candidate.MaximumY > Bounds.MaximumY ? Bounds.MaximumY - Candidate.MaximumY
+                           : 0.0f;
+
+        Candidate = ExtentBand{ Candidate.MinimumX + SlideX, Candidate.MinimumY + SlideY,
+                                Candidate.MaximumX + SlideX, Candidate.MaximumY + SlideY };
+
+        // 🔴 Sliding on the hanging axis can drag the menu back over its own tile -- a below-trailing
+        //    menu slid up is simply on top of the anchor. The tile is never occupied, so this is tested
+        //    here rather than left to the caller's list.
+        if (ExtentsIntersect(Candidate, Anchor))
+            continue;
+
+        bool Clear = true;
+        for (std::uint32_t Other = 0u; Other < OccupiedCount; ++Other)
+            Clear = Clear && !ExtentsIntersect(Candidate, Occupied[Other]);
+
+        if (Clear)
+        {
+            Placed = Candidate;
+            return true;
+        }
+    }
+
+    // 🔴 A MENU CAN GENUINELY HAVE NOWHERE TO HANG. A tile near the top edge with a widget filling the
+    //    space below it blocks both lower corners, while both upper ones slide down onto the tile — every
+    //    corner is spent and the artist has pressed a button that does nothing. Rather than refuse, the
+    //    menu detaches from its anchor and takes a free corner of the LEAF instead. It stops being
+    //    visually attached to its tile, which is a real cost, but it stays on screen and it still never
+    //    covers another widget — and that is the rule that was actually asked for.
+    const ExtentBand LeafCorners[4] = {
+        { Bounds.MinimumX, Bounds.MinimumY, Bounds.MinimumX + Width, Bounds.MinimumY + Height },
+        { Bounds.MaximumX - Width, Bounds.MinimumY, Bounds.MaximumX, Bounds.MinimumY + Height },
+        { Bounds.MinimumX, Bounds.MaximumY - Height, Bounds.MinimumX + Width, Bounds.MaximumY },
+        { Bounds.MaximumX - Width, Bounds.MaximumY - Height, Bounds.MaximumX, Bounds.MaximumY },
+    };
+
+    for (const ExtentBand& Candidate : LeafCorners)
+    {
+        if (ExtentsIntersect(Candidate, Anchor))
+            continue;
+
+        bool Clear = true;
+        for (std::uint32_t Other = 0u; Other < OccupiedCount; ++Other)
+            Clear = Clear && !ExtentsIntersect(Candidate, Occupied[Other]);
+
+        if (Clear)
+        {
+            Placed = Candidate;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 }   // namespace Slate

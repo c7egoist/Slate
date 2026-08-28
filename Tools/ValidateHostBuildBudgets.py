@@ -344,6 +344,22 @@ def main() -> int:
     require("Overlay.RecordAround(" in editor and "CadPass.RecordAround(" in editor,
             "BOTH GPU passes must record around the open menu -- the grid and the sketch alike")
 
+    # 🔴 THE CONTEXT MENU MUST BE REACHABLE, PLACED AND AVOIDING SOMETHING. Four times now a correct
+    #    function has sat in this tree with no call site, so each half of the wiring is named here: the
+    #    menu is opened by a gesture, recorded each tick, and told what not to cover.
+    require("SketchContextMenu.Open(" in editor,
+            "a context menu nothing opens is a context menu that does not exist")
+    require("SketchContextMenu.Record(" in editor,
+            "the context menu must be recorded, or it is declared and never drawn")
+    require("SketchContextMenu.Avoid(SketchToolOptions.Occupies())" in editor,
+            "the menu must be told the options widget's ACTUAL box, or it cannot avoid it")
+
+    # 🔴 AND THE OPEN GESTURE MUST NOT COLLIDE WITH THE FLY CAMERA. The secondary contact already drives
+    #    look; a menu bound to the press alone would repeat exactly what Q did. A press that travelled was
+    #    a look, so the menu opens on a release that did not.
+    require("SecondaryClickTravel" in editor and "SecondaryReleased" in editor,
+            "the menu must open on a stationary right-click, not on any secondary press")
+
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in
     #    `SlateWorkspace/Discipline/CodexActivation`; the guarantees are unchanged, only their address is.

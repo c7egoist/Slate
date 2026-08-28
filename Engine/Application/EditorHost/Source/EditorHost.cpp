@@ -24,6 +24,7 @@
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
 #include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
 #include "SlateUI/Interface/ToolOptionsWidget/Api/ToolOptionsWidget.h"
+#include "SlateUI/Interface/ToolContextMenu/Api/ToolContextMenu.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
 #include "Foundation/DeliveryGuarantee.h"
@@ -301,6 +302,13 @@ int main(int ArgumentCount, char** ArgumentValues)
     // 🔴 SELECT AND THE GIZMO ARE ONE WIDGET. Choosing something and then moving it is one thing the
     //    artist does; two panels would put the gizmo's switch somewhere else at the moment it is wanted.
     static ToolOptionsWidget         SketchToolOptions;
+    static ToolContextMenu           SketchContextMenu;
+    // 📝 A right-press is a look while it travels and a menu when it does not. The distance is summed
+    //    across the hold, because on the release tick the per-tick travel has already fallen to zero.
+    static float SecondaryTravel = 0.0f;   // [px] - summed over the current secondary hold
+    static float SecondaryOpenX  = 0.0f;   // [px] - where the press landed
+    static float SecondaryOpenY  = 0.0f;   // [px]
+    constexpr float SecondaryClickTravel = 4.0f;   // [px] - beyond this the gesture was a look
     // 📝 The sketch tools measure against an orbit standing; the editor flies a free camera. The
     //    standing is kept beside it and driven from the same yaw/pitch, so both describe one view.
     static ViewportStanding          SketchView;
@@ -625,6 +633,13 @@ int main(int ArgumentCount, char** ArgumentValues)
         return 1;
     }
 
+    if (!SketchContextMenu.ConstructToolContextMenu(Viewport.MotionSource(), Viewport.Surface(),
+                                                    Viewport.Appearance()).Resolved)
+    {
+        std::printf("%s \u2014 the tool context menu was refused\n", HostName);
+        return 1;
+    }
+
     // One shader stream index feeds both the dynamic atmosphere compute pass and the overlay pass.
     const Deliver<bool> CodecDelivery =
         OverlayCodec.AttachShaderStreams(Lifetime.DeviceExchange(), ShaderStreamDirectory());
@@ -899,6 +914,7 @@ int main(int ArgumentCount, char** ArgumentValues)
 
             SketchSessionMilliseconds += Pass.ElapsedMilliseconds;
             SketchToolOptions.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
+            SketchContextMenu.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
             WorkspacePanels.Advance(BackgroundPointer, Pass.ElapsedMilliseconds);
 
             // 🔴 THE TOOL PANEL ADVANCES BEFORE THE VIEWPORT READS THE ACTIVE TOOL. It used to run at
@@ -1065,6 +1081,39 @@ int main(int ArgumentCount, char** ArgumentValues)
                                                          !PanelConfiguration[Index].Perspective);
                                 const bool LeafPerspective = !Transit.Parallel();
 
+                                // 🔴 A RIGHT-CLICK OPENS THE CONTEXT MENU, AND THE SAME BUTTON FLIES THE
+                                //    CAMERA. Binding the menu to the press would repeat the mistake `Q`
+                                //    made -- two features quietly sharing one input. A press that ends
+                                //    without the pointer having travelled is a CLICK; one that dragged
+                                //    was a look, and the camera has already consumed it. The travel is
+                                //    accumulated over the whole hold rather than read on the release
+                                //    tick, where it is always near zero.
+                                if (BackgroundPointer.SecondaryPressed &&
+                                    LeafBody.Encloses(BackgroundPointer.PositionX,
+                                                      BackgroundPointer.PositionY))
+                                {
+                                    SecondaryTravel = 0.0f;
+                                    SecondaryOpenX  = BackgroundPointer.PositionX;
+                                    SecondaryOpenY  = BackgroundPointer.PositionY;
+                                }
+
+                                if (BackgroundPointer.SecondaryHeld)
+                                {
+                                    SecondaryTravel += std::fabs(BackgroundPointer.TravelX) +
+                                                       std::fabs(BackgroundPointer.TravelY);
+                                }
+
+                                if (BackgroundPointer.SecondaryReleased &&
+                                    SecondaryTravel <= SecondaryClickTravel &&
+                                    LeafBody.Encloses(BackgroundPointer.PositionX,
+                                                      BackgroundPointer.PositionY))
+                                {
+                                    // 📐 The pointer itself is the anchor: a right-click has no tile, so
+                                    //    the menu hangs off a point rather than a button.
+                                    SketchContextMenu.Open(Spanning(SecondaryOpenX, SecondaryOpenY,
+                                                                    1.0f, 1.0f));
+                                }
+
                                 // 🔴 A WHEEL NOTCH IN A PARALLEL VIEW CHANGED NOTHING, IN ALL FOUR OF
                                 //    THEM. `OrthoScale` was written in exactly one place in the whole
                                 //    tree — `DriveViewport`, which has no call sites — so it sat at its
@@ -1159,6 +1208,45 @@ int main(int ArgumentCount, char** ArgumentValues)
                                             static_cast<std::uint32_t>(SelectionElement::ElementCount))
                                             SketchSelection.Element =
                                                 static_cast<SelectionElement>(ElementSelected);
+
+                                        // 🔴 THE CONTEXT MENU MUST NOT DRAW ON TOP OF ANOTHER WIDGET, and
+                                        //    it can only avoid what it is told about. The options widget
+                                        //    is DRAGGABLE, so its box is declared here from what it
+                                        //    actually recorded a moment ago rather than from a constant
+                                        //    kept beside it -- a stale box steers the menu into the very
+                                        //    widget it was trying to miss.
+                                        SketchContextMenu.Avoid(SketchToolOptions.Occupies());
+
+                                        // 📐 The construction commands, in the plan's own order. Each is
+                                        //    disabled until a selection exists, because every one of them
+                                        //    acts on one: offering Trim with nothing picked invites the
+                                        //    artist to press it and watch nothing happen.
+                                        const bool Picked = SketchSelection.Element !=
+                                                            SelectionElement::ElementCount;
+
+                                        MenuItem BuildRows[5] = {};
+                                        BuildRows[0].Caption = "Bevel";
+                                        BuildRows[0].Glyph   = SymbolSubject::BevelChamfer;
+                                        BuildRows[0].Enabled = Picked;
+                                        BuildRows[1].Caption = "Chamfer";
+                                        BuildRows[1].Glyph   = SymbolSubject::BevelChamfer;
+                                        BuildRows[1].Enabled = Picked;
+                                        BuildRows[2].Caption = "Trim";
+                                        BuildRows[2].Enabled = Picked;
+                                        BuildRows[2].Divides = true;
+                                        BuildRows[3].Caption = "Cut";
+                                        BuildRows[3].Enabled = Picked;
+                                        BuildRows[4].Caption = "Add";
+                                        BuildRows[4].Enabled = Picked;
+
+                                        MenuDeclaration BuildMenu;
+                                        BuildMenu.Title     = "Construct";
+                                        BuildMenu.Items     = BuildRows;
+                                        BuildMenu.ItemCount = 5u;
+
+                                        std::uint32_t BuildTaken = 0u;
+                                        Discard(SketchContextMenu.Record(LeafBody, BuildMenu,
+                                                                         BuildTaken, PointerTaken));
                                     }
 
                                     // 🔴 ONE CAMERA, NOT TWO. The orbit angles were copied straight off

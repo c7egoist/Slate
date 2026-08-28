@@ -182,8 +182,13 @@ Deliver<bool> ToolOptionsWidget::Record(const PlaneExtent& Bounds,
     if (Surface == nullptr || Appearance == nullptr)
         return Deliver<bool>::Refuse({ RefusalReason::ContentUnsupported,
                                        "the widget was recorded before it was constructed" });
+    // 🔴 A HIDDEN WIDGET OCCUPIES NOTHING. Leaving the last box standing would have every context menu
+    //    keep avoiding a widget that is no longer drawn — the ghost of a panel steering the layout.
     if (!Presented)
+    {
+        Occupied = {};
         return Deliver<bool>::Result(false);
+    }
 
     const float Applied = Scale();
 
@@ -215,6 +220,10 @@ Deliver<bool> ToolOptionsWidget::Record(const PlaneExtent& Bounds,
 
     const PlaneExtent Card   = Spanning(PlacedX, PlacedY, Width, Header + Body);
     const PlaneExtent HeadOf = Spanning(PlacedX, PlacedY, Width, Header);
+
+    // 🔴 Published so a context menu can avoid it. Recorded from the box actually drawn, not from
+    //    `PlacedX/PlacedY`, so a clamped or collapsed widget reports where it really is.
+    Occupied = Card;
 
     Surface->Ground(Card, PanelGround, PanelRadius * Applied, CornerAll);
     Surface->Edge(Card, PanelOutline, 1.0f, PanelRadius * Applied, CornerAll);
@@ -365,6 +374,8 @@ void ToolOptionsWidget::RecordPill(const PlaneExtent& Bounds, const char* Title,
     PlacedY = Clamped(PlacedY, Bounds.MinimumY, Bounds.MaximumY - Height);
 
     const PlaneExtent Pill = Spanning(PlacedX, PlacedY, Width, Height);
+
+    Occupied = Pill;
     const bool Hovered = Pill.Encloses(Pointer.PositionX, Pointer.PositionY);
 
     Surface->Ground(Pill, Hovered ? PanelHead : PanelGround, Height * 0.5f, CornerAll);

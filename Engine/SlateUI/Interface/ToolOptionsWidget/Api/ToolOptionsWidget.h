@@ -126,6 +126,16 @@ public:
     /// 🧩 Where the widget sits, so a host may seat it once and let the artist move it thereafter.
     void Seat(float X, float Y) { PlacedX = X; PlacedY = Y; Seated = true; }
 
+    /// 🧩 The box this widget last occupied, in display ordinates.
+    /// out   Result  [px] a zero-area extent while the widget is hidden, or before its first record
+    /// note  🔴 A CONTEXT MENU MUST NOT DRAW ON TOP OF THIS. It can only avoid what it can ask about, and
+    ///        the widget is draggable, so the box cannot be a constant the caller keeps beside it — it has
+    ///        to come from whatever was actually recorded this tick, pill or card.
+    /// note  ⚠️ Valid only after the `Record` that drew it, and until the next one.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    const PlaneExtent& Occupies() const { return Occupied; }
+
     void Reset();
 
 private:
@@ -156,6 +166,7 @@ private:
     ControlIdentity     HideAction = {};
     ControlIdentity     PillAction = {};
 
+    PlaneExtent Occupied = {};   // [px] - what was recorded this tick, for menus that must avoid it
     float  PlacedX   = 64.0f;    // [px] - the reference's own left
     float  PlacedY   = 110.0f;   // [px] - and its top
     bool   Seated    = false;

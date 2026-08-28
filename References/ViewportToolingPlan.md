@@ -232,10 +232,31 @@ thing. `CrossClose` was added for the dismiss action.
 **Proven:** `ToolOptionsWidgetProof` 25 claims — the edge clamp, the knob/readout round trip, the
 zero-width span, the pill sizing and the row bounds — sabotaged two ways.
 
-### Step 7 — Context menus that avoid each other
-A context menu (Bevel, Chamfer, Trim, Cut, Add) opens in a free corner, never on top of another
-widget. **Proof:** with the Select widget placed, an opened context menu's rectangle does not
-intersect it, tested in every corner the layout allows.
+### Step 7 — Context menus that avoid each other — **DONE**
+
+`ToolContextMenu` opens from a stationary right-click in the sketch leaf and takes the first free
+corner of the tile it belongs to. The arithmetic is `PlaceMenuClear` in `Foundation/ExtentBands.h`,
+beside the band splitting from step 4 — same reason, same layer: the boxes are pure numbers and
+`SlateVulkan` may not name an interface type.
+
+Three things the design had to get right, none of them obvious from the requirement:
+
+| Question | Answer |
+| --- | --- |
+| Four rigid corners of the anchor | Too few. A tile near the leaf's top-left has three of them off the edge, so one blocked corner meant refusing. A corner that hangs off is now **slid back on** along the offending axis — it keeps the SIDE it was asked for and gives up only its exact ordinate. |
+| What if every corner is spent? | The menu **detaches** and takes a free corner of the leaf. It stops looking attached to its tile, which is a real cost, but it opens and it still covers nothing. Only when the leaf itself has no room does it refuse. |
+| What opens it? | **Not the secondary press** — that already flies the camera, and binding a second feature to it is exactly what `Q` did. A press that travelled was a look; the menu opens on a release that did not, measured over the whole hold. |
+
+The options widget now publishes `Occupies()`, the box it actually recorded this tick, and the host
+declares that to the menu each frame. A widget is draggable, so a constant kept beside it would
+steer the menu into the very thing it was avoiding. A hidden widget reports an empty box, so its
+ghost stops steering the layout.
+
+**Proven:** `MenuPlacementProof`, 74 claims — every corner of the leaf, three corners blocked, two
+menus at once, flush neighbours, refusal when swamped, and the intersection test measured directly
+rather than trusted. Sabotaged four ways: flush treated as overlap (4 failures), stopping at the
+first blocked corner (10), never refusing (2), dropping the slide (6). Three gate claims guard the
+wiring, each sabotaged.
 
 ### Step 8 — Construction tools
 `Bevel`, `Chamfer`, `Trim` (delete a region bounded by two points), `Cut` (split at selected
