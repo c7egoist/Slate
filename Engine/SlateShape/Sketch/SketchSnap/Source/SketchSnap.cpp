@@ -34,6 +34,35 @@ namespace
         Slate::AppendCurvePolyline(Geometry, Polyline, 48u);
     }
 
+    /// 🔴 A SNAP IS CHOSEN BY WHAT IT IS FIRST AND HOW FAR IT IS SECOND. Ranked low-to-high; the
+    ///    lowest rank within reach wins even when a lesser kind is marginally nearer.
+    ///
+    /// 🔴 THIS IS WHY A POLYLINE WOULD NOT CLOSE ON ITS OWN ENDPOINT. Every candidate raced on raw
+    ///    distance alone, and the `AlongCurve` projection of the probe onto the very first segment is
+    ///    ALWAYS at least as near as that segment's endpoint -- it is the perpendicular foot, and the
+    ///    endpoint is one point on the same segment. Aiming at the start of the loop from 0.5 units
+    ///    away therefore returned a point 0.5 units ALONG the first line instead of the corner itself,
+    ///    so the closing anchor missed by a hair, no coincidence was recorded, and the profile never
+    ///    closed. Identical reasoning applies to a curve's own end.
+    ///
+    /// ⚠️ Ties are broken by distance WITHIN a rank, so two endpoints still resolve to the nearer.
+    std::uint32_t SnapPrecedence(SketchSnapSubject Subject)
+    {
+        switch (Subject)
+        {
+            case SketchSnapSubject::Endpoint:      return 0u;   // the artist is closing a loop
+            case SketchSnapSubject::Centre:        return 1u;
+            case SketchSnapSubject::Control:       return 1u;
+            case SketchSnapSubject::Intersection:  return 2u;
+            case SketchSnapSubject::Midpoint:      return 3u;
+            case SketchSnapSubject::Tangent:       return 4u;
+            case SketchSnapSubject::Perpendicular: return 4u;
+            case SketchSnapSubject::AlongCurve:    return 5u;
+            case SketchSnapSubject::Grid:          return 6u;
+            default:                               return 7u;
+        }
+    }
+
     void ConsiderCandidate(const SpatialPoint& Probe,
                            const SpatialPoint& CandidatePosition,
                            SketchCurveName SourceCurve,
@@ -46,8 +75,18 @@ namespace
         const double CandidateDistance = std::sqrt(DistanceSquared(Probe, CandidatePosition));
         if (CandidateDistance > MaximumDistance)
             return;
-        if (!Best.Resolved() || CandidateDistance < Best.Distance)
-            Best = { Subject, SourceCurve, SketchPoint, SketchControl, CandidatePosition, CandidateDistance };
+
+        if (Best.Resolved())
+        {
+            const std::uint32_t CandidateRank = SnapPrecedence(Subject);
+            const std::uint32_t HeldRank      = SnapPrecedence(Best.Subject);
+            if (CandidateRank > HeldRank)
+                return;
+            if (CandidateRank == HeldRank && CandidateDistance >= Best.Distance)
+                return;
+        }
+
+        Best = { Subject, SourceCurve, SketchPoint, SketchControl, CandidatePosition, CandidateDistance };
     }
 
     /// 🔴 MEASURED IN THE SKETCH'S OWN PLANE, NOT IN X AND Z. This read `.Left` and `.Forward` off every
@@ -112,10 +151,19 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
                                        const SketchSnapMask& Accepted,
-                                       double GridStep)
+                                       double GridStep,
+                                       const std::vector<SpatialPoint>& PendingAnchors)
 {
     SketchSnapPlacement Best = {};
     Best.Distance = MaximumDistance;
+
+    // 🔴 THE PLACEMENT IN PROGRESS IS SNAPPABLE GEOMETRY TOO. Its anchors are not in the sketch yet --
+    //    nothing is declared until the placement seals -- so a polyline drawing its FIRST loop had no
+    //    declared curve to snap to and could never close on its own start point. They carry no curve
+    //    name because they belong to no declared curve; `SourceCurve` stays unassigned.
+    if (Accepted.EndpointAccepted)
+        for (const SpatialPoint& Anchor : PendingAnchors)
+            ConsiderCandidate(Probe, Anchor, {}, SketchSnapSubject::Endpoint, {}, {}, MaximumDistance, Best);
 
     struct CurvePolyline
     {

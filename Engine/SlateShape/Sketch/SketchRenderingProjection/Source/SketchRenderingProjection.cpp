@@ -83,8 +83,15 @@ bool ResolveCurvePolyline(const SketchStructure& Sketch,
     if (!Subject.Assigned() || Subject.IssuedIndex > Sketch.Curves().size())
         return false;
 
+    // 🔴 THE STEP COUNT IS A FLOOR, NOT A QUOTA. Every caller here passed `Style.CurveSteps` -- a flat
+    //    48 -- so a curve drawn ten times larger was still drawn with the same 48 chords, each one
+    //    cutting ten times deeper inside the true curve. That is the reported shrinking: the drawn
+    //    outline pulls further in as the shape grows. `ResolveCurveStepCount` raises the count with the
+    //    curve's own size and never returns less than the caller asked for.
+    const CurveSpecification& Geometry = Sketch.Curves()[Subject.IssuedIndex - 1u].Geometry;
+
     std::vector<SpatialPoint> SpatialPolyline;
-    AppendCurvePolyline(Sketch.Curves()[Subject.IssuedIndex - 1u].Geometry, SpatialPolyline, StepCount);
+    AppendCurvePolyline(Geometry, SpatialPolyline, ResolveCurveStepCount(Geometry, StepCount));
     if (SpatialPolyline.size() < 2u)
         return false;
 
@@ -482,6 +489,60 @@ Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
     }
 
     return Deliver<bool>::Result(true);
+}
+
+bool ProjectPlacementPreview(const SketchStructure& Sketch,
+                             const CurveSpecification& Geometry,
+                             const std::vector<SpatialPoint>& Anchors,
+                             const SpatialPoint& Hover,
+                             WorkspaceCadPacket& Delivered,
+                             const SketchRenderingStyle& Style)
+{
+    // 🔴 The plane, and only the plane. A placement in progress has declared no curve yet, so asking
+    //    the sketch whether it is `Declared()` -- which is all-or-nothing over its curves too -- refuses
+    //    every preview of the FIRST shape drawn on a fresh sketch.
+    if (!Sketch.PlaneDeclared())
+        return false;
+
+    const PlanarBasis Basis = ResolvePlanarBasis(Sketch.HeldPlane());
+    bool Appended = false;
+
+    // 🔴 ONE CURVE-SHAPED PATH, NOT ONE BRANCH PER SUBJECT. Whatever the caller assembled -- Bezier,
+    //    Hermite, basis spline, NURBS, arc, line -- is tessellated by the same evaluator the committed
+    //    shape will use, at the same length-adaptive density. Adding a curve subject now costs nothing
+    //    here, which is the whole reason four spline subjects previously previewed as nothing at all.
+    if (Geometry.Declared())
+    {
+        std::vector<SpatialPoint> Polyline;
+        AppendCurvePolyline(Geometry, Polyline, ResolveCurveStepCount(Geometry, Style.CurveSteps));
+
+        for (std::size_t Index = 0u; Index + 1u < Polyline.size(); ++Index)
+        {
+            const PlanarVertex From = ProjectVertex(Basis, Polyline[Index]);
+            const PlanarVertex To   = ProjectVertex(Basis, Polyline[Index + 1u]);
+            Delivered.AddSegment(From.Along, From.Across, To.Along, To.Across,
+                                 Style.PreviewCurveColour, Style.CurveThickness);
+            Appended = true;
+        }
+    }
+
+    // 🔴 THE CONTROL POINTS THE BEZIER NEVER SHOWED. Anchors are the artist's own clicks; without a
+    //    marker for each there is no way to see what the curve is being shaped by, which is exactly the
+    //    reported "the Bezier draws but shows no control points". They are drawn ON TOP of the curve --
+    //    appended after it -- and the hover carries a distinct tone so the moving one is legible.
+    for (const SpatialPoint& Anchor : Anchors)
+    {
+        const PlanarVertex At = ProjectVertex(Basis, Anchor);
+        Delivered.AddMarker(At.Along, At.Across, Style.ControlColour, Style.ControlRadius,
+                            WorkspaceCadMarkerSubject::SketchControl);
+        Appended = true;
+    }
+
+    const PlanarVertex At = ProjectVertex(Basis, Hover);
+    Delivered.AddMarker(At.Along, At.Across, Style.PreviewCurveColour, Style.ControlRadius,
+                        WorkspaceCadMarkerSubject::SketchControl);
+
+    return Appended;
 }
 
 } // namespace Slate

@@ -8,6 +8,8 @@
 
 #include "SlateShape/Sketch/SketchSelection/Api/SketchSelection.h"
 
+#include <vector>
+
 namespace Slate
 {
 
@@ -59,10 +61,19 @@ struct SketchSnapPlacement
 ///       grid line passes near everything and would otherwise beat the endpoint the artist aimed at.
 /// note ⚠️ `GridStep` is in world units and is clamped to at least 1.0. A step of zero would round every
 ///       probe onto the plane's origin.
+/// note 🔴 `PendingAnchors` ARE THE ANCHORS OF THE PLACEMENT STILL IN PROGRESS, and they are why a
+///       polyline could not close on itself. Nothing is declared into the sketch until the placement
+///       seals, so while an artist is drawing the loop its own corners exist ONLY inside the tool. The
+///       snapper was shown the sketch alone, saw no curves at all for the first shape, and had nothing
+///       to offer — the artist aimed at the start point and got the raw pointer position back. They are
+///       offered as `Endpoint` candidates, which is what they are and what wins the precedence order.
+/// note ⚠️ Pass them in the order taken. Only the first and the last matter for closing a loop, but all
+///       are offered so an artist can also close back onto an intermediate corner.
 SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
                                        const SketchSnapMask& Accepted = {},
-                                       double GridStep = 10.0);
+                                       double GridStep = 10.0,
+                                       const std::vector<SpatialPoint>& PendingAnchors = {});
 
 } // namespace Slate

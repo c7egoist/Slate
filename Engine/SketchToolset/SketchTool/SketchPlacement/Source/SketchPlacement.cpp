@@ -4,6 +4,8 @@
 
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace Slate
@@ -53,6 +55,28 @@ void SketchPlacement::Abandon()
     //    shape with the same tool, so keeping the reserved extent means the common case allocates once.
     Taken.clear();
     TakenPlacements.clear();
+
+    // 📝 The side count is a property of the TOOL, not of one placement: an artist who sets an octagon
+    //    expects the next octagon to be an octagon too. It is reset only when the tool itself changes.
+}
+
+bool SketchPlacement::Resolve(float Notches)
+{
+    // 🔴 Only a polygon has a resolution, so every other tool leaves the wheel to the camera. Returning
+    //    false is what lets the host keep zooming while a line is being drawn.
+    if (Placing != SketchSubject::Polygon)
+        return false;
+
+    const int Travel = static_cast<int>(Notches > 0.0f ? std::floor(Notches + 0.5f)
+                                                       : std::ceil(Notches - 0.5f));
+    if (Travel == 0)
+        return false;
+
+    const long long Wanted = static_cast<long long>(SideCount) + Travel;
+    SideCount = static_cast<std::uint32_t>(std::clamp<long long>(Wanted,
+                                                                 PolygonSideMinimum,
+                                                                 PolygonSideMaximum));
+    return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -128,6 +152,10 @@ SealedPlacement SketchPlacement::Seal()
     Sealed.Subject      = Placing;
     Sealed.Method       = PlacingMethod;
     Sealed.Construction = ConstructionDeclared;
+
+    // 🔴 The wheel-chosen side count travels with the sealed placement. The commit used to declare a
+    //    hardcoded six sides, so a polygon was always a hexagon whatever the artist asked for.
+    Sealed.Resolution   = SideCount;
     Sealed.Anchors      = std::move(Taken);
     Sealed.Placements   = std::move(TakenPlacements);
 
@@ -156,4 +184,114 @@ std::uint32_t SketchPlacement::Remaining() const
     return Count >= Declared.Required ? 0u : Declared.Required - Count;
 }
 
-}   // namespace Slate
+//------------------------------------------------------------------------------------------------------------------------
+//                                                     THE PREVIEW CURVE
+//------------------------------------------------------------------------------------------------------------------------
+
+CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
+                                         const std::vector<SpatialPoint>& Anchors,
+                                         const SpatialPoint& Hover)
+{
+    // 📝 The hover is the anchor the artist has not committed to yet, so every subject below sees the
+    //    same list the commit will see: the anchors taken, plus where the pointer is now.
+    std::vector<SpatialPoint> Points = Anchors;
+    Points.push_back(Hover);
+
+    switch (Subject)
+    {
+        case SketchSubject::Line:
+        case SketchSubject::Dimension:
+            if (Points.size() >= 2u)
+                return CurveSpecification::DeclareLine(Points.front(), Points.back());
+            break;
+
+        case SketchSubject::Arc:
+            if (Points.size() >= 3u)
+                return CurveSpecification::DeclareThreePointArc(Points[0], Points[1], Points[2]);
+            if (Points.size() == 2u)
+                return CurveSpecification::DeclareLine(Points[0], Points[1]);
+            break;
+
+        // 🔴 A Bezier's anchors ARE its control points, so the curve grows a degree with every click.
+        case SketchSubject::Bezier:
+            if (Points.size() >= 2u)
+                return CurveSpecification::DeclareBezier(Points, { 0.0, 1.0 });
+            break;
+
+        // 🔴 THE THREE SUBJECTS THAT PREVIEWED AS NOTHING. Degree is clamped to what the control count
+        //    can carry -- a cubic needs four points -- so the curve is drawn from the second click on
+        //    rather than staying invisible until the last one.
+        case SketchSubject::BasisSpline:
+            if (Points.size() >= 2u)
+            {
+                BasisSplineCurve Spline;
+                Spline.ControlPoints = Points;
+                Spline.Degree = std::min<std::uint32_t>(3u, static_cast<std::uint32_t>(Points.size() - 1u));
+                Spline.Periodic = false;
+                return CurveSpecification::DeclareBasisSpline(Spline, { 0.0, 1.0 });
+            }
+            break;
+
+        case SketchSubject::RationalSpline:
+            if (Points.size() >= 2u)
+            {
+                RationalSplineCurve Spline;
+                Spline.ControlPoints = Points;
+                Spline.Weights.assign(Points.size(), 1.0);
+                Spline.Degree = std::min<std::uint32_t>(3u, static_cast<std::uint32_t>(Points.size() - 1u));
+                Spline.Periodic = false;
+                return CurveSpecification::DeclareRationalSpline(Spline, { 0.0, 1.0 });
+            }
+            break;
+
+        // 🔴 A Hermite takes four anchors as two endpoints and two tangent targets, exactly as its
+        //    commit reads them. Before the third click there is no tangent yet, so the span previews as
+        //    the straight line it currently is.
+        case SketchSubject::Hermite:
+            if (Points.size() >= 4u)
+            {
+                HermiteCurve Span;
+                Span.StartPoint   = Points[0];
+                Span.EndPoint     = Points[1];
+                Span.StartTangent = Difference(Points[0], Points[2]);
+                Span.EndTangent   = Difference(Points[1], Points[3]);
+                return CurveSpecification::DeclareHermite(Span, { 0.0, 1.0 });
+            }
+            if (Points.size() == 3u)
+            {
+                HermiteCurve Span;
+                Span.StartPoint   = Points[0];
+                Span.EndPoint     = Points[1];
+                Span.StartTangent = Difference(Points[0], Points[2]);
+                Span.EndTangent   = Difference(Points[0], Points[2]);
+                return CurveSpecification::DeclareHermite(Span, { 0.0, 1.0 });
+            }
+            if (Points.size() == 2u)
+                return CurveSpecification::DeclareLine(Points[0], Points[1]);
+            break;
+
+        case SketchSubject::Circle:
+        case SketchSubject::Polygon:
+            if (Points.size() >= 2u)
+            {
+                const double Radius = std::sqrt(LengthSquared(Difference(Points[0], Points[1])));
+                if (Radius > 1.0e-6)
+                {
+                    CircleCurve Round;
+                    Round.Centre         = Points[0];
+                    Round.Normal         = { 0.0, 1.0, 0.0 };
+                    Round.StartDirection = Normalize(Difference(Points[0], Points[1]));
+                    Round.Radius         = Radius;
+                    return CurveSpecification::DeclareCircle(Round);
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return {};
+}
+
+} // namespace Slate

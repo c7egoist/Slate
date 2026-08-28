@@ -108,8 +108,17 @@ def main() -> int:
     for Drawn, Why in (
             ("ProjectSketchRendering(", "sketch curves must be projected into the CAD packet"),
             ("RecordCadFallback(", "curves must still draw when the GPU CAD pass is not standing"),
-            ("RecordPlacementPreview(", "the tool in flight must show its rubber-band preview")):
+            ("ProjectPlacementPreview(", "the tool in flight must show its preview"),
+            ("ResolvePlacementCurve(", "every curve subject must preview, not the seven with a branch")):
         require(Drawn in editor, f"{Why} -- {Drawn} is not called by the host that ships")
+
+    # 🔴 THE PREVIEW IS NOT DRAWN ON THE CPU. `RecordPlacementPreview` walked the shape under the
+    #    pointer into ImGui draw lists every frame -- the most frequently redrawn geometry in the
+    #    editor was the last thing still tessellated per frame by the CPU -- and it named one subject
+    #    per branch, so Hermite, basis spline and NURBS previewed as nothing at all. It is replaced by
+    #    a projection into the same packet the GPU pass already rasterises.
+    require("RecordPlacementPreview(" not in editor,
+            "the CPU placement preview is gone; the preview belongs in the CAD packet")
 
     # 🔴 EXACTLY ONE GRID, AND IT IS THE ANALYTIC ONE. `RecordViewportGridOverlay` draws a SECOND
     #    lattice as CPU line segments on top of the ground the overlay pass already renders, and

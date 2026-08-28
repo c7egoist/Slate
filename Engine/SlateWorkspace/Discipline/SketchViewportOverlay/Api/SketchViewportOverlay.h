@@ -85,12 +85,6 @@ void RecordProfileValidationReadout(RecordingSurface& Surface,
                                     const PlaneExtent& Extent,
                                     const SketchStructure& Sketch);
 
-void RecordPlacementPreview(RecordingSurface& Surface,
-                        const PlaneExtent& Extent,
-                        const SketchStructure& Sketch,
-                        const ViewportStanding& View,
-                        bool Perspective,
-                        const SketchPlacement& Tool);
 
 void RecordViewportGridOverlay(OverlayGeometry& Overlay,
                                const PlaneExtent& Extent,

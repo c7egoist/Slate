@@ -6,6 +6,7 @@
 
 #include "SlateShape/Sketch/ConstraintSolver/Api/ConstraintSolver.h"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -390,7 +391,13 @@ Deliver<WorkspaceRecordName> DeclarePolygon(WorkspaceNameIndex& Naming,
                                     const SealedPlacement& Placed)
 {
         const double Radius = std::sqrt(LengthSquared(Difference(Placed.Anchors[0], Placed.Anchors[1])));
-        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(Placed.Anchors[0], Radius, 6u);
+
+        // 🔴 THE SIDE COUNT COMES FROM THE PLACEMENT, NOT FROM THIS LINE. It was hardcoded to six, so
+        //    the polygon tool drew a hexagon and only a hexagon however the artist set it up. The
+        //    wheel drives `SealedPlacement::Resolution` while the shape is being placed; it is clamped
+        //    here as well because a sealed placement arriving from anywhere else must still be sane.
+        const std::uint32_t Sides = std::clamp(Placed.Resolution, PolygonSideMinimum, PolygonSideMaximum);
+        const Deliver<ProfileNameInFeature> Profile = Sketch.DeclareRegularPolygon(Placed.Anchors[0], Radius, Sides);
         if (!Profile.Resolved)
             return Deliver<WorkspaceRecordName>::Refuse(Profile.Error);
         const WorkspaceRecordName Record = DeclareWorkspaceProfile(Naming, Records, Profile.Resolve());

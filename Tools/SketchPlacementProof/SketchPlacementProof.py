@@ -37,6 +37,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [
     ROOT / "Tools/SketchPlacementProof/SketchPlacementProof.cpp",
     ROOT / "Engine/SketchToolset/SketchTool/SketchPlacement/Source/SketchPlacement.cpp",
+    # 📝 `ResolvePlacementCurve` builds the curve an in-progress placement describes, so the placement
+    #    unit now depends on the curve geometry it previews through.
+    ROOT / "Engine/SlateShape/Geometry/CurveSpecification/Source/CurveSpecification.cpp",
 ]
 
 INCLUDES = [ROOT / "Engine", ROOT / "Tools/VulkanParseStub"]

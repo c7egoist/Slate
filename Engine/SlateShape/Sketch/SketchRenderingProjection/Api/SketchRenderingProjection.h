@@ -12,6 +12,8 @@
 #include "SlateShape/Record/WorkspaceRecordStructure/Api/WorkspaceRecordStructure.h"
 #include "SlateShape/Sketch/SketchStructure/Api/SketchStructure.h"
 
+#include <vector>
+
 namespace Slate
 {
 
@@ -35,11 +37,43 @@ struct SketchRenderingStyle
     Real32 ConstraintRadius = 4.5f;
     Real32 DimensionRadius = 5.0f;
     Unsigned32 CurveSteps = 48u;
+
+    // 🔴 The shape under the pointer and the anchors shaping it. The preview reads warmer than the
+    //    committed blue so an artist can tell at a glance what is placed and what is still being drawn.
+    Unsigned32 PreviewCurveColour = PackWorkspaceCadColour(91u, 140u, 255u, 235u);
+    Unsigned32 ControlColour = PackWorkspaceCadColour(250u, 204u, 21u, 255u);
+    Real32 ControlRadius = 4.0f;
 };
 
 Deliver<bool> ProjectSketchRendering(const SketchStructure& Sketch,
                                      const WorkspaceRecordStructure& Records,
                                      WorkspaceCadPacket& Delivered,
                                      const SketchRenderingStyle& Style = {});
+
+/// 🧩 What the shape being drawn RIGHT NOW looks like, appended to the same packet the committed shapes
+///    are rasterised from — so the preview is drawn by the same GPU pass, in the same pixels.
+/// in    Sketch     [-]  supplies the plane the anchors are mapped through
+/// in    Geometry   [-]  the curve the anchors and the hover describe, already built by the caller
+/// in    Anchors    [-]  every anchor taken so far, drawn as control markers
+/// in    Hover      [-]  where the pointer is; drawn as the moving control marker
+/// in    Delivered  [-]  APPENDED TO, never reset — the committed shapes are already in it
+/// out   -          [-]  whether anything was appended
+/// note  🔴 THE PREVIEW WAS THE LAST THING STILL DRAWN ON THE CPU. Committed shapes moved to
+///        `WorkspaceCadPass`, but the shape under the pointer was still walked into ImGui draw lists
+///        every frame by `RecordPlacementPreview` — and because that function named ONE subject per
+///        branch, the four spline subjects had no branch at all and previewed as nothing. An artist
+///        clicking to place a NURBS curve saw no feedback whatsoever and reasonably concluded the tool
+///        was dead. One curve-shaped path replaces twenty-two subject-shaped ones.
+/// note  🔴 Anchors are emitted as `SketchControl` markers. A Bezier drew no control points because
+///        nothing ever emitted a marker for an anchor — only committed `Point` records made markers.
+/// note  ⚠️ Does NOT reset the packet. Call it after `ProjectSketchRendering`, which does.
+/// cost  🚩
+/// tag   api, nonthrowing
+bool ProjectPlacementPreview(const SketchStructure& Sketch,
+                             const CurveSpecification& Geometry,
+                             const std::vector<SpatialPoint>& Anchors,
+                             const SpatialPoint& Hover,
+                             WorkspaceCadPacket& Delivered,
+                             const SketchRenderingStyle& Style = {});
 
 } // namespace Slate

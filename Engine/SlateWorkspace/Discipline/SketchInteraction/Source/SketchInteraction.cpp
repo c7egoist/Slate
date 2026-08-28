@@ -269,9 +269,19 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     // 📝 Snapping stays with the host: it needs the sketch, the view scale and the modifier that suspends
     //    it. The placement is told where the pointer ended up, not how it got there.
     const double SnapTolerance = ResolveSnapTolerance(View, Perspective);
+    // 🔴 THE WHEEL SETS A POLYGON'S RESOLUTION, exactly as the circle tool's drag sets its radius.
+    //    `Resolve` refuses for every other subject, so the wheel still zooms while anything else is
+    //    being drawn, and the press is consumed only when it was actually used.
+    if (Tool.Resolve(Pointer.WheelY))
+        PointerTaken = true;
+
+    // 🔴 The placement in progress is offered its OWN anchors to snap to, which is what lets a polyline
+    //    or a spline close back onto the point it started from. Until it seals, that geometry exists
+    //    nowhere else.
     const SketchSnapPlacement Placement = Modifiers.Commanded
                                         ? SketchSnapPlacement{}
-                                        : ResolveNearestSnap(Sketch, Raw, SnapTolerance);
+                                        : ResolveNearestSnap(Sketch, Raw, SnapTolerance, {}, 10.0,
+                                                             Tool.Anchors());
 
     SpatialPoint Hover = Placement.Resolved() ? Placement.Position : Raw;
     Hover = ApplySketchToolSettings(Tool, Basis, ToolContext, Hover);

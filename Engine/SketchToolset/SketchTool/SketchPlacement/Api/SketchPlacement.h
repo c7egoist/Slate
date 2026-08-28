@@ -350,10 +350,35 @@ enum class PlacementArrival : std::uint32_t
     ArrivalCount = 3u    // [-] - the closed count, never an arrival
 };
 
+/// 🧩 The curve an in-progress placement currently describes, for previewing it before it is committed.
+/// in    Subject   [-]  what is being placed
+/// in    Anchors   [-]  the anchors taken so far
+/// in    Hover     [-]  where the pointer is now, treated as the next anchor
+/// out   Declared  [-]  an undeclared curve when the placement cannot yet describe one
+/// note  🔴 THIS IS WHY NURBS AND HERMITE DREW NOTHING. The preview was a chain of `else if` branches
+///        naming ONE subject each, and only `Line`, `Polyline`, `Arc`, `Bezier`, `Ellipse`, `Rectangle`
+///        and `Circle` ever got one. `Hermite`, `BasisSpline` and `RationalSpline` fell off the end of
+///        the chain, so clicking with those tools drew no feedback at all — indistinguishable from a
+///        dead tool, even though all three committed correctly once enough anchors were taken. The same
+///        omission is why they seemed not to work: nothing told the artist the clicks had registered.
+/// note  🔴 Built the way the COMMIT builds it, so the preview is the shape that will be created rather
+///        than an approximation of it that can silently drift from the committed result.
+/// cost  🚩
+/// tag   api, nonthrowing
+CurveSpecification ResolvePlacementCurve(SketchSubject Subject,
+                                         const std::vector<SpatialPoint>& Anchors,
+                                         const SpatialPoint& Hover);
+
 /// 🧩 The anchors of one finished placement, moved out of the placement that took them.
 /// note  📝 Returned by value from `Seal`, so the placement it came from is already reset. There is no
 ///        window in which a sealed placement and the tool that produced it both hold the same anchors.
 /// tag   guarantee, owning
+/// 🧩 The side count a polygon starts at, and the range the wheel may drive it through.
+/// note 🔴 Three is the smallest shape with an area; below it a "polygon" is a line or a point.
+constexpr std::uint32_t PolygonSideMinimum = 3u;
+constexpr std::uint32_t PolygonSideMaximum = 64u;
+constexpr std::uint32_t PolygonSideDefault = 6u;
+
 struct SealedPlacement
 {
     SketchSubject                    Subject      = SketchSubject::None;      // [-]
@@ -361,6 +386,7 @@ struct SealedPlacement
     std::vector<SpatialPoint>        Anchors      = {};                       // [-] - in the order taken
     std::vector<SketchSnapPlacement> Placements   = {};                       // [-] - what each anchor landed on
     bool                             Construction = false;                    // [-] - construction geometry
+    std::uint32_t                    Resolution   = PolygonSideDefault;       // [-] - polygon sides only
 };
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -470,6 +496,23 @@ public:
     const SpatialPoint&        HoverPosition() const { return HoverAt; }
     const SketchSnapPlacement& HoverPlacement() const { return HoverSnap; }
 
+    /// 🧩 Turns the wheel while a placement is in progress, changing how many sides a polygon has.
+    /// in    Notches  [-]  wheel travel; positive adds sides
+    /// out   -        [-]  whether the wheel was consumed, so the caller does not also zoom with it
+    /// note  🔴 A POLYGON IS A CIRCLE WITH A SIDE COUNT, AND IS DRAWN LIKE ONE. Centre, drag for the
+    ///        circumradius, WHEEL for the resolution, Enter to commit — the count is a property of the
+    ///        placement in progress, not a mode chosen beforehand. The commit read a hardcoded six.
+    /// note  ⚠️ Refused unless a polygon is being placed, so the wheel keeps zooming for every other tool.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    bool Resolve(float Notches);
+
+    /// 🧩 How many sides the polygon being placed will have.
+    /// note  📝 Meaningless for every other subject, and left at its default there.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    std::uint32_t Resolution() const { return SideCount; }
+
 private:
 
     SketchSubject                    Placing              = SketchSubject::None;     // [-]
@@ -480,6 +523,7 @@ private:
     SketchSnapPlacement              HoverSnap            = {};                      // [-]
     bool                             HoverTaken           = false;                   // [-]
     bool                             ConstructionDeclared = false;                   // [-]
+    std::uint32_t                    SideCount            = PolygonSideDefault;      // [-] - polygon only
 };
 
 }   // namespace Slate

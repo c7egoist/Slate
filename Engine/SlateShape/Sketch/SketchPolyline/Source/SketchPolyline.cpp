@@ -5,6 +5,7 @@
 #include "SlateShape/Geometry/CurveSpecification/Api/CurveSpecification.h"
 #include "SlateShape/Sketch/SketchPolyline/Api/SketchPolyline.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace Slate
@@ -123,6 +124,99 @@ namespace
             H00 * Curve.StartPoint.Forward + H10 * Curve.StartTangent.Forward + H01 * Curve.EndPoint.Forward + H11 * Curve.EndTangent.Forward
         };
     }
+}
+
+namespace
+{
+    /// 🔴 Steps for a circular sweep held to `CurveChordTolerance`. Inverting the sagitta
+    ///    `t = R(1 - cos(θ/2))` gives `θ = 2·acos(1 - t/R)`, and the count is the sweep over that.
+    std::uint32_t StepsForSweep(double Radius, double SweepRadians)
+    {
+        const double Sweep = std::fabs(SweepRadians);
+        if (!(Radius > CurveChordTolerance) || !(Sweep > 0.0))
+            return 0u;
+
+        const double PerStep = 2.0 * std::acos(std::clamp(1.0 - CurveChordTolerance / Radius, -1.0, 1.0));
+        if (!(PerStep > 1.0e-9))
+            return CurveStepLimit;
+        return static_cast<std::uint32_t>(std::ceil(Sweep / PerStep));
+    }
+
+    /// 🔴 A spline has no single radius, so the length of its control polygon stands in for arc length —
+    ///    of which it is an upper bound. One chord per `8 × CurveChordTolerance` of that length.
+    std::uint32_t StepsForControlPolygon(const std::vector<SpatialPoint>& ControlPoints)
+    {
+        if (ControlPoints.size() < 2u)
+            return 0u;
+
+        double Span = 0.0;
+        for (std::size_t Index = 0u; Index + 1u < ControlPoints.size(); ++Index)
+            Span += std::sqrt(LengthSquared(Difference(ControlPoints[Index], ControlPoints[Index + 1u])));
+
+        return static_cast<std::uint32_t>(std::ceil(Span / (CurveChordTolerance * 8.0)));
+    }
+}
+
+std::uint32_t ResolveCurveStepCount(const CurveSpecification& Geometry,
+                                    std::uint32_t Floor)
+{
+    std::uint32_t Wanted = 0u;
+
+    switch (Geometry.Subject())
+    {
+        // 📝 A line is exact at two points however long it is drawn; there is nothing to shrink.
+        case CurveSubject::Line:
+            return 2u;
+
+        case CurveSubject::CircularArc:
+            Wanted = StepsForSweep(Geometry.HeldCircularArc().Radius,
+                                   Geometry.HeldCircularArc().SweepRadians);
+            break;
+
+        case CurveSubject::Circle:
+            Wanted = StepsForSweep(Geometry.HeldCircle().Radius, 6.283185307179586);
+            break;
+
+        // 📝 The major radius is the worst case: curvature is highest at the ends of the major axis.
+        case CurveSubject::EllipticalArc:
+            Wanted = StepsForSweep(Geometry.HeldEllipticalArc().MajorRadius,
+                                   Geometry.HeldEllipticalArc().SweepRadians);
+            break;
+
+        case CurveSubject::Ellipse:
+            Wanted = StepsForSweep(Geometry.HeldEllipse().MajorRadius, 6.283185307179586);
+            break;
+
+        case CurveSubject::Bezier:
+            Wanted = StepsForControlPolygon(Geometry.HeldBezier().ControlPoints);
+            break;
+
+        case CurveSubject::BasisSpline:
+            Wanted = StepsForControlPolygon(Geometry.HeldBasisSpline().ControlPoints);
+            break;
+
+        case CurveSubject::RationalSpline:
+            Wanted = StepsForControlPolygon(Geometry.HeldRationalSpline().ControlPoints);
+            break;
+
+        // 📝 A Hermite span is bounded by its endpoints and its two tangents, and a tangent may carry the
+        //    curve well past the straight line between them, so all four contribute.
+        case CurveSubject::Hermite:
+        {
+            const HermiteCurve& Hermite = Geometry.HeldHermite();
+            Wanted = StepsForControlPolygon({ Hermite.StartPoint,
+                                              Added(Hermite.StartPoint, Hermite.StartTangent),
+                                              Added(Hermite.EndPoint, Hermite.EndTangent),
+                                              Hermite.EndPoint });
+            break;
+        }
+
+        case CurveSubject::SubjectCount:
+        default:
+            break;
+    }
+
+    return std::clamp(std::max(Wanted, Floor), 2u, CurveStepLimit);
 }
 
 void AppendCurvePolyline(const CurveSpecification& Geometry,

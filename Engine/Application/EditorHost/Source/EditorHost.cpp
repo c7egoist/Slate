@@ -1058,17 +1058,41 @@ int main(int ArgumentCount, char** ArgumentValues)
                                     //    The existing grid is the grid; the sketch draws onto it.
                                     Discard(ProjectSketchRendering(Sketch, SketchRecords, SketchCadPacket));
 
+                                    // 🔴 THE SHAPE BEING DRAWN GOES IN THE SAME PACKET AS THE SHAPES
+                                    //    ALREADY DRAWN, so the GPU pass rasterises both and NOTHING
+                                    //    about sketch geometry is left on the CPU. It was the last
+                                    //    holdout: committed shapes moved to `WorkspaceCadPass`, but the
+                                    //    preview under the pointer was still walked into ImGui draw
+                                    //    lists every single frame -- the most redrawn geometry in the
+                                    //    editor was the one piece still being tessellated per frame by
+                                    //    the CPU.
+                                    //
+                                    // 🔴 It also previewed by naming ONE SUBJECT PER BRANCH, and four
+                                    //    curve subjects had no branch: Hermite, basis spline and NURBS
+                                    //    drew no feedback at all, and Bezier drew a line with no
+                                    //    control points. `ResolvePlacementCurve` answers for every
+                                    //    subject through the same evaluator the commit uses, and the
+                                    //    anchors come back as markers.
+                                    if (SketchTool.Standing() && SketchTool.HoverStanding())
+                                        static_cast<void>(ProjectPlacementPreview(
+                                            Sketch,
+                                            ResolvePlacementCurve(SketchTool.Subject(),
+                                                                  SketchTool.Anchors(),
+                                                                  SketchTool.HoverPosition()),
+                                            SketchTool.Anchors(), SketchTool.HoverPosition(),
+                                            SketchCadPacket));
+
                                     // 🔴 THE FALLBACK IS A FALLBACK. It walks every segment and fill
                                     //    through the interface's draw lists, which ImGui tessellates on
                                     //    the CPU each frame -- the viewport slowed as shapes
                                     //    accumulated, and each fill triangle drew its own anti-aliased
                                     //    edges, showing the triangulation as a wireframe over the
-                                    //    surface. It now runs only when the GPU pass is not standing.
+                                    //    surface. It now runs only when the GPU pass is not standing,
+                                    //    and it now carries the preview too, so a device without the
+                                    //    pass still shows the shape under the pointer.
                                     if (!CadPass.Standing())
                                         RecordCadFallback(Viewport.Surface(), LeafBody, Sketch, SketchView,
                                                           LeafPerspective, SketchCadPacket);
-                                    RecordPlacementPreview(Viewport.Surface(), LeafBody, Sketch,
-                                                           SketchView, LeafPerspective, SketchTool);
                                 }
 
                                 // 🔴 Clicking a mesh in the viewport selects it. Lived only in the
