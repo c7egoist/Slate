@@ -293,9 +293,16 @@ def InvokeTranslation(UnitEntry, Selection, VulkanInclude, Compiler, Warn, Subje
     Named   = "{0}{1}{2}".format(UnitEntry['Name'], "/" + Subject if Subject else "",
                                  " [" + Product + "]" if Product else "")
 
+    # 🔴 REFUSED, NOT SKIPPED, BECAUSE `Construct.ps1` REFUSES. This printed a cheerful `[SKIP]` and
+    #    carried on, while the Windows build threw on the same unit and stopped before `Application` was
+    #    linked. The editor was therefore never relinked, a stale executable was run against a fix it did
+    #    not contain, and the defect was reported as unfixed. Second time this exact divergence has cost a
+    #    build: a mirror more forgiving than the thing it mirrors does not fail earlier, it fails later on
+    #    someone else's machine. If a unit legitimately has no sources, that is a fact about the unit and
+    #    belongs in its manifest — not a fact about which of the two build scripts happens to be running.
     if not Sources:
-        WriteSkipped("{0} declares no translation unit".format(Named))
-        return 0, 0
+        WriteRejected("{0} declares no translation unit".format(Named))
+        return 0, 1
 
     Include  = GetIncludePath(UnitEntry, VulkanInclude)
     Flags    = GetCompilationFlags(Selection) + (['-Wall', '-Wextra', '-Wno-unused-parameter'] if Warn else ['-w'])

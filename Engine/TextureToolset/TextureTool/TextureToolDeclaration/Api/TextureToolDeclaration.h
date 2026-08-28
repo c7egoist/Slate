@@ -105,4 +105,19 @@ constexpr TextureToolDeclaration DeclaredTextureTool(TextureSubject Subject)
     return { GestureClosure::Continuous, false, false, "" };
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+//                                                     THE NAMING
+//------------------------------------------------------------------------------------------------------------------------
+
+/// 🧩 What the artist calls one texturing tool.
+/// in    Subject  [-] the tool being named
+/// out   Naming   [-] static text; an empty run for `None` and for the closed count
+/// note  📝 The one symbol this unit LINKS. Everything above resolves at compile time, and a unit whose
+///        every symbol is `constexpr` produces no object worth archiving — which `Build/Construct.ps1`
+///        reads as a unit declaring no translation unit, and refuses. Both `Application` and
+///        `SlateWorkspace` name `TextureToolset` in their `[link].unit` line, so the archive has to exist.
+/// cost  ✔️
+/// tag   api, nonallocating, nonthrowing
+const char* TextureToolNaming(TextureSubject Subject);
+
 }   // namespace Slate

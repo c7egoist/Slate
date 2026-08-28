@@ -1,7 +1,12 @@
 # TextureToolset — what one texturing tool is: its parameters, its pointer behaviour, and what it writes.
 # A tool knows no panel and no tick.
 
-# ⚠️ SKELETON. This unit declares the texturing tool vocabulary and nothing else yet. The impression
+# ⚠️ SKELETON. This unit declares the texturing tool vocabulary and nothing else yet. It carries exactly
+#    one translation unit, and needs to: both `Application` and `SlateWorkspace` name `TextureToolset` in
+#    their `[link].unit` line, so `TextureToolset.lib` is handed to the linker on every host link, and
+#    `Build/Construct.ps1` refuses a unit that declares no translation unit at all. That refusal stopped
+#    the whole build here — BEFORE `Application` — so the editor was never relinked and a stale executable
+#    was run against a fix it did not contain. The impression
 #    machinery it will drive already exists and is NOT duplicated here — `SlateCompute/Compute/
 #    ImpressionSequence` owns stroke accumulation, `SlateCompute/Compute/EmissionSequence` the texel
 #    emission, and the texturing panel in `SlateUI/Interface/` the artist's controls. What is missing is the
