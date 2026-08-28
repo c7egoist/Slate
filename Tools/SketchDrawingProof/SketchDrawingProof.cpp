@@ -1243,6 +1243,54 @@ int main()
         std::printf("  splines end under the pointer, with no closing chord\n");
     }
 
+    // ⭐ A BEZIER MUST PASS THROUGH EVERY POINT THE ARTIST CLICKED, AT ANY LENGTH.
+    //
+    // 🔴 It did not. `EvaluateBezier` ran de Casteljau across ALL control points, so N anchors built
+    //    ONE Bezier of degree N-1 rather than a chain. Such a curve interpolates its first and last
+    //    control point and no other, and the pull of the interior ones weakens as the degree climbs:
+    //    the curve missed its own interior anchors by 40.00 at three anchors, rising monotonically to
+    //    42.86 at eight. Every added point made it smoother and less like the drawing.
+    //
+    // 📝 Measured at SIX lengths, because the defect was not that the curve was wrong at some length
+    //    but that it grew worse with every point. A single length could not have told the two apart.
+    {
+        for (std::uint32_t Count = 3u; Count <= 8u; ++Count)
+        {
+            std::vector<SpatialPoint> Clicked;
+            for (std::uint32_t Index = 0u; Index < Count; ++Index)
+                Clicked.push_back({ 40.0 * Index, 0.0, (Index % 2u) ? 80.0 : 0.0 });
+
+            std::vector<SpatialPoint> Held(Clicked.begin(), Clicked.end() - 1u);
+            std::vector<CurveSpecification> Spans;
+            ResolvePlacementCurves(SketchSubject::Bezier, Held, Clicked.back(), Spans);
+            Require(!Spans.empty(), "a Bezier of any length must preview");
+
+            std::vector<SpatialPoint> Outline;
+            for (const CurveSpecification& Span : Spans)
+            {
+                std::vector<SpatialPoint> Scratch;
+                AppendCurvePolyline(Span, Scratch, 256u);
+                Outline.insert(Outline.end(), Scratch.begin(), Scratch.end());
+            }
+
+            double Worst = 0.0;
+            for (std::size_t Index = 1u; Index + 1u < Clicked.size(); ++Index)
+            {
+                double Nearest = 1.0e30;
+                for (const SpatialPoint& Sample : Outline)
+                    Nearest = std::min(Nearest, LengthSquared(Difference(Clicked[Index], Sample)));
+                Worst = std::max(Worst, std::sqrt(Nearest));
+            }
+
+            // 📝 One unit against anchors 40 apart. The defect measured 40 to 43 -- two orders of
+            //    magnitude clear -- while honest tessellation error at 256 steps is under half a unit.
+            Require(Worst < 1.0,
+                    "a Bezier must pass through every anchor, however many are placed");
+        }
+
+        std::printf("  a Bezier passes through its anchors at 3 to 8 points\n");
+    }
+
     //--------------------------------------------------------------------------------------------
     // 🔴 ENTER ENDS THE SHAPE, IT DOES NOT PLACE A POINT. A terminating press anchored the hover
     //    first and asked about termination afterwards, so finishing a polyline left a stray anchor

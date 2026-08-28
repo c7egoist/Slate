@@ -13,22 +13,80 @@ namespace Slate
 
 namespace
 {
+    /// 🧩 One cubic Bezier segment, by de Casteljau over exactly four control points.
+    SpatialPoint EvaluateCubicSpan(const SpatialPoint& First, const SpatialPoint& Second,
+                                   const SpatialPoint& Third, const SpatialPoint& Fourth,
+                                   double Parameter)
+    {
+        const double Remaining = 1.0 - Parameter;
+        const double A = Remaining * Remaining * Remaining;
+        const double B = 3.0 * Remaining * Remaining * Parameter;
+        const double C = 3.0 * Remaining * Parameter * Parameter;
+        const double D = Parameter * Parameter * Parameter;
+
+        return { A * First.Left    + B * Second.Left    + C * Third.Left    + D * Fourth.Left,
+                 A * First.Up      + B * Second.Up      + C * Third.Up      + D * Fourth.Up,
+                 A * First.Forward + B * Second.Forward + C * Third.Forward + D * Fourth.Forward };
+    }
+
+    /// 🧩 A curve through every point the artist clicked, as a CHAIN of cubic segments.
+    ///
+    /// 🔴 THIS WAS ONE BEZIER OF DEGREE N-1, AND THAT IS WHY THE CURVE LOST ITS SHAPE. De Casteljau
+    ///    was run across every control point at once, so the tenth click did not extend the curve --
+    ///    it raised the degree of the whole thing. A Bezier of degree N-1 passes through its first
+    ///    and last control point and NO OTHER: the interior anchors only pull, and the pull weakens
+    ///    as the degree rises. Measured on a zig-zag, the curve missed its own interior anchors by
+    ///    40.00 at three anchors and 42.86 at eight, worsening with every point added. The artist
+    ///    reads that as the curve smoothing itself away from what they drew, which is exactly what
+    ///    it is.
+    ///
+    /// 📝 Each pair of anchors now spans its own cubic, and the interior control points are placed
+    ///    a third of the way along the neighbouring chord -- the Catmull-Rom tangent, written as
+    ///    Bezier control points. The curve therefore INTERPOLATES every anchor, and adding one
+    ///    changes only the two segments beside it. The ends use the single adjacent chord, so the
+    ///    first and last segments lean the way the drawing does.
+    ///
+    /// ⚠️ `Parameter` runs over the WHOLE chain, not one segment: the caller samples 0 to 1 across
+    ///    the curve and this maps that onto the segment it lands in.
     SpatialPoint EvaluateBezier(const std::vector<SpatialPoint>& ControlPoints,
                                 double Parameter)
     {
-        std::vector<SpatialPoint> Working = ControlPoints;
-        for (std::size_t Width = Working.size(); Width > 1u; --Width)
-        {
-            for (std::size_t Index = 0u; Index + 1u < Width; ++Index)
-            {
-                Working[Index] = {
-                    Working[Index].Left * (1.0 - Parameter) + Working[Index + 1u].Left * Parameter,
-                    Working[Index].Up * (1.0 - Parameter) + Working[Index + 1u].Up * Parameter,
-                    Working[Index].Forward * (1.0 - Parameter) + Working[Index + 1u].Forward * Parameter
-                };
-            }
-        }
-        return Working.front();
+        if (ControlPoints.empty())
+            return {};
+        if (ControlPoints.size() == 1u)
+            return ControlPoints.front();
+        if (ControlPoints.size() == 2u)
+            return EvaluateCubicSpan(ControlPoints[0], ControlPoints[0],
+                                     ControlPoints[1], ControlPoints[1], Parameter);
+
+        const std::size_t SpanCount = ControlPoints.size() - 1u;
+
+        // ⚠️ Held one short of the end for the same reason the spline clamp is: at exactly 1.0 the
+        //    landed span would be one past the last, and the curve would evaluate to nothing.
+        const double Reached = Parameter >= 1.0
+                             ? static_cast<double>(SpanCount) * (1.0 - 1.0e-12)
+                             : (Parameter <= 0.0 ? 0.0 : Parameter * static_cast<double>(SpanCount));
+
+        const std::size_t Landed = static_cast<std::size_t>(Reached);
+        const std::size_t Span   = Landed < SpanCount ? Landed : SpanCount - 1u;
+        const double      Local  = Reached - static_cast<double>(Span);
+
+        const SpatialPoint& Start = ControlPoints[Span];
+        const SpatialPoint& End   = ControlPoints[Span + 1u];
+
+        // 📝 The neighbours on either side, mirrored at the ends so a chord always exists.
+        const SpatialPoint& Before = Span == 0u ? Start : ControlPoints[Span - 1u];
+        const SpatialPoint& After  = Span + 2u < ControlPoints.size() ? ControlPoints[Span + 2u] : End;
+
+        constexpr double Sixth = 1.0 / 6.0;
+        const SpatialDirection Leaving  = Scaled(Difference(Before, End), Sixth);
+        const SpatialDirection Arriving = Scaled(Difference(Start, After), Sixth);
+
+        return EvaluateCubicSpan(Start,
+                                 Added(Start, Leaving),
+                                 Added(End, Negated(Arriving)),
+                                 End,
+                                 Local);
     }
 
     std::vector<double> BuildClampedKnots(std::uint32_t Degree,
