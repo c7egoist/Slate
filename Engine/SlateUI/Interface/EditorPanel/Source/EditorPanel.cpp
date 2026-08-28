@@ -171,6 +171,7 @@ Deliver<bool> EditorPanel::Record(const PlaneExtent& Extent,
     DeferredDivider     = {};
     DeferredRecord       = PanelStructure::RecordLimit;
     DeferredRole         = ControlRole::RoleCount;
+    DisclosedExtent      = {};
     LeafTally            = 0u;
 
     Surface->Ground(Extent, Appearance->EditorPanel.WindowGround);
@@ -748,6 +749,21 @@ void EditorPanel::RecordVacant(std::uint32_t RecordIndex,
 //                                                     DEFERRED MENUS
 //------------------------------------------------------------------------------------------------------------------------
 
+// 🔴 EVERY MENU PLATE IS DRAWN THROUGH HERE. The GPU overlay pass records after the interface and
+//    scissors to the whole viewport leaf, so a menu that does not report its box is textured over by the
+//    grid and reads as transparent. Recording the box in the same call that fills it means a menu added
+//    later cannot silently forget to, which is how the previous attempt at this fix was left inert.
+void EditorPanel::RecordMenuPlate(const PlaneExtent& Menu, float Radius)
+{
+    const EditorPanelMetric& Measure = Appearance->EditorPanelMeasure;
+    const EditorPanelColour& Colour  = Appearance->EditorPanel;
+
+    Surface->Ground(Menu, Colour.ChromeGround, Radius, CornerAll);
+    Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, Radius, CornerAll);
+
+    DisclosedExtent = Menu;
+}
+
 void EditorPanel::RecordDeferred(PanelStructure& Partition, EditorPanelConfiguration& Configuration)
 {
     if (DeferredRecord >= PanelStructure::RecordLimit)
@@ -811,8 +827,7 @@ void EditorPanel::RecordSubjectMenu(std::uint32_t RecordIndex,
                                       Anchor.MaximumY + Measure.MenuLift,
                                       MenuX,
                                       Measure.MenuPadY * 2.0f + Measure.MenuRowHeight * 6.0f);
-    Surface->Ground(Menu, Colour.ChromeGround, Measure.MenuRadius, CornerAll);
-    Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, Measure.MenuRadius, CornerAll);
+    RecordMenuPlate(Menu, Measure.MenuRadius);
 
     // 📐 Ordered as the workspace reads: the two viewers, the scene tree, then
     //    the texture stack.
@@ -865,8 +880,7 @@ void EditorPanel::RecordDivisionMenu(std::uint32_t RecordIndex,
                                       Anchor.MaximumY + Measure.MenuLift,
                                       MenuX,
                                       Measure.MenuPadY * 2.0f + Measure.MenuRowHeight * 4.0f + 1.0f);
-    Surface->Ground(Menu, Colour.ChromeGround, Measure.MenuRadius, CornerAll);
-    Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, Measure.MenuRadius, CornerAll);
+    RecordMenuPlate(Menu, Measure.MenuRadius);
 
     const char* Captions[4] = { "Split Left", "Split Right", "Split Top", "Split Bottom" };
     const ControlRole Roles[4] = { ControlRole::DivideLeft, ControlRole::DivideRight,
@@ -920,8 +934,7 @@ void EditorPanel::RecordLatticeMenu(std::uint32_t RecordIndex,
         CloseDisclosure();
         return;
     }
-    Surface->Ground(Menu, Colour.ChromeGround, 12.0f, CornerAll);
-    Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, 12.0f, CornerAll);
+    RecordMenuPlate(Menu, 12.0f);
     Surface->TextRun(Menu.MinimumX + 20.0f, Menu.MinimumY + 18.0f,
                      Colour.ColourPrimary, "Grid settings", Measure.TextBody, 0.0f, false);
     Surface->Ground(Spanning(Menu.MinimumX + 20.0f, Menu.MinimumY + 44.0f,
@@ -1077,8 +1090,7 @@ void EditorPanel::RecordFooterMenu(std::uint32_t RecordIndex,
     {
         const PlaneExtent Menu = FitExtent(Anchor.MinimumX, 240.0f, Anchor.MinimumY - 116.0f, 104.0f);
         if (Dismissed(Menu)) return;
-        Surface->Ground(Menu, Colour.ChromeGround, 12.0f, CornerAll);
-        Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, 12.0f, CornerAll);
+        RecordMenuPlate(Menu, 12.0f);
         Surface->TextRun(Menu.MinimumX + 12.0f, Menu.MinimumY + 14.0f,
                          Colour.ColourSecondary, "Saved Cameras", Measure.TextSmall, 0.0f, false);
         Surface->TextRun(Menu.MaximumX - 12.0f, Menu.MinimumY + 14.0f,
@@ -1097,8 +1109,7 @@ void EditorPanel::RecordFooterMenu(std::uint32_t RecordIndex,
                                            Anchor.MinimumY - 132.0f,
                                            120.0f);
         if (Dismissed(Menu)) return;
-        Surface->Ground(Menu, Colour.ChromeGround, 12.0f, CornerAll);
-        Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, 12.0f, CornerAll);
+        RecordMenuPlate(Menu, 12.0f);
 
         ToggleDeclaration Declarations[3];
         Declarations[0].Caption = "FPS Monitor";
@@ -1128,8 +1139,7 @@ void EditorPanel::RecordFooterMenu(std::uint32_t RecordIndex,
                                        Measure.MenuPadY * 2.0f +
                                            Measure.MenuRowHeight * static_cast<float>(OptionCount));
     if (Dismissed(Menu)) return;
-    Surface->Ground(Menu, Colour.ChromeGround, Measure.MenuRadius, CornerAll);
-    Surface->Edge(Menu, Colour.Edge, Measure.EdgeWeight, Measure.MenuRadius, CornerAll);
+    RecordMenuPlate(Menu, Measure.MenuRadius);
 
     const char* ShadingOptions[6] = { "solid", "wireframe", "matcap", "normal", "metallic", "gi" };
     const char* GizmoOptions[2] = { "blender", "cad" };

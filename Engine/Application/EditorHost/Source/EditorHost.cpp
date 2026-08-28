@@ -167,12 +167,17 @@ static_assert(sizeof(SessionSequence) > AutomaticLimit,
 
 constexpr float WorkspaceGround[4] = { 0.06f, 0.06f, 0.08f, 1.0f };   // [-]
 
-
-
-
-
-
-
+// 🧩 Records a GPU overlay across a scissor box with one rectangle subtracted from it.
+// in    Overlay   [-]  the pass to record into
+// in    Leaf      [px] the leaf's WHOLE box -- the camera's canvas, never the clipped one
+// in    X0,Y0,X1,Y1  [px] the scissor the drawers left uncovered
+// in    Withheld  [px] a box to keep clear; a zero-area extent records the scissor unchanged
+// note  🔴 A scissor is ONE rectangle, so "everything except this box" is recorded as up to four
+//        bands around it -- above, below, left and right. The bands are disjoint, so no fragment is
+//        shaded twice and the overlay's straight-alpha blend stays exactly as it was.
+// note  ⚠️ The LEAF box is passed through untouched to every band. Clipping it to the band is what
+//        made the grid squash into the space it had left instead of simply being hidden there.
+// cost  ✔️ At most four recordings, and exactly one whenever no menu stands.
 }   // namespace
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1999,9 +2004,19 @@ int main(int ArgumentCount, char** ArgumentValues)
                             //    leaves logical numbers in a physical field, clipping the wrong region.
                             const PlaneExtent CadRect =
                                 ViewportLeafScale.ToPhysical(ViewportLeafRects[ViewportIndex]);
-                            CadPass.Record(Pass.Recording, ViewportCadProjections[ViewportIndex],
-                                           CadRect.MinimumX, CadRect.MinimumY,
-                                           CadRect.MaximumX, CadRect.MaximumY);
+
+                            // 🔴 The open menu is withheld here too, and converted to PHYSICAL first.
+                            const PlaneExtent CadWithheld =
+                                WorkspacePanels.AnyPopupStanding()
+                                    ? ViewportLeafScale.ToPhysical(WorkspacePanels.PopupExtent())
+                                    : PlaneExtent{};
+
+                            CadPass.RecordAround(Pass.Recording,
+                                                 ViewportCadProjections[ViewportIndex],
+                                                 CadRect.MinimumX, CadRect.MinimumY,
+                                                 CadRect.MaximumX, CadRect.MaximumY,
+                                                 CadWithheld.MinimumX, CadWithheld.MinimumY,
+                                                 CadWithheld.MaximumX, CadWithheld.MaximumY);
                         }
                     }
                 }
@@ -2050,11 +2065,23 @@ int main(int ArgumentCount, char** ArgumentValues)
                     if (ScissorY1 <= ScissorY0)
                         continue;
 
-                    Overlay.Record(Pass.Recording, Pass.Width, Pass.Height,
-                                   LeafRect.MinimumX, LeafRect.MinimumY,
-                                   LeafRect.MaximumX, LeafRect.MaximumY,
-                                   LeafRect.MinimumX, ScissorY0,
-                                   LeafRect.MaximumX, ScissorY1);
+                    // 🔴 AND AN OPEN MENU HIDES THE BOX IT COVERS, for exactly the reason the drawers
+                    //    above do. This pass records AFTER the interface, so the grid and the axes drew
+                    //    straight through any dropdown opened from the viewport footer -- which reads as
+                    //    "the dropdowns are transparent", because what shows through them is the viewport
+                    //    behind. Every plate was already opaque; nothing was ever drawn see-through.
+                    //    The menu is subtracted from the scissor rather than the overlay being dropped,
+                    //    because blanking a whole viewport's grid to protect one small menu is the same
+                    //    trade that made the drawers erase the sketch.
+                    const PlaneExtent Withheld = WorkspacePanels.AnyPopupStanding()
+                                                 ? WorkspacePanels.PopupExtent() : PlaneExtent{};
+
+                    Overlay.RecordAround(Pass.Recording, Pass.Width, Pass.Height,
+                                         LeafRect.MinimumX, LeafRect.MinimumY,
+                                         LeafRect.MaximumX, LeafRect.MaximumY,
+                                         LeafRect.MinimumX, ScissorY0, LeafRect.MaximumX, ScissorY1,
+                                         Withheld.MinimumX, Withheld.MinimumY,
+                                         Withheld.MaximumX, Withheld.MaximumY);
                 }
             }
         }

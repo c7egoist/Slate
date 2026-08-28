@@ -89,11 +89,39 @@ candidates, in the order they will be tested:
 **Fix.** Determined by the probe. The claim to prove is behavioural: *a wheel notch in a parallel
 view changes the on-screen distance between two fixed world points.*
 
-### 4. Bottom-toolbar dropdowns are transparent — READ
+### 4. Bottom-toolbar dropdowns are transparent — **DONE**
 
-There is a `SlateUI/Interface/Dropdown` unit but it has no `Source/`, so the bottom bar's
-dropdown plate is drawn elsewhere. Locate the actual draw call, and give the plate an opaque
-fill in the same theme token the other popovers use.
+**They were never transparent.** Every menu plate already filled itself with `ChromeGround`, an
+opaque token, and had done all along. What actually happened is that **both GPU passes record
+AFTER the interface** and **scissor to the whole viewport leaf**, so the grid, the axes and the
+sketch drew straight over any menu opened from the footer. What showed through was the viewport
+behind it — which is exactly what a transparent menu looks like.
+
+`EditorPanel::AnyPopupStanding()` already existed, with a comment describing this defect
+precisely, and **the host never called it** — the fourth "declared, tested, never called" in this
+tree. Worse, `SceneDirectoryProof` drives it and cites *"see the host's `OverlayWithheld`"*, a
+function that does not exist: the proof was simulating a fix nobody had written.
+
+The obvious cure is the wrong one. Suppressing the overlay whenever a menu stands is what that
+predicate invites, and it is the same trade that once made an open drawer erase the whole sketch —
+a menu covers a few hundred pixels, and blanking a viewport's grid to protect them swaps one
+visible defect for a worse one. So the menu's box is **subtracted** from the scissor instead.
+
+A scissor is one rectangle, so the remainder is recorded as **up to four disjoint bands**. The
+arithmetic is `ExtentBandsAround` in `Foundation/ExtentBands.h` — Foundation because the callers
+are in `SlateVulkan`, which requires `SlateMath` alone; stating the boxes as `PlaneExtent` would
+have inverted that dependency, and `VerifyPartition` caught the attempt. Each pass gained a
+`RecordAround` that delegates to it, so the host holds no new logic and `VerifyHostPartition`
+still reports zero definitions.
+
+Also fixed along the way: every menu plate is now drawn through one `RecordMenuPlate`, so a menu
+added later cannot forget to report its box — which is how the previous attempt was left inert.
+
+**Proven:** `OverlayExclusionProof`, 69 claims. Coverage is measured by rasterising the bands and
+counting each pixel's writes, so a decomposition that merely looks plausible cannot pass —
+overlaps, gaps and trespass are all counted separately. Sabotaged four ways: overlapping bands
+(20 failures), the withheld box ignored (25), the overhang clamp dropped (1), the sole
+degeneracy guard removed (14).
 
 ---
 

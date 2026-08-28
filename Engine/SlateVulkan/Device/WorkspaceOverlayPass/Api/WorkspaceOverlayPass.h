@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "Foundation/ExtentBands.h"
 #include "Foundation/DeliveryGuarantee.h"
 #include "Shared/OverlayGeometry.slang.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
@@ -104,6 +105,23 @@ public:
     void Record(VkCommandBuffer Command, std::uint32_t Width, std::uint32_t Height,
                 float LeafX0, float LeafY0, float LeafX1, float LeafY1,
                 float ScissorX0, float ScissorY0, float ScissorX1, float ScissorY1);
+
+    /// 🧩 Records the same pass across the scissor, keeping clear of one withheld box.
+    /// in    WithheldX0  [px] a box to keep clear; a zero-area box records the scissor unchanged
+    /// note  🔴 THIS PASS RECORDS AFTER THE INTERFACE, so the grid and the axes drew straight over any
+    ///        menu opened from the viewport footer -- which reads as a TRANSPARENT dropdown, because what
+    ///        shows through it is the viewport behind. Every menu plate was opaque the whole time.
+    /// note  🔴 A scissor is ONE rectangle, so the remainder is recorded as up to four disjoint bands
+    ///        around the withheld box. Suppressing the pass outright while a menu stands is the same trade
+    ///        that once made an open drawer erase the whole sketch.
+    /// note  ⚠️ The CAMERA rectangle is passed through to every band untouched; only the scissor is cut.
+    /// note  At most four recordings, and exactly one whenever nothing is withheld.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    void RecordAround(VkCommandBuffer Command, std::uint32_t Width, std::uint32_t Height,
+                      float CameraX0, float CameraY0, float CameraX1, float CameraY1,
+                      float ScissorX0, float ScissorY0, float ScissorX1, float ScissorY1,
+                      float WithheldX0, float WithheldY0, float WithheldX1, float WithheldY1);
 
     /// 🧩 Whether the pass stands — what the host tests before it records the GPU overlay, and what
     ///    decides whether the interface-drawn fallback (same geometry, drawn through the recording

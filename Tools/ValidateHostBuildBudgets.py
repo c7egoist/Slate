@@ -142,7 +142,7 @@ def main() -> int:
     # 🔴 SKETCH GEOMETRY RASTERISES ON THE GPU. Drawing it through the interface's draw lists makes
     #    ImGui tessellate every segment on the CPU each frame -- the viewport slows as shapes
     #    accumulate, and each fill triangle shows its own anti-aliased edges as a wireframe.
-    require("CadPass.Upload(" in editor and "CadPass.Record(" in editor,
+    require("CadPass.Upload(" in editor and "CadPass.RecordAround(" in editor,
             "the sketch must be uploaded to and recorded by the GPU CAD pass")
     require("if (!CadPass.Standing())" in editor,
             "the CPU fallback must run only when the GPU CAD pass is absent")
@@ -167,7 +167,10 @@ def main() -> int:
     #    space. One value served both roles, which is why hiding the covered strip squashed the grid
     #    and un-squashing it un-hid the strip: the two symptoms traded back and forth for several
     #    attempts because they were the same number. The record call must pass the WHOLE leaf first.
-    OverlayRecord = editor[editor.index("Overlay.Record("):]
+    #    The two roles are now separated by `RecordOverlayAround`, which takes the leaf ONCE and passes it
+    #    through to every band unchanged: the call site states the leaf and the scissor separately, and the
+    #    helper is the only thing that reaches `Overlay.Record`.
+    OverlayRecord = editor[editor.index("Overlay.RecordAround("):]
     OverlayRecord = OverlayRecord[:OverlayRecord.index(";")]
     require("LeafRect.MinimumY," in OverlayRecord and "ScissorY0," in OverlayRecord,
             "the overlay must receive the whole leaf as its camera rect and the visible band as its scissor")
@@ -329,6 +332,17 @@ def main() -> int:
     #    nothing at all, in every one of the seven orientations.
     require("SketchView.OrthoScale = std::clamp(" in editor,
             "the host must drive OrthoScale from the wheel, or a parallel view cannot zoom")
+
+    # 🔴 AND THE OVERLAY MUST BE KEPT OFF AN OPEN MENU. Both GPU passes record AFTER the interface and
+    #    scissor to the whole viewport leaf, so the grid, the axes and the sketch drew straight over any
+    #    dropdown opened from the footer -- which reads as a transparent dropdown, because what shows
+    #    through is the viewport behind it. `AnyPopupStanding` existed for this, with a comment naming the
+    #    defect, and nothing ever called it: a negative gate cannot tell a wired predicate from a dead one,
+    #    so this one names both passes.
+    require("AnyPopupStanding()" in editor and "PopupExtent()" in editor,
+            "the host must ask the panel whether a menu stands and where, or the overlay draws over it")
+    require("Overlay.RecordAround(" in editor and "CadPass.RecordAround(" in editor,
+            "BOTH GPU passes must record around the open menu -- the grid and the sketch alike")
 
     # 📝 These five claims outlived the file they were written against. The orientation widget now lives in
     #    `SlateWorkspace/Discipline/OrientationCube` and the codex activation in

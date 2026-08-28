@@ -511,4 +511,21 @@ void WorkspaceCadPass::Reclaim()
     PacketMarkerCount = 0u;
 }
 
+
+void WorkspaceCadPass::RecordAround(VkCommandBuffer Command, const WorkspaceCadProjection& Projection,
+                                    float ClipX0, float ClipY0, float ClipX1, float ClipY1,
+                                    float WithheldX0, float WithheldY0, float WithheldX1, float WithheldY1)
+{
+    ExtentBand Bands[4] = {};
+    const std::uint32_t Count = ExtentBandsAround(ClipX0, ClipY0, ClipX1, ClipY1,
+                                                  WithheldX0, WithheldY0, WithheldX1, WithheldY1, Bands);
+
+    for (std::uint32_t Index = 0u; Index < Count; ++Index)
+    {
+        Record(Command, Projection,
+               Bands[Index].MinimumX, Bands[Index].MinimumY,
+               Bands[Index].MaximumX, Bands[Index].MaximumY);
+    }
+}
+
 } // namespace Slate

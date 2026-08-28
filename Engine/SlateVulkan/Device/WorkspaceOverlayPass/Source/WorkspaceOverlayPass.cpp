@@ -684,4 +684,25 @@ void WorkspaceOverlayPass::Reclaim()
     OverlayTriangleCount = 0u;
 }
 
+
+void WorkspaceOverlayPass::RecordAround(VkCommandBuffer Command, std::uint32_t Width, std::uint32_t Height,
+                                        float CameraX0, float CameraY0, float CameraX1, float CameraY1,
+                                        float ScissorX0, float ScissorY0, float ScissorX1, float ScissorY1,
+                                        float WithheldX0, float WithheldY0, float WithheldX1, float WithheldY1)
+{
+    ExtentBand Bands[4] = {};
+    const std::uint32_t Count = ExtentBandsAround(ScissorX0, ScissorY0, ScissorX1, ScissorY1,
+                                                  WithheldX0, WithheldY0, WithheldX1, WithheldY1, Bands);
+
+    for (std::uint32_t Index = 0u; Index < Count; ++Index)
+    {
+        // ⚠️ The CAMERA rectangle is passed through untouched. Clipping it to the band is what made the
+        //    grid squash into the space it had left instead of simply being hidden there.
+        Record(Command, Width, Height,
+               CameraX0, CameraY0, CameraX1, CameraY1,
+               Bands[Index].MinimumX, Bands[Index].MinimumY,
+               Bands[Index].MaximumX, Bands[Index].MaximumY);
+    }
+}
+
 } // namespace Slate

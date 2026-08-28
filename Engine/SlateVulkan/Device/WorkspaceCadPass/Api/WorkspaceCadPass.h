@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Foundation/ExtentBands.h"
 #include "Foundation/DeliveryGuarantee.h"
 #include "Shared/WorkspaceCadPacket.slang.h"
 #include "SlateVulkan/Device/DiagnosticExtension/Api/DiagnosticExtension.h"
@@ -39,6 +40,19 @@ public:
     void Upload(const WorkspaceCadPacket& Packet);
     void Record(VkCommandBuffer Command, const WorkspaceCadProjection& Projection,
                 float ClipX0, float ClipY0, float ClipX1, float ClipY1);
+
+    /// 🧩 Records the sketch across the clip, keeping clear of one withheld box.
+    /// note  🔴 Same defect and same cure as the overlay pass: this one records after the interface too,
+    ///        so the sketch drew through an open menu as well. The clip IS the box here -- there is no
+    ///        separate camera rectangle -- so the bands are passed straight through.
+    /// note  ⚠️ Every ordinate here is PHYSICAL. Mixing logical and physical silently clips the wrong area
+    ///        on any display whose scale is not one.
+    /// note  At most four recordings, and exactly one whenever nothing is withheld.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    void RecordAround(VkCommandBuffer Command, const WorkspaceCadProjection& Projection,
+                      float ClipX0, float ClipY0, float ClipX1, float ClipY1,
+                      float WithheldX0, float WithheldY0, float WithheldX1, float WithheldY1);
 
     bool Standing() const
     {

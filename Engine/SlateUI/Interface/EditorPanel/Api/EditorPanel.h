@@ -174,6 +174,20 @@ public:
         return DisclosedPresentation != AbsentPresentation;
     }
 
+    /// 🧩 The box the standing popup last recorded, in display ordinates.
+    /// out   Result  [px] a zero-area extent when no popup stands, or none has been recorded yet
+    /// note  🔴 THE GRID DREW THROUGH THE OPEN MENUS. The GPU overlay pass records AFTER the interface
+    ///        and its scissor is the WHOLE viewport leaf, so the grid, the axes and the sketch all textured
+    ///        straight over any menu opened from the footer -- which reads as a transparent dropdown,
+    ///        because what shows through is exactly the viewport behind it. The colours were opaque the
+    ///        whole time. The host subtracts this box from the overlay scissor instead of suppressing the
+    ///        overlay outright: a menu is small and blanking a whole viewport's grid to protect it trades
+    ///        one defect for a worse one.
+    /// note  ⚠️ Valid only after the `RecordDeferredPopups` that drew it, and until the next `Record`.
+    /// cost  ✔️
+    /// tag   api, nonallocating, nonthrowing
+    const PlaneExtent& PopupExtent() const { return DisclosedExtent; }
+
 private:
 
     static constexpr std::uint32_t AbsentPresentation = 0xFFFFFFFFu;
@@ -255,6 +269,7 @@ private:
                           const PlaneExtent& Anchor,
                           ControlRole Role,
                           EditorPanelConfiguration& Configuration);
+    void RecordMenuPlate(const PlaneExtent& Menu, float Radius);
     void Symbol(const PlaneExtent& Extent, ThemeToken Colour);
 
     MotionIntegrator* Motion = nullptr;
@@ -277,6 +292,7 @@ private:
     std::uint32_t CurrentPresentation = 0u;
     std::uint32_t CapturedPresentation = AbsentPresentation;
     std::uint32_t DisclosedPresentation = AbsentPresentation;
+    PlaneExtent   DisclosedExtent       = {};   // [px] - the standing popup's box, for the overlay scissor
     std::uint32_t DraggedDivision = PanelStructure::RecordLimit;
     PlaneExtent DraggedExtent = {};
 
