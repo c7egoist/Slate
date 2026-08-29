@@ -384,6 +384,44 @@ SketchPick ResolveSketchPickForElement(const SketchStructure& Sketch,
             return {};
         }
 
+        // 🔴 THE WHOLE SHAPE, NOT THE PART UNDER THE POINTER. `Face` answers "which region did I hit";
+        //    `Object` answers "which shape does that belong to". They reach the same curve and differ
+        //    only in what is reported, so this shares Face's search and then widens the answer to the
+        //    record's own pivot — selecting a profile by clicking any part of it, which is what an
+        //    artist means by clicking a shape.
+        case SelectionElement::Object:
+        {
+            SketchCurveName Curve = {};
+            if (ResolveNearestSketchCurve(Sketch, Probe, MaximumDistance, Curve, Distance))
+            {
+                SketchPick Pick = {};
+                Pick.Subject = SketchPickSubject::Record;
+                Pick.Record  = ResolveRecordForCurve(Sketch, Records, Curve);
+
+                // 📝 The CURVE IS DELIBERATELY NOT CARRIED. A record pick that names one of its curves
+                //    reads downstream as "this curve of this shape", and the transform session would
+                //    move that curve alone — which is precisely the difference between Object and Face.
+                //    `ResolvePickForRecord` states the record's own pivot, which is the whole shape's,
+                //    and it is the function the outliner already selects a record through.
+                if (Pick.Record.Assigned())
+                {
+                    SketchPick WholeShape = {};
+                    if (ResolvePickForRecord(Sketch, Records, Pick.Record, WholeShape))
+                        return WholeShape;
+
+                    ResolveCurvePivot(Sketch, Curve, Pick.Position);
+                    return Pick;
+                }
+            }
+            return {};
+        }
+
+        // 🔴 WHATEVER IS NEAREST, WHICHEVER KIND. This is the unrestricted search, reached only when the
+        //    artist asks for it by name. `ResolveSketchPick` already resolves smallest-target-first —
+        //    point, then control, then curve — so Free is that function and not a second copy of it.
+        case SelectionElement::Free:
+            return ResolveSketchPick(Sketch, Records, Probe, MaximumDistance);
+
         case SelectionElement::ElementCount:
             break;
     }

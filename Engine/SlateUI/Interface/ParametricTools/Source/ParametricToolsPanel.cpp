@@ -246,6 +246,17 @@ const ToolEntry SketchModifyTools[] =
       false, true, false, false, false, false, false, false, false, false, false, false, false, false,
       1u, 0u, 0u, 0u, 0u, 0u, 0u,
       { { "Distance", "5 mm" }, { "Corners", "Arc" }, { "Both Sides", "Off" } }, 3u },
+
+    // 🔴 CUT WAS NAMED IN THE CATALOGUE'S ENUMERATION AND HAD NO TILE. `ParametricToolSubject::Cut`
+    //    exists, `CutCurve` and `CutProfile` implement it, and the popup arm already applies it without
+    //    asking a parameter — but the artist had no way to reach any of that, because no band listed it.
+    //    It belongs beside Trim: both divide existing geometry, and an artist looking for one looks here.
+    // 📝 A VERTEX, not an edge: Cut splits a curve AT a picked point, so what it needs selected is the
+    //    point. Declaring `Edge` here would hide it in exactly the situation it is meant for.
+    { "Cut", "", SymbolSubject::CrosshairCentre, ParametricToolDimension::Vertex,
+      false, true, false, false, false, false, false, false, false, false, false, false, false, false,
+      1u, 0u, 0u, 0u, 0u, 0u, 0u,
+      { { "At", "Selected point" } }, 1u },
 };
 
 const ToolEntry SweepTools[] =
@@ -627,7 +638,8 @@ ParametricToolSubject ToolSubjectOf(std::uint32_t BandIndex, std::uint32_t ToolI
                  : ToolIndex == 1u ? ParametricToolSubject::Chamfer
                  : ToolIndex == 2u ? ParametricToolSubject::Trim
                  : ToolIndex == 3u ? ParametricToolSubject::Extend
-                                   : ParametricToolSubject::Offset;
+                 : ToolIndex == 4u ? ParametricToolSubject::Offset
+                                   : ParametricToolSubject::Cut;
         case 3u:
             return ToolIndex == 0u ? ParametricToolSubject::Extrude
                  : ToolIndex == 1u ? ParametricToolSubject::Revolve

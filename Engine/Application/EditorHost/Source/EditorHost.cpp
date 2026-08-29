@@ -1208,12 +1208,19 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
                                     //    together: the element mode and reach that govern picking, then
                                     //    whether the gizmo is shown for what was picked.
                                     {
-                                        static const char* const ElementCaptions[3] =
-                                            { "Vertex", "Edge", "Face" };
-                                        static const SymbolSubject ElementGlyphs[3] =
+                                        // 🔴 FIVE MODES, AND THE ORDER IS THE GRAIN THEY WORK AT:
+                                        //    a vertex, the edge between two, the face those bound, the
+                                        //    whole object, then Free — which admits any of them. Reading
+                                        //    left to right is reading from finest to coarsest, so the
+                                        //    artist does not have to learn the order.
+                                        static const char* const ElementCaptions[5] =
+                                            { "Vertex", "Edge", "Face", "Object", "Free" };
+                                        static const SymbolSubject ElementGlyphs[5] =
                                             { SymbolSubject::VertexPoint,
                                               SymbolSubject::EdgeSegment,
-                                              SymbolSubject::FacePlanar };
+                                              SymbolSubject::FacePlanar,
+                                              SymbolSubject::CubeSolid,
+                                              SymbolSubject::CrosshairCentre };
 
                                         // 📝 The mode is held as an ordinal for the widget and read back
                                         //    into the enum, so the two can never disagree about which
@@ -1227,7 +1234,7 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
                                         SelectRows[0].Selected      = &ElementSelected;
                                         SelectRows[0].Options     = ElementCaptions;
                                         SelectRows[0].Glyphs      = ElementGlyphs;
-                                        SelectRows[0].OptionCount = 3u;
+                                        SelectRows[0].OptionCount = 5u;
 
                                         SelectRows[1].Kind    = OptionControl::Slider;
                                         SelectRows[1].Caption = "Tolerance";
@@ -1681,6 +1688,45 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
 
                             case PanelSubject::ParametricTools:
                             {
+                                // 🔴 THE CATALOGUE IS TOLD WHAT IS ACTUALLY SELECTED. Every tool in the
+                                //    "Sketch Modify" band — Fillet, Chamfer, Trim, Extend, Offset —
+                                //    declares `MinimumDimension = Edge`, and `DimensionAccepted` HIDES a
+                                //    tool whose minimum the active dimension does not reach. Nothing ever
+                                //    set `ActiveDimension` from the real sketch: it stayed at `Nothing`
+                                //    for the whole session, so those five tiles could never appear and
+                                //    the artist reported the operations as missing. They were not
+                                //    missing; they were permanently filtered out.
+                                //
+                                //    Worse, it deadlocked: the operations needed a selection to appear,
+                                //    and appear they must before an artist can tell the catalogue what
+                                //    they mean to operate ON. The standing pick answers it directly.
+                                //
+                                // 📝 The dimension is the GRAIN of what is held, so it reads from the
+                                //    pick's own subject rather than from the mode the widget is showing —
+                                //    what is selected, not what could be.
+                                {
+                                    const SketchPick& Held = SketchSemanticSelection;
+
+                                    ParametricToolsApplied.ActiveDimension =
+                                        !Held.Standing()                                  ? ParametricToolDimension::Nothing
+                                      : Held.Subject == SketchPickSubject::Point          ? ParametricToolDimension::Vertex
+                                      : Held.Subject == SketchPickSubject::Control        ? ParametricToolDimension::Vertex
+                                      : Held.Subject == SketchPickSubject::Curve          ? ParametricToolDimension::Edge
+                                      : Held.Subject == SketchPickSubject::Record         ? ParametricToolDimension::Wire
+                                                                                          : ParametricToolDimension::Nothing;
+
+                                    ParametricToolsApplied.SelectedCount = Held.Standing() ? 1u : 0u;
+
+                                    // 🔴 A WORKPLANE IS ALWAYS STANDING once the sketch has one, and the
+                                    //    sketch is planed every frame above. Left false, the whole sketch
+                                    //    half of the catalogue gates itself off.
+                                    ParametricToolsApplied.WorkplaneActivation = Sketch.Declared();
+
+                                    // 📝 What the sketch actually holds, so the raising tools gate on
+                                    //    geometry rather than on a preset button nobody pressed.
+                                    ParametricToolsApplied.ProfileCount = SketchRecords.DeclaredCount();
+                                }
+
                                 const ParametricToolSubject Before = ParametricToolsApplied.ActiveSubject;
                                 ParametricTools.Record(LeafBody, ParametricToolsApplied);
 

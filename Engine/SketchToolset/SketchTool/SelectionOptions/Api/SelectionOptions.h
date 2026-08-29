@@ -17,20 +17,30 @@ namespace Slate
 {
 
 /// 🧩 Which kind of element a pick is allowed to return.
-/// note  🔴 The three are what a sketch actually HAS, named the way an artist names them, and each maps
-///        onto a `SketchPickSubject` the picker already resolves:
+/// note  🔴 Five modes, each mapping onto what a sketch actually HAS and named the way an artist names it:
 ///          Vertex → an endpoint or a Bezier control handle (Point, Control)
 ///          Edge   → a curve between them (Curve)
 ///          Face   → a closed region the curves bound (Record)
-///        A fourth mode that admits everything is deliberately ABSENT. "Pick whatever is nearest" is the
-///        behaviour the artist reported as the defect, so it is not offered as a setting.
+///          Object → the whole shape or profile, however it was reached
+///          Free   → whatever is nearest, whichever kind it turns out to be
+/// note  🔴 `Free` WAS DELIBERATELY ABSENT AND IS NOW DELIBERATELY PRESENT. It was withheld because
+///        "pick whatever is nearest" was the original defect — reaching for an edge and getting a vertex
+///        because the vertex happened to be closer. That is only a defect when it is the ONLY behaviour.
+///        As one mode among five, chosen deliberately, it is the fast path an artist wants when the
+///        sketch is sparse and there is nothing to disambiguate. The defect was the absence of a choice,
+///        not the existence of this behaviour.
+/// note  📝 `Object` and `Face` differ in what they RETURN, not in what they hit. Face reports the region
+///        under the pointer; Object reports the whole record that region belongs to, which is what the
+///        artist means by "select the shape". They resolve alike when a record holds one profile.
 enum class SelectionElement : std::uint32_t
 {
     Vertex = 0u,
     Edge   = 1u,
     Face   = 2u,
+    Object = 3u,
+    Free   = 4u,
 
-    ElementCount = 3u
+    ElementCount = 5u
 };
 
 /// 🧩 Static text naming one element mode, for the widget's segmented control.
@@ -42,6 +52,8 @@ constexpr const char* SelectionElementText(SelectionElement Declared)
         case SelectionElement::Vertex: return "Vertex";
         case SelectionElement::Edge:   return "Edge";
         case SelectionElement::Face:   return "Face";
+        case SelectionElement::Object: return "Object";
+        case SelectionElement::Free:   return "Free";
         case SelectionElement::ElementCount: break;
     }
     return "";
@@ -67,8 +79,13 @@ struct SelectionOptions
     //    would imply the picker consults the snap catalogue, which it must not.
 
     /// 🧩 Whether a pick of this kind is admissible under the standing mode.
+    /// note  📝 `Free` admits every kind, which is what makes it Free. Every other mode admits its own
+    ///        kind and nothing else — the exactness the artist asked for.
     /// cost  ✔️
-    constexpr bool Admits(SelectionElement Candidate) const { return Candidate == Element; }
+    constexpr bool Admits(SelectionElement Candidate) const
+    {
+        return Element == SelectionElement::Free || Candidate == Element;
+    }
 
     /// 🧩 The tolerance, held inside its declared range whatever the caller stored.
     /// cost  ✔️
