@@ -11,3 +11,6 @@ __pycache__/
 *.py[cod]
 # ImGui writes this beside whatever ran last; it is not part of the port.
 imgui.ini
+
+# Proof gates build to a scratch directory; any object or binary beside a proof source is stale.
+Tools/*Proof/*.o

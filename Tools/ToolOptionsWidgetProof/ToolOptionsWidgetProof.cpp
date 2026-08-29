@@ -16,12 +16,26 @@
 
 #include <cmath>
 #include <cstdio>
+#include <string>
+#include <sstream>
+#include <fstream>
 
 namespace
 {
 
 std::uint32_t Claims = 0u;
 std::uint32_t Failures = 0u;
+
+std::string ReadWhole(const char* Path)
+{
+    std::ifstream Stream(Path);
+    if (!Stream)
+        return std::string();
+
+    std::ostringstream Gathered;
+    Gathered << Stream.rdbuf();
+    return Gathered.str();
+}
 
 void Require(bool Held, const char* Naming)
 {
@@ -267,6 +281,81 @@ int main()
 
         Require(Empty.RowCount == 0u && Empty.Rows == nullptr,
                 "a parameterless operation declares no rows, and the host applies it directly");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────────────
+    //  🔴 A CLICK MUST ACTUALLY PRESS. THE WHOLE WIDGET WAS DEAD AND EVERY GATE WAS GREEN.
+    //
+    //  `Pressed` asked `Interaction->Holding(Target)` on the tick the contact was RELEASED. By then
+    //  nothing holds anything: `ControlIndex::Advance` runs at the top of the frame, sees `ContactHeld`
+    //  false, and retires the grab into `ReleasedControl` before a single control records. So the test
+    //  could never be true, and every button in the widget was inert — the mode segments, the toggles,
+    //  the swatches, Apply and Cancel. Only the slider responded, because a slider acts on the press and
+    //  the drag and never consults the release.
+    //
+    //  📝 The identical function in `ToolOptionsWidget` already read `Released` and worked, which is why
+    //  the collapse and close chevrons responded while nothing inside the panel did. Two copies of one
+    //  function, one correct, and no claim compared them.
+    // ─────────────────────────────────────────────────────────────────────────────────────────────────
+    {
+        MotionIntegrator Motion;
+        ControlIndex     Index;
+        Require(Index.AttachMotion(Motion).Resolved, "the index attaches to an integrator");
+
+        const Deliver<ControlIdentity> Made = Index.Register();
+        Require(Made.Resolved, "a control registers");
+        const ControlIdentity Button = Made.Resolve();
+
+        // ① The press. ImGui reports `ContactPressed` with `ContactHeld` standing.
+        PointerCondition Press = {};
+        Press.PositionX = 50.0f;
+        Press.PositionY = 50.0f;
+        Press.ContactPressed = true;
+        Press.ContactHeld    = true;
+        Index.Advance(Press, 16.0);
+        Require(Index.Grab(Button, ControlPart::Body), "the press grabs the control");
+        Require(Index.Holding(Button), "and the grab stands while the contact is held");
+
+        // ② The release. 🔴 THE TICK THE OLD TEST ASKED ABOUT.
+        PointerCondition Release = {};
+        Release.PositionX = 50.0f;
+        Release.PositionY = 50.0f;
+        Release.ContactReleased = true;
+        Release.ContactHeld     = false;
+        Index.Advance(Release, 16.0);
+
+        Require(!Index.Holding(Button),
+                "the grab is ALREADY retired when the contact releases -- so `Holding` cannot gate a press");
+        Require(Index.Released(Button),
+                "and the release is reported through `Released`, which is the signal a button must read");
+        Require(Index.ReleasedControlPart(Button) == ControlPart::Body,
+                "carrying the part that was grabbed");
+    }
+
+    // 🔴 BOTH COPIES OF `Pressed` READ THE RELEASE. Stated against the source because the defect was one
+    //    unit disagreeing with another about the same question, which no single-unit claim can see.
+    {
+        const std::string Controls =
+            ReadWhole("Engine/SlateUI/Interface/OptionControls/Source/OptionControls.cpp");
+        const std::string Popup =
+            ReadWhole("Engine/SlateUI/Interface/ToolContextMenu/Source/ToolContextMenu.cpp");
+        const std::string Widget =
+            ReadWhole("Engine/SlateUI/Interface/ToolOptionsWidget/Source/ToolOptionsWidget.cpp");
+
+        Require(!Controls.empty() && !Popup.empty() && !Widget.empty(),
+                "the three sources carrying a `Pressed` are readable");
+
+        Require(Controls.find("Pointer.ContactReleased && Interaction->Holding") == std::string::npos,
+                "the shared control grammar does not gate a press on a grab that Advance already retired");
+        Require(Popup.find("Pointer.ContactReleased && Interaction.Holding") == std::string::npos,
+                "nor does the popup");
+
+        Require(Controls.find("Interaction->Released(Target)") != std::string::npos,
+                "the shared control grammar reads the release from the index");
+        Require(Popup.find("Interaction.Released(Target)") != std::string::npos,
+                "and so does the popup");
+        Require(Widget.find("Interaction.Released(Target)") != std::string::npos,
+                "and the widget, which was right all along");
     }
 
     std::printf("[ToolOptionsWidgetProof] %u claims, %u failures\n", Claims, Failures);

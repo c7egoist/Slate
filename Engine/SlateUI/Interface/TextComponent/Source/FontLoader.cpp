@@ -140,8 +140,8 @@ Deliver<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile,
         return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "font context is unavailable" });
 
     const char* Family = (Profile.Family[0] != '\0') ? Profile.Family : "Inter";
-    const std::filesystem::path Root = std::filesystem::path(FontRoot) / Family;
-    if (!std::filesystem::exists(Root))
+    const std::filesystem::path FamilyRoot = std::filesystem::path(FontRoot) / Family;
+    if (!std::filesystem::exists(FamilyRoot))
         return Deliver<bool>::Refuse({ RefusalReason::CapabilityAbsent, "selected font family is not installed" });
 
     const float Size = 16.0f * ((DisplayScale > 0.0f) ? DisplayScale : 1.0f);
@@ -165,7 +165,7 @@ Deliver<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile,
         //    falls back to the upright face for an italic request — loading italics would double the
         //    rasterisation work for glyphs nothing draws.
         const FontWeight FaceWeight = static_cast<FontWeight>(Weight);
-        for (const auto& Entry : std::filesystem::directory_iterator(Root))
+        for (const auto& Entry : std::filesystem::directory_iterator(FamilyRoot))
         {
             if (!Entry.is_regular_file() || !Matches(Entry.path().filename().string(), FaceWeight, FontSlant::Upright))
                 continue;
@@ -184,7 +184,7 @@ Deliver<bool> FontLoader::Load(const char* FontRoot, const FontProfile& Profile,
     // Use that file as the regular face rather than falling back to ImGui.
     if (Face(FontWeight::Regular, FontSlant::Upright) == nullptr)
     {
-        for (const auto& Entry : std::filesystem::directory_iterator(Root))
+        for (const auto& Entry : std::filesystem::directory_iterator(FamilyRoot))
         {
             const std::string Name = Lower(Entry.path().filename().string());
             if (!Entry.is_regular_file() || Name.find("italic") != std::string::npos)

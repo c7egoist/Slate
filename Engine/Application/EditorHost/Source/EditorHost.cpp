@@ -1629,10 +1629,13 @@ static const char* const         SketchTrimSides[2]  = { "Start", "End" };
                                     //    disagreement that made shapes look like they floated. The
                                     //    fragment stage reads a scale, so the transit is expressed
                                     //    as the scale that matches the blend at this instant.
-                                    Pose.OrthoScale = ResolveTransitGroundScale(
+                                    // 📝 The resolver reasons in double so the blend does not step;
+                                    //    the fragment stage reads Real32, so narrow once, here, where
+                                    //    it is visible, rather than letting the compiler do it quietly.
+                                    Pose.OrthoScale = static_cast<Real32>(ResolveTransitGroundScale(
                                         Transit, SceneApplied.ViewportSkyCamera.FieldOfViewDegrees,
                                         SketchView.OrthoScale, SketchView.Distance,
-                                        LeafBody.Height());
+                                        LeafBody.Height()));
                                     Pose.LineWeight   = PanelDeclared.LatticeLineWeight;
                                     Pose.DotRadius    = PanelDeclared.LatticeDotRadius;
                                     Pose.Subdivisions = PanelDeclared.Subdivisions > 0u

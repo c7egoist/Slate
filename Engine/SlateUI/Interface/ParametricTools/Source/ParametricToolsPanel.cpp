@@ -545,6 +545,10 @@ bool DimensionAccepted(const ToolEntry& Tool, ParametricToolDimension Active)
 
 bool Gated(const ToolEntry& Tool, const ParametricToolsContext& Applied)
 {
+    // 🔴 The dimension is the FIRST gate, moved here out of `Hidden` so an inapplicable tool is shown
+    //    dimmed rather than removed. See the note on `Hidden`.
+    if (!DimensionAccepted(Tool, Applied.ActiveDimension))
+        return true;
     if (Tool.Closed && !Applied.ClosedProfileCondition)
         return true;
     if (Tool.Planar && !Applied.PlanarProfileCondition)
@@ -588,8 +592,20 @@ bool Gated(const ToolEntry& Tool, const ParametricToolsContext& Applied)
 
 bool Hidden(const ToolEntry& Tool, const ParametricToolsContext& Applied)
 {
-    if (!DimensionAccepted(Tool, Applied.ActiveDimension))
-        return true;
+    // 🔴 THE DIMENSION FILTER GATES, IT DOES NOT HIDE. This returned true when the active dimension did
+    //    not reach a tool's minimum, and `Presented` refuses a hidden tool OUTRIGHT — `ShowGated` bypasses
+    //    `Gated` and cannot bypass this. Every tool in "Sketch Modify" declares `Edge`, so with nothing
+    //    selected all five vanished, `VisibleCount` fell to zero, and the rail skipped the whole band:
+    //    the artist could not see Fillet, Chamfer, Trim, Extend or Offset, or even the band holding them.
+    //
+    //    It deadlocked, too. Reaching Edge means selecting an edge, and an artist reasonably goes to the
+    //    catalogue to find the operation first. A tool one cannot SEE cannot be understood as "not yet
+    //    applicable" — it reads as missing, which is exactly how it was reported.
+    //
+    // 📝 So the dimension now answers `Gated`: the tile is drawn, dimmed, and refuses the press, which is
+    //    what every other unmet condition already does. `Raising` against a solid stays HIDDEN because
+    //    that one is not "not yet" but "never" — a solid has no successor to raise it to, so the tile
+    //    would be dimmed forever with no action that could ever light it.
     if (Tool.Raising && Applied.ActiveDimension == ParametricToolDimension::Solid)
         return true;
     return false;

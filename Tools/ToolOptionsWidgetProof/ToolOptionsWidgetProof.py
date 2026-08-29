@@ -8,6 +8,7 @@ links only against what its claims touch: the arithmetic of the card, its rows a
 
 import pathlib
 import subprocess
+import tempfile
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -19,11 +20,14 @@ OWNED = [
     "Engine/SlateUI/Interface/OptionControls/Source/OptionControls.cpp",
 ]
 
-INCLUDES = ["-I", ".", "-I", "Engine", "-I", "Tools/VulkanParseStub"]
+# 🔴 The repository root is NOT an include root. Adding `-I .` here once let a translation unit
+#    reach a header by a spelling the real build cannot resolve, and the gate stayed green while
+#    Windows failed with C1083. The include set must be no wider than Construct.ps1's.
+INCLUDES = ["-I", "Engine", "-I", "Tools/VulkanParseStub"]
 
 
-def Compile(Source, Strict, Objects):
-    Object = ROOT / "Tools" / "ToolOptionsWidgetProof" / (pathlib.Path(Source).stem + ".o")
+def Compile(Source, Strict, Objects, Scratch):
+    Object = pathlib.Path(Scratch) / (pathlib.Path(Source).stem + ".o")
     Command = ["g++", "-std=c++20", "-c", Source, "-o", str(Object)] + INCLUDES
     Command += ["-Wall", "-Wextra", "-Werror"] if Strict else ["-w"]
     Result = subprocess.run(Command, cwd=ROOT, capture_output=True, text=True)
@@ -35,12 +39,20 @@ def Compile(Source, Strict, Objects):
 
 
 def Main():
+    # 📝 Objects and the linked binary are build output, not source. They are written to a scratch
+    #    directory that is removed on the way out, so a proof run leaves the tree exactly as it
+    #    found it -- an earlier version wrote them beside the source and they were committed.
+    with tempfile.TemporaryDirectory(prefix="ToolOptionsWidgetProof-") as Scratch:
+        return Run(Scratch)
+
+
+def Run(Scratch):
     Objects = []
 
     # 📝 The widget compiles strictly on its own, which is the claim that the unit is warning-clean.
     #    The proof then runs against the parts of it that need no live surface.
     for Source in OWNED:
-        if not Compile(Source, True, Objects):
+        if not Compile(Source, True, Objects, Scratch):
             print("[ToolOptionsWidgetProof] FAILED to compile", Source)
             return 1
 
@@ -48,9 +60,23 @@ def Main():
     #    MotionIntegrator and a ThemeProfile — the whole interface stack — and dragging that into a
     #    gate would test the stack rather than the widget. It is compiled above, so its warnings and
     #    its type errors are caught; what runs below is the arithmetic its behaviour rests on.
-    Binary = ROOT / "Tools" / "ToolOptionsWidgetProof" / "ToolOptionsWidgetProof"
-    Link = ["g++", "-std=c++20", "-o", str(Binary),
-            str(ROOT / "Tools" / "ToolOptionsWidgetProof" / "ToolOptionsWidgetProof.o")]
+    # 🔴 `ControlIndex` and `MotionIntegrator` ARE linked, and deliberately. The press claims exercise the
+    #    real grab-and-release rotation rather than a restatement of it -- the defect they exist to catch
+    #    was `Advance` retiring a grab before the control asking about it ever ran, which a reimplementation
+    #    of the rule inside the proof would have reproduced faithfully and passed.
+    for Source in ["Engine/SlateUI/Interface/ControlIndex/Source/ControlIndex.cpp",
+                   "Engine/SlateUI/Interface/MotionIntegrator/Source/MotionIntegrator.cpp"]:
+        if not Compile(Source, False, Objects, Scratch):
+            print("[ToolOptionsWidgetProof] FAILED to compile", Source)
+            return 1
+
+    # 🔴 Named, not "every object compiled above". The owned units are compiled for their warnings
+    #    and their type errors; linking them too would drag in RecordingSurface and the rest of the
+    #    interface stack, and the gate would then be testing the stack rather than the widget.
+    Binary = pathlib.Path(Scratch) / "ToolOptionsWidgetProof"
+    Linked = [str(pathlib.Path(Scratch) / Name) for Name in
+              ("ToolOptionsWidgetProof.o", "ControlIndex.o", "MotionIntegrator.o")]
+    Link = ["g++", "-std=c++20", "-o", str(Binary)] + Linked
     Result = subprocess.run(Link, cwd=ROOT, capture_output=True, text=True)
     if Result.returncode != 0:
         Reported = [Line for Line in Result.stderr.splitlines() if "undefined ref" in Line]

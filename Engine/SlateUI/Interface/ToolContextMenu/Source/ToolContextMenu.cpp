@@ -114,9 +114,18 @@ bool ToolContextMenu::Pressed(ControlIdentity Target, const PlaneExtent& Extent)
 {
     const bool Hovered = Extent.Encloses(Pointer.PositionX, Pointer.PositionY);
     Interaction.DeclareHovered(Target, Hovered, 130.0);
+
     if (Hovered && Pointer.ContactPressed)
         Interaction.Grab(Target, ControlPart::Body);
-    return Hovered && Pointer.ContactReleased && Interaction.Holding(Target);
+
+    // 🔴 THE RELEASE IS READ FROM THE INDEX, NOT FROM THE POINTER. `Holding(Target)` is false by the time
+    //    the contact is released: `ControlIndex::Advance` runs at the top of the frame, sees `ContactHeld`
+    //    false and retires the grab into `ReleasedControl` before any control records. Apply and Cancel
+    //    therefore never fired. `ToolOptionsWidget::Pressed` — the same function, one unit over — already
+    //    read `Released` and worked, which is why the widget's chevrons responded while nothing inside
+    //    the popup did.
+    return Hovered && Interaction.Released(Target)
+        && Interaction.ReleasedControlPart(Target) == ControlPart::Body;
 }
 
 //------------------------------------------------------------------------------------------------------------------------

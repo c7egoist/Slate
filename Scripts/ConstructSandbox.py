@@ -23,6 +23,23 @@
 #     python3 Scripts/ConstructSandbox.py
 #     python3 Scripts/ConstructSandbox.py --unit SlateUI
 #     python3 Scripts/ConstructSandbox.py --skip-patches
+#
+# 🔴 POPULATE THE SUBMODULES AND POINT AT REAL VULKAN HEADERS, OR THIS RUN IS LYING TO YOU. For a long
+#    while every ExternalPackages/ submodule was an empty directory here and VULKAN_SDK pointed at
+#    Tools/VulkanParseStub, so 35 of 255 translation units were rejected on every run for reasons that
+#    had nothing to do with the change under test. Those 35 covered the whole SlateVulkan device layer
+#    and most of SlateUI -- which is to say a change could break the interface layer outright and this
+#    script would report the same 35 failures it always reported. A standing baseline of expected
+#    failures is not a baseline, it is a blind spot, and it hid real defects until the day it did not.
+#
+#      git submodule update --init --depth 1 --jobs 4
+#      git clone --depth 1 https://github.com/KhronosGroup/Vulkan-Headers.git /tmp/VkH
+#      mkdir -p /tmp/vksdk && cp -r /tmp/VkH/include /tmp/vksdk/Include
+#      export VULKAN_SDK=/tmp/vksdk
+#
+#    With both in place the correct result is 255 of 255 accepted. Anything less is a real failure.
+#    `--skip-patches` is the one documented exception: InterfaceExchange names ImGuiStyle::TabSlant,
+#    which PatchA introduces, so skipping the patches rejects exactly that one unit and no other.
 
 import os
 import re

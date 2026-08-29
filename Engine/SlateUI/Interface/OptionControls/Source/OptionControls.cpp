@@ -31,9 +31,23 @@ bool OptionControlPalette::Pressed(ControlIdentity Target, const PlaneExtent& Ex
 {
     const bool Hovered = Extent.Encloses(Pointer.PositionX, Pointer.PositionY);
     Interaction->DeclareHovered(Target, Hovered, 130.0);
+
     if (Hovered && Pointer.ContactPressed)
         Interaction->Grab(Target, ControlPart::Body);
-    return Hovered && Pointer.ContactReleased && Interaction->Holding(Target);
+
+    // 🔴 THE RELEASE IS READ FROM THE INDEX, NOT FROM THE POINTER. This asked `Holding(Target)` on the
+    //    tick the contact was released — and by then nothing is holding anything. `ControlIndex::Advance`
+    //    runs at the top of the frame, sees `ContactHeld` false, and RETIRES the grab into
+    //    `ReleasedControl` before a single control records. So the grab was always already gone by the
+    //    time this ran, `Holding` was always false, and EVERY BUTTON IN THE WIDGET WAS DEAD: the mode
+    //    segments, the toggles, the swatches, Apply and Cancel. Only the slider worked, because a slider
+    //    acts on the press and the drag and never consults the release at all.
+    //
+    // 📝 `Released` is exactly the signal this needed and it already existed — Advance retires the grab
+    //    INTO it for this purpose, and the tool catalogue's tiles have always read it. The hover test
+    //    stays: releasing outside the control that was grabbed must not press it.
+    return Hovered && Interaction->Released(Target)
+        && Interaction->ReleasedControlPart(Target) == ControlPart::Body;
 }
 
 float OptionControlPalette::RowHeightFor(const OptionDeclaration& Declared) const

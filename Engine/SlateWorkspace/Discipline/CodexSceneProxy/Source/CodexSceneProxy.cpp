@@ -236,7 +236,7 @@ bool ResolveSelectedSceneMeshPivot(const WorkspaceCodex& Scene,
     const StableRowIdentity Identity = Storage.Rows[Applied.EntityTaken].Identity;
     if (Identity < 6200u)
         return false;
-    const std::uint32_t SceneIndex = Identity - 6200u;
+    const std::uint32_t SceneIndex = static_cast<std::uint32_t>(Identity - 6200u);
     if (SceneIndex >= Scene.Scene.size() || Scene.Scene[SceneIndex].Subject != CodexSceneSubject::Geometry)
         return false;
     Pivot = CodexScenePosition(Scene.Scene[SceneIndex], UnitScale);
@@ -262,7 +262,7 @@ bool SelectSceneMeshAtPointer(const PlaneExtent& Extent,
         const StableRowIdentity Identity = Storage.Rows[Row].Identity;
         if (Identity < 6200u)
             continue;
-        const std::uint32_t SceneIndex = Identity - 6200u;
+        const std::uint32_t SceneIndex = static_cast<std::uint32_t>(Identity - 6200u);
         if (SceneIndex >= Scene.Scene.size())
             continue;
         const CodexSceneEntry& Entry = Scene.Scene[SceneIndex];
@@ -479,7 +479,7 @@ void SeedSceneDirectoryTransformsFromCodex(const WorkspaceCodex& Scene,
         const StableRowIdentity Identity = Storage.Rows[Row].Identity;
         if (Identity < 6200u)
             continue;
-        const std::uint32_t SceneIndex = Identity - 6200u;
+        const std::uint32_t SceneIndex = static_cast<std::uint32_t>(Identity - 6200u);
         if (SceneIndex >= Scene.Scene.size())
             continue;
         const CodexSceneEntry& Entry = Scene.Scene[SceneIndex];
@@ -505,7 +505,7 @@ void SynchroniseCodexTransformsFromSceneDirectory(WorkspaceCodex& Scene,
         const StableRowIdentity Identity = Storage.Rows[Row].Identity;
         if (Identity < 6200u)
             continue;
-        const std::uint32_t SceneIndex = Identity - 6200u;
+        const std::uint32_t SceneIndex = static_cast<std::uint32_t>(Identity - 6200u);
         if (SceneIndex >= Scene.Scene.size())
             continue;
         CodexSceneEntry& Entry = Scene.Scene[SceneIndex];

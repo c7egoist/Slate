@@ -254,6 +254,31 @@ int main()
                 "Cut has a tile, not just an enumeration member");
         Require(Panel.find("ParametricToolSubject::Cut") != std::string::npos,
                 "and the band maps its index onto the Cut subject");
+
+        // 🔴 THE DIMENSION GATES, IT DOES NOT HIDE. `Presented` refuses a HIDDEN tool outright and
+        //    `ShowGated` cannot bypass that, so a dimension filter answering `Hidden` removed all five
+        //    Sketch Modify tools whenever nothing was selected -- and `VisibleCount` then fell to zero,
+        //    which made the rail skip the entire band. The artist could not see the operations OR the
+        //    band that holds them, and reaching the dimension that would reveal them required selecting
+        //    an edge, which is the thing they had gone to the catalogue to find an operation for.
+        const std::size_t GateAt = Panel.find("bool Gated(");
+        const std::size_t HideAt = Panel.find("bool Hidden(");
+        Require(GateAt != std::string::npos && HideAt != std::string::npos,
+                "the catalogue states both filters");
+
+        const std::string GateBody = Panel.substr(GateAt, HideAt > GateAt ? HideAt - GateAt : 0u);
+        const std::size_t HideEnds = Panel.find("\n}", HideAt);
+        const std::string HideBody = Panel.substr(HideAt, HideEnds > HideAt ? HideEnds - HideAt : 0u);
+
+        Require(GateBody.find("DimensionAccepted") != std::string::npos,
+                "the dimension answers Gated, so an inapplicable tool is dimmed and still visible");
+        Require(HideBody.find("DimensionAccepted") == std::string::npos,
+                "and does NOT answer Hidden, which would remove it and take its band with it");
+
+        // 📝 `Raising` against a solid stays hidden on purpose: that is "never", not "not yet", so a
+        //    dimmed tile would sit there forever with no action that could light it.
+        Require(HideBody.find("Tool.Raising") != std::string::npos,
+                "a raising tool on a solid stays hidden, because nothing could ever make it applicable");
     }
 
     std::printf("[SelectionModeProof] %u claims, %u failures\n", Claims, Failures);
