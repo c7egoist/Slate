@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07151d" />
+  <title>Sentinel // Frontier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Oxanium:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <canvas id="game" aria-label="Sentinel Frontier game viewport"></canvas>
+
+    <header class="top-bar" aria-label="Mission status">
+      <div class="brand-lockup">
+        <div class="brand-mark"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">EXPEDITIONAL ARMOR COMMAND</p>
+          <h1>SENTINEL <em>//</em> FRONTIER</h1>
+        </div>
+      </div>
+      <div class="mission-readout">
+        <span class="status-dot"></span>
+        <div><p>OPERATION</p><strong>ASHEN RELAY</strong></div>
+        <div class="divider"></div>
+        <div><p>SECTOR</p><strong id="sector">K-19</strong></div>
+      </div>
+    </header>
+
+    <div class="target-card" id="targetCard">
+      <span class="target-kicker">TRACKING</span>
+      <b id="targetName">NO CONTACT</b>
+      <div class="target-line"><i></i><span id="targetRange">—</span></div>
+    </div>
+
+    <div class="reticle" aria-hidden="true">
+      <span class="reticle-top"></span><span class="reticle-bottom"></span>
+      <span class="reticle-left"></span><span class="reticle-right"></span>
+      <i></i>
+    </div>
+
+    <aside class="left-instruments">
+      <section class="instrument health-instrument">
+        <div class="instrument-heading"><span>HULL INTEGRITY</span><b id="healthText">100</b></div>
+        <div class="meter"><i id="healthBar"></i></div>
+        <div class="small-pips"><i></i><i></i><i></i><i></i><i></i></div>
+      </section>
+      <section class="instrument energy-instrument">
+        <div class="instrument-heading"><span>CAPACITOR</span><b id="energyText">100</b></div>
+        <div class="meter cyan"><i id="energyBar"></i></div>
+      </section>
+    </aside>
+
+    <aside class="right-instruments">
+      <section class="radar-panel">
+        <div class="panel-heading"><span>TACTICAL RADAR</span><b>12KM</b></div>
+        <div class="radar" id="radar">
+          <div class="radar-rings"></div>
+          <div class="radar-cross x"></div><div class="radar-cross y"></div>
+          <div class="sweep"></div>
+          <div class="radar-center"></div>
+          <div id="radarContacts"></div>
+        </div>
+        <div class="radar-legend"><span><i class="friendly"></i> SENTINEL</span><span><i class="hostile"></i> HOSTILE</span></div>
+      </section>
+      <section class="objective-panel">
+        <div class="panel-heading"><span>PRIMARY OBJECTIVE</span><b id="objectiveCount">0 / 8</b></div>
+        <strong>Clear the relay approach</strong>
+        <p id="objectiveText">Hostile armor detected beyond the ridge.</p>
+      </section>
+    </aside>
+
+    <footer class="bottom-bar">
+      <div class="drive-readout"><span>VECTOR</span><b id="speedReadout">000</b><small>KPH</small></div>
+      <div class="heading-readout"><i></i><span id="headingReadout">N  000°</span><i></i></div>
+      <div class="weapon-readout">
+        <div><span>PRIMARY</span><b>PLASMA LANCE</b></div>
+        <strong id="ammoReadout">∞</strong>
+      </div>
+    </footer>
+
+    <div class="damage-vignette" id="damageVignette"></div>
+    <div class="hit-marker" id="hitMarker">+100</div>
+    <div class="toast" id="toast"></div>
+
+    <section class="briefing" id="briefing">
+      <div class="briefing-grid"></div>
+      <div class="briefing-content">
+        <p class="eyebrow accent">SECTOR K-19 • 04:17 LOCAL</p>
+        <h2>THE RIDGE IS<br /><em>LISTENING.</em></h2>
+        <p class="intro">A relay convoy vanished at the edge of the Ember Basin. Drive the Sentinel through the uplands, erase the interceptors, and reopen the route.</p>
+        <div class="briefing-meta"><span><b>01</b> ARMOR ONLINE</span><span><b>08</b> HOSTILES</span><span><b>∞</b> LANCE CHARGE</span></div>
+        <button id="deployButton"><span>DEPLOY SENTINEL</span><kbd>ENTER</kbd></button>
+        <p class="controls"><span>W A S D</span> drive <i>·</i> <span>MOUSE / ← →</span> aim <i>·</i> <span>CLICK / SPACE</span> fire</p>
+      </div>
+      <div class="briefing-side"><span>FIELD NOTE 77.4</span><p>Visibility is clear.<br />Signal is not.</p></div>
+    </section>
+
+    <section class="end-screen hidden" id="endScreen">
+      <div class="end-panel">
+        <p class="eyebrow accent" id="endKicker">MISSION COMPLETE</p>
+        <h2 id="endTitle">RELAY APPROACH<br /><em>SECURED.</em></h2>
+        <p id="endCopy">The upland route is clear. Your signal carries beyond the ridge.</p>
+        <div class="end-stats"><div><span>HOSTILES</span><b id="endKills">08</b></div><div><span>HULL</span><b id="endHealth">100%</b></div><div><span>TIME</span><b id="endTime">02:14</b></div></div>
+        <button id="restartButton">RUN ANOTHER SWEEP <kbd>R</kbd></button>
+      </div>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
