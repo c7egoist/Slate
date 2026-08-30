@@ -1,0 +1,18 @@
+{
+  "name": "slate",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SLATE — procedural residential architecture generator",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.3"
+  }
+}
