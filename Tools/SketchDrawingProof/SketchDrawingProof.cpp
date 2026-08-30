@@ -380,6 +380,34 @@ int main()
     }
 
     //--------------------------------------------------------------------------------------------
+    // 🔴 WORLD-NATIVE DRAWING MUST SNAP ON THE ACTIVE WORKPLANE, not on whatever legacy plane the
+    //    compatibility sketch last remembered.
+    //--------------------------------------------------------------------------------------------
+    {
+        SketchStructure Sketch;
+        Sketch.DeclarePlane({ { 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 } });
+
+        const Workplane Raised = ResolveOffsetWorkplane(StandingWorkplane::Ground, 40.0);
+        SketchSnapMask GridOnly = {};
+        GridOnly.EndpointAccepted = false;
+        GridOnly.MidpointAccepted = false;
+        GridOnly.CentreAccepted = false;
+        GridOnly.ControlAccepted = false;
+        GridOnly.AlongCurveAccepted = false;
+        GridOnly.IntersectionAccepted = false;
+        GridOnly.GridAccepted = true;
+        GridOnly.PerpendicularAccepted = false;
+        GridOnly.TangentAccepted = false;
+
+        const SketchSnapPlacement Snapped = ResolveNearestSnap(
+            Sketch, Raised, { 23.0, 40.0, 17.0 }, 100.0, GridOnly, 10.0);
+        Require(Snapped.Subject == SketchSnapSubject::Grid,
+                "an explicit active workplane must still produce grid snaps");
+        Require(std::fabs(Snapped.Position.Up - 40.0) < 1.0e-9,
+                "and the snapped point must land on that active workplane, not the sketch's stale plane");
+    }
+
+    //--------------------------------------------------------------------------------------------
     // 🔴 ONE MALFORMED CURVE MUST NOT MOVE EVERY OTHER SHAPE INTO MID-AIR. `Declared()` is
     //    all-or-nothing across every curve, so a single degenerate one flipped the whole sketch to
     //    "not declared" -- and the basis silently fell back to the world origin, relocating every

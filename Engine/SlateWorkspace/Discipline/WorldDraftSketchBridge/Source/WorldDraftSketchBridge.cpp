@@ -32,6 +32,39 @@ WorldPlacementFrame ResolveSketchSupportFrame(const SketchStructure& Sketch)
     return { Plane.Origin, Plane.Normal, Plane.AlongDirection };
 }
 
+bool WorkplaneDeclared(const Workplane& ActiveWorkplane)
+{
+    return LengthSquared(ActiveWorkplane.Along) > 1.0e-18
+        && LengthSquared(ActiveWorkplane.Normal) > 1.0e-18
+        && LengthSquared(Cross(Normalize(ActiveWorkplane.Normal), Normalize(ActiveWorkplane.Along))) > 1.0e-18;
+}
+
+WorldPlacementFrame ResolveWorkplaneSupportFrame(const Workplane& ActiveWorkplane)
+{
+    if (!WorkplaneDeclared(ActiveWorkplane))
+        return {};
+
+    const SpatialBasis Basis = ResolveWorkplaneBasis(ActiveWorkplane);
+    return { Basis.Origin, Basis.Normal, Basis.Along };
+}
+
+SketchPlane ResolveSketchPlaneFromWorkplane(const Workplane& ActiveWorkplane)
+{
+    const SpatialBasis Basis = ResolveWorkplaneBasis(ActiveWorkplane);
+    return { Basis.Origin, Basis.Normal, Basis.Along };
+}
+
+WorldPlacementFrame ResolveProfileSupportFrame(const ProfileSpecification& Profile)
+{
+    const ProfilePlane& Plane = Profile.HeldPlane();
+    return { Plane.Origin, Plane.Normal, Plane.AlongDirection };
+}
+
+bool SketchHasCommittedGeometry(const SketchStructure& Sketch)
+{
+    return !Sketch.Curves().empty() || !Sketch.Profiles().empty();
+}
+
 bool ResolveSketchControlPosition(const SketchStructure& Sketch,
                                   SketchControlName Subject,
                                   SpatialPoint& Position)
@@ -194,12 +227,28 @@ bool MirrorSketchIntoWorldDraft(const SketchStructure& Sketch,
     Declared.Reclaim();
     Mapping.Loops.clear();
 
-    const WorldPlacementFrame Support = ResolveSketchSupportFrame(Sketch);
-    const bool SupportStanding = Support.Declared();
+    const WorldPlacementFrame SketchSupport = ResolveSketchSupportFrame(Sketch);
+    std::vector<WorldPlacementFrame> CurveSupports(Sketch.Curves().size(), SketchSupport);
 
-    for (const DeclaredSketchCurve& Curve : Sketch.Curves())
+    for (std::uint32_t ProfileIndex = 0u; ProfileIndex < Sketch.Profiles().size(); ++ProfileIndex)
     {
-        if (SupportStanding)
+        const ProfileSpecification& Profile = Sketch.Profiles()[ProfileIndex];
+        const WorldPlacementFrame ProfileSupport = ResolveProfileSupportFrame(Profile);
+        if (!ProfileSupport.Declared())
+            continue;
+
+        for (const ProfileLoop& Loop : Profile.HeldLoops())
+            for (const ProfileCurveUse& Use : Loop.Traversal)
+                if (Use.TraversedCurve.IssuedIndex > 0u
+                 && Use.TraversedCurve.IssuedIndex <= CurveSupports.size())
+                    CurveSupports[Use.TraversedCurve.IssuedIndex - 1u] = ProfileSupport;
+    }
+
+    for (std::size_t CurveIndex = 0u; CurveIndex < Sketch.Curves().size(); ++CurveIndex)
+    {
+        const DeclaredSketchCurve& Curve = Sketch.Curves()[CurveIndex];
+        const WorldPlacementFrame& Support = CurveSupports[CurveIndex];
+        if (Support.Declared())
             Declared.DeclareCurve(Curve.Geometry, Support);
         else
             Declared.DeclareCurve(Curve.Geometry);
@@ -462,7 +511,8 @@ bool ProjectWorldPlacementPreview(const ResolvedCamera& Camera,
     return Appended;
 }
 
-bool CommitPlacementWorldBacked(WorldDraftStructure& Declared,
+bool CommitPlacementWorldBacked(const Workplane& ActiveWorkplane,
+                                WorldDraftStructure& Declared,
                                 WorldDraftSketchMapping& Mapping,
                                 WorkspaceNameIndex& Naming,
                                 SketchStructure& Sketch,
@@ -478,6 +528,9 @@ bool CommitPlacementWorldBacked(WorldDraftStructure& Declared,
 
     if (Placed.Subject == SketchSubject::Dimension)
     {
+        if ((!Sketch.PlaneDeclared() || !SketchHasCommittedGeometry(Sketch)) && WorkplaneDeclared(ActiveWorkplane))
+            Sketch.DeclarePlane(ResolveSketchPlaneFromWorkplane(ActiveWorkplane));
+
         const Deliver<WorkspaceRecordName> Record = CommitPlacement(Naming, Sketch, Records, Revisions, Placed);
         if (!Record.Resolved)
             return false;
@@ -489,7 +542,9 @@ bool CommitPlacementWorldBacked(WorldDraftStructure& Declared,
     if (Declared.CurveCount() != static_cast<std::uint32_t>(Sketch.Curves().size()))
         MirrorSketchIntoWorldDraft(Sketch, Declared, Mapping);
 
-    const WorldPlacementFrame Support = ResolveSketchSupportFrame(Sketch);
+    WorldPlacementFrame Support = ResolveWorkplaneSupportFrame(ActiveWorkplane);
+    if (!Support.Declared())
+        Support = ResolveSketchSupportFrame(Sketch);
     const bool SupportStanding = Support.Declared();
 
     std::vector<WorldCurveName> WorldCurves;

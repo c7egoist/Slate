@@ -74,6 +74,17 @@ bool CornerSelectionStanding(const SketchPick& Selection)
         || Selection.Subject == SketchPickSubject::Curve;
 }
 
+bool SketchHasCommittedGeometry(const SketchStructure& Sketch)
+{
+    return !Sketch.Curves().empty() || !Sketch.Profiles().empty();
+}
+
+SketchPlane ResolveSketchPlaneFromWorkplane(const Workplane& ActiveWorkplane)
+{
+    const SpatialBasis Basis = ResolveWorkplaneBasis(ActiveWorkplane);
+    return { Basis.Origin, Basis.Normal, Basis.Along };
+}
+
 SketchPick ResolveViewportEditSelection(ParametricToolSubject Tool,
                                         const SketchPick& ActiveSelection,
                                         const SketchPick& HoveredSelection)
@@ -337,11 +348,11 @@ bool ApplyWorkplaneTool(const PlaneExtent& Extent,
     if (!Named.Assigned())
         return false;
 
-    // 📝 The sketch adopts the plane that is now active. Existing curves keep their world coordinates and
-    //    do not move; what changes is only the surface the NEXT thing is drawn on.
-    Sketch.DeclarePlane({ Workplanes.Active().Origin,
-                          Workplanes.Active().Normal,
-                          Workplanes.Active().Along });
+    // 📝 The compatibility sketch is seeded from the active plane only while it does not already carry
+    //    committed geometry. Once geometry exists, the active workplane may change independently and the
+    //    world draft remains the authority for where new drawing lands.
+    if (!Sketch.PlaneDeclared() || !SketchHasCommittedGeometry(Sketch))
+        Sketch.DeclarePlane(ResolveSketchPlaneFromWorkplane(Workplanes.Active()));
 
     // 📝 Written into the directory so the artist can see it, select it and walk it back.
     const CataloguedWorkplane* Held = Workplanes.Resolve(Named);
@@ -439,7 +450,8 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     //    spline close back onto the point it started from. Until it seals, that geometry exists
     //    nowhere else.
     const SketchSnapPlacement Placement = Modifiers.Commanded
-                                        ? ResolveNearestSnap(Sketch, Raw, SnapTolerance, {}, 10.0,
+                                        ? ResolveNearestSnap(Sketch, Workplanes.Active(),
+                                                             Raw, SnapTolerance, {}, 10.0,
                                                              Tool.Anchors())
                                         : SketchSnapPlacement{};
 
@@ -453,13 +465,11 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     if (!Text.AcceptPressed && !Pointer.ContactPressed)
         return;
 
-    // 🔴 The first placement adopts whatever plane the catalogue says is ACTIVE, which is the ground
-    //    plane until the artist chooses otherwise. The shipped code hardcoded the ground plane here, so
-    //    activating another plane and then drawing put the geometry on the ground anyway.
-    if (!Sketch.Declared())
-        Sketch.DeclarePlane({ Workplanes.Active().Origin,
-                              Workplanes.Active().Normal,
-                              Workplanes.Active().Along });
+    // 🔴 The compatibility sketch is seeded once from whatever plane the catalogue says is ACTIVE,
+    //    which is the ground plane until the artist chooses otherwise. After geometry exists the active
+    //    workplane may continue to change without rewriting the sketch's one global plane.
+    if (!Sketch.PlaneDeclared() || !SketchHasCommittedGeometry(Sketch))
+        Sketch.DeclarePlane(ResolveSketchPlaneFromWorkplane(Workplanes.Active()));
 
     const bool Terminating = Text.AcceptPressed || Pointer.ContactDoublePressed;
 
@@ -468,7 +478,9 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
         return;
 
     const SealedPlacement Sealed = Tool.Seal();
-    if (CommitPlacementWorldBacked(World, Mapping, Naming, Sketch, Records, Revisions, Sealed, PendingSelection))
+    if (CommitPlacementWorldBacked(Workplanes.Active(), World, Mapping,
+                                  Naming, Sketch, Records, Revisions,
+                                  Sealed, PendingSelection))
         return;
 
     const Deliver<WorkspaceRecordName> Record = CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);

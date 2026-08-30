@@ -130,4 +130,22 @@ double ResolveWorkplaneOffset(const Workplane& Plane, const SpatialPoint& Positi
 /// 🧩 The point on the plane nearest to a point anywhere in the world.
 SpatialPoint ResolveWorkplaneProjection(const Workplane& Plane, const SpatialPoint& Position);
 
+/// 🧩 The same plane, expressed in the generic basis the viewport and drawing math consume.
+/// note 📝 This is the seam that lets world-native workplanes drive 2D authoring without pretending the
+///       basis still has to come from `SketchStructure`.
+inline SpatialBasis ResolveWorkplaneBasis(const Workplane& Plane)
+{
+    if (LengthSquared(Plane.Along) <= 1.0e-18 || LengthSquared(Plane.Normal) <= 1.0e-18)
+        return { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
+
+    const SpatialDirection Along = Normalize(Plane.Along);
+    const SpatialDirection Normal = Normalize(Plane.Normal);
+    const SpatialDirection RawAcross = Cross(Normal, Along);
+    if (LengthSquared(RawAcross) <= 1.0e-18)
+        return { {}, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 1.0, 0.0 } };
+
+    const SpatialDirection Across = Normalize(RawAcross);
+    return { Plane.Origin, Along, Across, Normal };
+}
+
 }   // namespace Slate

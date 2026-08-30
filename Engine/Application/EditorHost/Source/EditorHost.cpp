@@ -494,8 +494,6 @@ static std::uint32_t             SketchTrimKeep      = 0u;
     //    track of where they were looking. One per leaf, because two split viewports may be part-way
     //    through opposite transits at the same time.
     static ProjectionTransit         LeafProjection[WorkspaceIndex::WorkspaceLimit];
-    // 📝 Which plane the sketch structure was last given, so it is re-planed only when it changes.
-    static WorkplaneName             ActiveSketchPlane;
     // 📝 Static: the packet is large and is reused every frame.
     static WorkspaceCadPacket        SketchCadPacket;
 
@@ -1524,26 +1522,21 @@ static std::uint32_t             SketchTrimKeep      = 0u;
                                     const ViewportOrientation SketchOrientation = ResolveCameraOrientation(
                                         SceneApplied.ViewportSkyCamera.AzimuthDegrees,
                                         SceneApplied.ViewportSkyCamera.ElevationDegrees);
+                                    static_cast<void>(ActivateViewedWorkplane(
+                                        SketchWorkplanes, SketchOrientation, LeafPerspective));
+
+                                    // 🔴 The draw basis now comes from the ACTIVE WORKPLANE itself rather
+                                    //    than from the sketch's one global plane. That is the actual 2D
+                                    //    replacement seam: view changes can pick the next authoring plane
+                                    //    without reinterpreting geometry already mirrored into the sketch.
                                     const bool SketchHasCommittedGeometry =
                                         !Sketch.Curves().empty() || !Sketch.Profiles().empty();
-                                    if (!SketchHasCommittedGeometry)
-                                        static_cast<void>(ActivateViewedWorkplane(
-                                            SketchWorkplanes, SketchOrientation, LeafPerspective));
-
-                                    // 🔴 THE BASIS IS READ AFTER THE ACTIVE PLANE IS SYNCHRONISED. Reading
-                                    //    it first left Front and Side one frame stale: the grid switched to
-                                    //    XY or YZ, but the drawing ray still intersected the old XZ basis,
-                                    //    so the very first click after the view change landed on the wrong plane.
-                                    if (!Sketch.PlaneDeclared() ||
-                                        (!SketchHasCommittedGeometry && SketchWorkplanes.ActiveName() != ActiveSketchPlane))
-                                    {
+                                    if (!Sketch.PlaneDeclared() || !SketchHasCommittedGeometry)
                                         Sketch.DeclarePlane({ SketchWorkplanes.Active().Origin,
                                                               SketchWorkplanes.Active().Normal,
                                                               SketchWorkplanes.Active().Along });
-                                        ActiveSketchPlane = SketchWorkplanes.ActiveName();
-                                    }
 
-                                    const SpatialBasis SketchBasis = ResolveSketchBasis(Sketch);
+                                    const SpatialBasis SketchBasis = ResolveWorkplaneBasis(SketchWorkplanes.Active());
                                     SketchView = ResolveOrbitStandingFromFree(
                                         { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
                                           SceneApplied.CameraPosition[2] },
@@ -1732,7 +1725,12 @@ static std::uint32_t             SketchTrimKeep      = 0u;
                                     OverlayGroundPose& Pose = LeafOverlay.Ground;
                                     const EditorPanelConfiguration& PanelDeclared = PanelConfiguration[Index];
 
-                                    Pose.Standing = PanelDeclared.Lattice != PanelLatticePresentation::None;
+                                    StandingWorkplane ViewedWorkplane = StandingWorkplane::Ground;
+                                    const bool ExactOrthographicPlane =
+                                        !LeafPerspective && ResolveViewedWorkplane(SketchView.Orientation, ViewedWorkplane)
+                                     && SketchWorkplanes.ActiveName() == SketchWorkplanes.StandingName(ViewedWorkplane);
+                                    Pose.Standing = ExactOrthographicPlane
+                                                  && PanelDeclared.Lattice != PanelLatticePresentation::None;
 
                                     const double Yaw   = SceneApplied.ViewportSkyCamera.AzimuthDegrees
                                                        * 3.14159265358979323846 / 180.0;

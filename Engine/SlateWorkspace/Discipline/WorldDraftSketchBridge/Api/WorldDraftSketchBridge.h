@@ -13,6 +13,7 @@
 #include "SlateShape/World/WorldDraftRenderingProjection/Api/WorldDraftRenderingProjection.h"
 #include "SlateWorkspace/Discipline/SketchPicking/Api/SketchPicking.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/DrawableScale.h"
+#include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
 #include "SlateShape/Record/WorkspaceRevisionSequence/Api/WorkspaceRevisionSequence.h"
 #include "SketchToolset/SketchTool/SketchPlacement/Api/SketchPlacement.h"
 
@@ -72,7 +73,8 @@ bool ProjectWorldPlacementPreview(const ResolvedCamera& Camera,
                                   WorkspaceCadPacket& Delivered,
                                   const SketchRenderingStyle& Style = {});
 
-bool CommitPlacementWorldBacked(WorldDraftStructure& Declared,
+bool CommitPlacementWorldBacked(const Workplane& ActiveWorkplane,
+                                WorldDraftStructure& Declared,
                                 WorldDraftSketchMapping& Mapping,
                                 WorkspaceNameIndex& Naming,
                                 SketchStructure& Sketch,

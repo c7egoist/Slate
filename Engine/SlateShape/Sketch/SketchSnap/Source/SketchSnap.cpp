@@ -128,11 +128,25 @@ namespace
     ///       ground plane's axes — the same rule `ResolveSketchBasis` follows, kept here because
     ///       `SpatialBasis` itself lives a layer above this one.
     void ResolvePlaneSpans(const SketchStructure& Declared,
+                           const Workplane* ActiveWorkplane,
+                           SpatialPoint& Origin,
                            SpatialDirection& Along,
                            SpatialDirection& Across)
     {
+        Origin = {};
         Along  = { 1.0, 0.0, 0.0 };
         Across = { 0.0, 0.0, 1.0 };
+
+        if (ActiveWorkplane != nullptr
+         && LengthSquared(ActiveWorkplane->Along) > 1.0e-18
+         && LengthSquared(ActiveWorkplane->Normal) > 1.0e-18)
+        {
+            const SpatialBasis Basis = ResolveWorkplaneBasis(*ActiveWorkplane);
+            Origin = Basis.Origin;
+            Along = Basis.Along;
+            Across = Basis.Across;
+            return;
+        }
 
         const SketchPlane& Plane = Declared.HeldPlane();
         if (!Declared.Declared() || !Plane.Declared())
@@ -141,19 +155,19 @@ namespace
         if (LengthSquared(Plane.AlongDirection) <= 1.0e-18 || LengthSquared(Plane.Normal) <= 1.0e-18)
             return;
 
+        Origin = Plane.Origin;
         Along  = Normalize(Plane.AlongDirection);
         Across = Normalize(Cross(Normalize(Plane.Normal), Along));
     }
-}
 
-
-SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
-                                       const SpatialPoint& Probe,
-                                       double MaximumDistance,
-                                       const SketchSnapMask& Accepted,
-                                       double GridStep,
-                                       const std::vector<SpatialPoint>& PendingAnchors)
-{
+    SketchSnapPlacement ResolveNearestSnapAgainst(const SketchStructure& Declared,
+                                                  const Workplane* ActiveWorkplane,
+                                                  const SpatialPoint& Probe,
+                                                  double MaximumDistance,
+                                                  const SketchSnapMask& Accepted,
+                                                  double GridStep,
+                                                  const std::vector<SpatialPoint>& PendingAnchors)
+    {
     SketchSnapPlacement Best = {};
     Best.Distance = MaximumDistance;
 
@@ -176,8 +190,9 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
     std::vector<SpatialPoint> Polyline;
     std::vector<CurvePolyline> CurvePolylines;
 
+    SpatialPoint GridOrigin = {};
     SpatialDirection Along = {}, Across = {};
-    ResolvePlaneSpans(Declared, Along, Across);
+    ResolvePlaneSpans(Declared, ActiveWorkplane, GridOrigin, Along, Across);
 
     for (std::uint32_t CurveIndex = 1u; CurveIndex <= Declared.Curves().size(); ++CurveIndex)
     {
@@ -284,23 +299,44 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
     //    calls — now stated here rather than left to each caller to rediscover.
     if (Accepted.GridAccepted && !Best.Resolved())
     {
-        const SpatialPoint Origin = Declared.Declared() && Declared.HeldPlane().Declared()
-                                  ? Declared.HeldPlane().Origin
-                                  : SpatialPoint{};
-
         const double SafeStep = std::max(GridStep, 1.0);
-        const SpatialDirection Offset = Difference(Origin, Probe);
+        const SpatialDirection Offset = Difference(GridOrigin, Probe);
 
         const double SnappedAlong  = std::round(Dot(Offset, Along)  / SafeStep) * SafeStep;
         const double SnappedAcross = std::round(Dot(Offset, Across) / SafeStep) * SafeStep;
 
-        const SpatialPoint Snapped = Added(Added(Origin, Scaled(Along, SnappedAlong)),
+        const SpatialPoint Snapped = Added(Added(GridOrigin, Scaled(Along, SnappedAlong)),
                                            Scaled(Across, SnappedAcross));
 
         ConsiderCandidate(Probe, Snapped, {}, SketchSnapSubject::Grid, {}, {}, MaximumDistance, Best);
     }
 
     return Best;
+}
+
+} // namespace
+
+SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
+                                       const SpatialPoint& Probe,
+                                       double MaximumDistance,
+                                       const SketchSnapMask& Accepted,
+                                       double GridStep,
+                                       const std::vector<SpatialPoint>& PendingAnchors)
+{
+    return ResolveNearestSnapAgainst(Declared, nullptr, Probe, MaximumDistance,
+                                     Accepted, GridStep, PendingAnchors);
+}
+
+SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
+                                       const Workplane& ActiveWorkplane,
+                                       const SpatialPoint& Probe,
+                                       double MaximumDistance,
+                                       const SketchSnapMask& Accepted,
+                                       double GridStep,
+                                       const std::vector<SpatialPoint>& PendingAnchors)
+{
+    return ResolveNearestSnapAgainst(Declared, &ActiveWorkplane, Probe, MaximumDistance,
+                                     Accepted, GridStep, PendingAnchors);
 }
 
 } // namespace Slate
