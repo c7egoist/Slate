@@ -1,7 +1,7 @@
 # World-native 2D replacement plan
 
 ## Goal
-Replace the remaining sketch-basis 2D authoring path with a world-native workplane path, while keeping `WorldDraftStructure` as the live authoring authority and preserving the sketch document only as a compatibility mirror for records, revisions, outliner state, and legacy dimension fallback.
+Replace the remaining sketch-basis 2D authoring path with a world-native workplane path, while keeping `WorldSketchStructure` as the live authoring authority and preserving the sketch document only as a compatibility mirror for records, revisions, outliner state, and legacy dimension fallback.
 
 ## Immediate implementation scope
 1. Stop deriving draw-plane authority from `SketchStructure`.
@@ -46,17 +46,17 @@ Replace the remaining sketch-basis 2D authoring path with a world-native workpla
 
 ## Validation plan
 - Strict compile:
-  - `WorldDraftSketchBridge.cpp`
+  - `WorldSketchBridge.cpp`
   - `SketchInteraction.cpp`
   - `EditorHost.cpp` with `-DSLATE_COMBINED_AUTHORING`
 - Proofs:
-  - `WorldDraftPlacementCommitProof`
-  - `WorldDraftSketchBridgeProof`
-  - `WorldDraftInteractionProof`
-  - `WorldDraftTransformSessionProof`
-  - `WorldDraftEditingProof`
-  - `WorldDraftPickingProof`
-  - `WorldDraftRenderProof`
-  - `WorldDraftFoundationProof`
+  - `WorldSketchPlacementCommitProof`
+  - `WorldSketchBridgeProof`
+  - `WorldSketchInteractionProof`
+  - `WorldSketchTransformSessionProof`
+  - `WorldSketchEditingProof`
+  - `WorldSketchPickingProof`
+  - `WorldSketchRenderProof`
+  - `WorldSketchFoundationProof`
   - `SketchDrawingProof`
   - `WorkplaneCatalogueProof`

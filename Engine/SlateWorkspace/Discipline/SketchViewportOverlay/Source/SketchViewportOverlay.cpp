@@ -379,7 +379,7 @@ void RecordViewportSelectionOverlay(OverlayGeometry& Overlay,
 void RecordViewportSelectionOverlay(OverlayGeometry& Overlay,
                                     const PlaneExtent& Extent,
                                     const ResolvedCamera& Camera,
-                                    const WorldDraftStructure& Declared,
+                                    const WorldSketchStructure& Declared,
                                     const WorldPick& Hovered,
                                     const WorldPick& Selected)
 {
@@ -700,7 +700,7 @@ void RecordViewportGizmo(OverlayGeometry& Overlay,
                          const ResolvedCamera& Camera,
                          const WorldPick& Selected,
                          GizmoHandle HoveredHandle,
-                         const WorldDraftTransformSession& Transform)
+                         const WorldSketchTransformSession& Transform)
 {
     if (!Selected.Standing())
         return;

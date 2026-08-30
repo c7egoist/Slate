@@ -400,7 +400,8 @@ int main()
         GridOnly.TangentAccepted = false;
 
         const SketchSnapPlacement Snapped = ResolveNearestSnap(
-            Sketch, Raised, { 23.0, 40.0, 17.0 }, 100.0, GridOnly, 10.0);
+            Sketch, { Raised.Origin, Raised.Normal, Raised.Along },
+            { 23.0, 40.0, 17.0 }, 100.0, GridOnly, 10.0);
         Require(Snapped.Subject == SketchSnapSubject::Grid,
                 "an explicit active workplane must still produce grid snaps");
         Require(std::fabs(Snapped.Position.Up - 40.0) < 1.0e-9,

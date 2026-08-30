@@ -32,8 +32,8 @@
 #include "SlateWorkspace/Discipline/TransformSession/Api/TransformSession.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/ViewportProjection.h"
 #include "SlateWorkspace/Discipline/WorkplaneCatalogue/Api/WorkplaneCatalogue.h"
-#include "SlateWorkspace/Discipline/WorldDraftTransformSession/Api/WorldDraftTransformSession.h"
-#include "SlateWorkspace/Discipline/WorldDraftSketchBridge/Api/WorldDraftSketchBridge.h"
+#include "SlateWorkspace/Discipline/WorldSketchTransformSession/Api/WorldSketchTransformSession.h"
+#include "SlateWorkspace/Discipline/WorldSketchBridge/Api/WorldSketchBridge.h"
 
 #include "Shared/OverlayGeometry.slang.h"
 
@@ -85,8 +85,8 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                                const ParametricToolsContext& ToolContext,
                                WorkspaceNameIndex& Naming,
                                SketchStructure& Sketch,
-                               WorldDraftStructure& World,
-                               WorldDraftSketchMapping& Mapping,
+                               WorldSketchStructure& World,
+                               WorldSketchMapping& Mapping,
                                WorkspaceRecordStructure& Records,
                                WorkspaceRevisionSequence& Revisions,
                                WorkplaneCatalogue& Workplanes,
@@ -164,14 +164,14 @@ void DriveViewportSelectionAndTransformWorldBacked(const PlaneExtent& Extent,
                                                    const WorkspaceDirectoryProjection& Directory,
                                                    const ParametricWorkspaceContext& WorkspaceApplied,
                                                    SketchStructure& Sketch,
-                                                   WorldDraftStructure& World,
-                                                   WorldDraftSketchMapping& Mapping,
+                                                   WorldSketchStructure& World,
+                                                   WorldSketchMapping& Mapping,
                                                    WorkspaceRecordStructure& Records,
                                                    WorkspaceRevisionSequence& Revisions,
                                                    WorkspaceRecordName& PendingSelection,
                                                    SketchPick& SemanticSelection,
                                                    SketchPick& HoveredSelection,
-                                                   WorldDraftTransformSession& Transform,
+                                                   WorldSketchTransformSession& Transform,
                                                    OverlayGeometry& Overlay,
                                                    bool& PointerTaken,
                                                    double SessionMilliseconds,

@@ -7,7 +7,6 @@
 #pragma once
 
 #include "SlateShape/Sketch/SketchSelection/Api/SketchSelection.h"
-#include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
 
 #include <vector>
 
@@ -77,11 +76,13 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
                                        double GridStep = 10.0,
                                        const std::vector<SpatialPoint>& PendingAnchors = {});
 
-/// 🧩 The same snap query, but with the authoring workplane supplied explicitly.
+/// 🧩 The same snap query, but with the authoring plane supplied explicitly.
 /// note 🔴 This is the seam that lets world-native 2D drawing snap against the ACTIVE workplane even when
-///       the compatibility sketch still remembers some earlier global plane.
+///       the compatibility sketch still remembers some earlier global plane. The workspace resolves its
+///       `Workplane` into a `SketchPlane` before calling here — the shape kernel knows the plane, not the
+///       catalogue entry that carries it.
 SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
-                                       const Workplane& ActiveWorkplane,
+                                       const SketchPlane& ActivePlane,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
                                        const SketchSnapMask& Accepted = {},

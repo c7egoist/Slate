@@ -22,7 +22,7 @@
 #include "SlateShape/Sketch/SketchRenderingProjection/Api/SketchRenderingProjection.h"
 #include "SlateWorkspace/Discipline/ContentImportCommit/Api/ContentImportCommit.h"
 #include "SlateWorkspace/Discipline/SketchInteraction/Api/SketchInteraction.h"
-#include "SlateWorkspace/Discipline/WorldDraftSketchBridge/Api/WorldDraftSketchBridge.h"
+#include "SlateWorkspace/Discipline/WorldSketchBridge/Api/WorldSketchBridge.h"
 #include "SketchToolset/SketchTool/SelectionOptions/Api/SelectionOptions.h"
 #include "SlateUI/Interface/ToolOptionsWidget/Api/ToolOptionsWidget.h"
 #include "SlateUI/Interface/ToolContextMenu/Api/ToolContextMenu.h"
@@ -173,8 +173,8 @@ struct SketchRevisionSnapshot
 {
     WorkspaceNameIndex        Naming = {};
     SketchStructure           Sketch = {};
-    WorldDraftStructure       World = {};
-    WorldDraftSketchMapping   WorldMapping = {};
+    WorldSketchStructure       World = {};
+    WorldSketchMapping   WorldMapping = {};
     WorkspaceRecordStructure  Records = {};
     WorkspaceRevisionSequence Revisions = {};
     WorkplaneCatalogue        Workplanes = {};
@@ -184,8 +184,8 @@ struct SketchRevisionSnapshot
 
 SketchRevisionSnapshot ResolveSketchRevisionSnapshot(const WorkspaceNameIndex& Naming,
                                                      const SketchStructure& Sketch,
-                                                     const WorldDraftStructure& World,
-                                                     const WorldDraftSketchMapping& WorldMapping,
+                                                     const WorldSketchStructure& World,
+                                                     const WorldSketchMapping& WorldMapping,
                                                      const WorkspaceRecordStructure& Records,
                                                      const WorkspaceRevisionSequence& Revisions,
                                                      const WorkplaneCatalogue& Workplanes,
@@ -208,8 +208,8 @@ SketchRevisionSnapshot ResolveSketchRevisionSnapshot(const WorkspaceNameIndex& N
 void ApplySketchRevisionSnapshot(const SketchRevisionSnapshot& Snapshot,
                                  WorkspaceNameIndex& Naming,
                                  SketchStructure& Sketch,
-                                 WorldDraftStructure& World,
-                                 WorldDraftSketchMapping& WorldMapping,
+                                 WorldSketchStructure& World,
+                                 WorldSketchMapping& WorldMapping,
                                  WorkspaceRecordStructure& Records,
                                  WorkspaceRevisionSequence& Revisions,
                                  WorkplaneCatalogue& Workplanes,
@@ -245,8 +245,8 @@ bool RetreatSketchRevision(std::vector<SketchRevisionSnapshot>& Retreated,
                            std::vector<SketchRevisionSnapshot>& Reinstated,
                            WorkspaceNameIndex& Naming,
                            SketchStructure& Sketch,
-                           WorldDraftStructure& World,
-                           WorldDraftSketchMapping& WorldMapping,
+                           WorldSketchStructure& World,
+                           WorldSketchMapping& WorldMapping,
                            WorkspaceRecordStructure& Records,
                            WorkspaceRevisionSequence& Revisions,
                            WorkplaneCatalogue& Workplanes,
@@ -267,8 +267,8 @@ bool ReinstateSketchRevision(std::vector<SketchRevisionSnapshot>& Retreated,
                              std::vector<SketchRevisionSnapshot>& Reinstated,
                              WorkspaceNameIndex& Naming,
                              SketchStructure& Sketch,
-                             WorldDraftStructure& World,
-                             WorldDraftSketchMapping& WorldMapping,
+                             WorldSketchStructure& World,
+                             WorldSketchMapping& WorldMapping,
                              WorkspaceRecordStructure& Records,
                              WorkspaceRevisionSequence& Revisions,
                              WorkplaneCatalogue& Workplanes,
@@ -432,8 +432,8 @@ int main(int ArgumentCount, char** ArgumentValues)
     //    reason `DiagnosticLayersRequested()` replaced three copies of `#ifdef SLATE_DEBUG`.
     static WorkspaceNameIndex        SketchNaming;
     static SketchStructure           Sketch;
-    static WorldDraftStructure       SketchWorld;
-    static WorldDraftSketchMapping   SketchWorldMapping;
+    static WorldSketchStructure       SketchWorld;
+    static WorldSketchMapping   SketchWorldMapping;
     static WorkspaceRecordStructure  SketchRecords;
     static WorkspaceRevisionSequence SketchRevisions;
     // 🔴 Seated beside the sketch, never inside it: a sketch holds exactly ONE plane and overwrites
@@ -450,7 +450,7 @@ int main(int ArgumentCount, char** ArgumentValues)
     static SketchPick                SketchSemanticSelection;
     static SketchPick                SketchHoveredSelection;
     static TransformSession          SketchTransform;
-    static WorldDraftTransformSession SketchWorldTransform;
+    static WorldSketchTransformSession SketchWorldTransform;
     static double                    SketchLastMovePressed = 0.0;
     // 📝 A monotonic run of the session, accumulated from the tick's own elapsed figure, so the
     //    double-tap that switches a move between plane and free travel has a clock to measure against.
@@ -1536,6 +1536,10 @@ static std::uint32_t             SketchTrimKeep      = 0u;
                                                               SketchWorkplanes.Active().Normal,
                                                               SketchWorkplanes.Active().Along });
 
+                                    // 🔴 THE BASIS IS READ AFTER THE ACTIVE PLANE IS SYNCHRONISED.
+                                    //    `ActivateViewedWorkplane` above re-seats the authoring plane; the
+                                    //    basis below resolves from the workplane that just moved, so a
+                                    //    Front or Side view re-reads the sketch basis in the same pass.
                                     const SpatialBasis SketchBasis = ResolveWorkplaneBasis(SketchWorkplanes.Active());
                                     SketchView = ResolveOrbitStandingFromFree(
                                         { SceneApplied.CameraPosition[0], SceneApplied.CameraPosition[1],
@@ -1617,7 +1621,7 @@ static std::uint32_t             SketchTrimKeep      = 0u;
                                             SketchLastMovePressed,
                                             static_cast<double>(SketchCornerDistance),
                                             SketchTrimKeep == 0u);
-                                        MirrorSketchIntoWorldDraft(Sketch, SketchWorld, SketchWorldMapping);
+                                        MirrorSketchIntoWorldSketch(Sketch, SketchWorld, SketchWorldMapping);
                                     }
 
                                     // 🔴 NO SECOND GRID. `RecordViewportGridOverlay` was called here and
@@ -1820,7 +1824,7 @@ static std::uint32_t             SketchTrimKeep      = 0u;
                                             static_cast<double>(Pass.Width));
 
                                         ViewportCadProjections[ViewportLeafTally] =
-                                            ResolveWorldDraftScreenProjection(Pass.Width, Pass.Height);
+                                            ResolveWorldSketchScreenProjection(Pass.Width, Pass.Height);
                                         ViewportLeafScale = Drawable;
                                     }
 

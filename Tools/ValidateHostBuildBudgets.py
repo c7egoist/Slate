@@ -105,9 +105,12 @@ def main() -> int:
     # 🔴 RECORDING A CURVE IS NOT DRAWING IT. The editor took the presses and built the sketch, then
     #    showed nothing, because the projection and the overlays stayed behind in the deleted host.
     #    Each of these is a separate way for the viewport to go blank while every gate stays green.
+    # 🔴 THE WORLD-BACKED PATH IS THE ONE THAT SHIPS. `ProjectWorldBackedSketchRendering` takes the
+    #    place of the one-plane `ProjectSketchRendering`, and `ProjectWorldPlacementPreview` takes the
+    #    place of `ProjectPlacementPreview`; the claims are re-aimed at the mechanism, not a spelling.
     for Drawn, Why in (
-            ("ProjectSketchRendering(", "sketch curves must be projected into the CAD packet"),
-            ("ProjectPlacementPreview(", "the tool in flight must show its preview"),
+            ("ProjectWorldBackedSketchRendering(", "world sketch curves must be projected into the CAD packet"),
+            ("ProjectWorldPlacementPreview(", "the world-backed tool in flight must show its preview"),
             ("ResolvePlacementCurves(", "every curve subject must preview, not the seven with a branch")):
         require(Drawn in editor, f"{Why} -- {Drawn} is not called by the host that ships")
 
@@ -441,7 +444,8 @@ def main() -> int:
             "placing a workplane must consume the press so no curve starts on the replaced plane")
 
     interaction = read("Engine/SlateWorkspace/Discipline/SketchInteraction/Source/SketchInteraction.cpp")
-    require("Workplanes.Declare(Placed" in interaction and "Sketch.DeclarePlane({ Workplanes.Active()" in interaction,
+    require("Workplanes.Declare(Placed" in interaction and
+            "Sketch.DeclarePlane(ResolveSketchPlaneFromWorkplane(Workplanes.Active()))" in interaction,
             "a placed workplane must join the catalogue and be adopted, never overwrite the sketch plane blind")
 
     # 🔴 `DeviceOffering` and `InterfaceAttachment` were nine identical fields in two units, with a

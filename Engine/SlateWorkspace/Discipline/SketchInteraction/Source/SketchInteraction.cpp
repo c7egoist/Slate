@@ -17,8 +17,8 @@
 #include "SlateWorkspace/Discipline/TransformSequence/Api/TransformSequence.h"
 #include "SlateWorkspace/Discipline/ViewportProjection/Api/SketchBasis.h"
 #include "SlateWorkspace/Discipline/WorkplaneStanding/Api/WorkplaneStanding.h"
-#include "SlateWorkspace/Discipline/WorldDraftInteraction/Api/WorldDraftInteraction.h"
-#include "SlateWorkspace/Discipline/WorldDraftSketchBridge/Api/WorldDraftSketchBridge.h"
+#include "SlateWorkspace/Discipline/WorldSketchInteraction/Api/WorldSketchInteraction.h"
+#include "SlateWorkspace/Discipline/WorldSketchBridge/Api/WorldSketchBridge.h"
 
 #include <algorithm>
 #include <cmath>
@@ -350,7 +350,7 @@ bool ApplyWorkplaneTool(const PlaneExtent& Extent,
 
     // 📝 The compatibility sketch is seeded from the active plane only while it does not already carry
     //    committed geometry. Once geometry exists, the active workplane may change independently and the
-    //    world draft remains the authority for where new drawing lands.
+    //    world sketch remains the authority for where new drawing lands.
     if (!Sketch.PlaneDeclared() || !SketchHasCommittedGeometry(Sketch))
         Sketch.DeclarePlane(ResolveSketchPlaneFromWorkplane(Workplanes.Active()));
 
@@ -380,8 +380,8 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
                                const ParametricToolsContext& ToolContext,
                                WorkspaceNameIndex& Naming,
                                SketchStructure& Sketch,
-                               WorldDraftStructure& World,
-                               WorldDraftSketchMapping& Mapping,
+                               WorldSketchStructure& World,
+                               WorldSketchMapping& Mapping,
                                WorkspaceRecordStructure& Records,
                                WorkspaceRevisionSequence& Revisions,
                                WorkplaneCatalogue& Workplanes,
@@ -450,7 +450,8 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
     //    spline close back onto the point it started from. Until it seals, that geometry exists
     //    nowhere else.
     const SketchSnapPlacement Placement = Modifiers.Commanded
-                                        ? ResolveNearestSnap(Sketch, Workplanes.Active(),
+                                        ? ResolveNearestSnap(Sketch,
+                                                             ResolveSketchPlaneFromWorkplane(Workplanes.Active()),
                                                              Raw, SnapTolerance, {}, 10.0,
                                                              Tool.Anchors())
                                         : SketchSnapPlacement{};
@@ -485,7 +486,7 @@ void DriveDrawingWithModifiers(const PlaneExtent& Extent,
 
     const Deliver<WorkspaceRecordName> Record = CommitPlacement(Naming, Sketch, Records, Revisions, Sealed);
     AdoptCommittedShape(Sealed.Subject, Naming, Sketch, Records, Revisions, Record, PendingSelection);
-    MirrorSketchIntoWorldDraft(Sketch, World, Mapping);
+    MirrorSketchIntoWorldSketch(Sketch, World, Mapping);
 }
 
 bool ApplyDimensionTextEdit(const TextInputCondition& TextInput,
@@ -822,14 +823,14 @@ void DriveViewportSelectionAndTransformWorldBacked(const PlaneExtent& Extent,
                                                    const WorkspaceDirectoryProjection& Directory,
                                                    const ParametricWorkspaceContext& WorkspaceApplied,
                                                    SketchStructure& Sketch,
-                                                   WorldDraftStructure& World,
-                                                   WorldDraftSketchMapping& Mapping,
+                                                   WorldSketchStructure& World,
+                                                   WorldSketchMapping& Mapping,
                                                    WorkspaceRecordStructure& Records,
                                                    WorkspaceRevisionSequence& Revisions,
                                                    WorkspaceRecordName& PendingSelection,
                                                    SketchPick& SemanticSelection,
                                                    SketchPick& HoveredSelection,
-                                                   WorldDraftTransformSession& Transform,
+                                                   WorldSketchTransformSession& Transform,
                                                    OverlayGeometry& Overlay,
                                                    bool& PointerTaken,
                                                    double SessionMilliseconds,
@@ -838,7 +839,7 @@ void DriveViewportSelectionAndTransformWorldBacked(const PlaneExtent& Extent,
     const WorkspaceRecordName SelectedRecord = SelectedRecordIn(Directory, WorkspaceApplied);
     if (ApplyDimensionTextEdit(TextInput, Sketch, Records, Revisions, SelectedRecord))
     {
-        MirrorSketchIntoWorldDraft(Sketch, World, Mapping);
+        MirrorSketchIntoWorldSketch(Sketch, World, Mapping);
         PointerTaken = true;
     }
     if (SemanticSelection.Standing() && SelectedRecord.Assigned() &&
@@ -860,7 +861,7 @@ void DriveViewportSelectionAndTransformWorldBacked(const PlaneExtent& Extent,
         PointerTaken = true;
         return;
     }
-    MirrorSketchIntoWorldDraft(Sketch, World, Mapping);
+    MirrorSketchIntoWorldSketch(Sketch, World, Mapping);
 
     WorldPick WorldSemantic = {};
     WorldPick WorldHovered = {};
@@ -873,14 +874,14 @@ void DriveViewportSelectionAndTransformWorldBacked(const PlaneExtent& Extent,
     const TransformManner WasManner = Transform.Manner();
 
     GizmoHandle HoveredHandle = GizmoHandle::None;
-    DriveWorldDraftSelectionAndTransform(Extent, Pointer, TextInput,
+    DriveWorldSketchSelectionAndTransform(Extent, Pointer, TextInput,
                                          Selection, Gizmo, Camera,
                                          World, WorldSemantic, WorldHovered,
                                          Transform, PointerTaken,
                                          SessionMilliseconds, LastGPressedMilliseconds,
                                          &HoveredHandle);
 
-    ApplyWorldDraftToSketch(World, Sketch);
+    ApplyWorldSketchToSketch(World, Sketch);
 
     if (!ResolveSketchPickForWorldPick(Sketch, Records, Mapping, WorldSemantic, SemanticSelection))
         SemanticSelection = {};

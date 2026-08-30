@@ -125,10 +125,11 @@ namespace
 
     /// 🧩 The two directions that span the plane a sketch is drawn on.
     /// note ⚠️ Recomputed from the stored normal rather than trusted, and an undeclared sketch answers the
-    ///       ground plane's axes — the same rule `ResolveSketchBasis` follows, kept here because
-    ///       `SpatialBasis` itself lives a layer above this one.
+    ///       ground plane's axes. The same rule `ResolveSketchBasis` follows is kept here because `SketchSnap`
+    ///       must not reach the viewport unit that owns `SpatialBasis`; the workspace resolves its workplane
+    ///       into a `SketchPlane` before calling in.
     void ResolvePlaneSpans(const SketchStructure& Declared,
-                           const Workplane* ActiveWorkplane,
+                           const SketchPlane* ActivePlane,
                            SpatialPoint& Origin,
                            SpatialDirection& Along,
                            SpatialDirection& Across)
@@ -137,14 +138,13 @@ namespace
         Along  = { 1.0, 0.0, 0.0 };
         Across = { 0.0, 0.0, 1.0 };
 
-        if (ActiveWorkplane != nullptr
-         && LengthSquared(ActiveWorkplane->Along) > 1.0e-18
-         && LengthSquared(ActiveWorkplane->Normal) > 1.0e-18)
+        if (ActivePlane != nullptr
+         && LengthSquared(ActivePlane->AlongDirection) > 1.0e-18
+         && LengthSquared(ActivePlane->Normal) > 1.0e-18)
         {
-            const SpatialBasis Basis = ResolveWorkplaneBasis(*ActiveWorkplane);
-            Origin = Basis.Origin;
-            Along = Basis.Along;
-            Across = Basis.Across;
+            Origin = ActivePlane->Origin;
+            Along  = Normalize(ActivePlane->AlongDirection);
+            Across = Normalize(Cross(Normalize(ActivePlane->Normal), Along));
             return;
         }
 
@@ -161,7 +161,7 @@ namespace
     }
 
     SketchSnapPlacement ResolveNearestSnapAgainst(const SketchStructure& Declared,
-                                                  const Workplane* ActiveWorkplane,
+                                                  const SketchPlane* ActivePlane,
                                                   const SpatialPoint& Probe,
                                                   double MaximumDistance,
                                                   const SketchSnapMask& Accepted,
@@ -192,7 +192,7 @@ namespace
 
     SpatialPoint GridOrigin = {};
     SpatialDirection Along = {}, Across = {};
-    ResolvePlaneSpans(Declared, ActiveWorkplane, GridOrigin, Along, Across);
+    ResolvePlaneSpans(Declared, ActivePlane, GridOrigin, Along, Across);
 
     for (std::uint32_t CurveIndex = 1u; CurveIndex <= Declared.Curves().size(); ++CurveIndex)
     {
@@ -328,14 +328,14 @@ SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
 }
 
 SketchSnapPlacement ResolveNearestSnap(const SketchStructure& Declared,
-                                       const Workplane& ActiveWorkplane,
+                                       const SketchPlane& ActivePlane,
                                        const SpatialPoint& Probe,
                                        double MaximumDistance,
                                        const SketchSnapMask& Accepted,
                                        double GridStep,
                                        const std::vector<SpatialPoint>& PendingAnchors)
 {
-    return ResolveNearestSnapAgainst(Declared, &ActiveWorkplane, Probe, MaximumDistance,
+    return ResolveNearestSnapAgainst(Declared, &ActivePlane, Probe, MaximumDistance,
                                      Accepted, GridStep, PendingAnchors);
 }
 
