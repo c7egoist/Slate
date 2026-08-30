@@ -1,0 +1,34 @@
+/* ==========================================================================
+   theme.css -- colour tokens + base reset. Lifted from UVEditor.html :root so
+   the 3D pane, the 2D pane and the chrome all share one dark palette.
+   ========================================================================== */
+:root{
+  --bg:#000000;
+  --panel:#0a0a0a;
+  --panel-2:#0e0e0e;
+  --panel-3:#141414;
+  --header:#070707;
+  --row-hover:#1a1a1a;
+  --row-selected:#1f1f1f;
+  --row-selected-bd:#3a3a3a;
+  --text:#ededed;
+  --text-dim:#8a8a8a;
+  --text-faint:#5a5a5a;
+  --border:#1c1c1c;
+  --accent:#ffffff;
+  --accent-soft:rgba(255,255,255,.12);
+  --green:#22c55e;
+  --red:#ef4444;
+  --blue:#3b82f6;
+  --orange:#ff9628;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none;}
+html,body{height:100%;width:100%;background:#000;overflow:hidden;}
+body{
+  font-family:'General Sans','Segoe UI',Roboto,system-ui,Arial,sans-serif;
+  font-size:13px;color:var(--text);
+  display:flex;flex-direction:column;height:100vh;
+}
+.lico{width:15px;height:15px;stroke-width:2;display:inline-flex}
+svg.lucide{display:block}

@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viewport · Editor</title>
+
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#000000;
+  --panel:#0a0a0a;
+  --panel-2:#0e0e0e;
+  --header:#070707;
+  --row-hover:#1a1a1a;
+  --row-selected:#1f1f1f;
+  --row-selected-bd:#3a3a3a;
+  --text:#ededed;
+  --text-dim:#8a8a8a;
+  --text-faint:#5a5a5a;
+  --border:#1c1c1c;
+  --accent:#ffffff;
+  --accent-soft:rgba(255,255,255,.12);
+  --green:#22c55e;
+  --red:#ef4444;
+  --dot-active:#ffffff;
+  --dot-secondary:#3b82f6;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000}
+body{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'General Sans','Segoe UI',Roboto,system-ui,Arial,sans-serif;
+  font-size:13px;color:var(--text);user-select:none;
+  padding:24px;
+}
+.lico{width:15px;height:15px;stroke-width:2;display:inline-flex}
+svg.lucide{display:block}
+
+/* ─── Editor shell: outliner docked left + viewport right ─── */
+.editor{
+  display:flex;flex-direction:column;
+  width:1180px;height:680px;
+  background:#000;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.85);
+  animation:panelIn .4s var(--ease);
+}
+@keyframes panelIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+
+/* ════════════════════════════════════════════════════════
+   UNIFIED TOP HEADER (spans full width: scene + viewport)
+════════════════════════════════════════════════════════ */
+.top-header{
+  display:flex;align-items:center;
+  background:var(--header);
+  border-bottom:1px solid var(--border);
+  height:38px;flex-shrink:0;
+  padding:0 8px;gap:6px;
+}
+.th-scene{
+  display:flex;align-items:center;gap:6px;
+  width:300px;flex-shrink:0;
+  transition:width .28s var(--ease),opacity .2s var(--ease);
+  overflow:hidden;
+}
+.top-header.outliner-collapsed .th-scene{width:0;opacity:0}
+.th-scene .title{font-weight:600;font-size:13px;letter-spacing:.2px;white-space:nowrap}
+.th-scene .spacer{flex:1}
+
+.th-split{
+  display:flex;align-items:center;
+  flex-shrink:0;
+  padding:0 2px;
+}
+.th-vp{
+  display:flex;align-items:center;gap:6px;
+  flex:1;min-width:0;
+}
+.th-vp .vp-title{font-weight:600;font-size:13px;letter-spacing:.2px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.th-vp .vp-title .lico{width:15px;height:15px;color:var(--text-dim)}
+.th-vp .spacer{flex:1}
+.th-vp .vh-sep{width:1px;height:18px;background:var(--border);margin:0 2px}
+
+.th-sep{width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0}
+
+/* ─── Notification Button & Badge ─── */
+.notif-btn{position:relative}
+.notif-badge{
+  position:absolute;top:-1px;right:-2px;
+  background:var(--red);color:#fff;
+  font-size:9.5px;font-weight:700;
+  width:15px;height:15px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2px var(--header);
+  pointer-events:none;
+}
+
+/* main body row under the unified header */
+.editor-body{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ════════════════════════════════════════════════════════
+   DOCKED OUTLINER (left)
+════════════════════════════════════════════════════════ */
+.outliner{
+  width:300px;flex-shrink:0;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .28s var(--ease),margin-left .28s var(--ease),border-color .28s var(--ease);
+}
+.outliner.collapsed{width:0;margin-left:0;border-right:none}
+
+.icon-btn{
+  width:28px;height:28px;border-radius:50%;border:none;
+  background:transparent;color:var(--text-dim);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);
+}
+.icon-btn:hover{background:#1f1f1f;color:var(--text)}
+.icon-btn:active{transform:scale(.88)}
+.icon-btn.active{background:var(--accent);color:#000}
+.icon-btn .lico{width:15px;height:15px}
+
+.ol-toolbar{
+  display:flex;align-items:center;gap:4px;
+  padding:6px 8px;border-bottom:1px solid var(--border);
+  background:var(--panel-2);flex-shrink:0;
+}
+.ol-toolbar .div{width:1px;height:18px;background:var(--border);margin:0 4px}
+.ol-toolbar .spacer{flex:1}
+
+.ol-search{
+  display:flex;align-items:center;gap:6px;
+  padding:8px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.search-box{
+  flex:1;display:flex;align-items:center;gap:6px;
+  background:#000;border:1px solid var(--border);border-radius:999px;
+  padding:6px 12px;transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+}
+.search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.search-box .lico{width:14px;height:14px;color:var(--text-faint);flex-shrink:0}
+.search-box input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12px;font-family:inherit}
+.search-box input::placeholder{color:var(--text-faint)}
+.search-clear{cursor:pointer;color:var(--text-faint);display:none;align-items:center}
+.search-clear:hover{color:var(--text)}
+.search-clear .lico{width:13px;height:13px}
+
+.tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0}
+.tree::-webkit-scrollbar{width:8px}
+.tree::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
+.tree::-webkit-scrollbar-track{background:transparent}
+
+.node{position:relative}
+.row{
+  display:flex;align-items:center;height:27px;padding-right:8px;cursor:pointer;
+  border-radius:999px;margin:1px 4px;position:relative;
+  transition:background .13s var(--ease),box-shadow .13s var(--ease);
+  animation:rowIn .2s var(--ease);
+}
+@keyframes rowIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+.row:hover{background:var(--row-hover)}
+.row.selected{background:var(--row-selected);box-shadow:inset 0 0 0 1px var(--row-selected-bd)}
+
+.twisty{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-dim);transition:transform .16s var(--ease)}
+.twisty .lico{width:13px;height:13px}
+.node.collapsed>.row .twisty{transform:rotate(-90deg)}
+.twisty.empty{visibility:hidden}
+
+.seldot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin:0 7px 0 1px;background:transparent;transition:background .12s var(--ease),box-shadow .12s var(--ease)}
+.seldot.active{background:var(--dot-active);box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+.seldot.secondary{background:var(--dot-secondary);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+
+.type-ico{width:15px;height:15px;flex-shrink:0;margin-right:7px;color:var(--text-dim);display:flex;cursor:pointer;transition:color .12s var(--ease)}
+.type-ico .lico{width:15px;height:15px}
+.type-ico:hover{filter:brightness(1.3)}
+
+.label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.label-input{flex:1;background:#000;border:1px solid var(--accent);border-radius:999px;color:#fff;font-size:12.5px;padding:2px 8px;outline:none;font-family:inherit;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+.count{color:var(--text-faint);font-size:11px;margin-left:6px}
+
+.row-actions{display:flex;align-items:center;gap:1px;opacity:0;transform:translateX(4px);transition:opacity .14s var(--ease),transform .14s var(--ease)}
+.row:hover .row-actions,.row.selected .row-actions{opacity:1;transform:none}
+.act{width:24px;height:24px;border-radius:50%;border:none;background:transparent;color:var(--text-faint);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .13s var(--ease),background .13s var(--ease),transform .1s var(--ease)}
+.act:hover{color:var(--text);background:#1f1f1f}
+.act:active{transform:scale(.85)}
+.act .lico{width:14px;height:14px}
+.act.off{color:#4a4a4a}
+.act.locked{color:#e0b341}
+
+.ol-status{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid var(--border);background:var(--panel-2);font-size:11px;color:var(--text-dim);flex-shrink:0}
+.ol-status .live{display:flex;align-items:center;gap:5px;color:var(--green)}
+.ol-status .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+.ol-status .spacer{flex:1}
+.empty-state{padding:30px 16px;text-align:center;color:var(--text-faint);font-size:12px}
+
+/* ════════════════════════════════════════════════════════
+   VIEWPORT (right)
+════════════════════════════════════════════════════════ */
+.viewport-panel{
+  flex:1;min-width:0;
+  background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+}
+
+.menu-btn{
+  display:flex;align-items:center;gap:6px;
+  height:28px;padding:0 12px;
+  border-radius:999px;border:none;
+  background:transparent;color:var(--text-dim);
+  cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;
+  transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);
+  white-space:nowrap;position:relative;
+}
+.menu-btn:hover{background:#1f1f1f;color:var(--text)}
+.menu-btn:active{transform:scale(.96)}
+.menu-btn.open{background:#262626;color:var(--text)}
+.menu-btn .lico-ico{width:14px;height:14px;stroke-width:2}
+.menu-btn .lico-small{width:11px;height:11px;stroke-width:2.4;opacity:.5}
+.menu-btn.compact{padding:0 10px;height:24px;border-radius:999px}
+
+/* canvas fills remaining space */
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#060606;cursor:grab}
+.canvas-wrap:active{cursor:grabbing}
+canvas{display:block;width:100%;height:100%}
+
+/* ════════════════════════════════════════════════════════
+   CAD FLOATING TOOLBAR (LEFT)
+════════════════════════════════════════════════════════ */
+.cad-sidebar {
+  position: absolute; top: 14px; left: 14px; bottom: 14px; z-index: 100;
+  width: 240px; background: rgba(14,14,14,0.85); backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: 28px; /* Rounded Pill-like Outer */
+  display: flex; flex-direction: column; overflow: visible;
+  transition: width 0.3s var(--ease);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.cad-sidebar.collapsed { width: 62px; }
+
+/* Mac dots */
+.cad-top-bar { display: flex; align-items: center; padding: 18px 20px 10px; gap: 8px; transition: 0.3s; }
+.cad-sidebar.collapsed .cad-top-bar { padding: 18px 0 10px; justify-content: center; }
+.mac-dot { width: 10px; height: 10px; border-radius: 50%; }
+.mac-dot.r { background: #ff5f56; }
+.mac-dot.y { background: #ffbd2e; }
+.mac-dot.g { background: #27c93f; }
+
+/* Header: Logo & Title */
+.cad-header { display: flex; align-items: center; padding: 0 20px 16px; gap: 12px; overflow: hidden; white-space: nowrap; }
+.cad-sidebar.collapsed .cad-header { padding: 0 0 16px; justify-content: center; }
+.cad-logo { width: 24px; height: 24px; color: var(--text); flex-shrink: 0; }
+.cad-title-text { font-weight: 600; font-size: 14px; flex: 1; color: var(--text); }
+.cad-sidebar.collapsed .cad-title-text { display: none; }
+
+/* Search Box */
+.cad-search-wrap { padding: 0 16px 16px; }
+.cad-sidebar.collapsed .cad-search-wrap { padding: 0 10px 16px; }
+.cad-search-bar {
+  display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 999px; /* Pill input */
+  padding: 8px 12px; transition: border-color 0.2s; cursor: text;
+}
+.cad-search-bar:focus-within { border-color: var(--text-dim); }
+.cad-search-bar input { background: transparent; border: none; outline: none; color: var(--text); width: 100%; font-family: inherit; font-size: 12.5px; }
+.cad-search-bar input::placeholder { color: var(--text-faint); }
+.cad-sidebar.collapsed .cad-search-bar { padding: 8px; justify-content: center; width: 40px; height: 40px; cursor: pointer; }
+.cad-sidebar.collapsed .cad-search-bar input { display: none; }
+
+/* Scrollable Tools List */
+.cad-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 8px; }
+.cad-scroll::-webkit-scrollbar { width: 4px; }
+.cad-scroll::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+/* Groups & Items */
+.cad-group { position: relative; margin-bottom: 2px; }
+.cad-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: 999px; /* Perfectly rounded items inside */
+  cursor: pointer; color: var(--text-dim); transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.cad-item:hover { background: var(--row-hover); color: var(--text); }
+.cad-item.active { background: rgba(255,255,255,0.08); color: var(--text); }
+.cad-sidebar.collapsed .cad-item { justify-content: center; padding: 12px; }
+
+.cad-item .lico { width: 17px; height: 17px; flex-shrink: 0; }
+.cad-text { flex: 1; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.cad-chev { width: 14px; height: 14px; transition: transform 0.2s; opacity: 0.6; }
+.cad-group.open .cad-chev { transform: rotate(180deg); opacity: 1; }
+.cad-sidebar.collapsed .cad-text, .cad-sidebar.collapsed .cad-chev { display: none; }
+
+/* Sub-menus (Expanded Mode - Accordion) */
+.cad-sidebar:not(.collapsed) .cad-sub {
+  position: relative; display: none; flex-direction: column;
+  margin: 4px 0 6px 23px; /* left margin indents under the icon */
+}
+.cad-sidebar:not(.collapsed) .cad-group.open .cad-sub { display: flex; }
+/* The exact L-shape lines from the image */
+.cad-sidebar:not(.collapsed) .cad-sub::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 17px; /* Stops at center of last item */
+  width: 1px; background: var(--border);
+}
+.cad-sidebar:not(.collapsed) .cad-sub-item {
+  padding: 8px 12px 8px 22px; color: var(--text-dim); cursor: pointer;
+  font-size: 12.5px; border-radius: 999px; position: relative;
+  transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.cad-sidebar:not(.collapsed) .cad-sub-item::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  width: 12px; height: 1px; background: var(--border);
+}
+.cad-sidebar:not(.collapsed) .cad-sub-item:hover { background: var(--row-hover); color: var(--text); }
+.cad-sidebar:not(.collapsed) .cad-sub-item.active { background: rgba(255,255,255,0.06); color: var(--text); }
+
+/* Sub-menus (Collapsed Mode - Floating Flyout) */
+.cad-sidebar.collapsed .cad-sub {
+  display: none; position: absolute; top: 0; left: calc(100% + 14px);
+  background: #111; border: 1px solid var(--border); border-radius: 16px;
+  padding: 6px; width: max-content; min-width: 140px; flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 200; gap: 2px;
+}
+/* Flyout arrow */
+.cad-sidebar.collapsed .cad-sub::after {
+  content:''; position:absolute; top: 16px; left: -5px; width: 8px; height: 8px;
+  background: #111; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+.cad-sidebar.collapsed .cad-group:hover .cad-sub { display: flex; }
+.cad-sidebar.collapsed .cad-sub-item {
+  padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  color: var(--text-dim); font-size: 12.5px; transition: background 0.15s, color 0.1s;
+}
+.cad-sidebar.collapsed .cad-sub-item:hover { background: var(--row-hover); color: var(--text); }
+
+/* Sidebar Footer (Toggle Button) */
+.cad-footer { padding: 12px 16px; display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.03); }
+.cad-sidebar.collapsed .cad-footer { justify-content: center; padding: 12px 0; border-top: none;}
+.cad-toggle {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, transform 0.3s;
+}
+.cad-toggle:hover { background: var(--row-hover); color: var(--text); }
+.cad-sidebar.collapsed .cad-toggle { transform: rotate(180deg); }
+
+/* Tooltips for collapsed groups that have NO submenu */
+.cad-sidebar.collapsed .cad-group:not(.has-sub)[data-tip]:hover::after {
+  content: attr(data-tip); position: absolute; left: calc(100% + 14px); top: 50%;
+  transform: translateY(-50%); background: #111; border: 1px solid var(--border);
+  color: var(--text); font-size: 12px; font-weight: 500; padding: 6px 12px;
+  border-radius: 999px; white-space: nowrap; pointer-events: none; z-index: 400;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+/* ─── Bottom-right floating view tools (grid + overlays + view tools) ─── */
+.vr-bar{
+  position:absolute;bottom:14px;right:14px;z-index:50;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:rgba(14,14,14,.82);
+  backdrop-filter:blur(12px);
+  border:1px solid var(--border);
+  border-radius:999px;padding:6px;
+}
+.vr-bar .icon-btn{width:32px;height:32px;border-radius:50%}
+.vr-bar .vrsep{width:20px;height:1px;background:var(--border);margin:4px 0}
+
+/* ─── Popup menus ─── */
+.popup{
+  position:fixed;z-index:300;
+  background:#111;border:1px solid var(--border);border-radius:14px;
+  padding:5px;min-width:210px;
+  box-shadow:0 16px 44px rgba(0,0,0,.85),0 2px 8px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;
+  transform:translateY(-6px) scale(.97);transform-origin:top left;
+  transition:opacity .14s var(--ease),transform .14s var(--ease);
+}
+.popup.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
+.popup.up{transform-origin:bottom left}
+.popup-title{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint);font-weight:600;padding:6px 10px 5px}
+.popup-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:9px;cursor:pointer;font-size:12.5px;color:var(--text-dim);transition:background .12s var(--ease),color .1s}
+.popup-item:hover{background:#1f1f1f;color:var(--text)}
+.popup-item .lico{width:14px;height:14px;flex-shrink:0}
+.popup-item .key{margin-left:auto;font-size:10px;color:var(--text-faint);letter-spacing:.2px}
+.popup-item.checked{color:var(--text)}
+.popup-item .check{margin-left:auto;width:14px;height:14px;display:none;color:var(--accent)}
+.popup-item.checked .check{display:inline-flex}
+.popup-item.checked .key{display:none}
+.popup-item.radio.active{color:var(--text)}
+.popup-item.radio.active .lico{color:var(--accent)}
+.popup-item.radio.active::after{content:'';margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.popup-sep{height:1px;background:var(--border);margin:5px 0}
+
+/* slider row inside popup */
+.popup-slider{padding:8px 10px 6px}
+.popup-slider .sl-label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-dim);margin-bottom:7px}
+.popup-slider .sl-label b{color:var(--text);font-weight:500}
+.sl-track{position:relative;height:5px;border-radius:999px;background:#262626;cursor:pointer}
+.sl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent)}
+.sl-knob{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* segmented control inside popup */
+.popup-seg{display:flex;gap:3px;padding:6px 10px 8px}
+.seg-btn{flex:1;height:26px;border-radius:999px;border:1px solid var(--border);background:#000;color:var(--text-dim);font-size:11px;font-family:inherit;cursor:pointer;transition:.13s var(--ease)}
+.seg-btn:hover{border-color:#3a3a3a;color:var(--text)}
+.seg-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* debug stat rows */
+.dbg-stat{display:flex;justify-content:space-between;padding:4px 10px;font-size:11.5px;color:var(--text-dim)}
+.dbg-stat b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* ─── NOTIFICATION POPUP ─── */
+.notif-popup{width:320px;padding:0;display:flex;flex-direction:column;overflow:hidden}
+.notif-header{display:flex;border-bottom:1px solid var(--border);padding:4px 8px 0;background:var(--panel-2)}
+.notif-tab{
+  background:transparent;border:none;color:var(--text-dim);
+  padding:10px 14px;font-size:12px;font-weight:500;cursor:pointer;
+  position:relative;transition:color .15s;font-family:inherit;
+}
+.notif-tab:hover{color:var(--text)}
+.notif-tab.active{color:var(--text)}
+.notif-tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;
+  height:2px;background:var(--accent);border-radius:2px 2px 0 0;
+}
+.notif-list{max-height:360px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
+.notif-list::-webkit-scrollbar{width:6px}
+.notif-list::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+.notif-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer;transition:background .12s}
+.notif-item:hover{background:var(--row-hover)}
+.notif-icon{width:34px;height:34px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text)}
+.notif-icon .lico{width:16px;height:16px}
+.notif-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.notif-title{font-size:12.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-desc{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-time{font-size:10.5px;color:var(--text-faint);white-space:nowrap;padding-left:6px;font-variant-numeric:tabular-nums}
+.notif-empty{padding:30px;text-align:center;color:var(--text-faint);font-size:12px}
+
+
+/* ─── Viewport footer / status bar (matches outliner .ol-status) ─── */
+.vp-footer{
+  display:flex;align-items:center;gap:14px;
+  padding:7px 12px;border-top:1px solid var(--border);
+  background:var(--panel-2);font-size:11px;color:var(--text-dim);
+  flex-shrink:0;z-index:60;
+}
+.vp-footer .stat{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.vp-footer .stat .lico{width:12px;height:12px;color:var(--text-faint)}
+.vp-footer .stat b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.vp-footer .vf-sep{width:1px;height:14px;background:var(--border)}
+.vp-footer .spacer{flex:1}
+.vp-footer .live{display:flex;align-items:center;gap:5px;color:var(--green)}
+.vp-footer .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.8s ease-in-out infinite}
+
+/* ─── Bottom-center transform toolbar (rounded) ─── */
+.bottom-bar{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:50;
+  display:flex;align-items:center;gap:4px;
+  background:rgba(14,14,14,.85);backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:999px;padding:6px;
+}
+.tool{
+  width:36px;height:36px;border-radius:50%;border:none;background:transparent;
+  color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .14s var(--ease),color .14s var(--ease),transform .12s var(--ease);position:relative;
+}
+.tool:hover{background:#1f1f1f;color:var(--text)}
+.tool:active{transform:scale(.9)}
+.tool.active{background:var(--accent);color:#000}
+.tool .lico{width:17px;height:17px}
+.bottom-bar .bsep{width:1px;height:22px;background:var(--border);margin:0 4px}
+
+/* tooltip */
+.tool[data-tip]:hover::after,.icon-btn[data-tip]:hover::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#000;border:1px solid var(--border);color:var(--text);font-size:10.5px;padding:5px 10px;border-radius:999px;
+  white-space:nowrap;pointer-events:none;z-index:400;
+}
+.vr-bar .icon-btn[data-tip]:hover::after{bottom:50%;top:auto;left:auto;right:calc(100% + 8px);transform:translateY(50%)}
+</style>
+</head>
+<body>
+
+<div class="editor" id="editor">
+
+  <!-- ════ UNIFIED TOP HEADER (scene + splitter + viewport) ════ -->
+  <div class="top-header" id="topHeader">
+    <!-- Scene side -->
+    <div class="th-scene" id="thScene">
+      <span class="title">Scene</span>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="addLayerBtn" data-tip="New Layer"><i data-lucide="layers" class="lico"></i></button>
+    </div>
+
+    <!-- Splitter dock toggle (sits between scene + viewport) -->
+    <div class="th-split">
+      <button class="icon-btn" id="dockLeftBtn" data-tip="Toggle scene panel"><i data-lucide="panel-left-close" class="lico"></i></button>
+    </div>
+    <div class="th-sep"></div>
+
+    <!-- Viewport side -->
+    <div class="th-vp">
+      <span class="vp-title"><i data-lucide="box" class="lico"></i> Viewport</span>
+      <span class="spacer"></span>
+      <button class="menu-btn" id="cameraBtn" title="Camera">
+        <i data-lucide="video" class="lico lico-ico"></i> Camera
+        <i data-lucide="chevron-down" class="lico lico-small"></i>
+      </button>
+      <button class="menu-btn" id="vpBtn" title="Viewport settings">
+        <i data-lucide="settings-2" class="lico lico-ico"></i> Viewport
+        <i data-lucide="chevron-down" class="lico lico-small"></i>
+      </button>
+      <div class="th-sep"></div>
+      
+      <!-- Notifications Button -->
+      <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
+        <i data-lucide="bell" class="lico"></i>
+        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ════ BODY: outliner + viewport ════ -->
+  <div class="editor-body">
+
+    <!-- ════ DOCKED OUTLINER ════ -->
+    <aside class="outliner" id="outliner">
+      <div class="ol-toolbar">
+        <button class="icon-btn" id="addFolderBtn" data-tip="New Folder"><i data-lucide="folder-plus" class="lico"></i></button>
+        <button class="icon-btn" id="addItemBtn" data-tip="New Object"><i data-lucide="plus" class="lico"></i></button>
+        <div class="div"></div>
+        <button class="icon-btn" id="expandAllBtn" data-tip="Expand all"><i data-lucide="chevrons-down" class="lico"></i></button>
+        <button class="icon-btn" id="collapseAllBtn" data-tip="Collapse all"><i data-lucide="chevrons-up" class="lico"></i></button>
+        <div class="spacer"></div>
+      </div>
+      <div class="ol-search">
+        <div class="search-box">
+          <i data-lucide="search" class="lico"></i>
+          <input type="text" id="search" placeholder="Filter scene...">
+          <span class="search-clear" id="searchClear"><i data-lucide="x" class="lico"></i></span>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+      <div class="ol-status">
+        <span class="live"><span class="pulse"></span> Live</span>
+        <span class="spacer"></span>
+        <span id="objCount">0 objects</span>
+      </div>
+    </aside>
+
+    <!-- ════ VIEWPORT ════ -->
+    <div class="viewport-panel" id="viewportPanel">
+
+      <div class="canvas-wrap" id="canvasWrap">
+
+        <!-- ════ CAD FLOATING TOOLBAR ════ -->
+        <aside class="cad-sidebar expanded" id="cadSidebar">
+
+          <!-- Mac Dots -->
+          <div class="cad-top-bar">
+            <div class="mac-dots" style="display:flex;gap:6px;">
+              <span class="mac-dot r"></span>
+              <span class="mac-dot y"></span>
+              <span class="mac-dot g"></span>
+            </div>
+          </div>
+
+          <!-- Header Logo & Title -->
+          <div class="cad-header">
+            <i data-lucide="aperture" class="lico cad-logo"></i>
+            <span class="cad-title-text">Spectral CAD</span>
+          </div>
+
+          <!-- Search -->
+          <div class="cad-search-wrap">
+            <div class="cad-search-bar">
+              <i data-lucide="search" class="lico"></i>
+              <input type="text" placeholder="Search tools...">
+            </div>
+          </div>
+
+          <!-- Scrolling Tool List -->
+          <div class="cad-scroll">
+
+            <div class="cad-group" data-tip="Workspace">
+              <div class="cad-item active">
+                <i data-lucide="layout-grid" class="lico"></i>
+                <span class="cad-text">Workspace</span>
+              </div>
+            </div>
+
+            <!-- Group: Add Object -->
+            <div class="cad-group has-sub open">
+              <div class="cad-item">
+                <i data-lucide="box" class="lico"></i>
+                <span class="cad-text">Primitives</span>
+                <i data-lucide="chevron-down" class="lico cad-chev"></i>
+              </div>
+              <div class="cad-sub">
+                <div class="cad-sub-item active">Cube</div>
+                <div class="cad-sub-item">Sphere</div>
+                <div class="cad-sub-item">Cylinder</div>
+                <div class="cad-sub-item">Torus</div>
+              </div>
+            </div>
+
+            <!-- Group: Modify -->
+            <div class="cad-group has-sub">
+              <div class="cad-item">
+                <i data-lucide="layers" class="lico"></i>
+                <span class="cad-text">Modifiers</span>
+                <i data-lucide="chevron-down" class="lico cad-chev"></i>
+              </div>
+              <div class="cad-sub">
+                <div class="cad-sub-item">Fillet</div>
+                <div class="cad-sub-item">Chamfer</div>
+                <div class="cad-sub-item">Bevel</div>
+                <div class="cad-sub-item">Subdivide</div>
+              </div>
+            </div>
+
+            <!-- Group: Curves -->
+            <div class="cad-group has-sub">
+              <div class="cad-item">
+                <i data-lucide="git-commit" class="lico"></i>
+                <span class="cad-text">Curve Tools</span>
+                <i data-lucide="chevron-down" class="lico cad-chev"></i>
+              </div>
+              <div class="cad-sub">
+                <div class="cad-sub-item">Bezier Curve</div>
+                <div class="cad-sub-item">NURBS Path</div>
+                <div class="cad-sub-item">B-Spline</div>
+              </div>
+            </div>
+
+            <!-- Single Item -->
+            <div class="cad-group" data-tip="Extrude">
+              <div class="cad-item">
+                <i data-lucide="arrow-up-to-line" class="lico"></i>
+                <span class="cad-text">Extrude</span>
+              </div>
+            </div>
+
+            <!-- Separator simulation via margin -->
+            <div style="height: 12px;"></div>
+
+            <div class="cad-group" data-tip="Team Library">
+              <div class="cad-item">
+                <i data-lucide="users" class="lico"></i>
+                <span class="cad-text">Team Library</span>
+              </div>
+            </div>
+
+            <div class="cad-group" data-tip="Constraints">
+              <div class="cad-item">
+                <i data-lucide="link" class="lico"></i>
+                <span class="cad-text">Constraints</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Footer Toggle -->
+          <div class="cad-footer">
+            <button class="cad-toggle" id="cadToggleBtn" title="Toggle CAD Toolbar">
+              <i data-lucide="chevron-left" class="lico"></i>
+            </button>
+          </div>
+
+        </aside>
+
+        <canvas id="vp"></canvas>
+
+        <!-- bottom-right floating view tools: reset/frame/fullscreen + grid + overlays(gizmo/sun) -->
+        <div class="vr-bar">
+          <button class="icon-btn" id="resetViewBtn" data-tip="Reset view (Home)"><i data-lucide="rotate-ccw" class="lico"></i></button>
+          <button class="icon-btn" id="frameBtn" data-tip="Frame selection (F)"><i data-lucide="maximize" class="lico"></i></button>
+          <button class="icon-btn" id="fullscreenBtn" data-tip="Fullscreen (F11)"><i data-lucide="expand" class="lico"></i></button>
+          <div class="vrsep"></div>
+          <button class="icon-btn active" id="gridOverlayBtn" data-tip="Ground grid (G)"><i data-lucide="grid-3x3" class="lico"></i></button>
+          <button class="icon-btn active" id="axisOverlayBtn" data-tip="Axis gizmo"><i data-lucide="move-3d" class="lico"></i></button>
+          <button class="icon-btn active" id="sunOverlayBtn" data-tip="Sun gizmo"><i data-lucide="sun" class="lico"></i></button>
+        </div>
+
+        <!-- bottom-center transform toolbar -->
+        <div class="bottom-bar">
+          <button class="tool active" data-tool="select" data-tip="Select (Q)"><i data-lucide="mouse-pointer-2" class="lico"></i></button>
+          <button class="tool" data-tool="move" data-tip="Move (W)"><i data-lucide="move-3d" class="lico"></i></button>
+          <button class="tool" data-tool="rotate" data-tip="Rotate (E)"><i data-lucide="rotate-3d" class="lico"></i></button>
+          <button class="tool" data-tool="scale" data-tip="Scale (R)"><i data-lucide="scale-3d" class="lico"></i></button>
+          <div class="bsep"></div>
+          <button class="tool" id="snapTool" data-tip="Snap to grid"><i data-lucide="magnet" class="lico"></i></button>
+          <button class="tool" id="pivotTool" data-tip="Pivot center"><i data-lucide="git-commit-horizontal" class="lico"></i></button>
+        </div>
+      </div>
+
+      <!-- footer / status bar with scene stats + DEBUG menu -->
+      <div class="vp-footer">
+        <button class="menu-btn compact" id="debugBtn" title="Debug">
+          <i data-lucide="bug" class="lico lico-ico"></i> Debug
+          <i data-lucide="chevron-up" class="lico lico-small"></i>
+        </button>
+        <div class="vf-sep"></div>
+        <span class="stat"><i data-lucide="gauge" class="lico"></i> <b id="ftFps">—</b> fps</span>
+        <div class="vf-sep"></div>
+        <span class="stat"><i data-lucide="box" class="lico"></i> <b id="ftObjs">0</b> objects</span>
+        <span class="stat"><i data-lucide="triangle" class="lico"></i> <b id="ftTris">0</b> tris</span>
+        <span class="stat"><i data-lucide="layers-2" class="lico"></i> <b id="ftDraws">0</b> draws</span>
+        <div class="vf-sep"></div>
+        <span class="stat" id="ftCam"><i data-lucide="video" class="lico"></i> Persp · 50mm</span>
+        <span class="spacer"></span>
+        <span class="stat" id="ftCoord">0.0, 0.0, 0.0</span>
+        <div class="vf-sep"></div>
+        <span class="live"><span class="pulse"></span> Live</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NOTIFICATIONS POPUP ═══ -->
+<div class="popup notif-popup" id="notifPopup">
+  <div class="notif-header">
+    <button class="notif-tab active" data-tab="all">All</button>
+    <button class="notif-tab" data-tab="system">System</button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <!-- JS Rendered -->
+  </div>
+</div>
+
+<!-- ═══ DEBUG POPUP ═══ -->
+<div class="popup" id="debugPopup">
+  <div class="popup-title">Performance</div>
+  <div class="dbg-stat"><span>FPS</span><b id="dbgFps">—</b></div>
+  <div class="dbg-stat"><span>Frame time</span><b id="dbgFrame">—</b></div>
+  <div class="dbg-stat"><span>Draw calls</span><b id="dbgDraws">—</b></div>
+  <div class="dbg-stat"><span>Triangles</span><b id="dbgTris">—</b></div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Debug overlays</div>
+  <div class="popup-item" data-dbg="stats"><i data-lucide="activity" class="lico"></i>Show stats HUD<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-dbg="wire"><i data-lucide="triangle" class="lico"></i>Wireframe<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-dbg="normals"><i data-lucide="git-fork" class="lico"></i>Show normals<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-dbg="bounds"><i data-lucide="box-select" class="lico"></i>Bounding boxes<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-dbg="axis"><i data-lucide="move-3d" class="lico"></i>World axis gizmo<i data-lucide="check" class="lico check"></i></div>
+</div>
+
+<!-- ═══ CAMERA POPUP ═══ -->
+<div class="popup" id="cameraPopup">
+  <div class="popup-title">Projection</div>
+  <div class="popup-item radio active" data-proj="persp"><i data-lucide="box" class="lico"></i>Perspective<span class="key">5</span></div>
+  <div class="popup-item radio" data-proj="ortho"><i data-lucide="square" class="lico"></i>Orthographic<span class="key">5</span></div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Align view</div>
+  <div class="popup-item" data-view="front"><i data-lucide="square-dashed" class="lico"></i>Front<span class="key">1</span></div>
+  <div class="popup-item" data-view="back"><i data-lucide="square-dashed" class="lico"></i>Back<span class="key">⌃1</span></div>
+  <div class="popup-item" data-view="right"><i data-lucide="square-dashed" class="lico"></i>Right<span class="key">3</span></div>
+  <div class="popup-item" data-view="left"><i data-lucide="square-dashed" class="lico"></i>Left<span class="key">⌃3</span></div>
+  <div class="popup-item" data-view="top"><i data-lucide="square-dashed" class="lico"></i>Top<span class="key">7</span></div>
+  <div class="popup-item" data-view="bottom"><i data-lucide="square-dashed" class="lico"></i>Bottom<span class="key">⌃7</span></div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Focal length</div>
+  <div class="popup-slider">
+    <div class="sl-label"><span>Lens</span><b id="focalVal">50mm</b></div>
+    <div class="sl-track" id="focalTrack"><div class="sl-fill" id="focalFill"></div><div class="sl-knob" id="focalKnob"></div></div>
+  </div>
+  <div class="popup-slider">
+    <div class="sl-label"><span>Orbit lag</span><b id="lagVal">0.15</b></div>
+    <div class="sl-track" id="lagTrack"><div class="sl-fill" id="lagFill"></div><div class="sl-knob" id="lagKnob"></div></div>
+  </div>
+</div>
+
+<!-- ═══ VIEWPORT SETTINGS POPUP ═══ -->
+<div class="popup" id="vpPopup">
+  <div class="popup-title">Overlays</div>
+  <div class="popup-item checked" data-vp="grid"><i data-lucide="grid-3x3" class="lico"></i>Ground grid<i data-lucide="check" class="lico check"></i><span class="key">G</span></div>
+  <div class="popup-item checked" data-vp="axisGizmo"><i data-lucide="move-3d" class="lico"></i>Axis gizmo<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-vp="sunGizmo"><i data-lucide="sun" class="lico"></i>Sun gizmo<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Environment</div>
+  <div class="popup-item checked" data-vp="sky"><i data-lucide="cloud-sun" class="lico"></i>Sky / atmosphere<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-vp="sun"><i data-lucide="sun" class="lico"></i>Sun light<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-vp="fog"><i data-lucide="haze" class="lico"></i>Fog<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-slider">
+    <div class="sl-label"><span>Sun elevation</span><b id="sunVal">45°</b></div>
+    <div class="sl-track" id="sunTrack"><div class="sl-fill" id="sunFill"></div><div class="sl-knob" id="sunKnob"></div></div>
+  </div>
+  <div class="popup-slider">
+    <div class="sl-label"><span>Sun azimuth</span><b id="azVal">35°</b></div>
+    <div class="sl-track" id="azTrack"><div class="sl-fill" id="azFill"></div><div class="sl-knob" id="azKnob"></div></div>
+  </div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Shading</div>
+  <div class="popup-seg" id="shadeSeg">
+    <button class="seg-btn" data-shade="wire">Wire</button>
+    <button class="seg-btn active" data-shade="solid">Solid</button>
+    <button class="seg-btn" data-shade="render">Render</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
+
+/* ════════════════════════════════════════════════════════
+   CAD SIDEBAR LOGIC
+════════════════════════════════════════════════════════ */
+const cadSidebar = document.getElementById('cadSidebar');
+document.getElementById('cadToggleBtn').addEventListener('click', () => {
+  cadSidebar.classList.toggle('collapsed');
+});
+
+// Accordion open/close in Expanded Mode
+document.querySelectorAll('.cad-group.has-sub > .cad-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (!cadSidebar.classList.contains('collapsed')) {
+      item.parentElement.classList.toggle('open');
+    }
+  });
+});
+
+// Selection highlight for Sub-items
+document.querySelectorAll('.cad-sub-item').forEach(sub => {
+  sub.addEventListener('click', () => {
+    document.querySelectorAll('.cad-sub-item').forEach(s => s.classList.remove('active'));
+    sub.classList.add('active');
+  });
+});
+
+/* ════════════════════════════════════════════════════════
+   VIEWPORT STATE
+════════════════════════════════════════════════════════ */
+const V = {
+  target:[0,0,0],
+  yaw:-0.7, pitch:0.5, dist:14,
+  sYaw:-0.7, sPitch:0.5, sDist:14, sTarget:[0,0,0],
+  lag:0.15,
+  ortho:false,
+  focal:50,
+  // overlays / env
+  grid:true, axisGizmo:true, sunGizmo:true,
+  sky:true, sun:true, fog:false, sunElev:45, sunAzim:35,
+  shade:'solid',
+  // debug
+  wire:false, normals:false, bounds:false, statsHud:false, dbgAxis:false,
+  // tools are now a multi-select SET
+  tools:new Set(['select']),
+  proj:'persp'
+};
+
+const canvas=document.getElementById('vp');
+const ctx=canvas.getContext('2d');
+let DPR=Math.max(1,window.devicePixelRatio||1);
+
+function resize(){
+  const w=canvas.parentElement.clientWidth, h=canvas.parentElement.clientHeight;
+  DPR=Math.max(1,window.devicePixelRatio||1);
+  canvas.width=w*DPR; canvas.height=h*DPR;
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
+}
+window.addEventListener('resize',resize);
+
+/* ── vector / matrix helpers ── */
+function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+function add(a,b){return [a[0]+b[0],a[1]+b[1],a[2]+b[2]];}
+function scale(a,s){return [a[0]*s,a[1]*s,a[2]*s];}
+function cross(a,b){return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];}
+function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+function norm(a){const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}
+
+function camPosition(){
+  const cp=Math.cos(V.sPitch), sp=Math.sin(V.sPitch);
+  const cy=Math.cos(V.sYaw),  sy=Math.sin(V.sYaw);
+  const dir=[cp*sy, sp, cp*cy];
+  return add(V.sTarget, scale(dir, V.sDist));
+}
+
+function camBasis(){
+  const eye=camPosition();
+  const fwd=norm(sub(V.sTarget, eye));
+  const worldUp=[0,1,0];
+  let right=cross(fwd, worldUp);
+  if(Math.hypot(right[0],right[1],right[2])<1e-4) right=[1,0,0];
+  right=norm(right);
+  const up=cross(right, fwd);
+  return {eye,fwd,right,up};
+}
+
+function projectFns(W,H){
+  const {eye,fwd,right,up}=camBasis();
+  const fovY = 2*Math.atan(24/(2*V.focal));
+  const f = 1/Math.tan(fovY/2);
+  const aspect=W/H;
+  const orthoScale = V.sDist;
+
+  function toCam(p){
+    const d=sub(p,eye);
+    return [dot(d,right), dot(d,up), dot(d,fwd)];
+  }
+  function proj(p){
+    const c=toCam(p);
+    const depth=c[2];
+    if(!V.ortho){
+      if(depth<=0.01) return {behind:true};
+      const x=( c[0]/depth)*f/aspect;
+      const y=(-c[1]/depth)*f;
+      return {x:(x*0.5+0.5)*W, y:(y*0.5+0.5)*H, depth, behind:false};
+    } else {
+      const x=  c[0]/orthoScale/aspect;
+      const y= -c[1]/orthoScale;
+      return {x:(x*0.5+0.5)*W, y:(y*0.5+0.5)*H, depth, behind:depth<=0};
+    }
+  }
+  return {proj};
+}
+
+/* ── geometry ── */
+const CUBE_V=[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1],[-1,1,-1],[1,1,-1],[1,1,1],[-1,1,1]];
+const CUBE_E=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+const CUBE_F=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[0,3,7,4]];
+const CUBE_N=[[0,-1,0],[0,1,0],[0,0,-1],[0,0,1],[1,0,0],[-1,0,0]];
+
+const OBJECTS=[
+  {pos:[0,1,0],   s:1.4, col:'#d4d4d4'},
+  {pos:[3.5,1,-2],s:0.9, col:'#9ca3af'},
+  {pos:[-3,1,2],  s:1.1, col:'#a3a3a3'},
+];
+
+/* sun world-direction from elevation + azimuth */
+function sunVector(){
+  const el=V.sunElev*Math.PI/180, az=V.sunAzim*Math.PI/180;
+  return norm([Math.cos(el)*Math.sin(az), Math.sin(el), Math.cos(el)*Math.cos(az)]);
+}
+
+/* ── render loop ── */
+let lastT=performance.now(), frames=0, fpsT=lastT, fps=0, frameMs=0, drawCalls=0;
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+function draw(t){
+  requestAnimationFrame(draw);
+  const dt=t-lastT; lastT=t; frameMs=dt;
+  frames++;
+  if(t-fpsT>=500){ fps=Math.round(frames*1000/(t-fpsT)); frames=0; fpsT=t; updateDebugStats(); updateFooter(); }
+
+  const k = V.lag<=0 ? 1 : clamp(1-Math.pow(0.001, dt/1000/Math.max(0.0001,V.lag)),0,1);
+  V.sYaw   += (V.yaw  -V.sYaw)*k;
+  V.sPitch += (V.pitch-V.sPitch)*k;
+  V.sDist  += (V.dist -V.sDist)*k;
+  V.sTarget[0]+=(V.target[0]-V.sTarget[0])*k;
+  V.sTarget[1]+=(V.target[1]-V.sTarget[1])*k;
+  V.sTarget[2]+=(V.target[2]-V.sTarget[2])*k;
+
+  const W=canvas.width, H=canvas.height;
+  drawCalls=0;
+
+  // ── sky / atmosphere background ──
+  if(V.sky){
+    const horizon=H*(0.52 - (V.sunElev-45)/90*0.15);
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#10151c');
+    g.addColorStop(clamp(horizon/H-0.05,0,1),'#161c24');
+    g.addColorStop(clamp(horizon/H,0,1),'#1c2129');
+    g.addColorStop(1,'#0a0c0f');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    if(V.sun){
+      const sx=W*0.72, sy=horizon - (V.sunElev/90)*H*0.45;
+      const rg=ctx.createRadialGradient(sx,sy,0,sx,sy,H*0.5);
+      rg.addColorStop(0,'rgba(255,236,200,.22)');
+      rg.addColorStop(.4,'rgba(255,220,170,.06)');
+      rg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+    }
+  } else {
+    ctx.fillStyle='#060606'; ctx.fillRect(0,0,W,H);
+  }
+
+  const {proj}=projectFns(W,H);
+
+  // ── sophisticated ground grid (major/minor + radial fade) ──
+  if(V.grid) drawGrid(proj,W,H);
+
+  // ── objects ──
+  const sunDir=sunVector();
+  const drawList=[];
+  OBJECTS.forEach(o=>{
+    const verts=CUBE_V.map(v=>[o.pos[0]+v[0]*o.s, o.pos[1]+v[1]*o.s, o.pos[2]+v[2]*o.s]);
+    const pv=verts.map(proj);
+    if(V.shade==='wire'||V.wire){
+      CUBE_E.forEach(([i,j])=>{
+        if(pv[i].behind||pv[j].behind) return;
+        drawList.push({z:(pv[i].depth+pv[j].depth)/2, type:'edge', a:pv[i], b:pv[j], col:o.col});
+      });
+    } else {
+      CUBE_F.forEach((face,fi)=>{
+        const ps=face.map(idx=>pv[idx]);
+        if(ps.some(p=>p.behind)) return;
+        const area=(ps[1].x-ps[0].x)*(ps[2].y-ps[0].y)-(ps[1].y-ps[0].y)*(ps[2].x-ps[0].x);
+        if(area<=0) return;
+        const light=clamp(0.25+0.75*Math.max(0,dot(CUBE_N[fi],sunDir))*(V.sun?1:0.5),0,1);
+        const z=ps.reduce((s,p)=>s+p.depth,0)/4;
+        drawList.push({z, type:'face', pts:ps, col:o.col, light});
+      });
+      if(V.bounds){
+        CUBE_E.forEach(([i,j])=>{
+          if(pv[i].behind||pv[j].behind) return;
+          drawList.push({z:-9999,type:'bound',a:pv[i],b:pv[j]});
+        });
+      }
+    }
+  });
+  drawList.sort((a,b)=>b.z-a.z);
+  drawList.forEach(d=>{
+    if(d.type==='face'){
+      const c=shade(d.col,d.light);
+      ctx.beginPath();
+      d.pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+      ctx.closePath();
+      ctx.fillStyle=c; ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1*DPR; ctx.stroke();
+      drawCalls++;
+    } else if(d.type==='edge'){
+      ctx.beginPath(); ctx.moveTo(d.a.x,d.a.y); ctx.lineTo(d.b.x,d.b.y);
+      ctx.strokeStyle='rgba(225,225,225,.85)'; ctx.lineWidth=1.4*DPR; ctx.stroke();
+      drawCalls++;
+    } else if(d.type==='bound'){
+      ctx.beginPath(); ctx.moveTo(d.a.x,d.a.y); ctx.lineTo(d.b.x,d.b.y);
+      ctx.strokeStyle='rgba(34,197,94,.7)'; ctx.lineWidth=1*DPR; ctx.setLineDash([4*DPR,3*DPR]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  });
+
+  // ── fog ──
+  if(V.fog){
+    const fg=ctx.createLinearGradient(0,H*0.45,0,H);
+    fg.addColorStop(0,'rgba(28,33,41,0)');
+    fg.addColorStop(1,'rgba(28,33,41,.55)');
+    ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
+  }
+
+  // ── OVERLAY GIZMOS (TOP-right corner) ──
+  if(V.axisGizmo) drawAxisGizmo(W,H);
+  if(V.sunGizmo)  drawSunGizmo(W,H);
+
+  // ── stats HUD ──
+  if(V.statsHud){
+    ctx.fillStyle='rgba(0,0,0,.6)';
+    ctx.fillRect(12*DPR,12*DPR,150*DPR,58*DPR);
+    ctx.fillStyle='#22c55e'; ctx.font=`600 ${11*DPR}px monospace`;
+    ctx.fillText(`FPS  ${fps}`, 22*DPR, 32*DPR);
+    ctx.fillStyle='#8a8a8a';
+    ctx.fillText(`${frameMs.toFixed(1)} ms`, 22*DPR, 50*DPR);
+  }
+}
+
+/* ── SOPHISTICATED GRID ── */
+function drawGrid(proj,W,H){
+  const camXZ=[camPosition()[0],0,camPosition()[2]];
+  const minor=1, major=5, half=40;
+  const cx=Math.round(V.sTarget[0]/major)*major;
+  const cz=Math.round(V.sTarget[2]/major)*major;
+  const lines=[];
+  for(let i=-half;i<=half;i+=minor){
+    const x=cx+i, z=cz+i;
+    const isMajor = (Math.round(x)%major===0);
+    const isMajorZ = (Math.round(z)%major===0);
+    lines.push({a:[x,0,cz-half],b:[x,0,cz+half],axis:(x===0?'z':null),major:isMajor});
+    lines.push({a:[cx-half,0,z],b:[cx+half,0,z],axis:(z===0?'x':null),major:isMajorZ});
+  }
+  lines.forEach(({a,b,axis,major})=>{
+    const pa=proj(a), pb=proj(b);
+    if(pa.behind||pb.behind) return;
+    const midWorld=[(a[0]+b[0])/2,0,(a[2]+b[2])/2];
+    const distXZ=Math.hypot(midWorld[0]-camXZ[0],midWorld[2]-camXZ[2]);
+    const fade=clamp(1-(distXZ/(half*0.85)),0,1);
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+    if(axis==='x'){ ctx.strokeStyle=`rgba(239,68,68,${0.6*fade+0.1})`; ctx.lineWidth=1.8*DPR; }
+    else if(axis==='z'){ ctx.strokeStyle=`rgba(59,130,246,${0.6*fade+0.1})`; ctx.lineWidth=1.8*DPR; }
+    else if(major){ ctx.strokeStyle=`rgba(150,150,150,${0.22*fade})`; ctx.lineWidth=1.2*DPR; }
+    else { ctx.strokeStyle=`rgba(110,110,110,${0.09*fade})`; ctx.lineWidth=1*DPR; }
+    ctx.stroke();
+  });
+}
+
+function shade(hex,l){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.round(r*l)},${Math.round(g*l)},${Math.round(b*l)})`;
+}
+
+/* ── AXIS GIZMO (TOP-right corner of canvas) ── */
+function drawAxisGizmo(W,H){
+  const cx=W-58*DPR, cy=64*DPR, R=24*DPR;
+  const {right,up,fwd}=camBasis();
+  const axes=[
+    ['X',[1,0,0],'#ef4444'],['Y',[0,1,0],'#22c55e'],['Z',[0,0,1],'#3b82f6'],
+    ['-X',[-1,0,0],'#7f2d2d'],['-Y',[0,-1,0],'#1e5631'],['-Z',[0,0,-1],'#1e3a6b']
+  ];
+  const items=axes.map(([l,v,c])=>({l,c,pos:l.startsWith('-'),x:dot(v,right),y:-dot(v,up),z:dot(v,fwd)}));
+  items.sort((a,b)=>a.z-b.z);
+  ctx.beginPath(); ctx.arc(cx,cy,R+12*DPR,0,7);
+  ctx.fillStyle='rgba(10,10,10,.55)'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=1*DPR; ctx.stroke();
+  items.forEach(it=>{
+    const ex=cx+it.x*R, ey=cy+it.y*R;
+    ctx.globalAlpha=it.z>0?1:0.45;
+    if(!it.pos){
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey);
+      ctx.strokeStyle=it.c; ctx.lineWidth=2.2*DPR; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(ex,ey,(it.pos?4:6)*DPR,0,7);
+    ctx.fillStyle=it.pos?'#1a1a1a':it.c; ctx.fill();
+    if(it.pos){ ctx.strokeStyle=it.c; ctx.lineWidth=1.5*DPR; ctx.stroke(); }
+    if(!it.pos){
+      ctx.fillStyle='#000'; ctx.font=`700 ${8*DPR}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(it.l,ex,ey); ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    }
+    ctx.globalAlpha=1;
+  });
+}
+
+/* ── SUN GIZMO (TOP-right corner, below axis gizmo) ── */
+function drawSunGizmo(W,H){
+  const cx=W-58*DPR, cy=144*DPR, R=24*DPR;
+  const {right,up,fwd}=camBasis();
+  const s=sunVector();
+  const sx=dot(s,right), sy=-dot(s,up), sz=dot(s,fwd);
+  ctx.beginPath(); ctx.arc(cx,cy,R+12*DPR,0,7);
+  ctx.fillStyle='rgba(10,10,10,.55)'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=1*DPR; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx,cy,R,R*0.4,0,0,7);
+  ctx.strokeStyle='rgba(120,140,170,.3)'; ctx.lineWidth=1*DPR; ctx.stroke();
+  const ex=cx+sx*R, ey=cy+sy*R;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey);
+  ctx.strokeStyle='rgba(234,179,8,.75)'; ctx.lineWidth=2*DPR; ctx.setLineDash([3*DPR,2*DPR]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.globalAlpha=sz>0?1:0.5;
+  const rg=ctx.createRadialGradient(ex,ey,0,ex,ey,12*DPR);
+  rg.addColorStop(0,'rgba(255,236,170,.9)');
+  rg.addColorStop(1,'rgba(234,179,8,0)');
+  ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(ex,ey,12*DPR,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(ex,ey,5*DPR,0,7); ctx.fillStyle='#fde68a'; ctx.fill();
+  ctx.strokeStyle='#eab308'; ctx.lineWidth=1.5*DPR; ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.beginPath(); ctx.arc(cx,cy,2.5*DPR,0,7); ctx.fillStyle='rgba(180,180,180,.6)'; ctx.fill();
+}
+
+function updateDebugStats(){
+  document.getElementById('dbgFps').textContent=fps;
+  document.getElementById('dbgFrame').textContent=frameMs.toFixed(1)+' ms';
+  document.getElementById('dbgDraws').textContent=drawCalls;
+  document.getElementById('dbgTris').textContent=(OBJECTS.length*12).toLocaleString();
+}
+
+/* ── footer / status bar live stats ── */
+function updateFooter(){
+  const e=camPosition();
+  document.getElementById('ftFps').textContent=fps;
+  document.getElementById('ftObjs').textContent=OBJECTS.length;
+  document.getElementById('ftTris').textContent=(OBJECTS.length*12).toLocaleString();
+  document.getElementById('ftDraws').textContent=drawCalls;
+  document.getElementById('ftCoord').textContent=`${e[0].toFixed(1)}, ${e[1].toFixed(1)}, ${e[2].toFixed(1)}`;
+  document.getElementById('ftCam').innerHTML=`<i data-lucide="video" class="lico"></i> ` +
+    (V.ortho ? `Ortho · ${V.sDist.toFixed(1)}u` : `Persp · ${Math.round(V.focal)}mm`);
+  refreshIcons();
+}
+
+resize();
+requestAnimationFrame(draw);
+updateFooter();
+
+/* ════════════════════════════════════════════════════════
+   MOUSE INTERACTION (orbit / pan / zoom)
+════════════════════════════════════════════════════════ */
+const wrap=document.getElementById('canvasWrap');
+let drag=null;
+wrap.addEventListener('mousedown',e=>{
+  if(e.target.closest('.vr-bar')||e.target.closest('.bottom-bar')||e.target.closest('.cad-sidebar')) return;
+  e.preventDefault();
+  drag={btn:e.button,sx:e.clientX,sy:e.clientY,yaw:V.yaw,pitch:V.pitch,target:[...V.target]};
+});
+window.addEventListener('mousemove',e=>{
+  if(!drag) return;
+  const dx=e.clientX-drag.sx, dy=e.clientY-drag.sy;
+  if(drag.btn===0){
+    V.yaw=drag.yaw - dx*0.008;
+    V.pitch=clamp(drag.pitch + dy*0.008, -1.55, 1.55);
+  } else if(drag.btn===2 || drag.btn===1){
+    const {right,up}=camBasis();
+    const s=V.sDist*0.0016;
+    V.target=add(drag.target, add(scale(right,-dx*s), scale(up,dy*s)));
+  }
+});
+window.addEventListener('mouseup',()=>drag=null);
+wrap.addEventListener('contextmenu',e=>e.preventDefault());
+wrap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  V.dist=clamp(V.dist*(1+e.deltaY*0.0012), 2, 80);
+},{passive:false});
+
+/* ════════════════════════════════════════════════════════
+   POPUP MENU SYSTEM
+════════════════════════════════════════════════════════ */
+const popups={
+  debug:[document.getElementById('debugBtn'),document.getElementById('debugPopup')],
+  camera:[document.getElementById('cameraBtn'),document.getElementById('cameraPopup')],
+  vp:[document.getElementById('vpBtn'),document.getElementById('vpPopup')],
+  notif:[document.getElementById('notifBtn'),document.getElementById('notifPopup')],
+};
+function closeAllPopups(){
+  Object.values(popups).forEach(([btn,pop])=>{btn.classList.remove('open');pop.classList.remove('open');pop.classList.remove('up');});
+}
+function togglePopup(key){
+  const [btn,pop]=popups[key];
+  const isOpen=pop.classList.contains('open');
+  closeAllPopups();
+  if(isOpen) return;
+  pop.classList.add('open'); btn.classList.add('open');
+  const r=btn.getBoundingClientRect();
+  
+  if(key==='debug'){ // Opens upward in footer
+    pop.classList.add('up');
+    pop.style.left=r.left+'px';
+    requestAnimationFrame(()=>{
+      const pr=pop.getBoundingClientRect();
+      pop.style.top=(r.top-6-pr.height)+'px';
+      if(pr.right>window.innerWidth-8) pop.style.left=(window.innerWidth-8-pr.width)+'px';
+    });
+  } else {
+    pop.style.left=r.left+'px';
+    pop.style.top=(r.bottom+6)+'px';
+    requestAnimationFrame(()=>{
+      const pr=pop.getBoundingClientRect();
+      // Right alignment constraint so it doesn't overflow
+      if(pr.right>window.innerWidth-8) pop.style.left=(window.innerWidth-8-pr.width)+'px';
+    });
+  }
+}
+Object.entries(popups).forEach(([key,[btn]])=>{
+  btn.addEventListener('click',e=>{e.stopPropagation();togglePopup(key);});
+});
+Object.values(popups).forEach(([,pop])=>pop.addEventListener('click',e=>e.stopPropagation()));
+document.addEventListener('click',closeAllPopups);
+
+/* ── NOTIFICATIONS LOGIC & SIMULATION ── */
+const notifications = [];
+let unreadCount = 0;
+let notifTab = 'all';
+
+const notifBadge = document.getElementById('notifBadge');
+const notifList = document.getElementById('notifList');
+
+function formatTime(d) {
+  const diff = Math.floor((new Date() - d) / 1000);
+  if (diff < 10) return 'Just now';
+  if (diff < 60) return diff + 's';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm';
+  return Math.floor(diff / 3600) + 'h';
+}
+
+function renderNotifications() {
+  if (unreadCount > 0) {
+    notifBadge.style.display = 'flex';
+    notifBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+  } else {
+    notifBadge.style.display = 'none';
+  }
+
+  const filtered = notifications.filter(n => notifTab === 'all' || n.type === notifTab);
+  
+  if (filtered.length === 0) {
+    notifList.innerHTML = '<div class="notif-empty">No notifications found.</div>';
+    return;
+  }
+
+  notifList.innerHTML = '';
+  const sorted = [...filtered].reverse();
+  
+  sorted.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'notif-item';
+    item.innerHTML = `
+      <div class="notif-icon"><i data-lucide="${n.icon}" class="lico"></i></div>
+      <div class="notif-content">
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-desc">${n.desc}</div>
+      </div>
+      <div class="notif-time">${formatTime(n.time)}</div>
+    `;
+    notifList.appendChild(item);
+  });
+  
+  refreshIcons();
+}
+
+function addNotification(title, desc, type, icon) {
+  notifications.push({ id: Date.now(), title, desc, type, icon, time: new Date() });
+  unreadCount++;
+  renderNotifications();
+}
+
+// Mark as read when notification popup is toggled
+document.getElementById('notifBtn').addEventListener('click', () => {
+  requestAnimationFrame(() => {
+    if (document.getElementById('notifPopup').classList.contains('open')) {
+      unreadCount = 0;
+      renderNotifications();
+    }
+  });
+});
+
+// Setup Notification Tabs
+document.querySelectorAll('.notif-tab').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.notif-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    notifTab = btn.dataset.tab;
+    renderNotifications();
+  });
+});
+
+// Update relative times inside popup roughly every minute
+setInterval(() => {
+  if (document.getElementById('notifPopup').classList.contains('open')) {
+    renderNotifications();
+  }
+}, 60000);
+
+// Simulate System Background Tasks/Notifications
+setTimeout(() => addNotification('Compiling Shaders', 'Material preview updated', 'system', 'cpu'), 2500);
+setTimeout(() => addNotification('Team Mention', '@Patsation left a comment', 'mention', 'message-circle'), 8000);
+setTimeout(() => addNotification('Baking Complete', 'Lightmap resolution: 2048px', 'system', 'sun'), 15000);
+setTimeout(() => addNotification('Auto-save', 'Scene saved successfully', 'system', 'save'), 22000);
+setTimeout(() => addNotification('Render Finished', 'Frames 1 to 240 exported', 'system', 'camera'), 35000);
+renderNotifications();
+
+/* ── DEBUG popup actions ── */
+document.querySelectorAll('#debugPopup [data-dbg]').forEach(it=>{
+  it.onclick=()=>{
+    const k=it.dataset.dbg;
+    const map={stats:'statsHud',wire:'wire',normals:'normals',bounds:'bounds',axis:'dbgAxis'};
+    V[map[k]]=!V[map[k]];
+    it.classList.toggle('checked',V[map[k]]);
+  };
+});
+
+/* ── CAMERA popup actions ── */
+function setProj(p){
+  V.proj=p; V.ortho=(p==='ortho');
+  document.querySelectorAll('#cameraPopup [data-proj]').forEach(el=>el.classList.toggle('active',el.dataset.proj===p));
+  updateFooter();
+}
+document.querySelectorAll('#cameraPopup [data-proj]').forEach(it=>it.onclick=()=>setProj(it.dataset.proj));
+const VIEWS={
+  front:[0,0],back:[Math.PI,0],right:[Math.PI/2,0],left:[-Math.PI/2,0],
+  top:[0,1.5499],bottom:[0,-1.5499]
+};
+document.querySelectorAll('#cameraPopup [data-view]').forEach(it=>{
+  it.onclick=()=>{ const v=VIEWS[it.dataset.view]; V.yaw=v[0]; V.pitch=v[1]; setProj('ortho'); };
+});
+
+/* sliders */
+function makeSlider(trackId,fillId,knobId,valId,min,max,get,set,fmt){
+  const track=document.getElementById(trackId),fill=document.getElementById(fillId),
+        knob=document.getElementById(knobId),val=document.getElementById(valId);
+  function refresh(){const p=(get()-min)/(max-min);fill.style.width=(p*100)+'%';knob.style.left=(p*100)+'%';val.textContent=fmt(get());}
+  function fromX(clientX){const r=track.getBoundingClientRect();const p=clamp((clientX-r.left)/r.width,0,1);set(min+p*(max-min));refresh();}
+  let dragging=false;
+  track.addEventListener('mousedown',e=>{dragging=true;fromX(e.clientX);e.stopPropagation();});
+  window.addEventListener('mousemove',e=>{if(dragging)fromX(e.clientX);});
+  window.addEventListener('mouseup',()=>dragging=false);
+  refresh(); return refresh;
+}
+makeSlider('focalTrack','focalFill','focalKnob','focalVal',18,135,()=>V.focal,v=>{V.focal=v;updateFooter();},v=>Math.round(v)+'mm');
+makeSlider('lagTrack','lagFill','lagKnob','lagVal',0,0.5,()=>V.lag,v=>V.lag=v,v=>v.toFixed(2));
+
+/* ── VIEWPORT popup actions (sync with bottom-right overlay buttons) ── */
+function syncOverlayButtons(){
+  document.getElementById('gridOverlayBtn').classList.toggle('active',V.grid);
+  document.getElementById('axisOverlayBtn').classList.toggle('active',V.axisGizmo);
+  document.getElementById('sunOverlayBtn').classList.toggle('active',V.sunGizmo);
+  document.querySelector('#vpPopup [data-vp="grid"]').classList.toggle('checked',V.grid);
+  document.querySelector('#vpPopup [data-vp="axisGizmo"]').classList.toggle('checked',V.axisGizmo);
+  document.querySelector('#vpPopup [data-vp="sunGizmo"]').classList.toggle('checked',V.sunGizmo);
+}
+document.querySelectorAll('#vpPopup [data-vp]').forEach(it=>{
+  it.onclick=()=>{ const k=it.dataset.vp; V[k]=!V[k]; it.classList.toggle('checked',V[k]); syncOverlayButtons(); };
+});
+document.querySelectorAll('#vpPopup [data-shade]').forEach(b=>{
+  b.onclick=()=>{ V.shade=b.dataset.shade;
+    document.querySelectorAll('#vpPopup [data-shade]').forEach(x=>x.classList.toggle('active',x===b)); };
+});
+makeSlider('sunTrack','sunFill','sunKnob','sunVal',0,90,()=>V.sunElev,v=>V.sunElev=v,v=>Math.round(v)+'°');
+makeSlider('azTrack','azFill','azKnob','azVal',0,360,()=>V.sunAzim,v=>V.sunAzim=v,v=>Math.round(v)+'°');
+
+/* ── bottom-right view tools ── */
+function resetView(){ V.yaw=-0.7;V.pitch=0.5;V.dist=14;V.target=[0,0,0]; setProj('persp'); }
+document.getElementById('resetViewBtn').onclick=resetView;
+document.getElementById('frameBtn').onclick=()=>{ V.target=[0,1,0]; V.dist=8; };
+document.getElementById('fullscreenBtn').onclick=()=>{
+  const el=document.getElementById('editor');
+  if(!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.();
+};
+/* bottom-right overlay toggles (grid + gizmos) */
+document.getElementById('gridOverlayBtn').onclick=()=>{V.grid=!V.grid;syncOverlayButtons();};
+document.getElementById('axisOverlayBtn').onclick=()=>{V.axisGizmo=!V.axisGizmo;syncOverlayButtons();};
+document.getElementById('sunOverlayBtn').onclick=()=>{V.sunGizmo=!V.sunGizmo;syncOverlayButtons();};
+
+/* ── bottom toolbar: MULTI-SELECT tools ── */
+function syncToolButtons(){
+  document.querySelectorAll('.bottom-bar .tool[data-tool]').forEach(x=>x.classList.toggle('active',V.tools.has(x.dataset.tool)));
+}
+document.querySelectorAll('.bottom-bar .tool[data-tool]').forEach(b=>{
+  b.onclick=()=>{
+    const tname=b.dataset.tool;
+    if(V.tools.has(tname)) V.tools.delete(tname); else V.tools.add(tname);
+    syncToolButtons();
+  };
+});
+/* snap + pivot are independent toggles (also multi) */
+document.getElementById('snapTool').onclick=function(){this.classList.toggle('active');};
+document.getElementById('pivotTool').onclick=function(){this.classList.toggle('active');};
+
+/* ── dock / undock outliner (splitter now lives in the unified top header) ── */
+const outliner=document.getElementById('outliner');
+const topHeader=document.getElementById('topHeader');
+const dockBtn=document.getElementById('dockLeftBtn');
+const dockIcon=()=>dockBtn.querySelector('i');
+let outlinerOpen=true;
+function setOutliner(open){
+  outlinerOpen=open;
+  outliner.classList.toggle('collapsed',!open);
+  topHeader.classList.toggle('outliner-collapsed',!open);
+  dockBtn.innerHTML=`<i data-lucide="${open?'panel-left-close':'panel-left-open'}" class="lico"></i>`;
+  refreshIcons();
+  setTimeout(resize,300);
+}
+dockBtn.onclick=()=>setOutliner(!outlinerOpen);
+outliner.addEventListener('transitionend',resize);
+
+/* ── keyboard shortcuts ── */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  const k=e.key.toLowerCase();
+  if(e.key==='Home'){resetView();}
+  else if(e.key==='5'){setProj(V.ortho?'persp':'ortho');}
+  else if(e.key==='1'){const v=e.ctrlKey?VIEWS.back:VIEWS.front;V.yaw=v[0];V.pitch=v[1];setProj('ortho');}
+  else if(e.key==='3'){const v=e.ctrlKey?VIEWS.left:VIEWS.right;V.yaw=v[0];V.pitch=v[1];setProj('ortho');}
+  else if(e.key==='7'){const v=e.ctrlKey?VIEWS.bottom:VIEWS.top;V.yaw=v[0];V.pitch=v[1];setProj('ortho');}
+  else if(k==='g'){V.grid=!V.grid;syncOverlayButtons();}
+  else if(k==='f'){V.target=[0,1,0];V.dist=8;}
+  else if(['q','w','e','r'].includes(k)){
+    const map={q:'select',w:'move',e:'rotate',r:'scale'};
+    const tname=map[k];
+    if(V.tools.has(tname)) V.tools.delete(tname); else V.tools.add(tname);
+    syncToolButtons();
+  }
+});
+
+/* ════════════════════════════════════════════════════════
+   OUTLINER
+════════════════════════════════════════════════════════ */
+let uid=0; const newId=()=>'n'+(++uid);
+const isContainer=t=>t==='folder'||t==='layer';
+function makeNode(name,type,opts={}){return{id:newId(),name,type,color:opts.color||null,visible:opts.visible!==false,locked:!!opts.locked,expanded:opts.expanded!==false,children:opts.children||(isContainer(type)?[]:null)};}
+let TREE=[
+  makeNode('Scene','layer',{color:'#3b82f6',children:[
+    makeNode('Cube','mesh',{color:'#d4d4d4'}),
+    makeNode('Sphere','mesh',{color:'#9ca3af'}),
+    makeNode('Props','folder',{color:'#eab308',children:[
+      makeNode('Crate','mesh',{color:'#a3a3a3'}),
+      makeNode('Barrel','mesh',{color:'#9ca3af'}),
+    ]}),
+  ]}),
+  makeNode('Environment','layer',{color:'#22c55e',children:[
+    makeNode('Sky','mesh',{color:'#7dd3fc'}),
+    makeNode('Ground','mesh',{color:'#9ca3af'}),
+    makeNode('Sun','light',{color:'#eab308'}),
+    makeNode('Main Camera','camera',{color:'#3b82f6'}),
+  ]}),
+];
+let selectedIds=new Set(), selectionOrder=[], lastSelected=null, searchTerm='';
+
+function walk(nodes,cb){for(const n of nodes){cb(n);if(n.children)walk(n.children,cb);}}
+function findNode(id,nodes=TREE){for(const n of nodes){if(n.id===id)return n;if(n.children){const r=findNode(id,n.children);if(r)return r;}}return null;}
+function setSingle(id){selectedIds=new Set([id]);selectionOrder=[id];lastSelected=id;}
+function clearSel(){selectedIds.clear();selectionOrder=[];lastSelected=null;}
+function activeId(){return selectionOrder[0]||null;}
+function syncOrder(){selectionOrder=selectionOrder.filter(id=>selectedIds.has(id));selectedIds.forEach(id=>{if(!selectionOrder.includes(id))selectionOrder.push(id);});}
+function nodeVisible(n){const ok=(!searchTerm||n.name.toLowerCase().includes(searchTerm));if(ok)return true;if(n.children)return n.children.some(nodeVisible);return false;}
+
+const tree=document.getElementById('tree');
+function selDotClass(id){if(!selectedIds.has(id))return'';if(selectedIds.size===1)return'active';return id===activeId()?'active':'secondary';}
+const TYPE_ICON={folder:'folder',layer:'layers',mesh:'box',light:'lightbulb',camera:'video'};
+const typeIconName=n=>n.type==='folder'?(n.expanded?'folder-open':'folder'):(TYPE_ICON[n.type]||'box');
+
+function render(){
+  syncOrder();
+  tree.innerHTML='';
+  const vis=TREE.filter(nodeVisible);
+  if(!vis.length){tree.innerHTML='<div class="empty-state">No objects match.</div>';}
+  else vis.forEach(n=>tree.appendChild(renderNode(n,0)));
+  let c=0; walk(TREE,n=>{if(n.type!=='folder'&&n.type!=='layer')c++;});
+  document.getElementById('objCount').textContent=c+' object'+(c!==1?'s':'');
+  refreshIcons();
+}
+function renderNode(n,depth){
+  const wrap=document.createElement('div');wrap.className='node'+(n.expanded?'':' collapsed');
+  const row=document.createElement('div');row.className='row'+(selectedIds.has(n.id)?' selected':'');
+  row.style.paddingLeft=(depth*16)+'px';
+  const kids=n.children&&n.children.length>0;
+  const tw=document.createElement('span');tw.className='twisty'+(kids?'':' empty');
+  tw.innerHTML='<i data-lucide="chevron-down" class="lico"></i>';
+  tw.onclick=e=>{e.stopPropagation();n.expanded=!n.expanded;render();};
+  row.appendChild(tw);
+  const dot=document.createElement('span');dot.className='seldot '+selDotClass(n.id);row.appendChild(dot);
+  const ti=document.createElement('span');ti.className='type-ico';ti.style.color=n.color||'var(--text-dim)';
+  ti.innerHTML=`<i data-lucide="${typeIconName(n)}" class="lico"></i>`;
+  ti.onclick=e=>{e.stopPropagation();cycleColor(n);};row.appendChild(ti);
+  const lbl=document.createElement('span');lbl.className='label';lbl.textContent=n.name;row.appendChild(lbl);
+  if(kids){const c=document.createElement('span');c.className='count';c.textContent=n.children.length;row.appendChild(c);}
+  const acts=document.createElement('span');acts.className='row-actions';
+  const vis=document.createElement('button');vis.className='act'+(n.visible?'':' off');
+  vis.innerHTML=`<i data-lucide="${n.visible?'eye':'eye-off'}" class="lico"></i>`;
+  vis.onclick=e=>{e.stopPropagation();n.visible=!n.visible;render();};
+  const lock=document.createElement('button');lock.className='act'+(n.locked?' locked':'');
+  lock.innerHTML=`<i data-lucide="${n.locked?'lock':'unlock'}" class="lico"></i>`;
+  lock.onclick=e=>{e.stopPropagation();n.locked=!n.locked;render();};
+  acts.append(vis,lock);row.appendChild(acts);
+  row.onclick=e=>handleSel(e,n);
+  row.ondblclick=e=>{e.stopPropagation();startRename(n,lbl);};
+  wrap.appendChild(row);
+  if(kids&&n.expanded)n.children.filter(nodeVisible).forEach(c=>wrap.appendChild(renderNode(c,depth+1)));
+  return wrap;
+}
+function flatVisible(){const out=[];const rec=ns=>ns.filter(nodeVisible).forEach(n=>{out.push(n);if(n.children&&n.expanded)rec(n.children);});rec(TREE);return out;}
+function handleSel(e,n){
+  e.stopPropagation();
+  if(e.shiftKey&&lastSelected){
+    const list=flatVisible().map(x=>x.id);const a=list.indexOf(lastSelected),b=list.indexOf(n.id);
+    if(a>-1&&b>-1){const[s,en]=[Math.min(a,b),Math.max(a,b)];const range=list.slice(s,en+1);selectedIds=new Set(range);selectionOrder=range.slice();}
+  }else if(e.ctrlKey||e.metaKey){
+    if(selectedIds.has(n.id)){selectedIds.delete(n.id);selectionOrder=selectionOrder.filter(id=>id!==n.id);}
+    else{selectedIds.add(n.id);selectionOrder.unshift(n.id);}
+    lastSelected=n.id;
+  }else setSingle(n.id);
+  render();
+}
+function startRename(n,lbl){
+  const inp=document.createElement('input');inp.className='label-input';inp.value=n.name;
+  lbl.replaceWith(inp);inp.focus();inp.select();
+  const commit=()=>{const v=inp.value.trim();if(v)n.name=v;render();};
+  inp.onblur=commit;inp.onkeydown=e=>{if(e.key==='Enter')commit();if(e.key==='Escape')render();e.stopPropagation();};
+}
+const COLORS=['#d4d4d4','#9ca3af','#7dd3fc','#eab308','#22c55e','#3b82f6','#ef4444','#a855f7',null];
+function cycleColor(n){const i=COLORS.indexOf(n.color);n.color=COLORS[(i+1)%COLORS.length];render();}
+
+document.getElementById('addFolderBtn').onclick=()=>{const f=makeNode('New Folder','folder',{color:'#eab308'});TREE[0].children.push(f);TREE[0].expanded=true;setSingle(f.id);render();};
+document.getElementById('addLayerBtn').onclick=()=>{const l=makeNode('New Layer','layer',{color:'#3b82f6'});TREE.push(l);render();};
+document.getElementById('addItemBtn').onclick=()=>{const m=makeNode('New Object','mesh',{color:'#9ca3af'});TREE[0].children.push(m);TREE[0].expanded=true;setSingle(m.id);render();};
+document.getElementById('expandAllBtn').onclick=()=>{walk(TREE,n=>{if(n.children)n.expanded=true;});render();};
+document.getElementById('collapseAllBtn').onclick=()=>{walk(TREE,n=>{if(n.children)n.expanded=false;});render();};
+
+const searchInput=document.getElementById('search'),searchClear=document.getElementById('searchClear');
+searchInput.oninput=()=>{searchTerm=searchInput.value.trim().toLowerCase();searchClear.style.display=searchTerm?'flex':'none';if(searchTerm)walk(TREE,n=>{if(n.children)n.expanded=true;});render();};
+searchClear.onclick=()=>{searchInput.value='';searchTerm='';searchClear.style.display='none';render();};
+tree.addEventListener('click',e=>{if(e.target===tree){clearSel();render();}});
+
+render();
+refreshIcons();
+</script>
+</body>
+</html>

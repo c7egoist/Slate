@@ -1,0 +1,87 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   controls.css — RIGHT-dock Properties chrome (header / empty state / body) and
+                  the reusable property widgets: sections, sliders, segmented
+                  buttons, switches, themed dropdown, action buttons, pick rows.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* PROPERTIES pane */
+.rd-head{display:flex;align-items:center;gap:11px;padding:12px 13px;border-bottom:1px solid var(--border);background:var(--panel-2);flex-shrink:0;}
+.rd-head .rdh-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--panel-3);border:1px solid var(--border);color:var(--text-dim);}
+.rd-head .rdh-ico svg{width:18px;height:18px;}
+.rd-head .rdh-text{flex:1;min-width:0;}
+.rd-head .rdh-name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px;}
+.rd-head .rdh-sub{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-faint);margin-top:2px;}
+.rd-head .rdh-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:999px;background:var(--panel-3);border:1px solid var(--border);color:var(--text-dim);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;}
+.rd-head .rdh-tagdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--cad);}
+.rd-head .rdh-acts{display:flex;align-items:center;gap:2px;flex-shrink:0;}
+.props-body{flex:1;overflow-y:auto;padding:6px;}
+.rd-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center;color:var(--text-faint);}
+.rd-empty .lico{width:34px;height:34px;opacity:.4;}
+.rd-empty .rde-title{font-size:13px;color:var(--text-dim);}
+.rd-empty .rde-sub{font-size:11px;line-height:1.55;max-width:220px;}
+
+/* property control builders */
+.prop-section{background:var(--panel-2);border-radius:14px;margin:6px;padding:4px;}
+.prop-title{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--text-faint);font-weight:600;cursor:pointer;}
+.prop-title .chev{margin-left:auto;transition:transform .2s;width:14px;height:14px;}
+.prop-title.collapsed .chev{transform:rotate(-90deg);}
+.prop-content{padding:4px 10px 12px;overflow:hidden;}
+.prop-title.collapsed + .prop-content{max-height:0!important;padding-top:0;padding-bottom:0;opacity:0;overflow:hidden;}
+.ctl{margin:11px 0;}
+.ctl-label{font-size:12px;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.ctl-label .hint{color:var(--text-faint);font-size:10.5px;font-variant-numeric:tabular-nums;}
+.vw-row{display:flex;align-items:center;gap:10px;}
+.vw-numbox{background:#000;border:1px solid var(--border);border-radius:999px;min-width:76px;height:32px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 11px;flex:0 0 auto;}
+.vw-numbox input{background:transparent;border:0;outline:0;color:var(--text);font:inherit;font-size:12.5px;width:42px;text-align:center;font-variant-numeric:tabular-nums;}
+.vw-numbox .vw-unit{color:var(--text-faint);font-size:10.5px;}
+.vw-slider{flex:1;height:22px;background:var(--panel-3);border-radius:999px;position:relative;cursor:pointer;overflow:hidden;min-width:50px;}
+.vw-slider .vw-fill{position:absolute;top:0;left:0;height:100%;background:var(--cad);opacity:.5;}
+.vw-slider .vw-knob{position:absolute;top:3px;width:15px;height:16px;background:#fff;border-radius:6px;transform:translateX(-50%);box-shadow:0 1px 4px rgba(0,0,0,.6);}
+.seg{display:flex;gap:4px;background:var(--panel-3);border-radius:999px;padding:4px;}
+.seg button{flex:1;padding:7px 6px;border-radius:999px;color:var(--text-dim);font-size:11.5px;transition:.15s;white-space:nowrap;}
+.seg button:hover{color:var(--text);}
+.seg button.active{background:var(--accent);color:#111;font-weight:500;}
+.switch-row{display:flex;align-items:center;justify-content:space-between;margin:12px 0;}
+.switch-row .sr-label{font-size:12.5px;color:var(--text);}
+.switch{width:42px;height:24px;background:var(--panel-3);border-radius:999px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.switch .knob{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#777;border-radius:50%;transition:.22s var(--ease);}
+.switch.on{background:var(--cad);}
+.switch.on .knob{left:21px;background:#06283a;}
+.dd{position:relative;width:100%;}
+.dd-trigger{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 10px 0 12px;background:#000;border:1px solid var(--border);border-radius:999px;color:var(--text);font-size:12px;cursor:pointer;transition:border-color .15s;outline:none;}
+.dd-trigger:hover,.dd.open .dd-trigger{border-color:var(--text-dim);}
+.dd-trigger .dd-val{flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dd-trigger .dd-chev{width:14px;height:14px;color:var(--text-faint);flex-shrink:0;transition:transform .18s var(--ease);}
+.dd.open .dd-trigger .dd-chev{transform:rotate(180deg);}
+.dd-dot,.dd-opt-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,.1);}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:90;background:var(--panel-2);border:1px solid var(--row-selected-bd);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.6);overflow:hidden;display:none;flex-direction:column;}
+.dd.open .dd-menu{display:flex;}
+.dd-menu-head{display:flex;align-items:center;gap:7px;padding:9px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);font-weight:700;border-bottom:1px solid var(--border);}
+.dd-menu-head .lico{width:13px;height:13px;}
+.dd-menu-list{max-height:210px;overflow-y:auto;padding:5px;}
+.dd-menu-foot{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:10px;color:var(--text-faint);border-top:1px solid var(--border);}
+.dd-menu-foot .lico{width:12px;height:12px;}
+.dd-opt{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:8px;font-size:12px;color:var(--text);cursor:pointer;text-align:left;transition:background .12s;}
+.dd-opt:hover{background:var(--row-hover);}
+.dd-opt.sel{background:var(--row-selected);}
+.dd-opt .dd-opt-lbl{flex:1;}
+.dd-opt .dd-check{width:14px;height:14px;color:var(--cad);opacity:0;flex-shrink:0;}
+.dd-opt.sel .dd-check{opacity:1;}
+.note{font-size:11px;color:var(--text-faint);line-height:1.55;margin-top:8px;}
+.pick-row{display:flex;align-items:center;gap:9px;background:#000;border:1px dashed var(--border);border-radius:11px;padding:10px 12px;margin:8px 0;cursor:pointer;transition:.14s;}
+.pick-row:hover{border-color:var(--cad-bd);background:rgba(255,255,255,.05);}
+.pick-row .pr-ico{width:26px;height:26px;border-radius:8px;background:var(--cad-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--cad);}
+.pick-row .pr-ico .lico{width:15px;height:15px;}
+.pick-row .pr-text{flex:1;}
+.pick-row .pr-title{font-size:12px;color:var(--text);}
+.pick-row .pr-sub{font-size:10px;color:var(--text-faint);margin-top:1px;}
+.pick-row .pr-count{font-size:10px;font-weight:700;color:var(--cad);background:var(--cad-soft);border-radius:999px;padding:2px 8px;}
+.act-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:999px;background:var(--panel-3);color:var(--text);font-size:12.5px;font-weight:500;transition:.15s;border:1px solid var(--border);margin-top:4px;}
+.act-btn:hover{background:var(--row-hover);border-color:#2a2a2a;}
+.act-btn.primary{background:var(--accent);color:#000;border-color:transparent;}
+.act-btn.primary:hover{background:#dcdcdc;}
+.act-btn .lico{width:15px;height:15px;}
+/* colour-label swatch strip (body / sketch / plane tint) */
+.swatch-strip{display:flex;gap:6px;flex-wrap:wrap;}
+.swatch-strip .sw{width:22px;height:22px;border-radius:7px;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.08);transition:transform .12s;}
+.swatch-strip .sw:hover{transform:scale(1.12);}

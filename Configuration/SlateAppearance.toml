@@ -1,0 +1,139 @@
+# Slate — the standing appearance.
+# Written by the Control Centre. Edit freely; every colour is #RRGGBB or #RRGGBBAA.
+# A key removed here falls back to the appearance compiled into the build.
+
+[selection]
+theme       = "oled"
+primary     = "blue"
+secondary   = "violet"
+information = "cyan"
+warning     = "amber"
+alert       = "rose"
+
+[theme.oled]
+caption               = "OLED"
+ground                = "#000000"
+panel                 = "#09090BF2"
+primary               = "#F4F4F5"
+secondary             = "#71717A"
+edge                  = "#27272ACC"
+card                  = "#121214"
+previewground         = "#000000"
+previewwindow         = "#121214"
+previewsidebar        = "#09090B"
+previewsidebarquiet   = "#151517"
+previewsidebarstrong  = "#222223"
+previewquiet          = "#1E1E20"
+previewstrong         = "#2A2A2C"
+
+[theme.dark]
+caption               = "Dark"
+ground                = "#0A0A0A"
+panel                 = "#18181BF2"
+primary               = "#F4F4F5"
+secondary             = "#A1A1AA"
+edge                  = "#27272A"
+card                  = "#1F1F22"
+previewground         = "#18181B"
+previewwindow         = "#27272A"
+previewsidebar        = "#18181B"
+previewsidebarquiet   = "#2F2F32"
+previewsidebarstrong  = "#464649"
+previewquiet          = "#3D3D3F"
+previewstrong         = "#525255"
+
+[theme.clean-white]
+caption               = "Clean White"
+ground                = "#F4F4F5"
+panel                 = "#FFFFFFF2"
+primary               = "#18181B"
+secondary             = "#71717A"
+edge                  = "#E4E4E7"
+card                  = "#FAFAFA"
+previewground         = "#E5E5EA"
+previewwindow         = "#FFFFFF"
+previewsidebar        = "#E5E5EA"
+previewsidebarquiet   = "#CECED3"
+previewsidebarstrong  = "#B7B7BB"
+previewquiet          = "#E6E6E6"
+previewstrong         = "#CCCCCC"
+
+[theme.desert-sand]
+caption               = "Desert Sand"
+ground                = "#E8D5B5"
+panel                 = "#F2E5CCF2"
+primary               = "#4A3B2C"
+secondary             = "#8A7356"
+edge                  = "#CFAE7E"
+card                  = "#FAEED9"
+previewground         = "#DCB679"
+previewwindow         = "#F4E4C4"
+previewsidebar        = "#E8D5B5"
+previewsidebarquiet   = "#E3C99D"
+previewsidebarstrong  = "#E1C291"
+previewquiet          = "#EAD2A6"
+previewstrong         = "#E6C897"
+
+[theme.lavender]
+caption               = "Lavender"
+ground                = "#0F0A1C"
+panel                 = "#17102BF2"
+primary               = "#F3E8FF"
+secondary             = "#C084FC"
+edge                  = "#581C8780"
+card                  = "#1D1438"
+previewground         = "#1F163D"
+previewwindow         = "#2D2054"
+previewsidebar        = "#23174A"
+previewsidebarquiet   = "#47366E"
+previewsidebarstrong  = "#6B5692"
+previewquiet          = "#4F3E76"
+previewstrong         = "#715B98"
+
+[theme.nord]
+caption               = "Nord"
+ground                = "#09111C"
+panel                 = "#0F1B2DF2"
+primary               = "#DBEAFE"
+secondary             = "#60A5FA"
+edge                  = "#1E3A8A80"
+card                  = "#15253D"
+previewground         = "#1A2D4A"
+previewwindow         = "#264066"
+previewsidebar        = "#1C3152"
+previewsidebarquiet   = "#344F74"
+previewsidebarstrong  = "#4C6C96"
+previewquiet          = "#3C5B84"
+previewstrong         = "#5275A2"
+
+[accent.blue]
+caption = "Blue"
+ink     = "#3B82F6"
+
+[accent.cyan]
+caption = "Cyan"
+ink     = "#06B6D4"
+
+[accent.teal]
+caption = "Teal"
+ink     = "#14B8A6"
+
+[accent.emerald]
+caption = "Emerald"
+ink     = "#10B981"
+
+[accent.amber]
+caption = "Amber"
+ink     = "#F59E0B"
+
+[accent.orange]
+caption = "Orange"
+ink     = "#F97316"
+
+[accent.rose]
+caption = "Rose"
+ink     = "#F43F5E"
+
+[accent.violet]
+caption = "Violet"
+ink     = "#8B5CF6"

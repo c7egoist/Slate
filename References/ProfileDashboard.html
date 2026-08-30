@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontier — Profile Dashboard (Prototype)</title>
+<style>
+  :root {
+    --bg:        #171719;
+    --panel:     #0c0c0e;
+    --panel2:    #111114;
+    --card:      #0b0b0d;
+    --line:      #232329;
+    --line2:     #2c2c34;
+    --txt:       #ececf1;
+    --txt-dim:   #8a8a95;
+    --txt-dim2:  #5c5c66;
+    --accent:    #5b6bf5;
+    --up:        #34d399;
+    --down:      #f0616d;
+
+    /* profiling palette — matches allocation-card reference */
+    --p-green:   #5aa832;
+    --p-blue:    #5b6bf5;
+    --p-sky:     #2f8fff;
+    --p-pink:    #f19bf0;
+    --p-red:     #ef4a52;
+    --p-orange:  #f2941b;
+    --p-yellow:  #f5cf3d;
+    --p-teal:    #34d399;
+    --p-violet:  #b07cf5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--txt); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+
+  /* ---------- LAYOUT ---------- */
+  #shell { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
+  #side  { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  #main  { overflow-y: auto; padding: 22px 26px 60px; }
+
+  /* ---------- SIDEBAR ---------- */
+  .side-head { padding: 20px 20px 14px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .glyph { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, var(--accent), #8b6bf5); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff; }
+  .brand .name { font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+  .brand .tag  { font-size: 10px; color: var(--txt-dim2); margin-left: auto; text-transform: uppercase; letter-spacing: .12em; }
+
+  .side-sub { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--txt-dim2); padding: 16px 20px 8px; }
+
+  .side-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 16px 16px; }
+  .data-note { font-size: 11px; color: var(--txt-dim); padding: 0 4px 8px; line-height: 1.5; }
+  .data-note code { background: #000; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--accent); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; }
+  #dataInput { flex: 1; min-height: 160px; width: 100%; resize: none; background: #060607; color: var(--txt); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; line-height: 1.6; outline: none; }
+  #dataInput:focus { border-color: var(--accent); }
+
+  .side-actions { display: flex; gap: 8px; padding: 12px 4px 0; }
+  .btn { flex: 1; background: var(--panel2); border: 1px solid var(--line2); color: var(--txt); border-radius: 9px; padding: 9px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn:hover { background: #1a1a22; border-color: #3a3a44; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #4a5ae8; }
+  .side-foot { padding: 12px 20px; border-top: 1px solid var(--line); font-size: 10px; color: var(--txt-dim2); }
+
+  /* ---------- MAIN HEADER ---------- */
+  .top { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
+  .top h1 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+  .top .crumb { font-size: 12px; color: var(--txt-dim); margin-top: 2px; }
+  .seg { display: flex; gap: 2px; background: #000; border: 1px solid var(--line); border-radius: 22px; padding: 4px; }
+  .seg button { background: transparent; border: none; color: var(--txt-dim); border-radius: 18px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: .15s; }
+  .seg button.on { background: #fff; color: #000; }
+  .seg button:not(.on):hover { color: var(--txt); }
+
+  /* ---------- KPI STRIP ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; position: relative; overflow: hidden; }
+  .kpi .lbl { font-size: 11px; color: var(--txt-dim); display: flex; align-items: center; gap: 7px; }
+  .kpi .lbl .d { width: 8px; height: 8px; border-radius: 50%; }
+  .kpi .big { font-size: 28px; font-weight: 750; margin-top: 10px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .kpi .big .u { font-size: 14px; color: var(--txt-dim); font-weight: 500; margin-left: 3px; }
+  .kpi .delta { font-size: 11px; margin-top: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+  .kpi .delta.up { color: var(--up); }
+  .kpi .delta.down { color: var(--down); }
+
+  /* ---------- CARD SHELL ---------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--txt); letter-spacing: .01em; }
+  .card-sub { font-size: 11px; color: var(--txt-dim2); }
+  .card-tools { display: flex; gap: 6px; }
+  .chip { font-size: 10px; color: var(--txt-dim); background: #000; border: 1px solid var(--line); border-radius: 20px; padding: 4px 10px; cursor: pointer; }
+  .chip.on { color: #000; background: #fff; border-color: #fff; }
+
+  /* ---------- LINE CHART ---------- */
+  .line-big { font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; margin: 8px 0 14px; letter-spacing: -.02em; }
+  .line-big .u { font-size: 13px; color: var(--txt-dim); font-weight: 500; }
+  svg { display: block; width: 100%; overflow: visible; }
+  .axis-x { display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--txt-dim2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-top: 14px; }
+  .legend .item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--txt-dim); }
+  .legend .item .d { width: 9px; height: 9px; border-radius: 50%; }
+  .legend .item b { color: var(--txt); font-weight: 600; }
+
+  /* ---------- ALLOCATION BAR ---------- */
+  .alloc-bar { display: flex; gap: 4px; height: 108px; margin: 14px 0 18px; }
+  .alloc-seg { border-radius: 8px; min-width: 6px; transition: .2s; position: relative; }
+  .alloc-seg:hover { filter: brightness(1.15); transform: translateY(-2px); }
+  .alloc-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 18px; }
+  .alloc-item .row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--txt-dim); }
+  .alloc-item .row .d { width: 8px; height: 8px; border-radius: 50%; }
+  .alloc-item .pct { font-size: 18px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .alloc-item .pct .u { font-size: 11px; color: var(--txt-dim); font-weight: 500; margin-left: 2px; }
+
+  /* ---------- HEATMAP ---------- */
+  .heat { display: grid; gap: 3px; margin-top: 12px; }
+  .heat-cell { aspect-ratio: 1 / 0.62; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.92); cursor: default; transition: .12s; position: relative; }
+  .heat-cell:hover { outline: 1.5px solid #fff; z-index: 2; }
+  .heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 10px; color: var(--txt-dim2); }
+  .heat-grad { flex: 1; height: 7px; border-radius: 4px; background: linear-gradient(90deg,#1f8f6b,#f5cf3d,#ef4a52); }
+
+  /* ---------- TREEMAP ---------- */
+  #treemap { position: relative; width: 100%; height: 320px; margin-top: 10px; }
+  .tm-cell { position: absolute; border-radius: 5px; overflow: hidden; padding: 6px 8px; cursor: default; transition: filter .12s, outline .12s; }
+  .tm-cell:hover { outline: 1.5px solid #fff; z-index: 3; filter: brightness(1.12); }
+  .tm-cell .tm-name { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .tm-cell .tm-val { font-size: 10px; color: rgba(255,255,255,.82); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+
+  /* ---------- GANTT / TIMELINE ---------- */
+  #gantt { margin-top: 10px; }
+  .gantt-scale { display: flex; margin-left: 130px; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 8px; }
+  .gantt-scale span { flex: 1; font-size: 10px; color: var(--txt-dim2); text-align: left; }
+  .gantt-row { display: flex; align-items: center; height: 34px; }
+  .gantt-lbl { width: 130px; flex: 0 0 130px; font-size: 11px; color: var(--txt-dim); padding-right: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gantt-track { flex: 1; position: relative; height: 24px; background: #060607; border-radius: 6px; }
+  .gantt-bar { position: absolute; top: 3px; height: 18px; border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; cursor: default; transition: filter .12s; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .gantt-bar:hover { filter: brightness(1.15); }
+  .gantt-bar .b-us { opacity: .8; margin-left: 6px; font-weight: 500; }
+
+  /* ---------- TOOLTIP ---------- */
+  #tip { position: fixed; z-index: 999; pointer-events: none; background: rgba(20,20,24,.97); border: 1px solid var(--line2); border-radius: 8px; padding: 8px 11px; font-size: 11px; color: var(--txt); box-shadow: 0 8px 30px rgba(0,0,0,.7); display: none; max-width: 240px; }
+  #tip .t-title { font-weight: 700; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  #tip .t-title .d { width: 8px; height: 8px; border-radius: 50%; }
+  #tip .t-row { color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+  #tip .t-row b { color: var(--txt); }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a32; border-radius: 5px; border: 2px solid var(--panel); }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3a44; }
+
+  .empty { color: var(--txt-dim2); font-size: 12px; padding: 30px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside id="side">
+    <div class="side-head">
+      <div class="brand">
+        <div class="glyph">F</div>
+        <div class="name">Profile Dashboard</div>
+        <div class="tag">proto</div>
+      </div>
+    </div>
+
+    <div class="side-sub">Profiling Feed</div>
+    <div class="side-body">
+      <div class="data-note">
+        One row per metric. Semicolon-separated:<br>
+        <code>colour ; group ; field ; v1 v2 …</code><br>
+        Lines starting with <code>#</code> are ignored.
+      </div>
+      <textarea id="dataInput" spellcheck="false"></textarea>
+      <div class="side-actions">
+        <button class="btn primary" id="applyBtn">▸ Render</button>
+        <button class="btn" id="loadBtn">↑ Load .csv</button>
+        <button class="btn" id="sampleBtn">↺ Sample</button>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.tsv,.txt" style="display:none">
+    </div>
+    <div class="side-foot">Frontier engine profiler · dark prototype · reads .csv-like feed</div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main id="main">
+    <div class="top">
+      <div>
+        <h1>Frame Profile</h1>
+        <div class="crumb">Frontier.exe · capture session · 128 frames</div>
+      </div>
+      <div class="seg" id="rangeSeg">
+        <button data-r="1D">1F</button>
+        <button data-r="5D">30F</button>
+        <button data-r="1M">128F</button>
+        <button data-r="MAX" class="on">All</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid">
+      <!-- LINE -->
+      <div class="card wide">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Frame Time</div>
+            <div class="card-sub">per-frame duration over the capture</div>
+          </div>
+          <div class="card-tools" id="lineToggles"></div>
+        </div>
+        <div class="line-big" id="lineBig">—</div>
+        <div id="lineWrap"></div>
+        <div class="axis-x" id="lineAxis"></div>
+        <div class="legend" id="lineLegend"></div>
+      </div>
+
+      <!-- ALLOCATION -->
+      <div class="card wide">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Frame Budget Allocation</div>
+            <div class="card-sub">share of frame time per subsystem</div>
+          </div>
+        </div>
+        <div class="alloc-bar" id="allocBar"></div>
+        <div class="alloc-legend" id="allocLegend"></div>
+      </div>
+
+      <!-- TREEMAP -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Cost Hotspots</div>
+            <div class="card-sub">sized by cost · coloured by intensity</div>
+          </div>
+        </div>
+        <div id="treemap"></div>
+      </div>
+
+      <!-- HEATMAP -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Cost Heatmap</div>
+            <div class="card-sub">subsystem × frame band</div>
+          </div>
+        </div>
+        <div class="heat" id="heat"></div>
+        <div class="heat-scale"><span>low</span><div class="heat-grad"></div><span>high</span></div>
+      </div>
+
+      <!-- GANTT -->
+      <div class="card wide">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Thread Timeline</div>
+            <div class="card-sub">spans within one frame (µs)</div>
+          </div>
+        </div>
+        <div id="gantt"></div>
+      </div>
+
+      <!-- DONUT -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Cost Ring</div>
+            <div class="card-sub">subsystem share of frame</div>
+          </div>
+        </div>
+        <div id="donut"></div>
+      </div>
+
+      <!-- RADAR -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Cost Profile</div>
+            <div class="card-sub">relative cost across subsystems</div>
+          </div>
+        </div>
+        <div id="radar"></div>
+      </div>
+
+      <!-- STACKED AREA -->
+      <div class="card wide">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Budget Composition</div>
+            <div class="card-sub">stacked subsystem cost per frame (ms)</div>
+          </div>
+        </div>
+        <div id="stack"></div>
+        <div class="axis-x" id="stackAxis"></div>
+        <div class="legend" id="stackLegend"></div>
+      </div>
+
+      <!-- HISTOGRAM -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Frame Time Distribution</div>
+            <div class="card-sub">histogram · P50 / P95 / P99</div>
+          </div>
+        </div>
+        <div id="histo"></div>
+      </div>
+
+      <!-- SPARKLINE TABLE -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Subsystem Trends</div>
+            <div class="card-sub">min · avg · max + sparkline</div>
+          </div>
+        </div>
+        <div id="sparkTable"></div>
+      </div>
+
+      <!-- FLAME GRAPH -->
+      <div class="card wide">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Call Stack (Flame Graph)</div>
+            <div class="card-sub">hierarchical cost · width ∝ time</div>
+          </div>
+        </div>
+        <div id="flame"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="tip"></div>
+
+<script>
+/* =========================================================================
+   FRONTIER PROFILE DASHBOARD — standalone prototype
+   Reads a .csv-like profiling feed and renders line / allocation /
+   treemap / heatmap / gantt visualizations. Dark theme.
+   Feed row grammar:  colour ; group ; field ; value1 value2 value3 ...
+   ========================================================================= */
+
+const PALETTE = {
+  green:'#5aa832', blue:'#5b6bf5', sky:'#2f8fff', pink:'#f19bf0', red:'#ef4a52',
+  orange:'#f2941b', yellow:'#f5cf3d', teal:'#34d399', violet:'#b07cf5', grey:'#6a6a74'
+};
+function resolveColour(c) {
+  if (!c) return PALETTE.grey;
+  c = c.trim().toLowerCase();
+  if (PALETTE[c]) return PALETTE[c];
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)) return c;
+  return PALETTE.grey;
+}
+
+/* ---------- SAMPLE FEED (realistic engine profiling) ---------- */
+const SAMPLE = `# colour ; group ; field ; values...
+# --- per-frame timings (ms) sampled across the capture ---
+blue   ; frame   ; Total Frame   ; 16.1 15.8 16.9 17.2 15.4 18.1 16.6 15.2 16.0 17.8 16.3 15.9 19.2 16.4 15.7 16.8 17.1 16.2 15.5 18.4 16.0 15.8 16.7 17.5 16.1
+grey   ; frame   ; CPU Wait      ; 4.2 4.0 4.8 5.1 3.9 5.6 4.4 3.8 4.1 5.2 4.3 4.0 6.1 4.4 3.9 4.6 5.0 4.2 3.8 5.4 4.1 3.9 4.5 5.3 4.2
+# --- subsystem cost per frame (ms) : drives allocation, treemap, heatmap ---
+green  ; subsys  ; Culling       ; 1.4 1.3 1.5 1.6 1.2 1.7 1.4 1.2 1.4 1.6 1.4 1.3 1.9 1.4 1.3 1.5 1.6 1.4 1.2 1.7 1.4 1.3 1.5 1.6 1.4
+blue   ; subsys  ; Shadow Pass   ; 3.1 3.0 3.4 3.6 2.9 3.9 3.2 2.8 3.1 3.7 3.2 3.0 4.3 3.2 2.9 3.4 3.6 3.1 2.8 3.8 3.1 3.0 3.4 3.7 3.1
+sky    ; subsys  ; GBuffer       ; 2.8 2.7 3.0 3.2 2.6 3.5 2.9 2.6 2.8 3.3 2.9 2.7 3.8 2.9 2.6 3.0 3.2 2.8 2.6 3.4 2.8 2.7 3.0 3.3 2.8
+pink   ; subsys  ; Lighting      ; 3.6 3.5 3.9 4.1 3.4 4.5 3.7 3.3 3.6 4.2 3.7 3.5 4.9 3.7 3.4 3.9 4.1 3.6 3.3 4.4 3.6 3.5 3.9 4.2 3.6
+red    ; subsys  ; Post FX       ; 1.9 1.8 2.0 2.1 1.7 2.3 1.9 1.7 1.9 2.2 1.9 1.8 2.5 1.9 1.7 2.0 2.1 1.9 1.7 2.2 1.9 1.8 2.0 2.1 1.9
+orange ; subsys  ; UI / ImGui    ; 1.2 1.1 1.3 1.4 1.0 1.5 1.2 1.0 1.2 1.4 1.2 1.1 1.6 1.2 1.1 1.3 1.4 1.2 1.0 1.4 1.2 1.1 1.3 1.4 1.2
+yellow ; subsys  ; Present       ; 0.9 0.8 1.0 1.1 0.8 1.2 0.9 0.8 0.9 1.1 0.9 0.8 1.3 0.9 0.8 1.0 1.1 0.9 0.8 1.1 0.9 0.8 1.0 1.1 0.9
+violet ; subsys  ; Physics       ; 1.2 1.6 1.1 1.3 2.1 1.0 1.4 1.8 1.2 1.1 1.5 1.9 1.0 1.3 1.7 1.2 1.1 1.4 2.0 1.0 1.3 1.6 1.2 1.1 1.4
+# --- one-frame thread timeline spans : colour ; track ; label ; start len (µs) ---
+blue   ; timeline ; Main Thread   ; 0 3200
+green  ; timeline ; Main Thread   ; 3200 1400
+pink   ; timeline ; Main Thread   ; 4600 3600
+sky    ; timeline ; Render Thread ; 1200 2800
+red    ; timeline ; Render Thread ; 4000 1900
+orange ; timeline ; Render Thread ; 5900 1200
+violet ; timeline ; Worker 0      ; 400 1200
+teal   ; timeline ; Worker 0      ; 1600 900
+yellow ; timeline ; Worker 1      ; 800 2100
+green  ; timeline ; Worker 1      ; 2900 700
+# --- flame graph : colour ; flame ; depth>label ; start len (µs) ; depth 0 = root ---
+grey   ; flame ; 0>Frame::Run          ; 0 16000
+blue   ; flame ; 1>Render::Submit      ; 0 9800
+green  ; flame ; 2>Culling::Cull       ; 0 1400
+blue   ; flame ; 2>Shadow::Pass        ; 1400 3100
+sky    ; flame ; 2>GBuffer::Fill       ; 4500 2800
+pink   ; flame ; 3>Draw::Opaque        ; 4500 1900
+pink   ; flame ; 3>Draw::Masked        ; 6400 900
+pink   ; flame ; 2>Lighting::Shade     ; 7300 2500
+red    ; flame ; 3>Lighting::Clustered ; 7300 1600
+violet ; flame ; 1>Physics::Step       ; 9800 2400
+teal   ; flame ; 2>Physics::Solve      ; 9800 1500
+orange ; flame ; 1>UI::Build           ; 12200 1600
+yellow ; flame ; 1>Present::Swap       ; 13800 2200`;
+
+/* ---------- PARSER ---------- */
+function parseFeed(text) {
+  const rows = [];
+  text.split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    const parts = line.split(';').map(s => s.trim());
+    if (parts.length < 4) return;
+    const [colour, group, field, valuesRaw] = parts;
+    const values = valuesRaw.split(/[,\s]+/).map(Number).filter(v => !Number.isNaN(v));
+    rows.push({ colour, group: group.toLowerCase(), field, values, c: resolveColour(colour) });
+  });
+  return rows;
+}
+
+/* ---------- STATE ---------- */
+const STATE = { rows: [], range: 'MAX', hiddenLines: new Set() };
+
+/* ---------- HELPERS ---------- */
+const $ = id => document.getElementById(id);
+const sum = a => a.reduce((s,v)=>s+v,0);
+const avg = a => a.length ? sum(a)/a.length : 0;
+const fmt = (v,d=1) => v.toFixed(d);
+const rangeCount = { '1D':1, '5D':30, '1M':128, 'MAX':Infinity };
+
+function sliceRange(values) {
+  const n = rangeCount[STATE.range];
+  if (n === Infinity || n >= values.length) return values;
+  if (n <= 1) return values.slice(-1);
+  return values.slice(-n);
+}
+
+/* tooltip */
+const tip = $('tip');
+function showTip(html, e) { tip.innerHTML = html; tip.style.display = 'block'; moveTip(e); }
+function moveTip(e) {
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth)  x = e.clientX - w - pad;
+  if (y + h > innerHeight) y = e.clientY - h - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+
+/* ===================================================================
+   RENDER PIPELINE
+   =================================================================== */
+function renderAll() {
+  const rows = STATE.rows;
+  renderKpis(rows);
+  renderLine(rows.filter(r => r.group === 'frame'));
+  renderAllocation(rows.filter(r => r.group === 'subsys'));
+  renderTreemap(rows.filter(r => r.group === 'subsys'));
+  renderHeatmap(rows.filter(r => r.group === 'subsys'));
+  renderGantt(rows.filter(r => r.group === 'timeline'));
+  const subsys = rows.filter(r => r.group === 'subsys');
+  renderDonut(subsys);
+  renderRadar(subsys);
+  renderStack(subsys);
+  renderHisto(rows.filter(r => r.group === 'frame'));
+  renderSparkTable(subsys);
+  renderFlame(rows.filter(r => r.group === 'flame'));
+}
+
+/* ---------- KPIs ---------- */
+function renderKpis(rows) {
+  const frame = rows.find(r => r.group === 'frame');
+  const subsys = rows.filter(r => r.group === 'subsys');
+  const cards = [];
+
+  if (frame) {
+    const last = frame.values.at(-1), mean = avg(frame.values);
+    const delta = last - mean, up = delta > 0;
+    cards.push({ c: frame.c, lbl: 'Frame Time', big: fmt(last,1), u: 'ms',
+      delta: (up?'▲ ':'▼ ') + fmt(Math.abs(delta),2) + 'ms vs avg', up: !up });
+    cards.push({ c: PALETTE.teal, lbl: 'Framerate', big: fmt(1000/last,0), u: 'fps', delta: 'target 60', neutral: true });
+    cards.push({ c: PALETTE.orange, lbl: 'Peak Frame', big: fmt(Math.max(...frame.values),1), u: 'ms',
+      delta: '▲ worst spike', up: false });
+  }
+  if (subsys.length) {
+    const worst = subsys.map(r => ({ r, m: avg(r.values) })).sort((a,b)=>b.m-a.m)[0];
+    cards.push({ c: worst.r.c, lbl: 'Top Cost', big: worst.r.field.replace(/\s.*/, ''), small: true,
+      delta: fmt(worst.m,2) + 'ms avg', neutral: true });
+  }
+
+  $('kpis').innerHTML = cards.map(k => `
+    <div class="kpi">
+      <div class="lbl"><span class="d" style="background:${k.c}"></span>${k.lbl}</div>
+      <div class="big" style="${k.small?'font-size:20px':''}">${k.big}${k.u?`<span class="u">${k.u}</span>`:''}</div>
+      <div class="delta ${k.neutral?'':(k.up?'up':'down')}">${k.delta}</div>
+    </div>`).join('');
+}
+
+/* ---------- LINE CHART ---------- */
+function renderLine(rows) {
+  const wrap = $('lineWrap'), axis = $('lineAxis'), legend = $('lineLegend');
+  if (!rows.length) { wrap.innerHTML = '<div class="empty">No <code>frame</code> rows in feed.</div>'; axis.innerHTML=''; legend.innerHTML=''; $('lineBig').textContent='—'; return; }
+
+  const W = 100, H = 42, PAD = 2;                // viewBox units (responsive via width:100%)
+  const series = rows.map(r => ({ ...r, vals: sliceRange(r.values) }));
+  const allVals = series.filter(s => !STATE.hiddenLines.has(s.field)).flatMap(s => s.vals);
+  const mn = Math.min(...allVals, 0), mx = Math.max(...allVals) * 1.05 || 1;
+  const N = Math.max(...series.map(s => s.vals.length));
+  const xOf = i => PAD + (N<=1 ? 0 : i/(N-1)) * (W - PAD*2);
+  const yOf = v => (H-PAD) - (v-mn)/(mx-mn) * (H - PAD*2);
+
+  // gridlines
+  let grid = '';
+  for (let g=0; g<=4; g++) { const y = PAD + g/4*(H-PAD*2); grid += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#1c1c22" stroke-width="0.15" stroke-dasharray="0.6 0.8"/>`; }
+
+  let paths = '';
+  series.forEach(s => {
+    if (STATE.hiddenLines.has(s.field)) return;
+    const d = s.vals.map((v,i) => `${i?'L':'M'}${xOf(i).toFixed(2)} ${yOf(v).toFixed(2)}`).join(' ');
+    paths += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    // end dot
+    const lx = xOf(s.vals.length-1), ly = yOf(s.vals.at(-1));
+    paths += `<circle cx="${lx.toFixed(2)}" cy="${ly.toFixed(2)}" r="0.7" fill="${s.c}"/>`;
+  });
+
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:200px">${grid}${paths}</svg>`;
+
+  // big number = last value of first visible frame series
+  const primary = series.find(s => !STATE.hiddenLines.has(s.field)) || series[0];
+  $('lineBig').innerHTML = `${fmt(primary.vals.at(-1),1)}<span class="u"> ms · ${primary.field}</span>`;
+
+  // x axis labels
+  const labelCount = Math.min(N, 7);
+  let ax = '';
+  for (let i=0;i<labelCount;i++){ const idx = Math.round(i/(labelCount-1)*(N-1)); ax += `<span>f${idx}</span>`; }
+  axis.innerHTML = ax;
+
+  // legend (clickable to toggle)
+  legend.innerHTML = series.map(s => `
+    <div class="item" data-field="${s.field}" style="cursor:pointer;opacity:${STATE.hiddenLines.has(s.field)?0.4:1}">
+      <span class="d" style="background:${s.c}"></span><b>${s.field}</b> ${fmt(avg(s.vals),1)}ms avg
+    </div>`).join('');
+  legend.querySelectorAll('.item').forEach(el => el.onclick = () => {
+    const f = el.dataset.field;
+    STATE.hiddenLines.has(f) ? STATE.hiddenLines.delete(f) : STATE.hiddenLines.add(f);
+    renderLine(rows);
+  });
+}
+
+/* ---------- ALLOCATION BAR ---------- */
+function renderAllocation(rows) {
+  const bar = $('allocBar'), leg = $('allocLegend');
+  if (!rows.length) { bar.innerHTML=''; leg.innerHTML='<div class="empty">No <code>subsys</code> rows in feed.</div>'; return; }
+  const items = rows.map(r => ({ ...r, m: avg(sliceRange(r.values)) }));
+  const total = sum(items.map(i => i.m)) || 1;
+
+  bar.innerHTML = items.map(i => {
+    const pct = i.m/total*100;
+    return `<div class="alloc-seg" style="flex:${i.m};background:${i.c}"
+      data-tip='${JSON.stringify({c:i.c,title:i.field,rows:[['share',fmt(pct,1)+'%'],['cost',fmt(i.m,2)+' ms']]})}'></div>`;
+  }).join('');
+
+  leg.innerHTML = items.map(i => {
+    const pct = i.m/total*100;
+    return `<div class="alloc-item">
+      <div class="row"><span class="d" style="background:${i.c}"></span>${i.field}</div>
+      <div class="pct">${fmt(pct,1)}<span class="u">%</span></div>
+    </div>`;
+  }).join('');
+  wireTips(bar);
+}
+
+/* ---------- TREEMAP (squarified-ish slice/dice) ---------- */
+function renderTreemap(rows) {
+  const host = $('treemap');
+  if (!rows.length) { host.innerHTML = '<div class="empty">No <code>subsys</code> rows in feed.</div>'; return; }
+  const items = rows.map(r => ({ name:r.field, val:avg(sliceRange(r.values)), c:r.c }))
+                    .sort((a,b)=>b.val-a.val);
+  const W = host.clientWidth || 400, H = host.clientHeight || 320;
+  const totalVal = sum(items.map(i=>i.val)) || 1;
+  const maxVal = Math.max(...items.map(i=>i.val));
+
+  // slice-and-dice: recursively split alternating axis, proportional to value
+  const cells = [];
+  function layout(list, x, y, w, h, horizontal) {
+    if (!list.length) return;
+    if (list.length === 1) { cells.push({ ...list[0], x, y, w, h }); return; }
+    const t = sum(list.map(i=>i.val));
+    // split roughly in half by value to keep aspect ratios reasonable
+    let acc = 0, cut = 1;
+    for (let k=0;k<list.length;k++){ acc += list[k].val; cut = k+1; if (acc >= t/2) break; }
+    const a = list.slice(0,cut), b = list.slice(cut);
+    const aFrac = sum(a.map(i=>i.val))/t;
+    if (horizontal) {
+      const wa = w*aFrac; layout(a,x,y,wa,h,!horizontal); layout(b,x+wa,y,w-wa,h,!horizontal);
+    } else {
+      const ha = h*aFrac; layout(a,x,y,w,ha,!horizontal); layout(b,x,y+ha,w,h-ha,!horizontal);
+    }
+  }
+  layout(items, 0, 0, W, H, W >= H);
+
+  const G = 3;
+  host.innerHTML = cells.map(c => {
+    const t = c.val/maxVal;                        // intensity 0..1
+    const bg = heatColour(t);
+    const area = c.w*c.h;
+    return `<div class="tm-cell" style="left:${c.x+G/2}px;top:${c.y+G/2}px;width:${Math.max(0,c.w-G)}px;height:${Math.max(0,c.h-G)}px;background:${bg}"
+      data-tip='${JSON.stringify({c:bg,title:c.name,rows:[['cost',fmt(c.val,2)+' ms'],['share',fmt(c.val/totalVal*100,1)+'%']]})}'>
+      ${area>1400?`<div class="tm-name">${c.name}</div><div class="tm-val">${fmt(c.val,2)} ms</div>`:''}
+    </div>`;
+  }).join('');
+  wireTips(host);
+}
+
+/* ---------- HEATMAP (subsystem × frame band) ---------- */
+function renderHeatmap(rows) {
+  const host = $('heat');
+  if (!rows.length) { host.innerHTML = '<div class="empty">No <code>subsys</code> rows.</div>'; return; }
+  const BANDS = 8;
+  // build a matrix: each subsystem -> BANDS averaged buckets across its frames
+  const matrix = rows.map(r => {
+    const v = sliceRange(r.values), out = [];
+    for (let b=0;b<BANDS;b++){
+      const lo = Math.floor(b/BANDS*v.length), hi = Math.max(lo+1, Math.floor((b+1)/BANDS*v.length));
+      out.push(avg(v.slice(lo,hi)));
+    }
+    return { name:r.field, cells:out };
+  });
+  const flat = matrix.flatMap(m=>m.cells);
+  const mn = Math.min(...flat), mx = Math.max(...flat), rg = (mx-mn)||1;
+
+  host.style.gridTemplateColumns = `100px repeat(${BANDS}, 1fr)`;
+  let html = '';
+  matrix.forEach(m => {
+    html += `<div style="display:flex;align-items:center;font-size:10px;color:var(--txt-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name}</div>`;
+    m.cells.forEach((val,b) => {
+      const t = (val-mn)/rg, bg = heatColour(t);
+      html += `<div class="heat-cell" style="background:${bg}"
+        data-tip='${JSON.stringify({c:bg,title:m.name+" · band "+(b+1),rows:[['cost',fmt(val,2)+' ms']]})}'></div>`;
+    });
+  });
+  host.innerHTML = html;
+  wireTips(host);
+}
+
+/* ---------- GANTT / TIMELINE ---------- */
+function renderGantt(rows) {
+  const host = $('gantt');
+  if (!rows.length) { host.innerHTML = '<div class="empty">No <code>timeline</code> rows. Format: <code>colour ; track ; label ; start len</code></div>'; return; }
+  // group spans by track (group field carries the track name via 'field'? -> spec: colour;track;label;start len)
+  // here: r.group==='timeline', r.field is the TRACK, and values = [start,len]; label reuses field for simplicity.
+  // To support a label distinct from track we treat field as track; render label = field when 2 values.
+  const tracks = {};
+  rows.forEach(r => {
+    const [start, len] = r.values;
+    (tracks[r.field] = tracks[r.field] || []).push({ start, len, c:r.c, label:r.field });
+  });
+  const maxEnd = Math.max(...rows.map(r => (r.values[0]||0)+(r.values[1]||0)), 1);
+
+  // time scale header
+  const TICKS = 6;
+  let scale = '';
+  for (let i=0;i<TICKS;i++){ scale += `<span>${Math.round(i/TICKS*maxEnd)}µs</span>`; }
+
+  let body = '';
+  Object.entries(tracks).forEach(([track, spans]) => {
+    let bars = '';
+    spans.forEach(s => {
+      const left = s.start/maxEnd*100, width = s.len/maxEnd*100;
+      bars += `<div class="gantt-bar" style="left:${left}%;width:${width}%;background:${s.c}"
+        data-tip='${JSON.stringify({c:s.c,title:track,rows:[['start',s.start+' µs'],['length',s.len+' µs'],['end',(s.start+s.len)+' µs']]})}'>
+        ${width>10?`<span>${s.len}µs</span>`:''}</div>`;
+    });
+    body += `<div class="gantt-row"><div class="gantt-lbl">${track}</div><div class="gantt-track">${bars}</div></div>`;
+  });
+  host.innerHTML = `<div class="gantt-scale">${scale}</div>${body}`;
+  wireTips(host);
+}
+
+/* ---------- DONUT / RING ---------- */
+function renderDonut(rows) {
+  const host = $('donut');
+  if (!rows.length) { host.innerHTML = '<div class="empty">No <code>subsys</code> rows.</div>'; return; }
+  const items = rows.map(r => ({ name:r.field, val:avg(sliceRange(r.values)), c:r.c }));
+  const total = sum(items.map(i=>i.val)) || 1;
+  const R = 68, r = 44, cx = 90, cy = 90, C = 2*Math.PI*((R+r)/2), sw = R-r;
+  let a0 = -Math.PI/2, arcs = '';
+  items.forEach(it => {
+    const frac = it.val/total, a1 = a0 + frac*2*Math.PI;
+    const mid = (R+r)/2;
+    const p = (ang,rad)=>[cx+Math.cos(ang)*rad, cy+Math.sin(ang)*rad];
+    const [x0,y0]=p(a0,mid), [x1,y1]=p(a1,mid);
+    const large = frac>0.5?1:0;
+    arcs += `<path d="M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${mid} ${mid} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}"
+      fill="none" stroke="${it.c}" stroke-width="${sw}"
+      data-tip='${JSON.stringify({c:it.c,title:it.name,rows:[['share',fmt(frac*100,1)+'%'],['cost',fmt(it.val,2)+' ms']]})}'/>`;
+    a0 = a1;
+  });
+  host.innerHTML = `<svg viewBox="0 0 180 180" style="height:210px;margin:8px auto 0;display:block">
+    ${arcs}
+    <text x="90" y="84" text-anchor="middle" fill="#fff" font-size="26" font-weight="700" font-family="Inter">${fmt(total,1)}</text>
+    <text x="90" y="102" text-anchor="middle" fill="#8a8a95" font-size="10" letter-spacing="1">ms / frame</text>
+  </svg>`;
+  wireTips(host);
+}
+
+/* ---------- RADAR ---------- */
+function renderRadar(rows) {
+  const host = $('radar');
+  if (rows.length < 3) { host.innerHTML = '<div class="empty">Needs ≥3 <code>subsys</code> rows.</div>'; return; }
+  const items = rows.map(r => ({ name:r.field, val:avg(sliceRange(r.values)), c:r.c }));
+  const mx = Math.max(...items.map(i=>i.val)) || 1;
+  const N = items.length, cx = 130, cy = 120, R = 82;
+  const ang = i => -Math.PI/2 + i/N*2*Math.PI;
+  const pt = (i,rad) => [cx+Math.cos(ang(i))*rad, cy+Math.sin(ang(i))*rad];
+
+  let rings = '';
+  for (let g=1; g<=4; g++){
+    const pts = items.map((_,i)=>pt(i, R*g/4).map(v=>v.toFixed(1)).join(',')).join(' ');
+    rings += `<polygon points="${pts}" fill="none" stroke="#232329" stroke-width="1"/>`;
+  }
+  let spokes = '', labels = '';
+  items.forEach((it,i) => {
+    const [ex,ey] = pt(i,R);
+    spokes += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#1c1c22" stroke-width="1"/>`;
+    const [lx,ly] = pt(i,R+16);
+    labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="#8a8a95" font-size="9" font-family="Inter">${it.name.slice(0,10)}</text>`;
+  });
+  const dataPts = items.map((it,i)=>pt(i, R*it.val/mx).map(v=>v.toFixed(1)).join(',')).join(' ');
+  let dots = '';
+  items.forEach((it,i)=>{ const [dx,dy]=pt(i, R*it.val/mx); dots += `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="2.6" fill="${it.c}"
+    data-tip='${JSON.stringify({c:it.c,title:it.name,rows:[['cost',fmt(it.val,2)+' ms']]})}'/>`; });
+
+  host.innerHTML = `<svg viewBox="0 0 260 240" style="height:230px;margin-top:4px;display:block">
+    ${rings}${spokes}
+    <polygon points="${dataPts}" fill="rgba(91,107,245,0.22)" stroke="#5b6bf5" stroke-width="1.5"/>
+    ${dots}${labels}
+  </svg>`;
+  wireTips(host);
+}
+
+/* ---------- STACKED AREA ---------- */
+function renderStack(rows) {
+  const host = $('stack'), axis = $('stackAxis'), leg = $('stackLegend');
+  if (!rows.length) { host.innerHTML='<div class="empty">No <code>subsys</code> rows.</div>'; axis.innerHTML=''; leg.innerHTML=''; return; }
+  const series = rows.map(r => ({ ...r, vals: sliceRange(r.values) }));
+  const N = Math.max(...series.map(s=>s.vals.length));
+  // column totals for y-scale
+  let colMax = 0;
+  for (let i=0;i<N;i++){ let s=0; series.forEach(sr=>s+=(sr.vals[i]||0)); colMax=Math.max(colMax,s); }
+  colMax = colMax*1.05 || 1;
+  const W=100, H=44, PAD=1.5;
+  const xOf = i => PAD + (N<=1?0:i/(N-1))*(W-PAD*2);
+  const yOf = v => (H-PAD) - v/colMax*(H-PAD*2);
+
+  // build cumulative bands bottom-up
+  const baselines = new Array(N).fill(0);
+  let bands = '';
+  series.forEach(s => {
+    const top = [], bot = [];
+    for (let i=0;i<N;i++){ const v=s.vals[i]||0; bot.push(baselines[i]); baselines[i]+=v; top.push(baselines[i]); }
+    let d = '';
+    top.forEach((v,i)=> d += `${i?'L':'M'}${xOf(i).toFixed(2)} ${yOf(v).toFixed(2)} `);
+    for (let i=N-1;i>=0;i--) d += `L${xOf(i).toFixed(2)} ${yOf(bot[i]).toFixed(2)} `;
+    bands += `<path d="${d}Z" fill="${s.c}" fill-opacity="0.85" stroke="${s.c}" stroke-width="0.2"/>`;
+  });
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:190px;margin-top:8px">${bands}</svg>`;
+
+  const labelCount = Math.min(N,7);
+  let ax=''; for (let i=0;i<labelCount;i++){ const idx=Math.round(i/(labelCount-1)*(N-1)); ax+=`<span>f${idx}</span>`; }
+  axis.innerHTML = ax;
+  leg.innerHTML = series.map(s=>`<div class="item"><span class="d" style="background:${s.c}"></span><b>${s.field}</b></div>`).join('');
+}
+
+/* ---------- HISTOGRAM + PERCENTILES ---------- */
+function renderHisto(rows) {
+  const host = $('histo');
+  const frame = rows[0];
+  if (!frame) { host.innerHTML='<div class="empty">No <code>frame</code> row.</div>'; return; }
+  const v = [...sliceRange(frame.values)].sort((a,b)=>a-b);
+  if (v.length < 2) { host.innerHTML='<div class="empty">Need more frames for a distribution.</div>'; return; }
+  const mn=v[0], mx=v.at(-1), rg=(mx-mn)||1, BINS=Math.min(14, Math.max(6, Math.round(Math.sqrt(v.length))));
+  const bins = new Array(BINS).fill(0);
+  v.forEach(x=>{ let b=Math.floor((x-mn)/rg*BINS); if(b>=BINS)b=BINS-1; bins[b]++; });
+  const bmax = Math.max(...bins);
+  const pct = p => v[Math.min(v.length-1, Math.floor(p/100*v.length))];
+  const p50=pct(50), p95=pct(95), p99=pct(99);
+  const xPos = val => (val-mn)/rg*100;
+
+  const bars = bins.map((cnt,i)=>{
+    const h=cnt/bmax*100, lo=mn+i/BINS*rg, hi=mn+(i+1)/BINS*rg;
+    const t=i/(BINS-1), bg=heatColour(t*0.8);
+    return `<div style="flex:1;height:${h}%;background:${bg};border-radius:3px 3px 0 0;min-height:2px;transition:.12s"
+      data-tip='${JSON.stringify({c:bg,title:fmt(lo,1)+'–'+fmt(hi,1)+' ms',rows:[['frames',cnt]]})}'></div>`;
+  }).join('');
+
+  const marker = (val,label,col)=>`<div style="position:absolute;left:${xPos(val)}%;top:0;bottom:18px;width:1.5px;background:${col}">
+    <span style="position:absolute;top:-2px;left:3px;font-size:9px;color:${col};font-weight:700;white-space:nowrap">${label} ${fmt(val,1)}</span></div>`;
+
+  host.innerHTML = `
+    <div style="position:relative;height:150px;margin-top:14px">
+      <div style="position:absolute;inset:0 0 18px 0;display:flex;align-items:flex-end;gap:2px">${bars}</div>
+      ${marker(p50,'P50','#8a8a95')}${marker(p95,'P95','#f2941b')}${marker(p99,'P99','#ef4a52')}
+      <div style="position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;font-size:9px;color:var(--txt-dim2)">
+        <span>${fmt(mn,1)}ms</span><span>${fmt(mx,1)}ms</span></div>
+    </div>`;
+  wireTips(host);
+}
+
+/* ---------- SPARKLINE TABLE ---------- */
+function renderSparkTable(rows) {
+  const host = $('sparkTable');
+  if (!rows.length) { host.innerHTML='<div class="empty">No <code>subsys</code> rows.</div>'; return; }
+  const items = rows.map(r => {
+    const v = sliceRange(r.values);
+    return { name:r.field, c:r.c, v, mn:Math.min(...v), mx:Math.max(...v), av:avg(v) };
+  }).sort((a,b)=>b.av-a.av);
+
+  const spark = (v,c) => {
+    const mn=Math.min(...v), mx=Math.max(...v), rg=(mx-mn)||1, W=100,H=24;
+    const d = v.map((val,i)=>`${i?'L':'M'}${(i/(v.length-1)*W).toFixed(1)} ${(H-2-(val-mn)/rg*(H-4)).toFixed(1)}`).join(' ');
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:24px"><path d="${d}" fill="none" stroke="${c}" stroke-width="1.2"/></svg>`;
+  };
+
+  host.innerHTML = `<div style="margin-top:6px">` + items.map(it => `
+    <div style="display:grid;grid-template-columns:96px 1fr 130px;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        <span style="width:8px;height:8px;border-radius:50%;background:${it.c};flex:0 0 auto"></span>${it.name}</div>
+      <div>${spark(it.v, it.c)}</div>
+      <div style="font-size:10px;color:var(--txt-dim);font-variant-numeric:tabular-nums;text-align:right">
+        <b style="color:var(--txt)">${fmt(it.av,2)}</b> avg · ${fmt(it.mn,2)}/${fmt(it.mx,2)}</div>
+    </div>`).join('') + `</div>`;
+}
+
+/* ---------- FLAME GRAPH ---------- */
+function renderFlame(rows) {
+  const host = $('flame');
+  if (!rows.length) { host.innerHTML = '<div class="empty">No <code>flame</code> rows. Format: <code>colour ; flame ; depth&gt;label ; start len</code></div>'; return; }
+  const frames = rows.map(r => {
+    const m = /^(\d+)\s*>\s*(.*)$/.exec(r.field) || [null,'0',r.field];
+    return { depth:+m[1], label:m[2].trim(), start:r.values[0]||0, len:r.values[1]||0, c:r.c };
+  });
+  const maxEnd = Math.max(...frames.map(f=>f.start+f.len), 1);
+  const maxDepth = Math.max(...frames.map(f=>f.depth));
+  const ROW = 26, GAP = 2;
+  const height = (maxDepth+1)*(ROW+GAP);
+
+  const cells = frames.map(f => {
+    const left = f.start/maxEnd*100, width = f.len/maxEnd*100, top = f.depth*(ROW+GAP);
+    return `<div style="position:absolute;left:${left}%;width:${width}%;top:${top}px;height:${ROW}px;background:${f.c};
+      border-radius:3px;display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:600;color:#fff;
+      white-space:nowrap;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);cursor:default;transition:filter .12s"
+      onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"
+      data-tip='${JSON.stringify({c:f.c,title:f.label,rows:[['self+child',f.len+' µs'],['start',f.start+' µs'],['depth',f.depth]]})}'>
+      ${width>4?f.label:''}</div>`;
+  }).join('');
+  host.innerHTML = `<div style="position:relative;margin-top:12px;height:${height}px">${cells}</div>`;
+  wireTips(host);
+}
+
+/* ---------- SHARED: heat colour ramp (teal → yellow → red) ---------- */
+function heatColour(t) {
+  t = Math.max(0, Math.min(1, t));
+  const stops = [ [31,143,107], [245,207,61], [239,74,82] ]; // teal, yellow, red
+  const seg = t*(stops.length-1), i = Math.floor(seg), f = seg-i;
+  const a = stops[i], b = stops[Math.min(i+1, stops.length-1)];
+  const mix = k => Math.round(a[k]+(b[k]-a[k])*f);
+  return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
+}
+
+/* ---------- SHARED: tooltip wiring ---------- */
+function wireTips(host) {
+  host.querySelectorAll('[data-tip]').forEach(el => {
+    const d = JSON.parse(el.dataset.tip);
+    el.onmouseenter = e => showTip(
+      `<div class="t-title"><span class="d" style="background:${d.c}"></span>${d.title}</div>` +
+      d.rows.map(r=>`<div class="t-row">${r[0]}: <b>${r[1]}</b></div>`).join(''), e);
+    el.onmousemove = moveTip;
+    el.onmouseleave = hideTip;
+  });
+}
+
+/* ===================================================================
+   WIRING
+   =================================================================== */
+function applyFeed() {
+  STATE.rows = parseFeed($('dataInput').value);
+  renderAll();
+}
+
+$('applyBtn').onclick = applyFeed;
+$('sampleBtn').onclick = () => { $('dataInput').value = SAMPLE; applyFeed(); };
+$('loadBtn').onclick = () => $('fileInput').click();
+$('fileInput').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { $('dataInput').value = reader.result; applyFeed(); };
+  reader.readAsText(f);
+};
+$('rangeSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('rangeSeg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); STATE.range = b.dataset.r; renderAll();
+});
+window.addEventListener('resize', () => renderAll());
+
+/* boot */
+$('dataInput').value = SAMPLE;
+applyFeed();
+</script>
+</body>
+</html>

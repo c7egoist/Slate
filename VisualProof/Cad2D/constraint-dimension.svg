@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="800" viewBox="0 0 1300 800">
+<rect width="100%" height="100%" fill="#0b0d10"/>
+<text x="40.00" y="40.00" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Dimensions + Constraints Proof</text>
+<line x1="140.00" y1="180.00" x2="360.00" y2="180.00" stroke="#78c6ff" stroke-width="4" opacity="1.0"/>
+<line x1="360.00" y1="180.00" x2="360.00" y2="360.00" stroke="#ff9f6e" stroke-width="4" opacity="1.0"/>
+<circle cx="140.00" cy="180.00" r="5" fill="#ffd166"/>
+<circle cx="360.00" cy="180.00" r="5" fill="#ffd166"/>
+<circle cx="360.00" cy="360.00" r="5" fill="#ffd166"/>
+<line x1="140.00" y1="140.00" x2="360.00" y2="140.00" stroke="#d8dde6" stroke-width="2" opacity="1.0" stroke-dasharray="8 8"/>
+<line x1="140.00" y1="140.00" x2="140.00" y2="180.00" stroke="#d8dde6" stroke-width="1" opacity="1.0"/>
+<line x1="360.00" y1="140.00" x2="360.00" y2="180.00" stroke="#d8dde6" stroke-width="1" opacity="1.0"/>
+<text x="235.00" y="132.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">Horizontal 220</text>
+<line x1="400.00" y1="180.00" x2="400.00" y2="360.00" stroke="#d8dde6" stroke-width="2" opacity="1.0" stroke-dasharray="8 8"/>
+<line x1="360.00" y1="180.00" x2="400.00" y2="180.00" stroke="#d8dde6" stroke-width="1" opacity="1.0"/>
+<line x1="360.00" y1="360.00" x2="400.00" y2="360.00" stroke="#d8dde6" stroke-width="1" opacity="1.0"/>
+<text x="410.00" y="275.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">Vertical 180</text>
+<circle cx="360.00" cy="180.00" r="50.00" fill="none" stroke="#9dff9a" stroke-width="2" opacity="1.0"/>
+<text x="390.00" y="150.00" fill="#9dff9a" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">90°</text>
+<polyline points="930.00,250.00 929.23,261.75 926.93,273.29 923.15,284.44 917.94,295.00 911.40,304.79 903.64,313.64 894.79,321.40 885.00,327.94 874.44,333.15 863.29,336.93 851.75,339.23 840.00,340.00 828.25,339.23 816.71,336.93 805.56,333.15 795.00,327.94 785.21,321.40 776.36,313.64 768.60,304.79 762.06,295.00 756.85,284.44 753.07,273.29 750.77,261.75 750.00,250.00 750.77,238.25 753.07,226.71 756.85,215.56 762.06,205.00 768.60,195.21 776.36,186.36 785.21,178.60 795.00,172.06 805.56,166.85 816.71,163.07 828.25,160.77 840.00,160.00 851.75,160.77 863.29,163.07 874.44,166.85 885.00,172.06 894.79,178.60 903.64,186.36 911.40,195.21 917.94,205.00 923.15,215.56 926.93,226.71 929.23,238.25 930.00,250.00" fill="none" stroke="#f4d35e" stroke-width="3" opacity="1.0"/>
+<polyline points="840.00,160.00 980.00,160.00" fill="none" stroke="#ffffff" stroke-width="3" opacity="1.0"/>
+<text x="730.00" y="390.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Radius / diameter / tangent target</text>
+<rect x="980" y="100" width="250" height="220" rx="14" fill="#11161c" stroke="#2a313a"/>
+<text x="1000.00" y="132.00" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">LOOPS</text>
+<text x="1000.00" y="160.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Closed profiles: 2</text>
+<text x="1000.00" y="186.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Open curves: 3</text>
+<text x="1000.00" y="212.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Dims: horizontal / vertical / angle</text>
+<text x="1000.00" y="238.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Constraints: parallel / perp / tangent</text>
+</svg>

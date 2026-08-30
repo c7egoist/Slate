@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+<rect width="100%" height="100%" fill="#0b0d10"/>
+<text x="40.00" y="40.00" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Boolean Proof</text>
+<polygon points="120.00,120.00 420.00,120.00 420.00,420.00 120.00,420.00" fill="#1a2027" stroke="#d8dde6" stroke-width="2" opacity="1.0"/>
+<polyline points="340.00,270.00 339.40,279.14 337.61,288.12 334.67,296.79 330.62,305.00 325.53,312.61 319.50,319.50 312.61,325.53 305.00,330.62 296.79,334.67 288.12,337.61 279.14,339.40 270.00,340.00 260.86,339.40 251.88,337.61 243.21,334.67 235.00,330.62 227.39,325.53 220.50,319.50 214.47,312.61 209.38,305.00 205.33,296.79 202.39,288.12 200.60,279.14 200.00,270.00 200.60,260.86 202.39,251.88 205.33,243.21 209.38,235.00 214.47,227.39 220.50,220.50 227.39,214.47 235.00,209.38 243.21,205.33 251.88,202.39 260.86,200.60 270.00,200.00 279.14,200.60 288.12,202.39 296.79,205.33 305.00,209.38 312.61,214.47 319.50,220.50 325.53,227.39 330.62,235.00 334.67,243.21 337.61,251.88 339.40,260.86 340.00,270.00" fill="#0b0d10" stroke="#0b0d10" stroke-width="2" opacity="1.0"/>
+<text x="150.00" y="500.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Subtract / contained cutter -> hole loop</text>
+<polygon points="620.00,120.00 860.00,180.00 780.00,420.00 540.00,360.00" fill="rgba(120,198,255,0.15)" stroke="#78c6ff" stroke-width="2" opacity="1.0"/>
+<polygon points="700.00,80.00 930.00,230.00 760.00,460.00 560.00,280.00" fill="rgba(255,159,110,0.15)" stroke="#ff9f6e" stroke-width="2" opacity="1.0"/>
+<polygon points="682.00,158.00 848.00,206.00 793.00,381.00 621.00,327.00" fill="#ffffff22" stroke="#ffffff" stroke-width="3" opacity="1.0"/>
+<text x="600.00" y="500.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Convex intersection subset</text>
+</svg>

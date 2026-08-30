@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scene Outliner</title>
+
+<!-- General Sans (Fontshare) -->
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* OLED dark + white accent */
+    --bg:#000000;
+    --panel:#0a0a0a;
+    --panel-2:#0e0e0e;
+    --header:#070707;
+    --row:transparent;
+    --row-hover:#1a1a1a;
+    --row-selected:#1f1f1f;
+    --row-selected-bd:#3a3a3a;
+    --text:#ededed;
+    --text-dim:#8a8a8a;
+    --text-faint:#5a5a5a;
+    --border:#1c1c1c;
+    --accent:#ffffff;                /* white accent */
+    --accent-soft:rgba(255,255,255,.12);
+    --drop-line:#ffffff;
+    --green:#22c55e;
+    --red:#ef4444;
+    /* selection dots */
+    --dot-active:#ffffff;            /* active / single selection = white */
+    --dot-secondary:#3b82f6;         /* other selections = blue */
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#000;
+    color:var(--text);
+    font-family:'General Sans','Segoe UI',Roboto,system-ui,Arial,sans-serif;
+    font-size:13px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:24px;
+    user-select:none;
+  }
+
+  /* lucide default sizing */
+  .lico{width:15px;height:15px;stroke-width:2;display:inline-flex}
+  svg.lucide{display:block}
+
+  /* ---------- Panel shell ---------- */
+  .outliner{
+    width:340px;
+    height:680px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,.7);
+    animation:panelIn .35s var(--ease);
+  }
+  @keyframes panelIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+
+  /* ---------- Top tab bar ---------- */
+  .top-tabs{
+    display:flex;align-items:center;
+    background:var(--header);
+    border-bottom:1px solid var(--border);
+    padding:0 8px;height:36px;flex-shrink:0;
+  }
+  .top-tabs .title{font-weight:600;font-size:13.5px;letter-spacing:.2px}
+  .top-tabs .spacer{flex:1}
+  .icon-btn{
+    width:26px;height:26px;border-radius:6px;border:none;
+    background:transparent;color:var(--text-dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);
+  }
+  .icon-btn:hover{background:#1f1f1f;color:var(--text)}
+  .icon-btn:active{transform:scale(.88)}
+  .icon-btn.active{background:var(--accent);color:#000;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
+  .icon-btn .lico{width:16px;height:16px}
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex;align-items:center;gap:4px;
+    padding:6px 8px;border-bottom:1px solid var(--border);
+    background:var(--panel-2);flex-shrink:0;
+  }
+  .toolbar .grp{display:flex;gap:2px;align-items:center}
+  .toolbar .div{width:1px;height:18px;background:var(--border);margin:0 4px}
+  .toolbar .spacer{flex:1}
+  .view-toggle{display:flex;background:#000;border-radius:7px;padding:2px;border:1px solid var(--border)}
+  .view-toggle .icon-btn{width:28px;height:23px}
+  .view-toggle .icon-btn.active{background:var(--accent);color:#000}
+
+  /* ---------- Search ---------- */
+  .search-bar{
+    display:flex;align-items:center;gap:6px;
+    padding:8px;border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .search-box{
+    flex:1;display:flex;align-items:center;gap:6px;
+    background:#000;border:1px solid var(--border);border-radius:7px;
+    padding:6px 9px;transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+  }
+  .search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+  .search-box .lico{width:14px;height:14px;color:var(--text-faint);flex-shrink:0}
+  .search-box input{
+    flex:1;background:transparent;border:none;outline:none;
+    color:var(--text);font-size:12px;font-family:inherit;
+  }
+  .search-box input::placeholder{color:var(--text-faint)}
+  .search-clear{cursor:pointer;color:var(--text-faint);display:none;align-items:center}
+  .search-clear:hover{color:var(--text)}
+  .search-clear .lico{width:13px;height:13px}
+
+  /* =========================================================
+     FILTERS SECTION
+     ========================================================= */
+  .filters-section{
+    padding:9px 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel-2);
+    flex-shrink:0;
+  }
+  .filters-head{
+    display:flex;align-items:center;gap:7px;
+    font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--text-faint);font-weight:600;margin-bottom:8px;
+  }
+  .filters-head .lico{width:12px;height:12px}
+  .filters-head .fcount{
+    background:var(--accent);color:#000;border-radius:9px;
+    font-size:9.5px;padding:1px 6px;letter-spacing:0;font-weight:600;
+    opacity:0;transform:scale(.6);transition:.2s var(--ease);
+  }
+  .filters-head .fcount.show{opacity:1;transform:scale(1)}
+  .filters-head .spacer{flex:1}
+  .filters-head .clear-all{
+    cursor:pointer;font-size:10px;letter-spacing:.3px;color:var(--text-faint);
+    text-transform:none;font-weight:500;transition:color .15s;display:none;
+  }
+  .filters-head .clear-all:hover{color:var(--red)}
+  .filters-head .clear-all.show{display:inline}
+
+  /* chip row */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#000;border:1px solid var(--border);
+    border-radius:999px;padding:4px 5px 4px 10px;
+    font-size:11.5px;color:var(--text);
+    animation:chipIn .22s var(--ease);
+    transition:border-color .15s var(--ease),background .15s var(--ease),transform .12s var(--ease);
+  }
+  .chip:hover{border-color:#3a3a3a}
+  .chip.removing{animation:chipOut .18s var(--ease) forwards}
+  @keyframes chipIn{from{opacity:0;transform:scale(.7) translateY(3px)}to{opacity:1;transform:none}}
+  @keyframes chipOut{to{opacity:0;transform:scale(.6);margin-right:-6px}}
+  /* filter chips KEEP their colorful swatch — this is colour-coding, not selection */
+  .chip .cswatch{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .chip .cico{display:inline-flex;color:var(--text-dim)}
+  .chip .cico .lico{width:13px;height:13px}
+  .chip .cx{
+    width:17px;height:17px;border-radius:50%;border:none;cursor:pointer;
+    background:#1f1f1f;color:var(--text-dim);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);
+  }
+  .chip .cx .lico{width:11px;height:11px}
+  .chip .cx:hover{background:var(--red);color:#fff;transform:rotate(90deg)}
+
+  /* add-filter dropdown trigger */
+  .add-filter-wrap{position:relative;display:inline-flex}
+  .add-filter-btn{
+    display:inline-flex;align-items:center;gap:5px;
+    background:transparent;border:1px dashed var(--border);
+    border-radius:999px;padding:4px 11px 4px 9px;cursor:pointer;
+    color:var(--text-dim);font-size:11.5px;font-family:inherit;
+    transition:border-color .15s var(--ease),color .15s var(--ease),background .15s var(--ease);
+  }
+  .add-filter-btn:hover{border-color:var(--accent);color:var(--text);background:rgba(255,255,255,.05)}
+  .add-filter-btn .lico{width:13px;height:13px}
+
+  .add-filter-menu{
+    position:absolute;left:0;top:34px;z-index:60;
+    background:var(--panel-2);border:1px solid var(--border);
+    border-radius:9px;padding:6px;min-width:185px;
+    box-shadow:0 14px 34px rgba(0,0,0,.8);
+    transform-origin:top left;
+    opacity:0;transform:scale(.94) translateY(-4px);pointer-events:none;
+    transition:opacity .16s var(--ease),transform .16s var(--ease);
+  }
+  .add-filter-menu.open{opacity:1;transform:none;pointer-events:auto}
+  .afm-head{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;
+    letter-spacing:.6px;padding:5px 7px;font-weight:600}
+  .afm-item{
+    display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;
+    cursor:pointer;font-size:12px;transition:background .12s var(--ease);
+  }
+  .afm-item:hover{background:var(--row-hover)}
+  .afm-item.disabled{opacity:.35;pointer-events:none}
+  .afm-item .lico{width:14px;height:14px;color:var(--text-dim)}
+  .afm-item .swatch{width:11px;height:11px;border-radius:50%}
+  .afm-item .tick{margin-left:auto;color:var(--accent);display:none}
+  .afm-item.on .tick{display:inline-flex}
+  .afm-item .tick .lico{width:13px;height:13px;color:var(--accent)}
+  .afm-sep{height:1px;background:var(--border);margin:5px 3px}
+
+  /* ---------- Tree ---------- */
+  .tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0}
+  .tree::-webkit-scrollbar{width:8px}
+  .tree::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
+  .tree::-webkit-scrollbar-track{background:transparent}
+
+  .node{position:relative}
+  .row{
+    display:flex;align-items:center;gap:0;
+    height:27px;padding-right:8px;cursor:pointer;
+    border-radius:6px;margin:1px 4px;position:relative;
+    transition:background .13s var(--ease),box-shadow .13s var(--ease),transform .1s var(--ease);
+    animation:rowIn .2s var(--ease);
+  }
+  @keyframes rowIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+  .row:hover{background:var(--row-hover)}
+  .row.selected{background:var(--row-selected);
+    box-shadow:inset 0 0 0 1px var(--row-selected-bd)}
+  .row.cut{opacity:.45}
+
+  .twisty{
+    width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;color:var(--text-dim);transition:transform .16s var(--ease);
+  }
+  .twisty .lico{width:13px;height:13px}
+  .node.collapsed>.row .twisty{transform:rotate(-90deg)}
+  .twisty.empty{visibility:hidden}
+
+  /* ---------- SELECTION DOT (pure selection indicator, no colour-coding) ---------- */
+  .seldot{
+    width:8px;height:8px;border-radius:50%;flex-shrink:0;margin:0 7px 0 1px;
+    background:transparent;border:1px solid transparent;
+    transition:background .12s var(--ease),box-shadow .12s var(--ease),border-color .12s;
+  }
+  /* active object (single sel, or first/active of a multi-sel) = white */
+  .seldot.active{background:var(--dot-active);box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+  /* secondary selections = blue */
+  .seldot.secondary{background:var(--dot-secondary);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+
+  /* ---------- TYPE ICON now carries the object's colour code ---------- */
+  .type-ico{width:15px;height:15px;flex-shrink:0;margin-right:7px;color:var(--text-dim);display:flex;
+    transition:color .12s var(--ease);cursor:pointer}
+  .type-ico .lico{width:15px;height:15px}
+  .type-ico:hover{filter:brightness(1.3)}
+
+  .label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+  .label-input{
+    flex:1;background:#000;border:1px solid var(--accent);
+    border-radius:5px;color:#fff;font-size:12.5px;padding:2px 5px;outline:none;
+    font-family:inherit;box-shadow:0 0 0 3px rgba(255,255,255,.12);
+  }
+  .count{color:var(--text-faint);font-size:11px;margin-left:6px}
+
+  .row-actions{display:flex;align-items:center;gap:1px;opacity:0;transform:translateX(4px);
+    transition:opacity .14s var(--ease),transform .14s var(--ease)}
+  .row:hover .row-actions,.row.selected .row-actions{opacity:1;transform:none}
+  .act{
+    width:21px;height:21px;border-radius:5px;border:none;background:transparent;
+    color:var(--text-faint);cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:color .13s var(--ease),background .13s var(--ease),transform .1s var(--ease);
+  }
+  .act:hover{color:var(--text);background:#1f1f1f}
+  .act:active{transform:scale(.85)}
+  .act .lico{width:14px;height:14px}
+  .act.off{color:#4a4a4a}
+  .act.locked{color:#e0b341}
+  .act.settings:hover{color:var(--accent)}
+
+  /* drag visuals */
+  .row.drag-source{opacity:.4}
+  .drop-line{
+    position:absolute;left:24px;right:8px;height:2px;background:var(--drop-line);
+    border-radius:2px;pointer-events:none;z-index:20;display:none;
+  }
+  .drop-line::before{
+    content:'';position:absolute;left:-4px;top:-2px;width:6px;height:6px;
+    border-radius:50%;background:var(--drop-line);
+  }
+  .row.drop-inside{box-shadow:inset 0 0 0 1.5px var(--drop-line);background:rgba(255,255,255,.07)}
+
+  /* ---------- Grid view ---------- */
+  .grid{
+    flex:1;overflow-y:auto;display:none;
+    grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
+    gap:8px;padding:12px;align-content:start;
+  }
+  .grid.show{display:grid}
+  .tree.hide{display:none}
+  .gcard{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:9px;
+    padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;
+    cursor:pointer;position:relative;animation:rowIn .2s var(--ease);
+    transition:background .13s var(--ease),border-color .13s var(--ease),transform .12s var(--ease);
+  }
+  .gcard:hover{background:var(--row-hover);border-color:#2e2e2e;transform:translateY(-2px)}
+  .gcard.selected{border-color:var(--row-selected-bd);background:var(--row-selected)}
+  .gcard .gico{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--text-dim)}
+  .gcard .gico .lico{width:30px;height:30px}
+  /* grid selection dot — same logic as tree */
+  .gcard .gdot{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:transparent}
+  .gcard .gdot.active{background:var(--dot-active);box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+  .gcard .gdot.secondary{background:var(--dot-secondary);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+  .gcard .glabel{font-size:11px;text-align:center;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- compact mode ---------- */
+  .tree.compact .row{height:21px;margin:0 4px}
+  .tree.compact .label{font-size:11.5px}
+
+  /* ---------- Footer / status ---------- */
+  .statusbar{
+    display:flex;align-items:center;gap:8px;
+    padding:7px 11px;border-top:1px solid var(--border);
+    background:var(--panel-2);font-size:11px;color:var(--text-dim);flex-shrink:0;
+  }
+  .statusbar .live{display:flex;align-items:center;gap:5px;color:var(--green)}
+  .statusbar .live .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 6px var(--green);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+  .statusbar .spacer{flex:1}
+
+  /* ---------- context menu / settings popover ---------- */
+  .ctx{
+    position:fixed;z-index:200;background:var(--panel-2);border:1px solid var(--border);
+    border-radius:9px;padding:5px;min-width:190px;box-shadow:0 14px 36px rgba(0,0,0,.85);
+    transform-origin:top left;opacity:0;transform:scale(.95) translateY(-4px);pointer-events:none;
+    transition:opacity .15s var(--ease),transform .15s var(--ease);
+  }
+  .ctx.open{opacity:1;transform:none;pointer-events:auto}
+  /* origin flips depending on which corner we anchor to */
+  .ctx.origin-tl{transform-origin:top left}
+  .ctx.origin-tr{transform-origin:top right}
+  .ctx.origin-bl{transform-origin:bottom left}
+  .ctx.origin-br{transform-origin:bottom right}
+  .ctx-title{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);
+    padding:5px 9px 6px;font-weight:600;display:flex;align-items:center;gap:7px}
+  .ctx-title .lico{width:13px;height:13px}
+  .ctx-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:6px;
+    cursor:pointer;font-size:12.5px;color:var(--text);transition:background .12s var(--ease),color .12s var(--ease)}
+  .ctx-item:hover{background:var(--accent);color:#000}
+  .ctx-item:hover .lico{color:#000}
+  .ctx-item .lico{width:14px;height:14px;opacity:.85}
+  .ctx-item .key{margin-left:auto;color:var(--text-faint);font-size:11px}
+  .ctx-item:hover .key{color:rgba(0,0,0,.55)}
+  .ctx-sep{height:1px;background:var(--border);margin:4px 2px}
+  .ctx-item.danger:hover{background:#dc2626;color:#fff}
+  .ctx-item.danger:hover .lico{color:#fff}
+  .ctx-item.danger:hover .key{color:rgba(255,255,255,.7)}
+
+  .empty-state{padding:30px 16px;text-align:center;color:var(--text-faint);font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="outliner" id="outliner">
+  <!-- top tab -->
+  <div class="top-tabs">
+    <span class="title">Scene</span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="addLayerBtn" title="New Layer"><i data-lucide="layers" class="lico"></i></button>
+  </div>
+
+  <!-- toolbar -->
+  <div class="toolbar">
+    <div class="grp">
+      <button class="icon-btn" id="addFolderBtn" title="New Folder"><i data-lucide="folder-plus" class="lico"></i></button>
+      <button class="icon-btn" id="addItemBtn" title="New Object"><i data-lucide="plus" class="lico"></i></button>
+    </div>
+    <div class="div"></div>
+    <div class="grp">
+      <button class="icon-btn" id="expandAllBtn" title="Expand all"><i data-lucide="chevrons-down" class="lico"></i></button>
+      <button class="icon-btn" id="collapseAllBtn" title="Collapse all"><i data-lucide="chevrons-up" class="lico"></i></button>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="compactBtn" title="Compact view"><i data-lucide="align-justify" class="lico"></i></button>
+    <div class="view-toggle">
+      <button class="icon-btn active" id="listViewBtn" title="List view"><i data-lucide="list" class="lico"></i></button>
+      <button class="icon-btn" id="gridViewBtn" title="Grid view"><i data-lucide="layout-grid" class="lico"></i></button>
+    </div>
+  </div>
+
+  <!-- search -->
+  <div class="search-bar">
+    <div class="search-box">
+      <i data-lucide="search" class="lico"></i>
+      <input type="text" id="search" placeholder="Filter scene...">
+      <span class="search-clear" id="searchClear"><i data-lucide="x" class="lico"></i></span>
+    </div>
+  </div>
+
+  <!-- FILTERS SECTION -->
+  <div class="filters-section">
+    <div class="filters-head">
+      <i data-lucide="filter" class="lico"></i>
+      <span>Filters</span>
+      <span class="fcount" id="fcount">0</span>
+      <span class="spacer"></span>
+      <span class="clear-all" id="clearAllFilters">Clear all</span>
+    </div>
+    <div class="chips" id="chips">
+      <!-- active filter chips injected here -->
+      <div class="add-filter-wrap">
+        <button class="add-filter-btn" id="addFilterBtn"><i data-lucide="plus" class="lico"></i> Filters</button>
+        <div class="add-filter-menu" id="addFilterMenu"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- tree -->
+  <div class="tree" id="tree"></div>
+  <div class="grid" id="grid"></div>
+  <div class="drop-line" id="dropLine"></div>
+
+  <!-- status -->
+  <div class="statusbar">
+    <span class="live"><span class="pulse"></span> Live</span>
+    <span class="spacer"></span>
+    <span id="objCount">0 objects</span>
+  </div>
+</div>
+
+<!-- context menu / settings popover (shared) -->
+<div class="ctx" id="ctxMenu"></div>
+
+<!-- Lucide -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+/* ============================================================
+   DATA MODEL
+   ============================================================ */
+let uid = 0;
+const newId = () => 'n' + (++uid);
+
+function makeNode(name, type, opts={}){
+  return {
+    id:newId(), name, type,                 // type: folder|layer|mesh|light|camera
+    color: opts.color || null,
+    visible: opts.visible !== false,
+    locked: !!opts.locked,
+    expanded: opts.expanded !== false,
+    children: opts.children || (isContainer(type) ? [] : null)
+  };
+}
+const isContainer = t => t==='folder' || t==='layer';
+
+let TREE = [
+  makeNode('Main Layer','layer',{color:'#3b82f6',children:[
+    makeNode('Cube','mesh',{color:'#9ca3af'}),          // object = grey
+    makeNode('Diamond','mesh',{color:'#9ca3af'}),
+    makeNode('Props','folder',{color:'#eab308',children:[
+      makeNode('Sphere','mesh',{color:'#9ca3af'}),
+      makeNode('Cylinder','mesh',{color:'#9ca3af'}),
+    ]}),
+  ]}),
+  makeNode('Environment','layer',{color:'#22c55e',children:[
+    makeNode('Sky','mesh',{color:'#7dd3fc'}),            // sky / atmosphere = light blue
+    makeNode('Cloud','mesh',{color:'#ffffff'}),          // cloud = white
+    makeNode('Ground','mesh',{color:'#9ca3af'}),         // object = grey
+    makeNode('Sun','light',{color:'#eab308'}),           // sun = yellow
+    makeNode('Main Camera','camera',{color:'#3b82f6'}),
+  ]}),
+];
+
+let selectedIds = new Set();
+let selectionOrder = [];     // ordered list of selected ids; [0] is the ACTIVE object
+let lastSelected = null;
+let viewMode = 'list';
+let compact = false;
+let searchTerm = '';
+
+/* --- FILTER STATE (chip based) --- */
+const ALL_TYPES = ['folder','layer','mesh','light','camera'];
+const COLOR_DEFS = [
+  {value:'#ef4444', name:'Red'},
+  {value:'#22c55e', name:'Green'},
+  {value:'#3b82f6', name:'Blue'},
+  {value:'#7dd3fc', name:'Sky'},
+  {value:'#eab308', name:'Yellow'},
+  {value:'#a855f7', name:'Purple'},
+  {value:'#9ca3af', name:'Grey'},
+  {value:'#ffffff', name:'White'},
+];
+const TYPE_ICON_NAME = {folder:'folder',layer:'layers',mesh:'box',light:'lightbulb',camera:'video'};
+const TYPE_LABEL = {folder:'Folders',layer:'Layers',mesh:'Meshes',light:'Lights',camera:'Cameras'};
+
+// Active filters: each is {kind:'type'|'color'|'flag', value}
+let activeFilters = [];          // empty = show everything
+
+/* ============================================================
+   LUCIDE refresh helper
+   ============================================================ */
+function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
+
+/* type icon NAME for nodes */
+const typeIconName = n => n.type==='folder'
+  ? (n.expanded?'folder-open':'folder')
+  : (TYPE_ICON_NAME[n.type] || 'box');
+
+/* ============================================================
+   SELECTION ORDER HELPERS (active object = selectionOrder[0])
+   ============================================================ */
+function setSingleSelection(id){
+  selectedIds = new Set([id]);
+  selectionOrder = [id];
+  lastSelected = id;
+}
+function clearSelection(){
+  selectedIds.clear();
+  selectionOrder = [];
+  lastSelected = null;
+}
+function syncSelectionOrder(){
+  // keep selectionOrder consistent with selectedIds (preserve existing order, append new)
+  selectionOrder = selectionOrder.filter(id=>selectedIds.has(id));
+  selectedIds.forEach(id=>{ if(!selectionOrder.includes(id)) selectionOrder.push(id); });
+}
+function activeId(){ return selectionOrder.length ? selectionOrder[0] : null; }
+
+/* ============================================================
+   TREE HELPERS
+   ============================================================ */
+function walk(nodes, cb, parent=null){
+  for(const n of nodes){ cb(n,parent,nodes); if(n.children) walk(n.children, cb, n); }
+}
+function findNode(id, nodes=TREE){
+  for(const n of nodes){ if(n.id===id) return n; if(n.children){const r=findNode(id,n.children); if(r) return r;} }
+  return null;
+}
+function findParentList(id, nodes=TREE){
+  for(const n of nodes){ if(n.id===id) return nodes;
+    if(n.children){const r=findParentList(id,n.children); if(r) return r;} }
+  return null;
+}
+function removeNode(id){
+  const list=findParentList(id); if(!list) return null;
+  const i=list.findIndex(n=>n.id===id);
+  return list.splice(i,1)[0];
+}
+function isDescendant(ancestorId, maybeChildId){
+  const a=findNode(ancestorId); if(!a||!a.children) return false;
+  let found=false; walk(a.children,n=>{ if(n.id===maybeChildId) found=true; });
+  return found;
+}
+
+/* ============================================================
+   FILTER LOGIC (derived from activeFilters)
+   ============================================================ */
+function activeTypes(){
+  const t = activeFilters.filter(f=>f.kind==='type').map(f=>f.value);
+  return t.length ? new Set(t) : null;          // null => all types
+}
+function activeColors(){
+  const c = activeFilters.filter(f=>f.kind==='color').map(f=>f.value);
+  return c.length ? new Set(c) : null;          // null => all colors
+}
+function onlyVisibleActive(){ return activeFilters.some(f=>f.kind==='flag' && f.value==='visible'); }
+
+function matchesFilters(n){
+  const types = activeTypes();
+  if(types && !types.has(n.type)) return false;
+  if(onlyVisibleActive() && !n.visible) return false;
+  const colors = activeColors();
+  if(colors){ if(!n.color || !colors.has(n.color)) return false; }
+  return true;
+}
+function nodeVisibleInTree(n){
+  const selfOk = matchesFilters(n) &&
+    (!searchTerm || n.name.toLowerCase().includes(searchTerm));
+  if(selfOk) return true;
+  if(n.children) return n.children.some(nodeVisibleInTree);
+  return false;
+}
+
+/* ============================================================
+   FILTERS UI  (chips + dropdown)
+   ============================================================ */
+const chipsEl = document.getElementById('chips');
+const addFilterBtn = document.getElementById('addFilterBtn');
+const addFilterMenu = document.getElementById('addFilterMenu');
+const fcountEl = document.getElementById('fcount');
+const clearAllEl = document.getElementById('clearAllFilters');
+
+function filterExists(kind,value){ return activeFilters.some(f=>f.kind===kind && f.value===value); }
+
+function addFilter(kind,value){
+  if(filterExists(kind,value)) return;
+  activeFilters.push({kind,value});
+  renderFilters(); render();
+}
+function removeFilter(kind,value,chipEl){
+  const doRemove=()=>{
+    activeFilters = activeFilters.filter(f=>!(f.kind===kind && f.value===value));
+    renderFilters(); render();
+  };
+  if(chipEl){
+    chipEl.classList.add('removing');
+    chipEl.addEventListener('animationend', doRemove, {once:true});
+  } else doRemove();
+}
+
+function chipMeta(f){
+  if(f.kind==='type') return {label:TYPE_LABEL[f.value], icon:TYPE_ICON_NAME[f.value], swatch:null};
+  if(f.kind==='color'){ const d=COLOR_DEFS.find(c=>c.value===f.value); return {label:d?d.name:'Color', icon:null, swatch:f.value}; }
+  if(f.kind==='flag' && f.value==='visible') return {label:'Only visible', icon:'eye', swatch:null};
+  return {label:f.value, icon:'tag', swatch:null};
+}
+
+function renderFilters(){
+  // remove existing chips (keep the add-wrap)
+  [...chipsEl.querySelectorAll('.chip')].forEach(c=>c.remove());
+  const wrap = chipsEl.querySelector('.add-filter-wrap');
+
+  activeFilters.forEach(f=>{
+    const m = chipMeta(f);
+    const chip=document.createElement('div');
+    chip.className='chip';
+    let inner='';
+    if(m.swatch) inner+=`<span class="cswatch" style="background:${m.swatch}"></span>`;
+    if(m.icon)   inner+=`<span class="cico"><i data-lucide="${m.icon}" class="lico"></i></span>`;
+    inner+=`<span>${m.label}</span>`;
+    inner+=`<button class="cx" title="Remove filter"><i data-lucide="x" class="lico"></i></button>`;
+    chip.innerHTML=inner;
+    chip.querySelector('.cx').onclick=e=>{ e.stopPropagation(); removeFilter(f.kind,f.value,chip); };
+    chipsEl.insertBefore(chip, wrap);
+  });
+
+  // count badge + clear-all
+  const n=activeFilters.length;
+  fcountEl.textContent=n;
+  fcountEl.classList.toggle('show', n>0);
+  clearAllEl.classList.toggle('show', n>0);
+
+  buildAddMenu();
+  refreshIcons();
+}
+
+function buildAddMenu(){
+  let html='<div class="afm-head">Types</div>';
+  ALL_TYPES.forEach(t=>{
+    const on=filterExists('type',t);
+    html+=`<div class="afm-item${on?' on':''}" data-kind="type" data-value="${t}">
+      <i data-lucide="${TYPE_ICON_NAME[t]}" class="lico"></i><span>${TYPE_LABEL[t]}</span>
+      <span class="tick"><i data-lucide="check" class="lico"></i></span></div>`;
+  });
+  html+='<div class="afm-sep"></div><div class="afm-head">Colors</div>';
+  COLOR_DEFS.forEach(c=>{
+    const on=filterExists('color',c.value);
+    html+=`<div class="afm-item${on?' on':''}" data-kind="color" data-value="${c.value}">
+      <span class="swatch" style="background:${c.value}"></span><span>${c.name}</span>
+      <span class="tick"><i data-lucide="check" class="lico"></i></span></div>`;
+  });
+  html+='<div class="afm-sep"></div>';
+  const visOn=filterExists('flag','visible');
+  html+=`<div class="afm-item${visOn?' on':''}" data-kind="flag" data-value="visible">
+    <i data-lucide="eye" class="lico"></i><span>Only visible</span>
+    <span class="tick"><i data-lucide="check" class="lico"></i></span></div>`;
+
+  addFilterMenu.innerHTML=html;
+  addFilterMenu.querySelectorAll('.afm-item').forEach(it=>{
+    it.onclick=e=>{
+      e.stopPropagation();
+      const kind=it.dataset.kind, value=it.dataset.value;
+      if(filterExists(kind,value)) removeFilter(kind,value);
+      else addFilter(kind,value);
+    };
+  });
+}
+
+addFilterBtn.onclick=e=>{ e.stopPropagation(); addFilterMenu.classList.toggle('open'); };
+clearAllEl.onclick=e=>{ e.stopPropagation(); activeFilters=[]; renderFilters(); render(); };
+
+/* ============================================================
+   RENDER  (list / tree)
+   ============================================================ */
+const tree=document.getElementById('tree');
+const grid=document.getElementById('grid');
+
+function render(){
+  syncSelectionOrder();
+  if(viewMode==='grid'){ renderGrid(); }
+  else { renderTree(); }
+  updateStatus();
+  refreshIcons();
+}
+
+/* returns selection-dot class for a node: '', 'active', or 'secondary' */
+function selDotClass(id){
+  if(!selectedIds.has(id)) return '';
+  if(selectedIds.size===1) return 'active';          // single selection = white
+  return id===activeId() ? 'active' : 'secondary';   // active=white, others=blue
+}
+
+function renderTree(){
+  tree.classList.toggle('compact', compact);
+  tree.classList.remove('hide'); grid.classList.remove('show');
+  tree.innerHTML='';
+  const visible = TREE.filter(nodeVisibleInTree);
+  if(visible.length===0){
+    tree.innerHTML='<div class="empty-state">No objects match your filter.</div>';
+    return;
+  }
+  visible.forEach(n=> tree.appendChild(renderNode(n,0)));
+}
+
+function renderNode(n, depth){
+  const wrap=document.createElement('div');
+  wrap.className='node'+(n.expanded?'':' collapsed');
+  wrap.dataset.id=n.id;
+
+  const row=document.createElement('div');
+  row.className='row';
+  if(selectedIds.has(n.id)) row.classList.add('selected');
+  row.dataset.id=n.id;
+  row.draggable=true;
+  row.style.paddingLeft=(depth*16)+'px';
+
+  const hasKids = n.children && n.children.length>0;
+  const matchFiltersOnly = matchesFilters(n) && (!searchTerm || n.name.toLowerCase().includes(searchTerm));
+
+  // twisty
+  const tw=document.createElement('span');
+  tw.className='twisty'+(hasKids?'':' empty');
+  tw.innerHTML='<i data-lucide="chevron-down" class="lico"></i>';
+  tw.onclick=e=>{e.stopPropagation(); n.expanded=!n.expanded; render();};
+  row.appendChild(tw);
+
+  // SELECTION dot (no colour-coding) — white = active, blue = secondary, transparent = unselected
+  const dot=document.createElement('span');
+  dot.className='seldot '+selDotClass(n.id);
+  row.appendChild(dot);
+
+  // type icon — now CARRIES the object's colour code
+  const ti=document.createElement('span');
+  ti.className='type-ico';
+  ti.style.color = n.color || 'var(--text-dim)';
+  ti.innerHTML=`<i data-lucide="${typeIconName(n)}" class="lico"></i>`;
+  ti.title='Cycle object colour';
+  ti.onclick=e=>{e.stopPropagation(); cycleColor(n);};
+  row.appendChild(ti);
+
+  // label
+  const lbl=document.createElement('span');
+  lbl.className='label'; lbl.textContent=n.name;
+  if(searchTerm && !matchFiltersOnly) lbl.style.opacity='.5';
+  row.appendChild(lbl);
+  if(hasKids){
+    const c=document.createElement('span'); c.className='count'; c.textContent=n.children.length;
+    row.appendChild(c);
+  }
+
+  // actions
+  const acts=document.createElement('span'); acts.className='row-actions';
+
+  const visBtn=document.createElement('button');
+  visBtn.className='act'+(n.visible?'':' off');
+  visBtn.innerHTML=`<i data-lucide="${n.visible?'eye':'eye-off'}" class="lico"></i>`;
+  visBtn.title='Visibility';
+  visBtn.onclick=e=>{e.stopPropagation(); n.visible=!n.visible; render();};
+
+  const lockBtn=document.createElement('button');
+  lockBtn.className='act'+(n.locked?' locked':'');
+  lockBtn.innerHTML=`<i data-lucide="${n.locked?'lock':'unlock'}" class="lico"></i>`;
+  lockBtn.title='Lock';
+  lockBtn.onclick=e=>{e.stopPropagation(); n.locked=!n.locked; render();};
+
+  // SETTINGS button -> contextual settings popover
+  const setBtn=document.createElement('button');
+  setBtn.className='act settings';
+  setBtn.innerHTML='<i data-lucide="settings-2" class="lico"></i>';
+  setBtn.title='Settings';
+  setBtn.onclick=e=>{
+    e.stopPropagation();
+    if(!selectedIds.has(n.id)){ setSingleSelection(n.id); render(); }
+    // anchor to the button itself
+    openSettingsFromEl(setBtn, n);
+  };
+
+  acts.append(visBtn,lockBtn,setBtn);
+  row.appendChild(acts);
+
+  // events
+  row.onclick=e=>handleSelect(e,n);
+  row.ondblclick=e=>{e.stopPropagation(); startRename(n,lbl);};
+  row.oncontextmenu=e=>{ e.preventDefault();
+    if(!selectedIds.has(n.id)){ setSingleSelection(n.id); render(); }
+    openSettingsAtPoint(e.clientX, e.clientY, n); };
+  attachDnD(row,n);
+
+  wrap.appendChild(row);
+
+  if(hasKids && n.expanded){
+    const kidsVisible = n.children.filter(nodeVisibleInTree);
+    kidsVisible.forEach(c=> wrap.appendChild(renderNode(c,depth+1)));
+  }
+  return wrap;
+}
+
+/* ---------- grid view ---------- */
+function renderGrid(){
+  tree.classList.add('hide'); grid.classList.add('show');
+  grid.innerHTML='';
+  const flat=[];
+  walk(TREE, n=>{ if(nodeVisibleInTree(n)) flat.push(n); });
+  if(flat.length===0){ grid.innerHTML='<div class="empty-state">No objects match your filter.</div>'; return; }
+  flat.forEach(n=>{
+    const c=document.createElement('div');
+    c.className='gcard'+(selectedIds.has(n.id)?' selected':'');
+    c.dataset.id=n.id; c.draggable=true;
+    const dotCls=selDotClass(n.id);
+    c.innerHTML=`<span class="gdot ${dotCls}"></span>
+      <span class="gico" style="color:${n.color||'var(--text-dim)'}"><i data-lucide="${typeIconName(n)}" class="lico"></i></span>
+      <span class="glabel">${escapeHtml(n.name)}</span>`;
+    c.onclick=e=>handleSelect(e,n);
+    c.ondblclick=()=>{const l=c.querySelector('.glabel'); startRename(n,l);};
+    c.oncontextmenu=e=>{ e.preventDefault();
+      if(!selectedIds.has(n.id)){ setSingleSelection(n.id); render(); }
+      openSettingsAtPoint(e.clientX,e.clientY,n); };
+    attachDnD(c,n);
+    grid.appendChild(c);
+  });
+}
+
+function escapeHtml(s){return s.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+function flatVisibleList(){
+  const out=[];
+  const rec=nodes=>nodes.filter(nodeVisibleInTree).forEach(n=>{
+    out.push(n); if(n.children && n.expanded) rec(n.children);
+  });
+  rec(TREE); return out;
+}
+function handleSelect(e,n){
+  e.stopPropagation();
+  if(e.shiftKey && lastSelected){
+    const list=flatVisibleList().map(x=>x.id);
+    const a=list.indexOf(lastSelected), b=list.indexOf(n.id);
+    if(a>-1&&b>-1){ const [s,en]=[Math.min(a,b),Math.max(a,b)];
+      const range=list.slice(s,en+1);
+      selectedIds=new Set(range);
+      // active object stays the previously-active anchor if still in range, else first
+      selectionOrder = range.includes(activeId())
+        ? [activeId(), ...range.filter(id=>id!==activeId())]
+        : range.slice();
+    }
+  } else if(e.ctrlKey||e.metaKey){
+    if(selectedIds.has(n.id)){
+      selectedIds.delete(n.id);
+      selectionOrder = selectionOrder.filter(id=>id!==n.id);
+    } else {
+      selectedIds.add(n.id);
+      // newly ctrl-clicked object becomes the ACTIVE object (front of order)
+      selectionOrder.unshift(n.id);
+    }
+    lastSelected=n.id;
+  } else {
+    setSingleSelection(n.id);
+  }
+  render();
+}
+
+/* ============================================================
+   RENAME
+   ============================================================ */
+function startRename(n, labelEl){
+  if(!labelEl) return;
+  const inp=document.createElement('input');
+  inp.className='label-input'; inp.value=n.name;
+  labelEl.replaceWith(inp); inp.focus(); inp.select();
+  const commit=()=>{ const v=inp.value.trim(); if(v) n.name=v; render(); };
+  inp.onblur=commit;
+  inp.onkeydown=e=>{ if(e.key==='Enter'){commit();} if(e.key==='Escape'){render();} e.stopPropagation(); };
+}
+
+/* ============================================================
+   COLOR cycle  (colours the OBJECT, shown on its type icon)
+   ============================================================ */
+const COLORS=['#9ca3af','#7dd3fc','#ffffff','#eab308','#22c55e','#3b82f6','#ef4444','#a855f7',null];
+function cycleColor(n){
+  const i=COLORS.indexOf(n.color);
+  n.color=COLORS[(i+1)%COLORS.length];
+  render();
+}
+
+/* ============================================================
+   DRAG & DROP
+   ============================================================ */
+const dropLine=document.getElementById('dropLine');
+let dragId=null;
+
+function attachDnD(el,n){
+  el.addEventListener('dragstart',e=>{
+    dragId=n.id;
+    if(!selectedIds.has(n.id)){ setSingleSelection(n.id); }
+    el.classList.add('drag-source');
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',n.id);
+  });
+  el.addEventListener('dragend',()=>{
+    el.classList.remove('drag-source'); dropLine.style.display='none';
+    document.querySelectorAll('.drop-inside').forEach(x=>x.classList.remove('drop-inside'));
+    dragId=null; render();
+  });
+
+  if(viewMode==='grid'){
+    el.addEventListener('dragover',e=>{ e.preventDefault(); el.classList.add('drop-inside'); });
+    el.addEventListener('dragleave',()=>el.classList.remove('drop-inside'));
+    el.addEventListener('drop',e=>{ e.preventDefault(); el.classList.remove('drop-inside');
+      performDrop(n.id,'inside'); });
+    return;
+  }
+
+  el.addEventListener('dragover',e=>{
+    e.preventDefault(); if(dragId===n.id) return;
+    const r=el.getBoundingClientRect();
+    const y=e.clientY-r.top; const h=r.height;
+    document.querySelectorAll('.drop-inside').forEach(x=>x.classList.remove('drop-inside'));
+    let mode;
+    if(isContainer(n.type) && y>h*0.28 && y<h*0.72){
+      mode='inside'; el.classList.add('drop-inside'); dropLine.style.display='none';
+    } else {
+      mode = y < h/2 ? 'before':'after';
+      const lr=el.getBoundingClientRect();
+      dropLine.style.display='block';
+      dropLine.style.top=(mode==='before'?lr.top:lr.bottom)-tree.getBoundingClientRect().top+tree.scrollTop+'px';
+      dropLine.style.left=(parseInt(el.style.paddingLeft||0)+24)+'px';
+    }
+    el.dataset.dropmode=mode;
+  });
+  el.addEventListener('dragleave',()=>el.classList.remove('drop-inside'));
+  el.addEventListener('drop',e=>{
+    e.preventDefault();
+    const mode=el.dataset.dropmode||'after';
+    el.classList.remove('drop-inside'); dropLine.style.display='none';
+    performDrop(n.id,mode);
+  });
+}
+
+function performDrop(targetId, mode){
+  const movingIds=[...selectedIds];
+  if(movingIds.length===0 && dragId) movingIds.push(dragId);
+
+  const ordered=[];
+  walk(TREE,n=>{ if(movingIds.includes(n.id)) ordered.push(n.id); });
+  const nodes = ordered
+    .filter(id=>id!==targetId && !isDescendant(id,targetId))
+    .map(id=>removeNode(id))
+    .filter(Boolean);
+  if(nodes.length===0){ render(); return; }
+
+  if(mode==='inside'){
+    const tgt=findNode(targetId);
+    if(tgt){ if(!tgt.children) tgt.children=[]; tgt.expanded=true; tgt.children.push(...nodes); }
+  } else {
+    const list=findParentList(targetId)||TREE;
+    let idx=list.findIndex(x=>x.id===targetId);
+    if(idx<0) idx=list.length-1;
+    if(mode==='after') idx++;
+    list.splice(idx,0,...nodes);
+  }
+  render();
+}
+
+tree.addEventListener('dragover',e=>{ if(e.target===tree){e.preventDefault(); dropLine.style.display='none';}});
+tree.addEventListener('drop',e=>{ if(e.target===tree){ e.preventDefault();
+  const ids=[...selectedIds]; const nodes=ids.map(id=>removeNode(id)).filter(Boolean);
+  TREE.push(...nodes); render(); }});
+
+/* ============================================================
+   SETTINGS POPOVER (per entity type) + context actions
+   SMART POSITIONING: anchors to button, flips when clipped
+   ============================================================ */
+const ctx=document.getElementById('ctxMenu');
+let ctxTargetId=null;
+
+/* open anchored to an element (the settings button) */
+function openSettingsFromEl(el, n){
+  const r = el.getBoundingClientRect();
+  openSettings(n, {
+    anchorLeft:r.left, anchorRight:r.right,
+    anchorTop:r.top, anchorBottom:r.bottom,
+    gap:6
+  });
+}
+/* open at a free point (right-click) */
+function openSettingsAtPoint(x, y, n){
+  openSettings(n, {
+    anchorLeft:x, anchorRight:x,
+    anchorTop:y, anchorBottom:y,
+    gap:2
+  });
+}
+
+function openSettings(n, anchor){
+  ctxTargetId=n.id;
+  ctx.innerHTML=buildSettingsHTML(n);
+  ctx.className='ctx open';           // reset origin classes
+  refreshIcons();
+
+  // measure after content/icons are in
+  // (icons are svg-sized via CSS so offset sizes are stable enough)
+  const pad = 8;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = ctx.offsetWidth  || 190;
+  const h = ctx.offsetHeight || 280;
+  const gap = anchor.gap ?? 6;
+
+  // ---- horizontal: prefer right of anchor, flip to left if clipped ----
+  let left;
+  let originX = 'l';
+  const spaceRight = vw - anchor.anchorRight;
+  if(anchor.anchorRight + gap + w + pad <= vw){
+    left = anchor.anchorRight + gap;            // place to the right
+    originX = 'l';
+  } else if(anchor.anchorLeft - gap - w - pad >= 0){
+    left = anchor.anchorLeft - gap - w;         // flip to the left
+    originX = 'r';
+  } else {
+    // can't fit either side cleanly: clamp inside viewport
+    left = Math.max(pad, Math.min(anchor.anchorLeft, vw - w - pad));
+    originX = 'l';
+  }
+
+  // ---- vertical: prefer aligning top with anchor top, flip up if clipped ----
+  let top;
+  let originY = 't';
+  if(anchor.anchorTop + h + pad <= vh){
+    top = anchor.anchorTop;                     // grow downward from anchor top
+    originY = 't';
+  } else if(anchor.anchorBottom - h - pad >= 0){
+    top = anchor.anchorBottom - h;             // grow upward, bottom-aligned
+    originY = 'b';
+  } else {
+    top = Math.max(pad, Math.min(anchor.anchorTop, vh - h - pad));
+    originY = 't';
+  }
+
+  // final clamp safety
+  left = Math.max(pad, Math.min(left, vw - w - pad));
+  top  = Math.max(pad, Math.min(top,  vh - h - pad));
+
+  ctx.classList.add('origin-'+originY+originX);
+  ctx.style.left = left + 'px';
+  ctx.style.top  = top  + 'px';
+
+  ctx.querySelectorAll('.ctx-item').forEach(it=>{
+    it.onclick=()=>{ doAction(it.dataset.act); closeCtx(); };
+  });
+}
+function closeCtx(){ ctx.classList.remove('open'); }
+
+function buildSettingsHTML(n){
+  const typeName = n.type.charAt(0).toUpperCase()+n.type.slice(1);
+  const typeIco = TYPE_ICON_NAME[n.type] || 'box';
+  const multi = selectedIds.size>1;
+
+  let h=`<div class="ctx-title"><i data-lucide="${multi?'boxes':typeIco}" class="lico"></i>
+    ${multi? selectedIds.size+' selected' : typeName+' settings'}</div>`;
+
+  if(!multi){
+    h+=`<div class="ctx-item" data-act="rename"><i data-lucide="pencil-line" class="lico"></i>Rename<span class="key">F2</span></div>`;
+  }
+  h+=`<div class="ctx-item" data-act="duplicate"><i data-lucide="copy" class="lico"></i>Duplicate<span class="key">Ctrl+D</span></div>`;
+
+  if(isContainer(n.type)){
+    h+=`<div class="ctx-item" data-act="expand"><i data-lucide="chevrons-down" class="lico"></i>Expand contents</div>`;
+    h+=`<div class="ctx-item" data-act="collapse"><i data-lucide="chevrons-up" class="lico"></i>Collapse contents</div>`;
+  } else {
+    h+=`<div class="ctx-item" data-act="group"><i data-lucide="folder-plus" class="lico"></i>Group into folder<span class="key">Ctrl+G</span></div>`;
+  }
+
+  if(n.type==='light'){
+    h+=`<div class="ctx-item" data-act="cycleColor"><i data-lucide="palette" class="lico"></i>Change light color</div>`;
+  }
+  if(n.type==='camera'){
+    h+=`<div class="ctx-item" data-act="rename"><i data-lucide="focus" class="lico"></i>Set as active view</div>`;
+  }
+  if(n.type==='mesh'){
+    h+=`<div class="ctx-item" data-act="cycleColor"><i data-lucide="palette" class="lico"></i>Cycle object color</div>`;
+  }
+
+  h+=`<div class="ctx-sep"></div>`;
+  h+=`<div class="ctx-item" data-act="toggleVis"><i data-lucide="${n.visible?'eye-off':'eye'}" class="lico"></i>${n.visible?'Hide':'Show'}<span class="key">H</span></div>`;
+  h+=`<div class="ctx-item" data-act="toggleLock"><i data-lucide="${n.locked?'unlock':'lock'}" class="lico"></i>${n.locked?'Unlock':'Lock'}<span class="key">L</span></div>`;
+  h+=`<div class="ctx-sep"></div>`;
+  h+=`<div class="ctx-item danger" data-act="delete"><i data-lucide="trash-2" class="lico"></i>Delete<span class="key">Del</span></div>`;
+  return h;
+}
+
+function doAction(act){
+  const ids=[...selectedIds];
+  switch(act){
+    case 'rename':{ const n=findNode(ids[0]); render();
+      requestAnimationFrame(()=>{ const row=document.querySelector(`.row[data-id="${ids[0]}"] .label`)||
+        document.querySelector(`.gcard[data-id="${ids[0]}"] .glabel`); if(row&&n) startRename(n,row); }); break; }
+    case 'duplicate': duplicateSelected(); break;
+    case 'group': groupSelected(); break;
+    case 'expand': ids.forEach(id=>{const n=findNode(id); if(n&&n.children) walk([n],x=>{if(x.children)x.expanded=true;});}); render(); break;
+    case 'collapse': ids.forEach(id=>{const n=findNode(id); if(n&&n.children) walk(n.children,x=>{if(x.children)x.expanded=false;}); }); render(); break;
+    case 'cycleColor': ids.forEach(id=>{const n=findNode(id); if(n) cycleColor(n);}); break;
+    case 'toggleVis': ids.forEach(id=>{const n=findNode(id); if(n)n.visible=!n.visible;}); render(); break;
+    case 'toggleLock': ids.forEach(id=>{const n=findNode(id); if(n)n.locked=!n.locked;}); render(); break;
+    case 'delete': deleteSelected(); break;
+  }
+}
+
+function cloneNode(n){
+  const c=JSON.parse(JSON.stringify(n));
+  const reId=x=>{ x.id=newId(); if(x.children) x.children.forEach(reId); };
+  reId(c); return c;
+}
+function duplicateSelected(){
+  [...selectedIds].forEach(id=>{
+    const n=findNode(id), list=findParentList(id); if(!n||!list) return;
+    const copy=cloneNode(n); copy.name=n.name+' copy';
+    const idx=list.findIndex(x=>x.id===id);
+    list.splice(idx+1,0,copy);
+  });
+  render();
+}
+function deleteSelected(){
+  [...selectedIds].forEach(id=>removeNode(id));
+  clearSelection(); render();
+}
+function groupSelected(){
+  const ids=[...selectedIds]; if(ids.length===0) return;
+  const ordered=[]; walk(TREE,n=>{ if(ids.includes(n.id)) ordered.push(n.id); });
+  const nodes=ordered.map(id=>removeNode(id)).filter(Boolean);
+  const folder=makeNode('New Folder','folder',{color:'#eab308',children:nodes,expanded:true});
+  TREE.push(folder);
+  setSingleSelection(folder.id); render();
+}
+
+/* ============================================================
+   TOOLBAR ACTIONS
+   ============================================================ */
+function addAt(node){
+  let targetList=TREE;
+  if(selectedIds.size){
+    const sel=findNode([...selectedIds][0]);
+    if(sel && isContainer(sel.type)){ sel.expanded=true; targetList=sel.children; }
+    else { targetList=findParentList([...selectedIds][0])||TREE; }
+  }
+  targetList.push(node);
+  setSingleSelection(node.id);
+  render();
+}
+document.getElementById('addFolderBtn').onclick=()=>addAt(makeNode('New Folder','folder',{color:'#eab308'}));
+document.getElementById('addLayerBtn').onclick=()=>{ TREE.push(makeNode('New Layer','layer',{color:'#3b82f6'})); render(); };
+document.getElementById('addItemBtn').onclick=()=>addAt(makeNode('New Object','mesh',{color:'#9ca3af'}));
+
+document.getElementById('expandAllBtn').onclick=()=>{ walk(TREE,n=>{if(n.children)n.expanded=true;}); render(); };
+document.getElementById('collapseAllBtn').onclick=()=>{ walk(TREE,n=>{if(n.children)n.expanded=false;}); render(); };
+
+document.getElementById('compactBtn').onclick=function(){ compact=!compact; this.classList.toggle('active',compact); render(); };
+
+const listBtn=document.getElementById('listViewBtn'), gridBtn=document.getElementById('gridViewBtn');
+listBtn.onclick=()=>{ viewMode='list'; listBtn.classList.add('active'); gridBtn.classList.remove('active'); render(); };
+gridBtn.onclick=()=>{ viewMode='grid'; gridBtn.classList.add('active'); listBtn.classList.remove('active'); render(); };
+
+/* ============================================================
+   SEARCH
+   ============================================================ */
+const searchInput=document.getElementById('search'), searchClear=document.getElementById('searchClear');
+searchInput.oninput=()=>{ searchTerm=searchInput.value.trim().toLowerCase();
+  searchClear.style.display=searchTerm?'flex':'none';
+  if(searchTerm) walk(TREE,n=>{if(n.children)n.expanded=true;});
+  render();
+};
+searchClear.onclick=()=>{ searchInput.value=''; searchTerm=''; searchClear.style.display='none'; render(); };
+
+/* ============================================================
+   GLOBAL EVENTS
+   ============================================================ */
+document.addEventListener('click',()=>{ closeCtx(); addFilterMenu.classList.remove('open'); });
+document.getElementById('outliner').addEventListener('click',e=>{
+  if(e.target===tree||e.target===grid){ clearSelection(); render(); }
+});
+window.addEventListener('resize',()=>closeCtx());
+
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  const ids=[...selectedIds];
+  if(e.key==='Delete'||e.key==='Backspace'){ if(ids.length){deleteSelected(); e.preventDefault();} }
+  else if(e.key==='F2'&&ids.length){ doAction('rename'); e.preventDefault(); }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='d'){ if(ids.length){duplicateSelected(); e.preventDefault();} }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='g'){ if(ids.length){groupSelected(); e.preventDefault();} }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'){
+    const all=flatVisibleList().map(n=>n.id);
+    selectedIds=new Set(all); syncSelectionOrder(); render(); e.preventDefault();
+  }
+  else if(e.key.toLowerCase()==='h'&&ids.length){ doAction('toggleVis'); }
+  else if(e.key.toLowerCase()==='l'&&ids.length){ doAction('toggleLock'); }
+  else if(e.key==='Escape'){ clearSelection(); closeCtx(); render(); }
+  else if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    const list=flatVisibleList(); if(!list.length) return;
+    let i=list.findIndex(n=>n.id===lastSelected);
+    i = e.key==='ArrowDown' ? Math.min(list.length-1,i+1) : Math.max(0,i-1);
+    const n=list[i]; setSingleSelection(n.id); render(); e.preventDefault();
+  }
+});
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+function updateStatus(){
+  let count=0; walk(TREE,n=>{ if(n.type!=='folder'&&n.type!=='layer') count++; });
+  document.getElementById('objCount').textContent=count+' object'+(count!==1?'s':'');
+}
+
+/* boot */
+renderFilters();
+render();
+</script>
+</body>
+</html>

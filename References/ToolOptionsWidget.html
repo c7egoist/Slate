@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frontier — Tool Options Widget</title>
+<style>
+  /* ═════════════════════════════════════════════════════════════════════════
+     Design tokens — mirrored from Documentation/Mockups/ControlsPreview.html
+     ═════════════════════════════════════════════════════════════════════════ */
+  :root{
+    --desk-bg:      #2b2b2d;
+    --panel-bg:     #131315;
+    --panel-head:   #1b1b1e;
+    --value-bg:     #232326;
+    --value-black:  #0a0a0b;
+    --value-num:    #131315;
+    --value-unit:   #33333a;
+    --outline:      rgba(255,255,255,.22);
+    --value-focus:  #303035;
+    --track-bg:     #2f2f33;
+    --track-fill:   #8a8a8e;
+    --knob:         #f4f4f5;
+    --dot:          #45454a;
+    --accent:       #4a90e2;
+    --text-primary: #e9e9ec;
+    --text-muted:   #7b7b82;
+    --text-value:   #f2f2f4;
+
+    --panel-radius: 20px;
+    --value-radius: 13px;
+    --row-h:        44px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--desk-bg);
+    color:var(--text-primary);
+    font:16px/1 "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    user-select:none;
+  }
+
+  /* icons — inline SVG scale to font size via currentColor */
+  .icon{ width:1em; height:1em; flex:0 0 auto; display:inline-block; vertical-align:-0.12em; }
+
+  /* ═════════════════════════════════════ TOOLBAR (test rig) ═════════════════════════════════════ */
+  .toolbar{
+    position:fixed; top:22px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:6px;
+    background:var(--panel-bg); border-radius:var(--panel-radius);
+    padding:8px;
+    z-index:50;
+  }
+  .toolbar .tool-btn{
+    width:46px; height:46px; display:grid; place-items:center;
+    background:var(--value-bg); color:var(--text-muted);
+    border:1.5px solid transparent; border-radius:var(--value-radius);
+    cursor:pointer; transition:background .12s, color .12s, border-color .12s;
+  }
+  .toolbar .tool-btn .icon{ width:22px; height:22px; }
+  .toolbar .tool-btn:hover{ background:var(--value-focus); color:var(--text-primary); }
+  .toolbar .tool-btn.active{ background:var(--knob); color:#1b1b1e; }
+  .toolbar .divider{ width:1.5px; height:26px; background:#000; margin:0 4px; opacity:.5; }
+
+  /* ═════════════════════════════════════ WIDGET (expanded) ═════════════════════════════════════ */
+  .widget{
+    position:fixed; top:110px; left:64px; width:300px;
+    background:var(--panel-bg); border-radius:var(--panel-radius);
+    overflow:hidden; z-index:40;
+  }
+  .widget.hidden{ display:none; }
+
+  .widget-head{
+    background:var(--panel-head);
+    display:flex; align-items:center; gap:10px;
+    padding:12px 14px 12px 18px;
+    cursor:grab;
+  }
+  .widget-head:active{ cursor:grabbing; }
+  .widget-head .w-icon{ color:var(--text-primary); }
+  .widget-head .w-icon .icon{ width:18px; height:18px; }
+  .widget-head .w-title{ flex:1; font-size:16px; font-weight:600; letter-spacing:.2px; }
+  .widget-head .w-title .fn{ display:block; color:var(--text-muted); font-weight:400; font-size:12px; margin-top:3px; }
+
+  .hdr-btn{
+    width:28px; height:28px; display:grid; place-items:center;
+    background:var(--value-bg); color:var(--text-muted);
+    border:none; border-radius:9px; cursor:pointer;
+    transition:background .12s, color .12s;
+  }
+  .hdr-btn .icon{ width:15px; height:15px; }
+  .hdr-btn:hover{ background:var(--value-focus); color:var(--text-primary); }
+
+  .widget-body{ padding:18px; display:flex; flex-direction:column; gap:16px;
+    max-height:64vh; overflow-y:auto; }
+  .widget-body::-webkit-scrollbar{ width:9px; }
+  .widget-body::-webkit-scrollbar-thumb{ background:var(--value-unit); border-radius:9px; }
+
+  /* ── Parameter row: label on top, control below ── */
+  .param{ display:flex; flex-direction:column; gap:9px; }
+  .param-label{ display:flex; align-items:center; justify-content:space-between;
+    color:var(--text-muted); font-size:13px; letter-spacing:.2px; }
+  .param-label .name{ display:flex; align-items:center; gap:7px; }
+  .param-label .name .icon{ width:14px; height:14px; color:var(--text-muted); }
+
+  /* ── Slider (bounded) — split value pill + track, matches reference ── */
+  .slider-ctl{ display:flex; align-items:center; gap:12px; }
+  .valuebox{ height:var(--row-h); border-radius:999px; overflow:hidden;
+    display:flex; align-items:stretch; flex:0 0 96px; }
+  .valuebox .num{ flex:1; background:var(--value-black); display:flex; align-items:center;
+    justify-content:flex-end; padding:0 12px; cursor:text; }
+  .valuebox .num:focus-within{ box-shadow:0 0 0 1.5px var(--accent) inset; }
+  .valuebox .num input{ background:none; border:none; outline:none; color:var(--text-value);
+    font:500 18px/1 inherit; text-align:right; width:100%; font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield; }
+  .valuebox .num input::-webkit-outer-spin-button,
+  .valuebox .num input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .valuebox .unitseg{ background:var(--value-unit); color:var(--text-muted);
+    display:flex; align-items:center; justify-content:center; padding:0 12px; font-size:15px; min-width:40px; }
+
+  .slider{ position:relative; flex:1; height:32px; background:#000; border-radius:999px; cursor:pointer;
+    touch-action:none; border:1.5px solid var(--outline); }
+  .slider .fill{ position:absolute; left:0; top:0; bottom:0; background:var(--track-fill);
+    border-radius:999px; pointer-events:none; }
+  .slider .knob{ position:absolute; top:50%; width:26px; height:26px; background:var(--knob);
+    border-radius:999px; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,.5);
+    pointer-events:none; }
+  .slider:active .knob{ transform:translate(-50%,-50%) scale(1.08); }
+
+  /* ── Segmented pills ── */
+  .segment{ display:flex; gap:8px; flex-wrap:wrap; }
+  .seg-opt{ padding:0 16px; height:40px; display:flex; align-items:center; border-radius:12px;
+    background:var(--value-bg); color:var(--text-muted); cursor:pointer; font-size:14px; }
+  .seg-opt:hover{ color:var(--text-primary); }
+  .seg-opt.sel{ background:var(--knob); color:#1b1b1e; font-weight:600; }
+
+  /* ── Boolean switch ── */
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; }
+  .toggle-row .name{ display:flex; align-items:center; gap:8px; color:var(--text-primary); font-size:14px; }
+  .toggle-row .name .icon{ width:15px; height:15px; color:var(--text-muted); }
+  .switch{ width:52px; height:30px; border-radius:999px; background:var(--track-bg); position:relative;
+    cursor:pointer; transition:background .15s; flex:0 0 auto; }
+  .switch.on{ background:var(--accent); }
+  .switch .nub{ position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:999px;
+    background:var(--knob); transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .switch.on .nub{ left:25px; }
+
+  /* ── Colour pill: [ ◉ rgb(…) | swatch row ] ── */
+  .colorbar{ display:flex; align-items:stretch; height:var(--row-h);
+    border-radius:999px; overflow:hidden; }
+  .colorbar .swatchseg{ flex:1; background:var(--value-black); display:flex; align-items:center;
+    gap:12px; padding:0 14px; }
+  .colorbar .circle{ width:26px; height:26px; border-radius:999px; flex:0 0 auto;
+    border:1px solid rgba(255,255,255,.12); box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .colorbar .cname{ color:var(--text-value); font-variant-numeric:tabular-nums; font-size:15px; }
+  .colorbar .cname .dim{ color:var(--text-muted); }
+  .swatches{ display:flex; gap:8px; padding-left:2px; }
+  .swatch{ width:26px; height:26px; border-radius:8px; cursor:pointer; border:2px solid transparent;
+    transition:transform .1s, border-color .12s; }
+  .swatch:hover{ transform:scale(1.1); }
+  .swatch.on{ border-color:#fff; }
+
+  .empty-hint{ color:var(--text-muted); font-size:13px; text-align:center; padding:16px 8px; line-height:1.6; }
+
+  /* ═════════════════════════════════════ WIDGET (collapsed bubble) ═════════════════════════════════════ */
+  .bubble{
+    position:fixed; width:56px; height:56px; border-radius:999px;
+    display:none; place-items:center;
+    background:var(--panel-bg); color:var(--text-primary);
+    border:1.5px solid var(--outline); cursor:grab; z-index:41;
+    transition:transform .1s;
+  }
+  .bubble.show{ display:grid; }
+  .bubble:active{ cursor:grabbing; }
+  .bubble:hover{ transform:scale(1.06); }
+  .bubble .icon{ width:24px; height:24px; }
+  .bubble .dot{ position:absolute; top:5px; right:5px; width:11px; height:11px; border-radius:999px;
+    background:var(--accent); border:2px solid var(--panel-bg); }
+
+  /* ═════════════════════════════════════ HINT ═════════════════════════════════════ */
+  .hint-bar{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    color:var(--text-muted); font-size:12.5px;
+    background:var(--panel-bg); border-radius:999px; padding:8px 16px; z-index:30; }
+  .hint-bar b{ color:var(--text-primary); font-weight:600; }
+</style>
+</head>
+<body>
+
+  <!-- ═════════════════════════ SVG ICON SPRITE ═════════════════════════ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- tools -->
+      <g id="i-select"><path d="M4 3l7 17 2.5-6.5L20 11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></g>
+      <g id="i-bevel"><path d="M4 12L12 4l8 8-8 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 12l4-4 4 4-4 4z" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/></g>
+      <g id="i-brush"><path d="M15 4l5 5-9 9-5 1 1-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13 6l5 5" stroke="currentColor" stroke-width="1.6"/></g>
+      <g id="i-extrude"><path d="M4 8l8-4 8 4-8 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 8v6l8 4 8-4V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12v6" stroke="currentColor" stroke-width="1.4" opacity=".6"/></g>
+      <g id="i-knife"><path d="M3 17l11-11 4 4-9 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 21h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g>
+      <!-- header actions -->
+      <g id="i-collapse"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+      <g id="i-close"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+      <g id="i-eye"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></g>
+      <!-- param glyphs -->
+      <g id="i-mode"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></g>
+      <g id="i-magnet"><path d="M6 4v7a6 6 0 0012 0V4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 4h4M14 4h4" stroke="currentColor" stroke-width="1.8"/></g>
+      <g id="i-ruler"><rect x="3" y="8" width="18" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4" stroke="currentColor" stroke-width="1.4"/></g>
+      <g id="i-width"><path d="M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <g id="i-segments"><path d="M3 12h18" stroke="currentColor" stroke-width="1.7"/><path d="M7 9v6M12 9v6M17 9v6" stroke="currentColor" stroke-width="1.7"/></g>
+      <g id="i-profile"><path d="M4 20c6 0 6-16 16-16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g>
+      <g id="i-clamp"><rect x="5" y="4" width="14" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 10v6a3 3 0 006 0v-6" fill="none" stroke="currentColor" stroke-width="1.7"/></g>
+      <g id="i-compass"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 12l4-6-6 4z" fill="currentColor"/></g>
+      <g id="i-radius"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 12l6-3" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></g>
+      <g id="i-drop"><path d="M12 3s6 7 6 11a6 6 0 01-12 0c0-4 6-11 6-11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></g>
+      <g id="i-falloff"><path d="M3 18c4 0 5-12 9-12s5 12 9 12" fill="none" stroke="currentColor" stroke-width="1.7"/></g>
+      <g id="i-palette"><path d="M12 3a9 9 0 000 18c1.5 0 2-1 2-2 0-1.5 1-2 2.5-2H18a3 3 0 003-3c0-5-4-9-9-9z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/></g>
+      <g id="i-pressure"><path d="M4 12h16M4 12l4-4M4 12l4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 7v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></g>
+      <g id="i-dist"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <g id="i-link"><path d="M9 12h6" stroke="currentColor" stroke-width="1.7"/><path d="M10 8H8a4 4 0 000 8h2M14 8h2a4 4 0 010 8h-2" fill="none" stroke="currentColor" stroke-width="1.7"/></g>
+      <g id="i-steps"><path d="M4 20v-4h4v-4h4V8h4V4h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></g>
+      <g id="i-cut"><circle cx="6" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8l12 8M8 16l12-8" stroke="currentColor" stroke-width="1.6"/></g>
+      <g id="i-angle"><path d="M4 20h16M4 20L18 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M10 20a8 8 0 00-2-5" fill="none" stroke="currentColor" stroke-width="1.4"/></g>
+      <g id="i-through"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".7"/><path d="M4 4l16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></g>
+      <g id="i-xray"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" stroke-width="1.3" opacity=".6"/></g>
+    </defs>
+  </svg>
+  <script>
+    // helper: build an <svg><use> referencing a sprite symbol
+    function svgIcon(id, cls){ return `<svg class="icon ${cls||''}" viewBox="0 0 24 24"><use href="#${id}"/></svg>`; }
+  </script>
+
+  <!-- ═════════════════════════ TOOLBAR ═════════════════════════ -->
+  <div class="toolbar" id="toolbar">
+    <button class="tool-btn active" data-tool="select"  data-ico="i-select"  title="Select"></button>
+    <button class="tool-btn"        data-tool="bevel"   data-ico="i-bevel"   title="Bevel"></button>
+    <button class="tool-btn"        data-tool="brush"   data-ico="i-brush"   title="Brush"></button>
+    <button class="tool-btn"        data-tool="extrude" data-ico="i-extrude" title="Extrude"></button>
+    <button class="tool-btn"        data-tool="knife"   data-ico="i-knife"   title="Knife"></button>
+    <div class="divider"></div>
+    <button class="tool-btn" id="toggleWidget" data-ico="i-eye" title="Show / hide widget"></button>
+  </div>
+
+  <!-- ═════════════════════════ WIDGET (expanded) ═════════════════════════ -->
+  <div class="widget" id="widget">
+    <div class="widget-head" id="widgetHeader">
+      <span class="w-icon" id="wIcon"></span>
+      <span class="w-title"><span id="wTitle">Select</span><span class="fn">Tool Options</span></span>
+      <button class="hdr-btn" id="collapseBtn" title="Collapse to bubble"></button>
+      <button class="hdr-btn" id="hideBtn"     title="Hide widget"></button>
+    </div>
+    <div class="widget-body" id="widgetBody"></div>
+  </div>
+
+  <!-- ═════════════════════════ WIDGET (collapsed bubble) ═════════════════════════ -->
+  <div class="bubble" id="bubble" title="Expand tool options">
+    <span id="bubbleIcon"></span><span class="dot"></span>
+  </div>
+
+  <div class="hint-bar">
+    Drag the <b>header</b> (or bubble) to move · collapse to a bubble · hide · re-show from the toolbar
+  </div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   TOOL PARAMETER DEFINITIONS — the widget rebuilds its body from this table
+   whenever the active tool changes. Add a tool = add one entry + one button.
+   ═════════════════════════════════════════════════════════════════════════ */
+const Tools = {
+  select: {
+    icon:"i-select", title:"Select",
+    params:[
+      { kind:"segmented", ico:"i-mode",   label:"Mode",      options:["Vertex","Edge","Face"], value:2 },
+      { kind:"toggle",    ico:"i-magnet", label:"Snap to grid", value:true },
+      { kind:"toggle",    ico:"i-xray",   label:"X-ray select", value:false },
+      { kind:"slider",    ico:"i-ruler",  label:"Tolerance", min:1, max:40, value:8, unit:"px" },
+    ],
+  },
+  bevel: {
+    icon:"i-bevel", title:"Bevel",
+    params:[
+      { kind:"slider",    ico:"i-width",    label:"Width",    min:0, max:100, value:24, unit:"%" },
+      { kind:"slider",    ico:"i-segments", label:"Segments", min:1, max:24,  value:4,  unit:"" },
+      { kind:"slider",    ico:"i-profile",  label:"Profile",  min:0, max:100, value:50, unit:"%" },
+      { kind:"toggle",    ico:"i-clamp",    label:"Clamp overlap", value:true },
+      { kind:"segmented", ico:"i-compass",  label:"Affect",   options:["Edges","Verts"], value:0 },
+    ],
+  },
+  brush: {
+    icon:"i-brush", title:"Brush",
+    params:[
+      { kind:"slider",   ico:"i-radius",   label:"Radius",   min:1, max:200, value:48, unit:"px" },
+      { kind:"slider",   ico:"i-drop",     label:"Strength", min:0, max:100, value:70, unit:"%" },
+      { kind:"slider",   ico:"i-falloff",  label:"Falloff",  min:0, max:100, value:35, unit:"%" },
+      { kind:"swatches", ico:"i-palette",  label:"Colour",   colors:["#ff5d5d","#ffb347","#6bff8f","#4d9fff","#c77dff"], value:3 },
+      { kind:"toggle",   ico:"i-pressure", label:"Pressure", value:true },
+    ],
+  },
+  extrude: {
+    icon:"i-extrude", title:"Extrude",
+    params:[
+      { kind:"slider",    ico:"i-dist",    label:"Distance", min:-100, max:100, value:20, unit:"u" },
+      { kind:"segmented", ico:"i-compass", label:"Along",    options:["Normal","X","Y","Z"], value:0 },
+      { kind:"toggle",    ico:"i-link",    label:"Keep faces together", value:true },
+      { kind:"slider",    ico:"i-steps",   label:"Steps",    min:1, max:12, value:1, unit:"" },
+    ],
+  },
+  knife: {
+    icon:"i-knife", title:"Knife",
+    params:[
+      { kind:"segmented", ico:"i-cut",     label:"Cut",        options:["Free","Midpoint","Angle"], value:0 },
+      { kind:"toggle",    ico:"i-magnet",  label:"Snap to edge", value:true },
+      { kind:"toggle",    ico:"i-through", label:"Cut through",  value:false },
+      { kind:"slider",    ico:"i-angle",   label:"Angle step", min:5, max:90, value:15, unit:"°" },
+    ],
+  },
+};
+
+/* ═════════════════════════ ELEMENT REFERENCES ═════════════════════════ */
+const widget       = document.getElementById("widget");
+const widgetHeader = document.getElementById("widgetHeader");
+const widgetBody   = document.getElementById("widgetBody");
+const bubble       = document.getElementById("bubble");
+const bubbleIcon   = document.getElementById("bubbleIcon");
+const wIcon        = document.getElementById("wIcon");
+const wTitle       = document.getElementById("wTitle");
+
+let activeTool = "select";
+let widgetVisible = true;
+
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+
+/* ═════════════════════════ PAINT TOOLBAR + HEADER ICONS ═════════════════════════ */
+document.querySelectorAll("[data-ico]").forEach(b => b.innerHTML = svgIcon(b.dataset.ico));
+document.getElementById("collapseBtn").innerHTML = svgIcon("i-collapse");
+document.getElementById("hideBtn").innerHTML      = svgIcon("i-close");
+
+/* ═════════════════════════ BUILD PARAM CONTROLS ═════════════════════════ */
+function buildBody(toolKey){
+  const tool = Tools[toolKey];
+  widgetBody.innerHTML = "";
+  if(!tool.params.length){ widgetBody.innerHTML = `<div class="empty-hint">No options for this tool.</div>`; return; }
+
+  tool.params.forEach(p => {
+    const wrap = document.createElement("div");
+    wrap.className = "param";
+    const glyph = p.ico ? svgIcon(p.ico) : "";
+
+    if(p.kind === "slider"){
+      const t = (p.value - p.min) / (p.max - p.min);
+      wrap.innerHTML = `
+        <div class="param-label"><span class="name">${glyph}${p.label}</span></div>
+        <div class="slider-ctl">
+          <div class="valuebox">
+            <div class="num"><input type="number" value="${p.value}"></div>
+            <div class="unitseg">${p.unit || ""}</div>
+          </div>
+          <div class="slider"><div class="fill"></div><div class="knob"></div></div>
+        </div>`;
+      const input = wrap.querySelector("input");
+      const fill  = wrap.querySelector(".fill");
+      const knob  = wrap.querySelector(".knob");
+      const track = wrap.querySelector(".slider");
+      const paint = v => { const tt=(v-p.min)/(p.max-p.min); fill.style.width=(tt*100)+"%"; knob.style.left=(tt*100)+"%"; };
+      const setFromX = x => { const r=track.getBoundingClientRect(); const tt=clamp((x-r.left)/r.width,0,1);
+        const v=Math.round((p.min+tt*(p.max-p.min))*100)/100; input.value=v; paint(v); };
+      track.addEventListener("pointerdown", e => { track.setPointerCapture(e.pointerId); setFromX(e.clientX);
+        const mv=ev=>setFromX(ev.clientX); const up=()=>{track.removeEventListener("pointermove",mv);track.removeEventListener("pointerup",up);};
+        track.addEventListener("pointermove",mv); track.addEventListener("pointerup",up); });
+      input.addEventListener("input", () => { const v=parseFloat(input.value); if(!isNaN(v)) paint(clamp(v,p.min,p.max)); });
+      paint(p.value);
+    }
+
+    else if(p.kind === "segmented"){
+      wrap.innerHTML = `<div class="param-label"><span class="name">${glyph}${p.label}</span></div><div class="segment"></div>`;
+      const seg = wrap.querySelector(".segment");
+      p.options.forEach((opt,i) => {
+        const b = document.createElement("div");
+        b.className = "seg-opt" + (i===p.value ? " sel" : "");
+        b.textContent = opt;
+        b.addEventListener("click", () => { seg.querySelectorAll(".seg-opt").forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); });
+        seg.appendChild(b);
+      });
+    }
+
+    else if(p.kind === "toggle"){
+      wrap.innerHTML = `
+        <div class="toggle-row">
+          <span class="name">${glyph}${p.label}</span>
+          <div class="switch ${p.value ? "on" : ""}"><div class="nub"></div></div>
+        </div>`;
+      const sw = wrap.querySelector(".switch");
+      sw.addEventListener("click", () => sw.classList.toggle("on"));
+    }
+
+    else if(p.kind === "swatches"){
+      wrap.innerHTML = `
+        <div class="param-label"><span class="name">${glyph}${p.label}</span></div>
+        <div class="colorbar">
+          <div class="swatchseg">
+            <div class="circle"></div>
+            <div class="cname"></div>
+          </div>
+        </div>
+        <div class="swatches"></div>`;
+      const circle = wrap.querySelector(".circle");
+      const cname  = wrap.querySelector(".cname");
+      const row    = wrap.querySelector(".swatches");
+      const applyName = hex => {
+        const n = parseInt(hex.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+        circle.style.background = hex;
+        cname.innerHTML = `rgb(${r}, ${g}, ${b})`;
+      };
+      p.colors.forEach((c,i) => {
+        const s = document.createElement("div");
+        s.className = "swatch" + (i===p.value ? " on" : "");
+        s.style.background = c;
+        s.addEventListener("click", () => { row.querySelectorAll(".swatch").forEach(x=>x.classList.remove("on")); s.classList.add("on"); applyName(c); });
+        row.appendChild(s);
+      });
+      applyName(p.colors[p.value]);
+    }
+
+    widgetBody.appendChild(wrap);
+  });
+}
+
+/* ═════════════════════════ SWITCH ACTIVE TOOL ═════════════════════════ */
+function selectTool(toolKey){
+  activeTool = toolKey;
+  const tool = Tools[toolKey];
+  wIcon.innerHTML      = svgIcon(tool.icon);
+  wTitle.textContent   = tool.title;
+  bubbleIcon.innerHTML = svgIcon(tool.icon);
+  buildBody(toolKey);
+  document.querySelectorAll(".toolbar .tool-btn[data-tool]").forEach(b => b.classList.toggle("active", b.dataset.tool === toolKey));
+}
+
+/* ═════════════════════════ TOOLBAR WIRING ═════════════════════════ */
+document.querySelectorAll(".toolbar .tool-btn[data-tool]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    selectTool(btn.dataset.tool);
+    if(!widgetVisible) showWidget();
+    if(bubble.classList.contains("show")) expandFromBubble();
+  });
+});
+document.getElementById("toggleWidget").addEventListener("click", () => {
+  if(widgetVisible || bubble.classList.contains("show")) hideWidget();
+  else showWidget();
+});
+
+/* ═════════════════════════ COLLAPSE / EXPAND / HIDE / SHOW ═════════════════════════ */
+function collapseToBubble(){
+  const r = widget.getBoundingClientRect();
+  bubble.style.left = r.left + "px";
+  bubble.style.top  = r.top  + "px";
+  widget.classList.add("hidden");
+  bubble.classList.add("show");
+}
+function expandFromBubble(){
+  const r = bubble.getBoundingClientRect();
+  widget.style.left = clamp(r.left, 0, window.innerWidth  - widget.offsetWidth ) + "px";
+  widget.style.top  = clamp(r.top,  0, window.innerHeight - 80) + "px";
+  bubble.classList.remove("show");
+  widget.classList.remove("hidden");
+  widgetVisible = true;
+}
+function hideWidget(){ widget.classList.add("hidden"); bubble.classList.remove("show"); widgetVisible = false; }
+function showWidget(){ bubble.classList.remove("show"); widget.classList.remove("hidden"); widgetVisible = true; }
+
+document.getElementById("collapseBtn").addEventListener("click", collapseToBubble);
+document.getElementById("hideBtn").addEventListener("click", hideWidget);
+bubble.addEventListener("click", () => { if(bubble._moved){ bubble._moved=false; return; } expandFromBubble(); });
+
+/* ═════════════════════════ DRAGGING (widget header + bubble) ═════════════════════════ */
+function makeDraggable(target, handle, onStart, onEnd){
+  let startX, startY, originLeft, originTop, dragging=false;
+  handle.addEventListener("pointerdown", e => {
+    if(e.target.closest(".hdr-btn")) return;
+    if(e.target.closest("input, .slider, .switch, .seg-opt, .swatch")) return;
+    dragging = true; target._moved = false;
+    const r = target.getBoundingClientRect();
+    originLeft = r.left; originTop = r.top; startX = e.clientX; startY = e.clientY;
+    handle.setPointerCapture(e.pointerId);
+    if(onStart) onStart();
+  });
+  handle.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if(Math.abs(dx) > 3 || Math.abs(dy) > 3) target._moved = true;
+    let nx = clamp(originLeft + dx, 0, window.innerWidth  - target.offsetWidth);
+    let ny = clamp(originTop  + dy, 0, window.innerHeight - target.offsetHeight);
+    target.style.left = nx + "px"; target.style.top = ny + "px";
+  });
+  handle.addEventListener("pointerup", e => { dragging=false; handle.releasePointerCapture(e.pointerId); if(onEnd) onEnd(); });
+}
+makeDraggable(widget, widgetHeader);
+makeDraggable(bubble, bubble);
+
+/* ═════════════════════════ INITIALIZE ═════════════════════════ */
+selectTool("select");
+</script>
+</body>
+</html>

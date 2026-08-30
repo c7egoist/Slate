@@ -1,0 +1,105 @@
+/* ==========================================================================
+   layout.css -- top-level shell: tab bar, split body (3D | resizer | 2D),
+   dock panels and the shared status bar.
+   ========================================================================== */
+
+/* ---- TAB BAR (browser-style, from UVEditor.html) ---- */
+.tabbar{display:flex;align-items:flex-end;background:var(--bg);padding:8px 8px 0 8px;gap:0;height:46px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.tabs{display:flex;align-items:flex-end;overflow-x:auto;flex:1;scrollbar-width:none;height:100%;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{position:relative;display:flex;align-items:center;gap:8px;background:transparent;color:var(--text-dim);padding:0 12px 0 16px;height:38px;min-width:150px;max-width:230px;cursor:pointer;font-size:12.5px;flex-shrink:0;transition:color .18s var(--ease);margin:0 -8px;z-index:1;}
+.tab:first-child{margin-left:0;}
+.tab .tab-bg{position:absolute;inset:0 8px 0 8px;background:var(--panel);border-radius:10px 10px 0 0;opacity:0;transition:opacity .18s var(--ease),background .18s var(--ease);z-index:-1;}
+.tab:hover .tab-bg{opacity:1;background:var(--panel-2);}
+.tab.active{color:var(--text);z-index:3;}
+.tab.active .tab-bg{opacity:1;background:var(--panel-2);}
+.tab.active .tab-bg::before,.tab.active .tab-bg::after{content:"";position:absolute;bottom:0;width:8px;height:8px;background:var(--panel-2);}
+.tab.active .tab-bg::before{left:-8px;-webkit-mask-image:radial-gradient(circle at top left,transparent 8px,#000 8px);mask-image:radial-gradient(circle at top left,transparent 8px,#000 8px);}
+.tab.active .tab-bg::after{right:-8px;-webkit-mask-image:radial-gradient(circle at top right,transparent 8px,#000 8px);mask-image:radial-gradient(circle at top right,transparent 8px,#000 8px);}
+.tab::after{content:"";position:absolute;right:8px;top:9px;bottom:9px;width:1px;background:var(--border);transition:opacity .15s;}
+.tab.active::after,.tab:hover::after{opacity:0;}
+.tab .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;position:relative;z-index:2;}
+.tab .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;position:relative;z-index:2;}
+.tab .close{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:var(--text-faint);transition:background .15s,color .15s,transform .15s;flex-shrink:0;position:relative;z-index:2;}
+.tab .close:hover{background:var(--row-hover);color:var(--text);transform:rotate(90deg);}
+.add-tab{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1;transition:background .15s,color .15s,transform .15s;margin-bottom:4px;flex-shrink:0;margin-left:4px;}
+.add-tab:hover{background:var(--panel-2);color:var(--text);transform:scale(1.08);}
+
+/* ---- TOP HEADER ---- */
+.top-header{display:flex;align-items:center;background:var(--header);border-bottom:1px solid var(--border);height:40px;flex-shrink:0;padding:0 10px;gap:8px;}
+.th-brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;letter-spacing:.2px;}
+.th-brand .logo{width:20px;height:20px;color:var(--text);display:flex;}
+.th-sep{width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0}
+.th-title{font-weight:600;font-size:12.5px;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
+.spacer{flex:1;}
+
+/* ---- visualization toolbar (channel + checker + elements) ---- */
+.viz-toolbar{display:flex;align-items:center;gap:8px;background:var(--panel,#141414);border-bottom:1px solid var(--border);height:36px;flex-shrink:0;padding:0 12px;}
+.viz-toolbar .vt-label{font-size:11px;color:var(--text-faint);letter-spacing:.3px;text-transform:uppercase;}
+.viz-toolbar .vt-sep{width:1px;height:18px;background:var(--border);margin:0 2px;}
+.viz-toolbar .vt-seg{padding:0;gap:3px;}
+.viz-toolbar .vt-seg .seg-btn{height:24px;padding:0 12px;flex:0 0 auto;}
+.viz-toolbar .seg-btn:disabled{opacity:.4;cursor:not-allowed;}
+.vt-btn{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--border);background:#000;color:var(--text-dim);font-size:11.5px;font-family:inherit;cursor:pointer;transition:.13s var(--ease);}
+.vt-btn:hover{color:var(--text);border-color:var(--text-faint);}
+.vt-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.vt-btn .lico.sm{width:13px;height:13px;opacity:.7;}
+
+/* stretch heatmap legend (in the Stretch dropdown): a diverging colour bar with
+   compressed / neutral / stretched labels, matching stretchColorRamp. */
+.stretch-legend{padding:2px 12px 8px;}
+.stretch-legend .sl-bar{height:10px;border-radius:5px;border:1px solid var(--border);background:linear-gradient(90deg,rgb(56,122,232) 0%,rgb(90,200,120) 50%,rgb(232,74,60) 100%);}
+.stretch-legend .sl-labels{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-faint);}
+
+/* ---- BODY: split 3D | resizer | 2D ---- */
+.editor-body{display:flex;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+
+/* left outliner dock */
+.dock{width:260px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .28s var(--ease),border-color .28s var(--ease);}
+.dock.collapsed{width:0;border-right:none;}
+.dock-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--panel-2);flex-shrink:0;}
+.dock-head .dh-title{font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:7px;}
+.dock-head .dh-sub{margin-left:auto;font-size:10.5px;color:var(--text-faint);}
+
+/* the two viewports + resizer share the flexible middle */
+.split{flex:1;min-width:0;display:flex;}
+.pane{position:relative;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--panel);}
+.pane.pane-3d{flex:1;}
+.pane.pane-uv{flex:1;border-left:none;}
+.pane-head{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;background:var(--header);border-bottom:1px solid var(--border);flex-shrink:0;}
+.pane-head .ph-title{font-weight:600;font-size:12px;display:flex;align-items:center;gap:7px;}
+.pane-head .ph-title .lico{width:14px;height:14px;color:var(--text-dim);}
+.pane-head .spacer{flex:1;}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;}
+.canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+.vsplit{width:6px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;z-index:20;}
+.vsplit::after{content:"";position:absolute;inset:0 2px;background:var(--border);transition:background .15s;}
+.vsplit:hover::after{background:#555;}
+
+/* right properties dock */
+.props{width:280px;min-width:230px;max-width:460px;background:var(--panel);display:flex;flex-direction:column;flex-shrink:0;border-left:1px solid var(--border);overflow:hidden;transition:width .28s var(--ease);}
+.props.collapsed{width:0!important;min-width:0;border-left:none;}
+.props.resizing,.props-resizer.resizing{transition:none;}
+.props-resizer{width:6px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;z-index:20;}
+.props-resizer::after{content:"";position:absolute;inset:0 2px;background:var(--border);transition:background .15s;}
+.props-resizer:hover::after{background:#555;}
+
+/* ---- SHARED STATUS BAR ---- */
+.status-bar{display:flex;align-items:center;gap:14px;padding:7px 12px;border-top:1px solid var(--border);background:var(--panel-2);font-size:11px;color:var(--text-dim);flex-shrink:0;z-index:60;}
+.status-bar .stat{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.status-bar .stat .lico{width:12px;height:12px;color:var(--text-faint)}
+.status-bar .stat b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.status-bar .vf-sep{width:1px;height:14px;background:var(--border)}
+.status-bar .spacer{flex:1}
+.status-bar .live{display:flex;align-items:center;gap:5px;color:var(--green)}
+.status-bar .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+
+/* generic icon button */
+.icon-btn{width:28px;height:28px;border-radius:50%;border:none;background:transparent;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);position:relative;}
+.icon-btn:hover{background:#1f1f1f;color:var(--text)}
+.icon-btn:active{transform:scale(.88)}
+.icon-btn.active{background:var(--accent);color:#000}
+.icon-btn .lico{width:15px;height:15px}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--border);color:var(--text);font-size:10.5px;padding:5px 10px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:400;}

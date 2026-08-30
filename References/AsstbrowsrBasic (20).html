@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harbor Asset Library</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    body { background:#000; color:#fff; margin:0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#333; border-radius:4px; }
+    .aspect-4-3 { aspect-ratio:4/3; }
+    #preview-container { min-height:220px; height:220px; }
+    #preview-container canvas { display:block; width:100% !important; height:100% !important; }
+  </style>
+</head>
+<body class="h-screen w-full flex overflow-hidden text-sm bg-black antialiased">
+  <div class="w-60 flex-none border-r border-[#1f1f1f] bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div class="p-4 pb-2"><span class="text-[10px] tracking-widest uppercase text-neutral-500 font-medium">Sources</span></div>
+    <div class="flex-1 overflow-y-auto px-2 pb-4 space-y-4 mt-2" id="sidebar-content"></div>
+    <div class="border-t border-[#1f1f1f] p-4">
+      <div class="flex justify-between text-[10px] text-neutral-500"><span>Library cache</span><span class="font-mono text-white">12.4 GB</span></div>
+    </div>
+  </div>
+  <div class="flex-1 flex flex-col min-w-0">
+    <div class="h-14 flex-none border-b border-[#1f1f1f] bg-[#0a0a0a] flex items-center gap-3 px-4">
+      <div class="flex-1 max-w-md h-8 flex items-center gap-2 px-3 bg-[#111] border border-[#1f1f1f] rounded-full">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-neutral-500"></i>
+        <input type="text" id="search-input" placeholder="Search assets..." class="flex-1 bg-transparent text-xs text-white outline-none" />
+      </div>
+      <div class="ml-auto relative">
+        <button id="settings-btn" type="button" class="w-8 h-8 rounded-md border border-[#1f1f1f] bg-[#111] text-neutral-300 hover:text-white hover:border-white/20 flex items-center justify-center" title="Preview settings">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+        <div id="settings-panel" class="hidden absolute right-0 top-10 z-50 w-72 p-3 rounded-lg border border-[#1f1f1f] bg-[#0c0c0e] shadow-xl space-y-2 text-[10px] text-neutral-400">
+          <div class="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mb-1">Preview</div>
+          <div class="flex items-center gap-2">
+            <span class="w-12 shrink-0 uppercase tracking-wider">HDRI</span>
+            <select id="hdri-select" class="flex-1 bg-[#111] border border-[#1f1f1f] rounded px-1.5 py-1 text-white text-[11px] outline-none"></select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-12 shrink-0 uppercase tracking-wider">Exp</span>
+            <input id="hdri-exposure" type="range" min="0.2" max="2.4" step="0.05" value="1.1" class="flex-1" />
+            <span id="hdri-exposure-val" class="w-8 font-mono text-white">1.10</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-12 shrink-0 uppercase tracking-wider">Env</span>
+            <input id="hdri-rot" type="range" min="0" max="360" step="1" value="0" class="flex-1" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-12 shrink-0 uppercase tracking-wider">Turn</span>
+            <input id="obj-rot" type="range" min="0" max="360" step="1" value="0" class="flex-1" />
+          </div>
+          <div class="flex flex-wrap items-center gap-3 pt-1 text-white">
+            <label class="flex items-center gap-1"><input id="hdri-bg" type="checkbox" checked /> BG</label>
+            <label class="flex items-center gap-1"><input id="key-light" type="checkbox" checked /> Key</label>
+            <label class="flex items-center gap-1"><input id="auto-rotate" type="checkbox" checked /> Spin</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 flex overflow-hidden">
+      <div class="flex-1 flex flex-col min-w-0 overflow-y-auto bg-black">
+        <div class="p-4 pb-2 border-b border-[#1f1f1f] bg-[#0c0c0e] sticky top-0 z-10">
+          <div class="flex items-center gap-2 text-xs text-neutral-500" id="breadcrumb"></div>
+        </div>
+        <div class="flex-1 p-4">
+          <div id="asset-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"></div>
+        </div>
+      </div>
+      <div class="w-[22rem] flex-none border-l border-[#1f1f1f] bg-[#0a0a0a] flex flex-col overflow-hidden">
+        <div class="p-4 pb-2 border-b border-[#1f1f1f] bg-[#0c0c0e]">
+          <div class="flex items-center gap-2 text-xs text-neutral-500" id="inspector-title">Inspector</div>
+        </div>
+        <div class="flex-1 overflow-y-auto flex flex-col">
+          <div class="h-52 border-b border-[#1f1f1f] flex-none relative bg-black" id="preview-container"></div>
+          <div id="inspector-content" class="flex flex-col flex-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const ELEMENTS = {
+  Be:{name:'Beryllium',latin:'Beryllium',symbol:'Be',z:4,period:2,group:2,block:'s',series:'Alkaline earth metal',appearance:'Steel-grey, hard, brittle',mass:9.0121831,electrons:'[He] 2s²',oxidation:'+2',density:1.85,meltingC:1287,boilingC:2470,crystal:'HCP',conductivity:200,resistivity:36,youngs:287,hardnessHV:1670,poisson:0.032,n:2.70,k:2.41,f0:[0.48,0.49,0.50],reflectance:0.55,color:'#C8CCD0',roughness:0.22},
+  Mg:{name:'Magnesium',latin:'Magnesium',symbol:'Mg',z:12,period:3,group:2,block:'s',series:'Alkaline earth metal',appearance:'Silvery-white, tarnishes',mass:24.305,electrons:'[Ne] 3s²',oxidation:'+2',density:1.738,meltingC:650,boilingC:1090,crystal:'HCP',conductivity:156,resistivity:43.9,youngs:45,hardnessHV:260,poisson:0.29,n:0.46,k:4.42,f0:[0.92,0.93,0.93],reflectance:0.88,color:'#C9CDD0',roughness:0.26},
+  Al:{name:'Aluminium',latin:'Aluminium',symbol:'Al',z:13,period:3,group:13,block:'p',series:'Post-transition metal',appearance:'Silvery white',mass:26.9815385,electrons:'[Ne] 3s² 3p¹',oxidation:'+3',density:2.70,meltingC:660.32,boilingC:2519,crystal:'FCC',conductivity:237,resistivity:26.5,youngs:70,hardnessHV:167,poisson:0.35,n:0.912,k:6.27,f0:[0.913,0.922,0.924],reflectance:0.912,color:'#A9ADB1',roughness:0.18},
+  Ti:{name:'Titanium',latin:'Titanium',symbol:'Ti',z:22,period:4,group:4,block:'d',series:'Transition metal',appearance:'Silvery grey-white',mass:47.867,electrons:'[Ar] 3d² 4s²',oxidation:'+4, +3',density:4.506,meltingC:1668,boilingC:3287,crystal:'HCP α',conductivity:21.9,resistivity:420,youngs:116,hardnessHV:970,poisson:0.32,n:2.16,k:2.92,f0:[0.542,0.497,0.449],reflectance:0.55,color:'#C1C4C6',roughness:0.28},
+  V:{name:'Vanadium',latin:'Vanadium',symbol:'V',z:23,period:4,group:5,block:'d',series:'Transition metal',appearance:'Silvery-grey, ductile',mass:50.9415,electrons:'[Ar] 3d³ 4s²',oxidation:'+5, +4, +3',density:6.11,meltingC:1910,boilingC:3407,crystal:'BCC',conductivity:30.7,resistivity:197,youngs:128,hardnessHV:628,poisson:0.37,n:3.0,k:3.1,f0:[0.55,0.56,0.57],reflectance:0.60,color:'#C0C4C8',roughness:0.24},
+  Cr:{name:'Chromium',latin:'Chromium',symbol:'Cr',z:24,period:4,group:6,block:'d',series:'Transition metal',appearance:'Steely grey, bluish',mass:51.9961,electrons:'[Ar] 3d⁵ 4s¹',oxidation:'+3, +6',density:7.19,meltingC:1907,boilingC:2671,crystal:'BCC',conductivity:93.9,resistivity:125,youngs:279,hardnessHV:1060,poisson:0.21,n:3.19,k:3.33,f0:[0.549,0.556,0.554],reflectance:0.67,color:'#C8C9CC',roughness:0.14},
+  Mn:{name:'Manganese',latin:'Manganum',symbol:'Mn',z:25,period:4,group:7,block:'d',series:'Transition metal',appearance:'Silvery-grey, hard, brittle',mass:54.938044,electrons:'[Ar] 3d⁵ 4s²',oxidation:'+2, +4, +7',density:7.21,meltingC:1246,boilingC:2061,crystal:'BCC α',conductivity:7.81,resistivity:1440,youngs:198,hardnessHV:196,poisson:0.24,n:2.2,k:2.5,f0:[0.52,0.51,0.48],reflectance:0.50,color:'#B8B4AE',roughness:0.38},
+  Fe:{name:'Iron',latin:'Ferrum',symbol:'Fe',z:26,period:4,group:8,block:'d',series:'Transition metal',appearance:'Lustrous grey',mass:55.845,electrons:'[Ar] 3d⁶ 4s²',oxidation:'+2, +3',density:7.874,meltingC:1538,boilingC:2862,crystal:'BCC α',conductivity:80.4,resistivity:96.1,youngs:211,hardnessHV:608,poisson:0.29,n:2.95,k:2.93,f0:[0.562,0.565,0.578],reflectance:0.56,color:'#C4C6C6',roughness:0.32},
+  Co:{name:'Cobalt',latin:'Cobaltum',symbol:'Co',z:27,period:4,group:9,block:'d',series:'Transition metal',appearance:'Bluish-grey metallic',mass:58.933194,electrons:'[Ar] 3d⁷ 4s²',oxidation:'+2, +3',density:8.90,meltingC:1495,boilingC:2927,crystal:'HCP',conductivity:100,resistivity:62.4,youngs:209,hardnessHV:1043,poisson:0.31,n:2.0,k:3.7,f0:[0.62,0.59,0.54],reflectance:0.67,color:'#B8BDC4',roughness:0.22},
+  Ni:{name:'Nickel',latin:'Niccolum',symbol:'Ni',z:28,period:4,group:10,block:'d',series:'Transition metal',appearance:'Silvery-white, gold tinge',mass:58.6934,electrons:'[Ar] 3d⁸ 4s²',oxidation:'+2',density:8.908,meltingC:1455,boilingC:2913,crystal:'FCC',conductivity:90.9,resistivity:69.3,youngs:200,hardnessHV:638,poisson:0.31,n:1.76,k:3.29,f0:[0.649,0.610,0.541],reflectance:0.65,color:'#C9CDD0',roughness:0.20},
+  Cu:{name:'Copper',latin:'Cuprum',symbol:'Cu',z:29,period:4,group:11,block:'d',series:'Transition metal',appearance:'Reddish-orange',mass:63.546,electrons:'[Ar] 3d¹⁰ 4s¹',oxidation:'+1, +2',density:8.96,meltingC:1084.62,boilingC:2562,crystal:'FCC',conductivity:401,resistivity:16.78,youngs:130,hardnessHV:369,poisson:0.34,n:0.469,k:2.81,f0:[0.955,0.638,0.538],reflectance:0.90,color:'#E77C56',roughness:0.12},
+  Zn:{name:'Zinc',latin:'Zincum',symbol:'Zn',z:30,period:4,group:12,block:'d',series:'Transition metal',appearance:'Bluish-silver, brittle at RT',mass:65.38,electrons:'[Ar] 3d¹⁰ 4s²',oxidation:'+2',density:7.14,meltingC:419.53,boilingC:907,crystal:'HCP',conductivity:116,resistivity:59.0,youngs:108,hardnessHV:412,poisson:0.25,n:1.11,k:4.16,f0:[0.658,0.724,0.738],reflectance:0.80,color:'#D5DAD3',roughness:0.28},
+  Zr:{name:'Zirconium',latin:'Zirconium',symbol:'Zr',z:40,period:5,group:4,block:'d',series:'Transition metal',appearance:'Silvery-white',mass:91.224,electrons:'[Kr] 4d² 5s²',oxidation:'+4',density:6.52,meltingC:1855,boilingC:4409,crystal:'HCP',conductivity:22.6,resistivity:421,youngs:88,hardnessHV:903,poisson:0.34,n:2.0,k:2.6,f0:[0.54,0.53,0.51],reflectance:0.55,color:'#C4C6C8',roughness:0.26},
+  Nb:{name:'Niobium',latin:'Niobium',symbol:'Nb',z:41,period:5,group:5,block:'d',series:'Transition metal',appearance:'Grey metallic, bluish',mass:92.90637,electrons:'[Kr] 4d⁴ 5s¹',oxidation:'+5',density:8.57,meltingC:2477,boilingC:4744,crystal:'BCC',conductivity:54,resistivity:152,youngs:105,hardnessHV:1320,poisson:0.40,n:2.8,k:3.2,f0:[0.58,0.59,0.60],reflectance:0.61,color:'#BFC4C8',roughness:0.20},
+  Mo:{name:'Molybdenum',latin:'Molybdaenum',symbol:'Mo',z:42,period:5,group:6,block:'d',series:'Transition metal',appearance:'Grey metallic',mass:95.95,electrons:'[Kr] 4d⁵ 5s¹',oxidation:'+6, +4',density:10.28,meltingC:2623,boilingC:4639,crystal:'BCC',conductivity:138,resistivity:53.4,youngs:329,hardnessHV:1530,poisson:0.31,n:3.7,k:3.3,f0:[0.56,0.58,0.59],reflectance:0.58,color:'#B8BCC0',roughness:0.20},
+  Rh:{name:'Rhodium',latin:'Rhodium',symbol:'Rh',z:45,period:5,group:9,block:'d',series:'Transition metal',appearance:'Silvery-white, extremely reflective',mass:102.90550,electrons:'[Kr] 4d⁸ 5s¹',oxidation:'+3',density:12.41,meltingC:1964,boilingC:3695,crystal:'FCC',conductivity:150,resistivity:43.3,youngs:380,hardnessHV:1246,poisson:0.26,n:1.9,k:5.0,f0:[0.76,0.75,0.73],reflectance:0.80,color:'#E8E8EA',roughness:0.06},
+  Pd:{name:'Palladium',latin:'Palladium',symbol:'Pd',z:46,period:5,group:10,block:'d',series:'Transition metal',appearance:'Silvery-white, steel sheen',mass:106.42,electrons:'[Kr] 4d¹⁰',oxidation:'+2, +4',density:12.023,meltingC:1554.9,boilingC:2963,crystal:'FCC',conductivity:71.8,resistivity:105.4,youngs:121,hardnessHV:461,poisson:0.39,n:1.68,k:3.84,f0:[0.70,0.68,0.63],reflectance:0.72,color:'#DED6CE',roughness:0.14},
+  Ag:{name:'Silver',latin:'Argentum',symbol:'Ag',z:47,period:5,group:11,block:'d',series:'Transition metal',appearance:'Brilliant white',mass:107.8682,electrons:'[Kr] 4d¹⁰ 5s¹',oxidation:'+1',density:10.49,meltingC:961.78,boilingC:2162,crystal:'FCC',conductivity:429,resistivity:15.87,youngs:83,hardnessHV:251,poisson:0.37,n:0.144,k:3.61,f0:[0.972,0.960,0.915],reflectance:0.97,color:'#F4F4F2',roughness:0.06},
+  Cd:{name:'Cadmium',latin:'Cadmium',symbol:'Cd',z:48,period:5,group:12,block:'d',series:'Transition metal',appearance:'Silvery bluish-grey',mass:112.414,electrons:'[Kr] 4d¹⁰ 5s²',oxidation:'+2',density:8.65,meltingC:321.07,boilingC:767,crystal:'HCP',conductivity:96.6,resistivity:72.7,youngs:50,hardnessHV:203,poisson:0.30,n:1.2,k:4.0,f0:[0.68,0.70,0.71],reflectance:0.75,color:'#C5C9C6',roughness:0.30},
+  In:{name:'Indium',latin:'Indium',symbol:'In',z:49,period:5,group:13,block:'p',series:'Post-transition metal',appearance:'Soft silvery-white',mass:114.818,electrons:'[Kr] 4d¹⁰ 5s² 5p¹',oxidation:'+3',density:7.31,meltingC:156.60,boilingC:2072,crystal:'Tetragonal',conductivity:81.8,resistivity:83.7,youngs:11,hardnessHV:10,poisson:0.45,n:1.0,k:5.5,f0:[0.70,0.71,0.72],reflectance:0.78,color:'#D8DADF',roughness:0.22},
+  Sn:{name:'Tin',latin:'Stannum',symbol:'Sn',z:50,period:5,group:14,block:'p',series:'Post-transition metal',appearance:'Silvery-white',mass:118.710,electrons:'[Kr] 4d¹⁰ 5s² 5p²',oxidation:'+4, +2',density:7.265,meltingC:231.93,boilingC:2602,crystal:'Tetragonal β',conductivity:66.8,resistivity:115,youngs:50,hardnessHV:51,poisson:0.36,n:1.56,k:5.28,f0:[0.531,0.542,0.554],reflectance:0.70,color:'#D4D5D3',roughness:0.28},
+  Ta:{name:'Tantalum',latin:'Tantalum',symbol:'Ta',z:73,period:6,group:5,block:'d',series:'Transition metal',appearance:'Blue-grey, dense',mass:180.94788,electrons:'[Xe] 4f¹⁴ 5d³ 6s²',oxidation:'+5',density:16.69,meltingC:3017,boilingC:5458,crystal:'BCC',conductivity:57.5,resistivity:131,youngs:186,hardnessHV:873,poisson:0.34,n:2.4,k:3.1,f0:[0.57,0.56,0.54],reflectance:0.60,color:'#B0B4B8',roughness:0.18},
+  W:{name:'Tungsten',latin:'Wolfram',symbol:'W',z:74,period:6,group:6,block:'d',series:'Transition metal',appearance:'Steel-grey',mass:183.84,electrons:'[Xe] 4f¹⁴ 5d⁴ 6s²',oxidation:'+6',density:19.25,meltingC:3422,boilingC:5555,crystal:'BCC',conductivity:173,resistivity:52.8,youngs:411,hardnessHV:3430,poisson:0.28,n:3.48,k:2.79,f0:[0.504,0.545,0.561],reflectance:0.62,color:'#BFC0C2',roughness:0.18},
+  Ir:{name:'Iridium',latin:'Iridium',symbol:'Ir',z:77,period:6,group:9,block:'d',series:'Transition metal',appearance:'Silvery-white, very hard',mass:192.217,electrons:'[Xe] 4f¹⁴ 5d⁷ 6s²',oxidation:'+3, +4',density:22.56,meltingC:2446,boilingC:4428,crystal:'FCC',conductivity:147,resistivity:47.1,youngs:528,hardnessHV:1760,poisson:0.26,n:2.5,k:4.5,f0:[0.70,0.68,0.64],reflectance:0.72,color:'#D8D4CE',roughness:0.10},
+  Pt:{name:'Platinum',latin:'Platinum',symbol:'Pt',z:78,period:6,group:10,block:'d',series:'Transition metal',appearance:'Silvery-white',mass:195.084,electrons:'[Xe] 4f¹⁴ 5d⁹ 6s¹',oxidation:'+2, +4',density:21.45,meltingC:1768.3,boilingC:3825,crystal:'FCC',conductivity:71.6,resistivity:105,youngs:168,hardnessHV:549,poisson:0.38,n:2.33,k:3.92,f0:[0.673,0.637,0.585],reflectance:0.70,color:'#D3CEC6',roughness:0.12},
+  Au:{name:'Gold',latin:'Aurum',symbol:'Au',z:79,period:6,group:11,block:'d',series:'Transition metal',appearance:'Metallic yellow',mass:196.966569,electrons:'[Xe] 4f¹⁴ 5d¹⁰ 6s¹',oxidation:'+1, +3',density:19.32,meltingC:1064.18,boilingC:2856,crystal:'FCC',conductivity:318,resistivity:22.14,youngs:79,hardnessHV:216,poisson:0.44,n:0.270,k:2.79,f0:[1.000,0.782,0.344],reflectance:0.95,color:'#F5C15A',roughness:0.08},
+  Pb:{name:'Lead',latin:'Plumbum',symbol:'Pb',z:82,period:6,group:14,block:'p',series:'Post-transition metal',appearance:'Dull bluish-grey',mass:207.2,electrons:'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²',oxidation:'+2',density:11.34,meltingC:327.46,boilingC:1749,crystal:'FCC',conductivity:35.3,resistivity:208,youngs:16,hardnessHV:38,poisson:0.44,n:1.91,k:3.50,f0:[0.632,0.626,0.643],reflectance:0.62,color:'#A8A9B2',roughness:0.36},
+  Bi:{name:'Bismuth',latin:'Bismuthum',symbol:'Bi',z:83,period:6,group:15,block:'p',series:'Post-transition metal',appearance:'Pink-silver, iridescent oxide',mass:208.98040,electrons:'[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³',oxidation:'+3',density:9.78,meltingC:271.40,boilingC:1564,crystal:'Rhombohedral',conductivity:7.97,resistivity:1290,youngs:32,hardnessHV:94,poisson:0.33,n:1.8,k:3.2,f0:[0.61,0.58,0.52],reflectance:0.58,color:'#C9B8A8',roughness:0.24}
+};
+
+const VARIANTS = [
+  {id:'be-pure',parent:'Be',name:'Beryllium_Pure',grade:'Be 99.5%',finish:'Machined',composition:'Be ≥ 99.5%',color:'#C8CCD0',roughness:0.22,metalness:1,notes:'Lowest-density structural metal. X-ray windows, aerospace. Toxic dust.'},
+  {id:'mg-az31',parent:'Mg',name:'Magnesium_AZ31',grade:'AZ31B',finish:'Mill',composition:'Mg, Al 3%, Zn 1%',color:'#C4C8CA',roughness:0.30,metalness:1,density:1.77,notes:'Wrought Mg sheet. Laptop chassis, aircraft interiors. Flammable chips.'},
+  {id:'mg-pure',parent:'Mg',name:'Magnesium_Pure',grade:'Mg 99.8%',finish:'As-cast',composition:'Mg ≥ 99.8%',color:'#C9CDD0',roughness:0.28,metalness:1,notes:'Commercially pure magnesium. Sacrificial anodes, alloying.'},
+  {id:'al-1100',parent:'Al',name:'Aluminium_1100',grade:'AA 1100-H14',finish:'Mill',composition:'Al ≥ 99.00%',color:'#B0B4B8',roughness:0.22,metalness:1,notes:'Commercially pure Al.'},
+  {id:'al-2024',parent:'Al',name:'Aluminium_2024_T3',grade:'AA 2024-T3',finish:'Alclad',composition:'Al, Cu 4.4%, Mg 1.5%',color:'#A8A49A',roughness:0.20,metalness:1,density:2.78,notes:'Aerospace skin.'},
+  {id:'al-6061',parent:'Al',name:'Aluminium_6061_T6',grade:'AA 6061-T6',finish:'Mill',composition:'Al, Mg 1%, Si 0.6%',color:'#AEB2B6',roughness:0.26,metalness:1,notes:'Structural extrusions.'},
+  {id:'al-7075',parent:'Al',name:'Aluminium_7075_T6',grade:'AA 7075-T6',finish:'Machine polish',composition:'Al, Zn 5.6%, Mg 2.5%',color:'#9EA0A2',roughness:0.18,metalness:1,density:2.81,notes:'Highest-strength common Al.'},
+  {id:'al-cast',parent:'Al',name:'Aluminium_A356_Cast',grade:'A356-T6',finish:'Bead-blast',composition:'Al, Si 7%, Mg 0.35%',color:'#8F9396',roughness:0.42,metalness:0.92,notes:'Cast wheels.'},
+  {id:'al-brushed',parent:'Al',name:'Aluminium_Brushed',grade:'AA 5052-H32',finish:'Brush #4',composition:'Al, Mg 2.5%',color:'#C5C8CC',roughness:0.38,metalness:1,notes:'Anisotropic brushed.'},
+  {id:'ti-cp2',parent:'Ti',name:'Titanium_Grade2',grade:'ASTM Gr. 2',finish:'Pickled',composition:'Ti ≥ 99%',color:'#C5C7C8',roughness:0.32,metalness:1,notes:'CP titanium. Medical, marine.'},
+  {id:'ti-64',parent:'Ti',name:'Titanium_6Al4V',grade:'Ti-6Al-4V Gr.5',finish:'Machined',composition:'Ti, Al 6%, V 4%',color:'#B7B8B6',roughness:0.26,metalness:1,density:4.43,notes:'Aerospace / implant alloy.'},
+  {id:'ti-anod',parent:'Ti',name:'Titanium_Anodized_Blue',grade:'Gr.2 + TiO₂',finish:'Anodize ~50 V',composition:'Ti + interference oxide',color:'#2E5A88',roughness:0.22,metalness:0.35,notes:'Thin-film colour, not pigment.'},
+  {id:'v-pure',parent:'V',name:'Vanadium_Pure',grade:'V 99.9%',finish:'Arc-melted',composition:'V ≥ 99.9%',color:'#C0C4C8',roughness:0.24,metalness:1,notes:'Alloying addition for HSLA steels, Ti-6Al-4V.'},
+  {id:'cr-pure',parent:'Cr',name:'Chromium_Pure',grade:'Cr 99.2%',finish:'Electrowon',composition:'Cr ≥ 99.2%',color:'#C8C9CC',roughness:0.14,metalness:1,notes:'Bulk chromium. Brittle, highly reflective.'},
+  {id:'cr-hard',parent:'Cr',name:'Chrome_Hard_Plate',grade:'Hard Cr plate',finish:'Decorative chrome',composition:'Electrodeposited Cr',color:'#E2E4E6',roughness:0.06,metalness:1,notes:'Classic chrome look over steel.'},
+  {id:'mn-pure',parent:'Mn',name:'Manganese_Pure',grade:'Mn 99.7%',finish:'Electrolytic',composition:'Mn ≥ 99.7%',color:'#B8B4AE',roughness:0.38,metalness:1,notes:'Steel deoxidizer / hardener. Brittle α-Mn.'},
+  {id:'fe-armco',parent:'Fe',name:'Iron_Armco',grade:'Armco CP',finish:'Pickled',composition:'Fe ≥ 99.8%',color:'#C8C9C8',roughness:0.30,metalness:1,notes:'Commercially pure iron.'},
+  {id:'fe-1018',parent:'Fe',name:'Steel_1018',grade:'AISI 1018',finish:'Cold-drawn',composition:'Fe, C 0.18%, Mn 0.75%',color:'#B8B9BA',roughness:0.34,metalness:1,notes:'Mild steel.'},
+  {id:'fe-1045',parent:'Fe',name:'Steel_1045',grade:'AISI 1045',finish:'Turned',composition:'Fe, C 0.45%',color:'#A9AAAB',roughness:0.28,metalness:1,notes:'Medium-carbon steel.'},
+  {id:'fe-4140',parent:'Fe',name:'Steel_4140_QT',grade:'AISI 4140 QT',finish:'Ground',composition:'Fe, C 0.40%, Cr, Mo',color:'#8E9092',roughness:0.24,metalness:1,notes:'Cr-Mo Q&T alloy steel.'},
+  {id:'fe-a36',parent:'Fe',name:'Steel_A36',grade:'ASTM A36',finish:'Mill scale',composition:'Fe, C ≤ 0.29%',color:'#6B6560',roughness:0.55,metalness:0.85,notes:'Structural plate.'},
+  {id:'fe-304',parent:'Fe',name:'Stainless_304',grade:'S30400 18-8',finish:'#8 polish',composition:'Fe, Cr 18%, Ni 8%',color:'#D0D2D3',roughness:0.12,metalness:1,density:8.00,notes:'Austenitic stainless.'},
+  {id:'fe-316',parent:'Fe',name:'Stainless_316',grade:'S31600',finish:'Electropolish',composition:'Fe, Cr 17%, Ni 12%, Mo 2.5%',color:'#C9CCCE',roughness:0.10,metalness:1,notes:'Marine stainless.'},
+  {id:'fe-430',parent:'Fe',name:'Stainless_430',grade:'S43000',finish:'BA',composition:'Fe, Cr 17%',color:'#C2C0BB',roughness:0.18,metalness:1,notes:'Ferritic appliance stainless.'},
+  {id:'fe-cast',parent:'Fe',name:'Cast_Iron_Grey',grade:'A48 Cl.30',finish:'As-cast',composition:'Fe, C 3.2% graphite',color:'#4A4A4C',roughness:0.48,metalness:0.75,density:7.15,notes:'Grey iron. High damping.'},
+  {id:'fe-corten',parent:'Fe',name:'Weathering_Corten',grade:'A588',finish:'Rust patina',composition:'Fe, Cu, Cr, Ni',color:'#8B3A1F',roughness:0.68,metalness:0.25,notes:'Stable architectural rust.'},
+  {id:'co-pure',parent:'Co',name:'Cobalt_Pure',grade:'Co 99.8%',finish:'Electrolytic',composition:'Co ≥ 99.8%',color:'#B8BDC4',roughness:0.20,metalness:1,notes:'Magnetic, blue-grey. Superalloy / carbide binder.'},
+  {id:'ni-200',parent:'Ni',name:'Nickel_200',grade:'N02200',finish:'Bright anneal',composition:'Ni ≥ 99.0%',color:'#C9CDD0',roughness:0.16,metalness:1,notes:'CP nickel.'},
+  {id:'ni-inc718',parent:'Ni',name:'Inconel_718',grade:'N07718',finish:'Turned',composition:'Ni 52%, Cr 19%, Fe 18%, Nb, Mo',color:'#A8AAA8',roughness:0.22,metalness:1,density:8.19,notes:'PH superalloy.'},
+  {id:'ni-monel',parent:'Ni',name:'Monel_400',grade:'N04400',finish:'Mill',composition:'Ni 67%, Cu 31.5%',color:'#C5B8A4',roughness:0.24,metalness:1,notes:'Ni–Cu seawater alloy.'},
+  {id:'cu-ofhc',parent:'Cu',name:'Copper_OFHC',grade:'C10100 OFHC',finish:'Mirror',composition:'Cu ≥ 99.99%',color:'#E77C56',roughness:0.06,metalness:1,notes:'Oxygen-free high-conductivity.'},
+  {id:'cu-etp',parent:'Cu',name:'Copper_ETP',grade:'C11000 ETP',finish:'Mill bright',composition:'Cu ≥ 99.90%',color:'#D86B45',roughness:0.16,metalness:1,notes:'Electrolytic tough-pitch.'},
+  {id:'cu-dhp',parent:'Cu',name:'Copper_DHP',grade:'C12200 DHP',finish:'Annealed',composition:'Cu, P 0.02%',color:'#C96A48',roughness:0.28,metalness:1,notes:'Plumbing tube copper.'},
+  {id:'cu-be',parent:'Cu',name:'Copper_Beryllium',grade:'C17200',finish:'Age-hardened',composition:'Cu, Be 1.9%',color:'#C9A46A',roughness:0.18,metalness:1,density:8.25,notes:'Highest-strength Cu alloy.'},
+  {id:'cu-brass70',parent:'Cu',name:'Brass_70-30',grade:'C26000',finish:'Polish',composition:'Cu 70%, Zn 30%',color:'#D4A017',roughness:0.14,metalness:1,density:8.53,notes:'Cartridge brass.'},
+  {id:'cu-brass60',parent:'Cu',name:'Brass_Muntz_60-40',grade:'C28000',finish:'Mill',composition:'Cu 60%, Zn 40%',color:'#C8960A',roughness:0.26,metalness:1,density:8.39,notes:'Muntz metal.'},
+  {id:'cu-bronze',parent:'Cu',name:'Bronze_Phosphor',grade:'C51000',finish:'Satin',composition:'Cu 95%, Sn 5%, P',color:'#CD7F32',roughness:0.32,metalness:1,notes:'Phosphor bronze springs.'},
+  {id:'cu-patina',parent:'Cu',name:'Copper_Patina',grade:'Weathered',finish:'Verdigris',composition:'Cu + carbonate/sulfate',color:'#3D8B74',roughness:0.62,metalness:0.15,notes:'Dielectric corrosion film.'},
+  {id:'zn-pure',parent:'Zn',name:'Zinc_Pure',grade:'SHG Zn 99.995%',finish:'Cast / rolled',composition:'Zn ≥ 99.995% Special High Grade',color:'#D5DAD3',roughness:0.22,metalness:1,notes:'Pure zinc. Bluish-silver, HCP, melts 419.5 °C. Die-cast feedstock, sacrificial anodes, galvanizing baths.'},
+  {id:'zn-diecast',parent:'Zn',name:'Zinc_Zamak_3',grade:'Zamak 3 / AG40A',finish:'As-cast / plated',composition:'Zn, Al 4%, Mg 0.04%',color:'#C8CCC6',roughness:0.36,metalness:0.95,density:6.6,notes:'Most common Zn die-cast alloy. Hardware, toys, automotive trim.'},
+  {id:'zn-galv',parent:'Zn',name:'Zinc_Galvanize',grade:'Hot-dip',finish:'Spangle',composition:'Zn coating on Fe',color:'#C5C9C0',roughness:0.40,metalness:0.9,notes:'Sacrificial coating on steel.'},
+  {id:'zn-oxide',parent:'Zn',name:'Zinc_White_Rust',grade:'Zn + Zn₅(OH)₈Cl₂',finish:'Wet-storage stain',composition:'Hydroxide/carbonate film',color:'#E8E6D8',roughness:0.70,metalness:0.12,notes:'White rust on galvanize. Dielectric.'},
+  {id:'zr-702',parent:'Zr',name:'Zirconium_702',grade:'R60702',finish:'Pickled',composition:'Zr + Hf ≤ 4.5%',color:'#C4C6C8',roughness:0.26,metalness:1,notes:'Chemical plant, nuclear cladding (low-Hf grades).'},
+  {id:'nb-pure',parent:'Nb',name:'Niobium_Pure',grade:'Nb 99.9%',finish:'Annealed',composition:'Nb ≥ 99.9%',color:'#BFC4C8',roughness:0.20,metalness:1,notes:'Superconducting RF cavities, superalloys.'},
+  {id:'mo-pure',parent:'Mo',name:'Molybdenum_Pure',grade:'Mo 99.95%',finish:'Rolled',composition:'Mo ≥ 99.95%',color:'#B8BCC0',roughness:0.20,metalness:1,notes:'Furnace boats, glass-melting electrodes.'},
+  {id:'rh-plate',parent:'Rh',name:'Rhodium_Plate',grade:'Rh flash',finish:'Jewellery plate',composition:'Electrodeposited Rh',color:'#E8E8EA',roughness:0.05,metalness:1,notes:'White-gold top coat. Extremely reflective.'},
+  {id:'pd-999',parent:'Pd',name:'Palladium_999',grade:'Pd 999',finish:'Burnish',composition:'Pd ≥ 99.9%',color:'#DED6CE',roughness:0.10,metalness:1,notes:'White precious metal. Catalysts, jewellery.'},
+  {id:'ag-999',parent:'Ag',name:'Silver_Fine_999',grade:'Ag 999',finish:'Mirror',composition:'Ag ≥ 99.9%',color:'#F7F7F4',roughness:0.04,metalness:1,notes:'Highest visible reflectance (~97%).'},
+  {id:'ag-925',parent:'Ag',name:'Silver_Sterling_925',grade:'Sterling',finish:'Polish',composition:'Ag 92.5%, Cu 7.5%',color:'#E8E6E2',roughness:0.12,metalness:1,density:10.36,notes:'Sterling silver.'},
+  {id:'ag-oxidized',parent:'Ag',name:'Silver_Oxidized',grade:'Ag₂S film',finish:'Liver of sulfur',composition:'Ag–Cu + sulfide',color:'#3A3A3C',roughness:0.45,metalness:0.55,notes:'Oxidized jewellery finish.'},
+  {id:'cd-pure',parent:'Cd',name:'Cadmium_Pure',grade:'Cd 99.95%',finish:'Cast',composition:'Cd ≥ 99.95%',color:'#C5C9C6',roughness:0.28,metalness:1,notes:'NiCd batteries, low-melt solders. Toxic.'},
+  {id:'in-pure',parent:'In',name:'Indium_Pure',grade:'In 99.99%',finish:'As-cast soft',composition:'In ≥ 99.99%',color:'#D8DADF',roughness:0.20,metalness:1,notes:'Soft sealing metal, ITO precursor, solders.'},
+  {id:'sn-pure',parent:'Sn',name:'Tin_Pure',grade:'Sn 99.9%',finish:'Cast bright',composition:'Sn ≥ 99.9%',color:'#D4D5D3',roughness:0.22,metalness:1,notes:'β-tin. Food-safe, pewter base, solder.'},
+  {id:'sn-pewter',parent:'Sn',name:'Pewter_Leadfree',grade:'ASTM B560',finish:'Cast / polish',composition:'Sn 91–93%, Sb 5–8%, Cu 1–2%',color:'#C8C6C0',roughness:0.30,metalness:0.95,notes:'Modern lead-free pewter.'},
+  {id:'sn-bright',parent:'Sn',name:'Tin_Bright_Plate',grade:'Sn plate',finish:'Electroplate',composition:'Sn on Cu/Fe',color:'#D8D9D6',roughness:0.20,metalness:1,notes:'Solderable electronics finish.'},
+  {id:'ta-pure',parent:'Ta',name:'Tantalum_Pure',grade:'Ta 99.95%',finish:'Annealed',composition:'Ta ≥ 99.95%',color:'#B0B4B8',roughness:0.16,metalness:1,notes:'Capacitors, chemical liners, implants.'},
+  {id:'w-pure',parent:'W',name:'Tungsten_Pure',grade:'W 99.95%',finish:'Ground',composition:'W ≥ 99.95%',color:'#BFC0C2',roughness:0.16,metalness:1,notes:'Highest melting metal.'},
+  {id:'w-carbide',parent:'W',name:'Tungsten_Carbide',grade:'WC–Co 6%',finish:'Lapped',composition:'WC + 6% Co',color:'#6E6F71',roughness:0.14,metalness:0.85,density:14.95,notes:'Cermet cutting inserts.'},
+  {id:'ir-pure',parent:'Ir',name:'Iridium_Pure',grade:'Ir 99.9%',finish:'Spark-melted',composition:'Ir ≥ 99.9%',color:'#D8D4CE',roughness:0.10,metalness:1,notes:'Densest corrosion-proof metal. Spark plugs, crucibles.'},
+  {id:'pt-999',parent:'Pt',name:'Platinum_999',grade:'Pt 999',finish:'Burnish',composition:'Pt ≥ 99.9%',color:'#D3CEC6',roughness:0.08,metalness:1,notes:'Lab ware, catalysts.'},
+  {id:'pt-950',parent:'Pt',name:'Platinum_950',grade:'Pt950',finish:'Polish',composition:'Pt 95% + Ru/Ir/Co',color:'#CBC6BE',roughness:0.12,metalness:1,density:20.7,notes:'Jewellery platinum.'},
+  {id:'au-24k',parent:'Au',name:'Gold_24K',grade:'999 fine',finish:'Burnished',composition:'Au ≥ 99.9%',color:'#F5C15A',roughness:0.05,metalness:1,notes:'Pure gold. Very soft.'},
+  {id:'au-18k-y',parent:'Au',name:'Gold_18K_Yellow',grade:'750 Au',finish:'High polish',composition:'Au 75%, Ag, Cu',color:'#E8B923',roughness:0.10,metalness:1,density:15.5,notes:'Jewellery yellow gold.'},
+  {id:'au-18k-w',parent:'Au',name:'Gold_18K_White',grade:'750 + Rh flash',finish:'Rhodium plate',composition:'Au 75%, Pd/Ni + Rh',color:'#E8E6E1',roughness:0.08,metalness:1,notes:'White gold look is mostly Rh.'},
+  {id:'au-14k',parent:'Au',name:'Gold_14K_Yellow',grade:'585 Au',finish:'Polish',composition:'Au 58.3%, Cu, Ag, Zn',color:'#C9A227',roughness:0.14,metalness:1,density:13.1,notes:'Common US karat.'},
+  {id:'au-rose',parent:'Au',name:'Gold_18K_Rose',grade:'750 rose',finish:'Polish',composition:'Au 75%, Cu 22%',color:'#B76E79',roughness:0.12,metalness:1,notes:'Copper-shifted F0.'},
+  {id:'pb-sheet',parent:'Pb',name:'Lead_Sheet',grade:'Chemical 99.9%',finish:'Rolled dull',composition:'Pb ≥ 99.9%',color:'#9A9BA3',roughness:0.42,metalness:0.95,notes:'Shielding, batteries. Toxic.'},
+  {id:'bi-pure',parent:'Bi',name:'Bismuth_Pure',grade:'Bi 99.99%',finish:'Hopper crystal',composition:'Bi ≥ 99.99%',color:'#C9B8A8',roughness:0.22,metalness:1,notes:'Pink-silver, diamagnetic, low-melt alloys. Iridescent oxide.'}
+];
+
+function metalAsset(v) {
+  const e = ELEMENTS[v.parent];
+  const density = v.density ?? e.density;
+  const p = {
+    kind:'metal', ...e, variant:v.grade, finish:v.finish, composition:v.composition, notes:v.notes,
+    density, meltingC:v.meltingC??e.meltingC, conductivity:v.conductivity??e.conductivity,
+    resistivity:v.resistivity??e.resistivity, youngs:v.youngs??e.youngs, hardnessHV:v.hardnessHV??e.hardnessHV,
+    color:v.color, roughness:v.roughness, massKgPerM3:density*1000, molarVolume:e.mass/density,
+    parentName:e.name, parentSymbol:e.symbol
+  };
+  return { id:v.id, name:v.name, ext:'mat', size:0.9*1048576,
+    tags:['metal', e.symbol.toLowerCase(), e.name.toLowerCase()],
+    cat:'material', subcat:e.name, source:'library',
+    color:v.color, metalness:v.metalness??1, roughness:v.roughness, ior:1.5, clearcoat:0, transmission:0, props:p };
+}
+
+const METAL_ASSETS = VARIANTS.map(metalAsset);
+
+/** Dielectric F0 = ((n-1)/(n+1))². IOR from typical polymer literature. */
+function f0FromIor(n){ const f=((n-1)/(n+1))**2; return f; }
+
+const PLASTICS = [
+  {id:'abs-blk', name:'ABS_Black_Gloss', family:'ABS', grade:'Cycolac / generic ABS',
+    formula:'(C₈H₈·C₄H₆·C₃H₃N)ₙ', color:'#1a1a1a', roughness:0.18, ior:1.52, clearcoat:0.85, clearcoatRoughness:0.12,
+    transmission:0, thickness:0, sss:0.04, density:1.05, tg:105, melt:230, youngs:2.3, hardness:'R110',
+    notes:'Acrylonitrile-butadiene-styrene. Injection housings. Gloss coat = mould polish + optional UV clear.'},
+  {id:'abs-wht', name:'ABS_White_Satin', family:'ABS', grade:'Natural/white ABS',
+    formula:'ABS terpolymer', color:'#f2f0ea', roughness:0.32, ior:1.52, clearcoat:0.25, clearcoatRoughness:0.35,
+    transmission:0, sss:0.08, density:1.04, tg:105, melt:230, youngs:2.1,
+    notes:'Pigmented opaque. Slight subsurface scatter from TiO₂ pigment packing.'},
+  {id:'pla-nat', name:'PLA_Natural', family:'PLA', grade:'Ingeo 4043D',
+    formula:'(C₃H₄O₂)ₙ polylactide', color:'#e8dcc8', roughness:0.28, ior:1.45, clearcoat:0.15, clearcoatRoughness:0.4,
+    transmission:0.12, thickness:0.55, atten:'#d4c4a0', attenDist:0.8, sss:0.35, density:1.24, tg:60, melt:170, youngs:3.5,
+    notes:'Polylactic acid. Semi-translucent natural. Bio-derived, low Tg — softens on a dashboard.'},
+  {id:'petg-clr', name:'PETG_Clear', family:'PETG', grade:'Eastar / generic PETG',
+    formula:'Polyethylene terephthalate glycol', color:'#eaf4f6', roughness:0.06, ior:1.57, clearcoat:0.2, clearcoatRoughness:0.08,
+    transmission:0.92, thickness:1.2, atten:'#cfe8ea', attenDist:2.4, sss:0.2, density:1.27, tg:80, melt:240, youngs:2.1,
+    notes:'Clear glycol-modified PET. Tough thermoform sheet, 3D-print clear. IOR ~1.57.'},
+  {id:'pet-amb', name:'PET_Bottle_Amber', family:'PET', grade:'Bottle-grade PET',
+    formula:'(C₁₀H₈O₄)ₙ', color:'#c47a22', roughness:0.08, ior:1.575, clearcoat:0.35, clearcoatRoughness:0.1,
+    transmission:0.75, thickness:0.9, atten:'#b45a10', attenDist:0.7, sss:0.25, density:1.38, tg:75, melt:255, youngs:2.8,
+    notes:'Biaxially oriented PET. Amber beer-bottle attenuation.'},
+  {id:'pmma-clr', name:'Acrylic_PMMA_Clear', family:'PMMA', grade:'Plexiglas / Perspex',
+    formula:'(C₅H₈O₂)ₙ polymethyl methacrylate', color:'#f4fbff', roughness:0.02, ior:1.491, clearcoat:1.0, clearcoatRoughness:0.03,
+    transmission:0.97, thickness:1.4, atten:'#ffffff', attenDist:8, sss:0.05, density:1.18, tg:105, melt:160, youngs:3.2,
+    notes:'Highest optical clarity of commodity plastics. IOR 1.490–1.492. Hard, brittle, excellent Fresnel rim.'},
+  {id:'pc-clr', name:'Polycarbonate_Clear', family:'PC', grade:'Lexan / Makrolon',
+    formula:'(C₁₅H₁₆O₂)ₙ', color:'#eef3f6', roughness:0.05, ior:1.586, clearcoat:0.55, clearcoatRoughness:0.08,
+    transmission:0.88, thickness:1.2, atten:'#dce8f0', attenDist:3.5, sss:0.12, density:1.20, tg:147, melt:266, youngs:2.3,
+    notes:'Impact-proof glazing. IOR 1.584–1.586 — stronger Fresnel than acrylic.'},
+  {id:'pc-blk', name:'Polycarbonate_Black_Gloss', family:'PC', grade:'Filled PC',
+    formula:'PC + carbon black', color:'#0d0d0e', roughness:0.12, ior:1.586, clearcoat:1.0, clearcoatRoughness:0.08,
+    transmission:0, sss:0.02, density:1.22, tg:145, melt:270, youngs:2.4,
+    notes:'Piano-black injection PC. High clearcoat, dielectric Fresnel only (metalness 0).'},
+  {id:'pp-nat', name:'Polypropylene_Natural', family:'PP', grade:'Homopolymer PP',
+    formula:'(C₃H₆)ₙ', color:'#eceae4', roughness:0.42, ior:1.49, clearcoat:0.05, clearcoatRoughness:0.5,
+    transmission:0.08, thickness:0.7, atten:'#e4dcc8', attenDist:0.9, sss:0.22, density:0.905, tg:-10, melt:165, youngs:1.5,
+    notes:'Living-hinge polymer. Waxy, low gloss, slightly translucent natural.'},
+  {id:'hdpe', name:'HDPE_Natural', family:'PE', grade:'HDPE PE-HD',
+    formula:'(C₂H₄)ₙ high-density', color:'#f0eee6', roughness:0.45, ior:1.54, clearcoat:0.0, clearcoatRoughness:0.6,
+    transmission:0.06, thickness:0.6, atten:'#e8e0d0', attenDist:0.6, sss:0.18, density:0.95, tg:-120, melt:130, youngs:0.8,
+    notes:'Milk-jug plastic. Waxy scatter, almost no clearcoat.'},
+  {id:'ldpe', name:'LDPE_Film', family:'PE', grade:'LDPE',
+    formula:'(C₂H₄)ₙ low-density', color:'#f7f5f0', roughness:0.35, ior:1.51, clearcoat:0.1, clearcoatRoughness:0.4,
+    transmission:0.45, thickness:0.35, atten:'#f0e8d8', attenDist:1.2, sss:0.4, density:0.92, tg:-120, melt:115, youngs:0.3,
+    notes:'Soft film. High subsurface / transmission at thin walls.'},
+  {id:'pa6', name:'Nylon_PA6', family:'PA', grade:'PA6 / Ultramid',
+    formula:'[NH−(CH₂)₅−CO]ₙ', color:'#d8d2c4', roughness:0.30, ior:1.53, clearcoat:0.2, clearcoatRoughness:0.28,
+    transmission:0.05, sss:0.15, density:1.14, tg:47, melt:220, youngs:2.8,
+    notes:'Hygroscopic engineering nylon. Gears, clips. Semi-crystalline haze.'},
+  {id:'pa12', name:'Nylon_PA12_SLS', family:'PA', grade:'PA2200 SLS',
+    formula:'[NH−(CH₂)₁₁−CO]ₙ', color:'#e4e0d8', roughness:0.55, ior:1.52, clearcoat:0.0, clearcoatRoughness:0.7,
+    transmission:0, sss:0.12, density:1.01, tg:42, melt:178, youngs:1.7,
+    notes:'SLS powder-sintered nylon. Matte, slightly porous scatter.'},
+  {id:'pom', name:'POM_Delrin_White', family:'POM', grade:'Delrin 100',
+    formula:'(CH₂O)ₙ polyoxymethylene', color:'#f4f2ec', roughness:0.22, ior:1.48, clearcoat:0.35, clearcoatRoughness:0.2,
+    transmission:0.04, sss:0.1, density:1.41, tg:-60, melt:175, youngs:3.1,
+    notes:'Acetal. Low friction, high crystallinity, opaque white.'},
+  {id:'pvc-gry', name:'PVC_Grey_uPVC', family:'PVC', grade:'uPVC rigid',
+    formula:'(C₂H₃Cl)ₙ', color:'#8a8f93', roughness:0.38, ior:1.54, clearcoat:0.1, clearcoatRoughness:0.45,
+    transmission:0, sss:0.05, density:1.38, tg:80, melt:160, youngs:2.9,
+    notes:'Window profiles, pipe. Chalky TiO₂ + carbon grey.'},
+  {id:'ps-gpps', name:'Polystyrene_GPPS_Clear', family:'PS', grade:'GPPS',
+    formula:'(C₈H₈)ₙ', color:'#f2f6f8', roughness:0.04, ior:1.59, clearcoat:0.4, clearcoatRoughness:0.06,
+    transmission:0.9, thickness:1.1, atten:'#eef4f8', attenDist:4, sss:0.08, density:1.05, tg:100, melt:200, youngs:3.0,
+    notes:'Crystal PS. High IOR 1.59 — snappy Fresnel, brittle.'},
+  {id:'hips', name:'HIPS_White', family:'PS', grade:'HIPS',
+    formula:'PS + polybutadiene', color:'#f0eee8', roughness:0.4, ior:1.58, clearcoat:0.05, clearcoatRoughness:0.5,
+    transmission:0, sss:0.1, density:1.04, tg:95, melt:200, youngs:1.9,
+    notes:'High-impact PS. Thermoform food trays. Opaque, matte.'},
+  {id:'pu-tpu', name:'TPU_Rubber_Black', family:'PU', grade:'TPU 90A',
+    formula:'Thermoplastic polyurethane', color:'#1c1c1e', roughness:0.48, ior:1.50, clearcoat:0.35, clearcoatRoughness:0.4,
+    transmission:0, sss:0.18, density:1.20, tg:-40, melt:190, youngs:0.03,
+    notes:'Soft-touch elastomer. Sheen + SSS for thick phone-case look.'},
+  {id:'silicone', name:'Silicone_Translucent', family:'SI', grade:'VMQ 40A',
+    formula:'Polydimethylsiloxane', color:'#e8ece8', roughness:0.35, ior:1.41, clearcoat:0.15, clearcoatRoughness:0.45,
+    transmission:0.55, thickness:1.0, atten:'#d0ddd0', attenDist:0.9, sss:0.7, density:1.13, tg:-125, melt:null, youngs:0.01,
+    notes:'Platinum-cure silicone. Strong subsurface. IOR ~1.41.'},
+  {id:'ptfe', name:'PTFE_Teflon_White', family:'PTFE', grade:'Virgin PTFE',
+    formula:'(C₂F₄)ₙ', color:'#f3f1ea', roughness:0.55, ior:1.35, clearcoat:0.0, clearcoatRoughness:0.8,
+    transmission:0.02, sss:0.2, density:2.17, tg:115, melt:327, youngs:0.5,
+    notes:'Lowest IOR of common plastics (~1.35) — very weak Fresnel, waxy.'},
+  {id:'peek', name:'PEEK_Natural', family:'PEEK', grade:'Victrex 450G',
+    formula:'Polyether ether ketone', color:'#c9b896', roughness:0.28, ior:1.65, clearcoat:0.25, clearcoatRoughness:0.22,
+    transmission:0, sss:0.06, density:1.30, tg:143, melt:343, youngs:3.6,
+    notes:'High-temp aerospace polymer. Tan/beige, high IOR.'},
+  {id:'epoxy', name:'Epoxy_Clear_Cast', family:'EP', grade:'Bisphenol-A epoxy',
+    formula:'DGEBA + amine', color:'#e4f0e8', roughness:0.04, ior:1.55, clearcoat:0.9, clearcoatRoughness:0.05,
+    transmission:0.85, thickness:1.3, atten:'#c8e0c0', attenDist:2.0, sss:0.15, density:1.15, tg:80, melt:null, youngs:3.0,
+    notes:'Casting resin. Slight green-yellow attenuation, glassy clearcoat.'},
+  {id:'bakelite', name:'Bakelite_Phenolic', family:'PF', grade:'Phenol-formaldehyde',
+    formula:'PF filled', color:'#5c2e1a', roughness:0.4, ior:1.58, clearcoat:0.2, clearcoatRoughness:0.35,
+    transmission:0, sss:0.08, density:1.35, tg:null, melt:null, youngs:5.0,
+    notes:'Thermoset. Vintage brown, filled, almost no transmission.'},
+];
+
+function plasticAsset(v) {
+  const n = v.ior;
+  const f0 = f0FromIor(n);
+  const p = {
+    kind:'plastic', parentName:v.family, parentSymbol:v.family, symbol:v.family, latin:v.formula,
+    variant:v.grade, finish:'as-moulded / specified', composition:v.formula, notes:v.notes,
+    density:v.density, massKgPerM3:v.density*1000, meltingC:v.melt, tg:v.tg, youngs:v.youngs,
+    ior:n, f0diel:f0, reflectance:f0, color:v.color, roughness:v.roughness,
+    clearcoat:v.clearcoat, clearcoatRoughness:v.clearcoatRoughness,
+    transmission:v.transmission||0, thickness:v.thickness||0, sss:v.sss||0,
+    atten:v.atten, attenDist:v.attenDist, z:null
+  };
+  return {
+    id:v.id, name:v.name, ext:'mat', size:0.4*1048576,
+    tags:['plastic', v.family.toLowerCase()],
+    cat:'material', subcat:'Plastics', source:'library',
+    color:v.color, metalness:0, roughness:v.roughness, ior:n,
+    clearcoat:v.clearcoat||0, clearcoatRoughness:v.clearcoatRoughness||0.2,
+    transmission:v.transmission||0, thickness:v.thickness||0.8,
+    atten:v.atten, attenDist:v.attenDist, sss:v.sss||0, props:p
+  };
+}
+
+const PLASTIC_ASSETS = PLASTICS.map(plasticAsset);
+
+function dielectricAsset(v, kind, subcat) {
+  const n = v.ior;
+  const f0 = f0FromIor(n);
+  const p = {
+    kind, parentName:v.family, parentSymbol:v.family, symbol:v.family, latin:v.formula,
+    variant:v.grade, finish:v.finish || 'as specified', composition:v.formula, notes:v.notes,
+    density:v.density, massKgPerM3:v.density*1000, meltingC:v.melt, tg:v.tg, youngs:v.youngs,
+    ior:n, f0diel:f0, reflectance:f0, color:v.color, roughness:v.roughness,
+    clearcoat:v.clearcoat||0, clearcoatRoughness:v.clearcoatRoughness||0.2,
+    transmission:v.transmission||0, thickness:v.thickness||0, sss:v.sss||0,
+    atten:v.atten, attenDist:v.attenDist, z:null
+  };
+  return {
+    id:v.id, name:v.name, ext:'mat', size:0.4*1048576,
+    tags:[kind, v.family.toLowerCase()],
+    cat:'material', subcat, source:'library',
+    color:v.color, metalness:0, roughness:v.roughness, ior:n,
+    clearcoat:v.clearcoat||0, clearcoatRoughness:v.clearcoatRoughness||0.2,
+    transmission:v.transmission||0, thickness:v.thickness||1.0,
+    atten:v.atten, attenDist:v.attenDist, sss:v.sss||0, props:p
+  };
+}
+
+const GLASSES = [
+  {id:'gl-soda', name:'Glass_SodaLime_Clear', family:'Soda-lime', grade:'Float glass',
+    formula:'SiO₂ ~72%, Na₂O, CaO', color:'#ffffff', roughness:0.02, ior:1.52, clearcoat:1.0, clearcoatRoughness:0.04,
+    transmission:1, thickness:1.6, atten:'#c8e8dc', attenDist:4.5, sss:0, density:2.50, melt:1500, youngs:72,
+    notes:'Window / bottle glass. n_D ≈ 1.52. Dielectric Fresnel F0≈4.3%. Slight green iron attenuation in thick sections.'},
+  {id:'gl-boro', name:'Glass_Borosilicate', family:'Borosilicate', grade:'Pyrex / Duran 3.3',
+    formula:'SiO₂ 80%, B₂O₃ 13%', color:'#ffffff', roughness:0.015, ior:1.473, clearcoat:1.0, clearcoatRoughness:0.03,
+    transmission:1, thickness:1.6, atten:'#e8f2fa', attenDist:8, density:2.23, melt:820, youngs:64,
+    notes:'Lab / cookware. Lower expansion, n_D ≈ 1.47. Very clear, weaker Fresnel than soda-lime.'},
+  {id:'gl-silica', name:'Glass_FusedSilica', family:'Silica', grade:'Fused quartz',
+    formula:'SiO₂ ≥ 99.9%', color:'#ffffff', roughness:0.008, ior:1.458, clearcoat:1.0, clearcoatRoughness:0.02,
+    transmission:1, thickness:1.6, atten:'#ffffff', attenDist:20, density:2.20, melt:1713, youngs:73,
+    notes:'UV-grade optics. Lowest dispersion. n_D 1.458, F0≈3.5%.'},
+  {id:'gl-lead', name:'Glass_LeadCrystal', family:'Lead crystal', grade:'24–30% PbO',
+    formula:'SiO₂ + PbO', color:'#fff8ee', roughness:0.01, ior:1.70, clearcoat:1.0, clearcoatRoughness:0.03,
+    transmission:1, thickness:1.5, atten:'#efe0b8', attenDist:2.2, density:3.1, melt:600, youngs:65,
+    notes:'High IOR 1.70 → F0≈6.7%, strong rim Fresnel sparkle. Heavy, yellowish in bulk.'},
+  {id:'gl-bk7', name:'Glass_N-BK7', family:'Optical', grade:'Schott N-BK7',
+    formula:'Borosilicate crown', color:'#ffffff', roughness:0.008, ior:1.5168, clearcoat:1.0, clearcoatRoughness:0.02,
+    transmission:1, thickness:1.6, atten:'#ffffff', attenDist:15, density:2.51, melt:557, youngs:82,
+    notes:'Standard optical crown. n_d = 1.5168, Abbe 64.2. Clearcoat = polished surface.'},
+  {id:'gl-amber', name:'Glass_Amber_Bottle', family:'Soda-lime', grade:'Iron + sulfur amber',
+    formula:'Soda-lime + Fe–S chromophore', color:'#ffffff', roughness:0.03, ior:1.52, clearcoat:0.85, clearcoatRoughness:0.06,
+    transmission:1, thickness:1.4, atten:'#c45a08', attenDist:0.35, density:2.50, melt:1500, youngs:72,
+    notes:'Beer-bottle amber. Volume colour is attenuation, not albedo. Still full transmission + IOR Fresnel.'},
+  {id:'gl-green', name:'Glass_Green_Bottle', family:'Soda-lime', grade:'Fe²⁺/Cr green',
+    formula:'Soda-lime + iron', color:'#ffffff', roughness:0.03, ior:1.52, clearcoat:0.85, clearcoatRoughness:0.06,
+    transmission:1, thickness:1.4, atten:'#1a6b3a', attenDist:0.4, density:2.50, melt:1500, youngs:72,
+    notes:'Wine-bottle green from residual iron. Transparent with green Beer–Lambert tint.'},
+  {id:'gl-frost', name:'Glass_Frosted', family:'Soda-lime', grade:'Acid-etch / sandblast',
+    formula:'Soda-lime, rough surface', color:'#ffffff', roughness:0.45, ior:1.52, clearcoat:0.15, clearcoatRoughness:0.55,
+    transmission:0.85, thickness:1.2, atten:'#d8e0e4', attenDist:1.2, sss:0.15, density:2.50, melt:1500, youngs:72,
+    notes:'Diffuse transmission. High roughness blurs refraction; IOR still 1.52.'},
+  {id:'gl-obsid', name:'Glass_Obsidian', family:'Volcanic', grade:'Natural obsidian',
+    formula:'Felsic volcanic glass', color:'#1a1a1c', roughness:0.06, ior:1.48, clearcoat:0.6, clearcoatRoughness:0.1,
+    transmission:0.25, thickness:1.0, atten:'#050508', attenDist:0.12, density:2.4, melt:1200, youngs:70,
+    notes:'Near-opaque black glass. Thin-edge transmission only, glossy dielectric coat.'}
+];
+
+const RUBBERS = [
+  {id:'rb-nr', name:'Rubber_Natural_NR', family:'NR', grade:'RSS / smoked sheet',
+    formula:'cis-1,4-polyisoprene', color:'#6b4a28', roughness:0.55, ior:1.52, clearcoat:0.05, clearcoatRoughness:0.6,
+    transmission:0, sss:0.22, density:0.92, tg:-70, melt:null, youngs:0.002,
+    notes:'Natural rubber. Tan/brown unfilled. High rebound, poor ozone/oil.'},
+  {id:'rb-sbr', name:'Rubber_SBR_Black', family:'SBR', grade:'SBR 1502 + N330',
+    formula:'Styrene-butadiene + carbon black', color:'#1a1a1a', roughness:0.58, ior:1.53, clearcoat:0.06, clearcoatRoughness:0.55,
+    transmission:0, sss:0.1, density:1.13, tg:-50, melt:null, youngs:0.01,
+    notes:'Tyre tread polymer. Carbon black kills gloss and transmission.'},
+  {id:'rb-nbr', name:'Rubber_Nitrile_NBR', family:'NBR', grade:'NBR 70 Shore A',
+    formula:'Acrylonitrile-butadiene', color:'#2a2a2c', roughness:0.5, ior:1.52, clearcoat:0.08, clearcoatRoughness:0.5,
+    transmission:0, sss:0.12, density:1.00, tg:-30, melt:null, youngs:0.008,
+    notes:'Oil-resistant O-rings, fuel hose.'},
+  {id:'rb-epdm', name:'Rubber_EPDM_Black', family:'EPDM', grade:'EPDM 70A',
+    formula:'Ethylene-propylene-diene', color:'#141414', roughness:0.62, ior:1.51, clearcoat:0.08, clearcoatRoughness:0.55,
+    transmission:0, sss:0.12, density:1.15, tg:-50, melt:null, youngs:0.01,
+    notes:'Weatherseals, roofing. Excellent ozone/UV, poor oil.'},
+  {id:'rb-cr', name:'Rubber_Neoprene_CR', family:'CR', grade:'Neoprene W',
+    formula:'Polychloroprene', color:'#2c2a22', roughness:0.48, ior:1.55, clearcoat:0.12, clearcoatRoughness:0.45,
+    transmission:0, sss:0.14, density:1.23, tg:-45, melt:null, youngs:0.006,
+    notes:'Wetsuits, belts. Slightly waxy, oil-moderate.'},
+  {id:'rb-fkm', name:'Rubber_Viton_FKM', family:'FKM', grade:'Viton A 75A',
+    formula:'Vinylidene fluoride copolymer', color:'#1c1814', roughness:0.45, ior:1.38, clearcoat:0.15, clearcoatRoughness:0.4,
+    transmission:0, sss:0.08, density:1.85, tg:-20, melt:null, youngs:0.008,
+    notes:'Fluoroelastomer. Chemical / high-temp seals. Lower IOR from fluorine.'},
+  {id:'rb-si', name:'Rubber_Silicone_VMQ', family:'VMQ', grade:'VMQ 40–70A',
+    formula:'Polydimethylsiloxane', color:'#e8ece8', roughness:0.38, ior:1.41, clearcoat:0.12, clearcoatRoughness:0.48,
+    transmission:0.5, thickness:1.0, atten:'#d0ddd0', attenDist:0.9, sss:0.7, density:1.13, tg:-125, melt:null, youngs:0.01,
+    notes:'Translucent medical / bakeware silicone. Strong SSS, IOR ~1.41.'},
+  {id:'rb-si-red', name:'Rubber_Silicone_Red', family:'VMQ', grade:'Iron-oxide filled',
+    formula:'PDMS + Fe₂O₃', color:'#b03a2e', roughness:0.42, ior:1.41, clearcoat:0.1, clearcoatRoughness:0.5,
+    transmission:0.08, thickness:0.7, atten:'#8a2018', attenDist:0.35, sss:0.45, density:1.20, tg:-125, melt:null, youngs:0.012,
+    notes:'High-temp gasket red. Pigment cuts transmission, leaves edge scatter.'},
+  {id:'rb-tpu', name:'Rubber_TPU_Black', family:'TPU', grade:'TPU 90A',
+    formula:'Thermoplastic polyurethane', color:'#1c1c1e', roughness:0.42, ior:1.50, clearcoat:0.4, clearcoatRoughness:0.35,
+    transmission:0, sss:0.18, density:1.20, tg:-40, melt:190, youngs:0.03,
+    notes:'Phone-case elastomer. More gloss/clearcoat than vulcanised rubber.'},
+  {id:'rb-latex', name:'Rubber_Latex_Amber', family:'NR latex', grade:'Dipped latex',
+    formula:'Prevulcanised NR latex', color:'#c9a227', roughness:0.28, ior:1.52, clearcoat:0.25, clearcoatRoughness:0.3,
+    transmission:0.35, thickness:0.4, atten:'#b8860b', attenDist:0.35, sss:0.5, density:0.92, tg:-70, melt:null, youngs:0.001,
+    notes:'Thin dipped goods. Amber, stretchy, translucent.'}
+];
+
+const GEMS = [
+  {id:'gm-diamond', name:'Diamond_TypeIIa', family:'Diamond', grade:'Type IIa',
+    formula:'C (cubic)', color:'#ffffff', roughness:0.01, ior:2.417, clearcoat:1, clearcoatRoughness:0.02,
+    transmission:1, thickness:1.4, atten:'#ffffff', attenDist:40, density:3.51, melt:3550, youngs:1050,
+    notes:'Highest common IOR (2.417) and dispersion. F0≈17%. Full transmission, sharp Fresnel fire.'},
+  {id:'gm-emerald', name:'Emerald_Colombian', family:'Beryl', grade:'Be₃Al₂Si₆O₁₈ + Cr',
+    formula:'Beryl + Cr³⁺', color:'#ffffff', roughness:0.04, ior:1.58, clearcoat:0.9, clearcoatRoughness:0.05,
+    transmission:0.95, thickness:1.3, atten:'#0d6b3a', attenDist:0.28, density:2.76, melt:1650, youngs:200,
+    notes:'Green beryl. IOR ~1.58. Colour is volume attenuation from chromium.'},
+  {id:'gm-ruby', name:'Ruby_PigeonBlood', family:'Corundum', grade:'Cr-bearing Al₂O₃',
+    formula:'Al₂O₃ + Cr', color:'#ffffff', roughness:0.03, ior:1.77, clearcoat:1, clearcoatRoughness:0.04,
+    transmission:0.9, thickness:1.3, atten:'#9b1020', attenDist:0.22, density:4.00, melt:2044, youngs:345,
+    notes:'Corundum. n_o 1.77. Strong red attenuation, high hardness (9 Mohs).'},
+  {id:'gm-sapphire', name:'Sapphire_Blue', family:'Corundum', grade:'Fe–Ti Al₂O₃',
+    formula:'Al₂O₃ + Fe,Ti', color:'#ffffff', roughness:0.03, ior:1.77, clearcoat:1, clearcoatRoughness:0.04,
+    transmission:0.9, thickness:1.3, atten:'#123a8c', attenDist:0.3, density:4.00, melt:2044, youngs:345,
+    notes:'Blue corundum. Same IOR as ruby; Fe–Ti intervalence colour.'},
+  {id:'gm-amethyst', name:'Amethyst', family:'Quartz', grade:'Fe-bearing SiO₂',
+    formula:'SiO₂ + Fe', color:'#ffffff', roughness:0.04, ior:1.544, clearcoat:0.85, clearcoatRoughness:0.05,
+    transmission:0.95, thickness:1.3, atten:'#6a3aa0', attenDist:0.45, density:2.65, melt:1713, youngs:76,
+    notes:'Purple quartz. n 1.54–1.55.'},
+  {id:'gm-topaz', name:'Topaz', family:'Topaz', grade:'Imperial / blue',
+    formula:'Al₂SiO₄(F,OH)₂', color:'#ffffff', roughness:0.03, ior:1.62, clearcoat:0.9, clearcoatRoughness:0.04,
+    transmission:0.97, thickness:1.3, atten:'#f0d9a0', attenDist:2.5, density:3.53, melt:1400, youngs:150,
+    notes:'n 1.61–1.64. Hard, glassy.'},
+  {id:'gm-opal', name:'Opal_White', family:'Opal', grade:'Precious opal',
+    formula:'SiO₂·nH₂O', color:'#f4eee6', roughness:0.18, ior:1.45, clearcoat:0.4, clearcoatRoughness:0.2,
+    transmission:0.35, thickness:1.0, atten:'#eee4d4', attenDist:0.8, sss:0.35, density:2.15, iridescence:1, iridescenceIOR:1.3, iridescenceThickness:400,
+    notes:'Hydrated silica. Play-of-colour via iridescence (diffraction approximated).'},
+  {id:'gm-pearl', name:'Pearl_Akoya', family:'Nacre', grade:'Akoya cultured',
+    formula:'Aragonite CaCO₃ + conchiolin', color:'#f5efe6', roughness:0.22, ior:1.53, clearcoat:0.55, clearcoatRoughness:0.18,
+    transmission:0.12, thickness:0.6, atten:'#eee0d0', attenDist:0.5, sss:0.45, density:2.71,
+    iridescence:0.85, iridescenceIOR:1.3, iridescenceThickness:280, sheen:0.6, sheenRoughness:0.35,
+    notes:'Nacre platelets. Soft sheen + thin-film iridescence, not a cut gem IOR fire.'},
+  {id:'gm-pearl-blk', name:'Pearl_Tahitian', family:'Nacre', grade:'Tahitian',
+    formula:'Aragonite + organic', color:'#2a3230', roughness:0.2, ior:1.53, clearcoat:0.5, clearcoatRoughness:0.2,
+    transmission:0.08, thickness:0.55, atten:'#1a2422', attenDist:0.35, sss:0.3, density:2.70,
+    iridescence:1, iridescenceIOR:1.35, iridescenceThickness:360, sheen:0.7, sheenRoughness:0.3,
+    notes:'Black-lipped oyster pearl. Green/peacock overtone via iridescence.'},
+  {id:'gm-amber', name:'Amber_Baltic', family:'Amber', grade:'Succinite',
+    formula:'Fossil resin', color:'#ffffff', roughness:0.08, ior:1.54, clearcoat:0.7, clearcoatRoughness:0.1,
+    transmission:0.85, thickness:1.2, atten:'#c47a18', attenDist:0.4, sss:0.2, density:1.08, melt:200, youngs:2,
+    notes:'Organic gem. Soft, warm yellow-orange attenuation, IOR ~1.54.'}
+];
+
+const ORGANICS = [
+  {id:'bn-cort', name:'Bone_Cortical', family:'Bone', grade:'Cortical (compact)',
+    formula:'Hydroxyapatite + collagen', color:'#e8dcc4', roughness:0.42, ior:1.55, clearcoat:0.08, clearcoatRoughness:0.5,
+    transmission:0.06, thickness:0.7, atten:'#d4c4a0', attenDist:0.5, sss:0.35, density:1.85, youngs:18,
+    notes:'Dense bone. Off-white, slight SSS, low gloss. E ~18 GPa along osteons.'},
+  {id:'bn-trab', name:'Bone_Trabecular', family:'Bone', grade:'Cancellous',
+    formula:'Hydroxyapatite + marrow space', color:'#d2b48c', roughness:0.62, ior:1.5, clearcoat:0.02, clearcoatRoughness:0.7,
+    transmission:0.04, sss:0.4, density:0.4, youngs:1,
+    notes:'Spongy bone. Porous, matte, lower density.'},
+  {id:'bn-ivory', name:'Ivory_Dentin', family:'Ivory', grade:'Dentin',
+    formula:'Carbonated HAP + collagen', color:'#f3ead4', roughness:0.32, ior:1.54, clearcoat:0.2, clearcoatRoughness:0.35,
+    transmission:0.08, thickness:0.6, atten:'#e8d8b8', attenDist:0.6, sss:0.4, density:1.75, youngs:12,
+    notes:'Polished dentin. Warm cream, more sheen than raw bone.'}
+];
+
+const PAPERS = [
+  {id:'pp-copy', name:'Paper_Copy_80gsm', family:'Paper', grade:'Uncoated wood-free',
+    formula:'Cellulose + CaCO₃ filler', color:'#f4f1ea', roughness:0.72, ior:1.47, clearcoat:0, clearcoatRoughness:0.9,
+    transmission:0.04, sss:0.18, density:0.8, notes:'Office paper. Very high roughness, weak dielectric spec, slight SSS.'},
+  {id:'pp-news', name:'Paper_Newsprint', family:'Paper', grade:'Mechanical pulp',
+    formula:'Lignin-rich cellulose', color:'#d8d0c0', roughness:0.78, ior:1.47, clearcoat:0, clearcoatRoughness:0.95,
+    transmission:0.06, sss:0.22, density:0.7, notes:'Greyish, highly scattering, almost no gloss.'},
+  {id:'pp-photo', name:'Paper_Photo_Gloss', family:'Paper', grade:'RC photo',
+    formula:'Paper + PE + gelatin/RC coat', color:'#f7f7f4', roughness:0.12, ior:1.50, clearcoat:0.85, clearcoatRoughness:0.12,
+    transmission:0, sss:0.05, density:1.1, notes:'Resin-coated photo paper. Clearcoat is the RC layer.'},
+  {id:'pp-kraft', name:'Cardboard_Kraft', family:'Cardboard', grade:'Kraft liner',
+    formula:'Unbleached kraft pulp', color:'#c4a574', roughness:0.7, ior:1.47, clearcoat:0, clearcoatRoughness:0.9,
+    transmission:0.02, sss:0.12, density:0.7, notes:'Brown corrugated liner. Matte fibre scatter.'},
+  {id:'pp-corr', name:'Cardboard_Corrugated', family:'Cardboard', grade:'Double-wall C-flute',
+    formula:'Kraft liners + fluting', color:'#c8aa80', roughness:0.68, ior:1.47, clearcoat:0, clearcoatRoughness:0.88,
+    transmission:0.03, sss:0.15, density:0.55, notes:'Shipping box. Slightly warmer, more porous than liner stock.'},
+  {id:'pp-chip', name:'Cardboard_Chipboard', family:'Cardboard', grade:'Recycled chipboard',
+    formula:'Mixed recycled fibre', color:'#bba890', roughness:0.74, ior:1.47, clearcoat:0, clearcoatRoughness:0.92,
+    transmission:0, sss:0.1, density:0.75, notes:'Greyboard. Dead matte.'},
+  {id:'pp-white-card', name:'Cardboard_White_Folding', family:'Cardboard', grade:'SBS folding boxboard',
+    formula:'Bleached sulphate board', color:'#f6f3ea', roughness:0.55, ior:1.48, clearcoat:0.08, clearcoatRoughness:0.7,
+    transmission:0.03, sss:0.14, density:0.85, notes:'White packaging board. Slight clay-coat sheen.'},
+  {id:'pp-color-red', name:'Paper_Coloured_Red', family:'Paper', grade:'Construction / sugar paper',
+    formula:'Dyed cellulose', color:'#c43c32', roughness:0.76, ior:1.47, clearcoat:0, clearcoatRoughness:0.92,
+    transmission:0.03, sss:0.16, density:0.75, notes:'Pigmented bulk. Colour is albedo, not attenuation.'},
+  {id:'pp-color-blue', name:'Paper_Coloured_Blue', family:'Paper', grade:'Construction paper',
+    formula:'Dyed cellulose', color:'#3a6aa8', roughness:0.76, ior:1.47, clearcoat:0, clearcoatRoughness:0.92,
+    transmission:0.03, sss:0.16, density:0.75, notes:'Matte dyed sheet. High scatter, no gloss.'},
+  {id:'pp-color-yel', name:'Paper_Coloured_Yellow', family:'Paper', grade:'Construction paper',
+    formula:'Dyed cellulose', color:'#e8c84a', roughness:0.74, ior:1.47, clearcoat:0, clearcoatRoughness:0.9,
+    transmission:0.04, sss:0.18, density:0.75, notes:'Warm yellow sugar paper.'},
+  {id:'pp-color-grn', name:'Paper_Coloured_Green', family:'Paper', grade:'Construction paper',
+    formula:'Dyed cellulose', color:'#3d8b5c', roughness:0.76, ior:1.47, clearcoat:0, clearcoatRoughness:0.92,
+    transmission:0.03, sss:0.16, density:0.75, notes:'Matte green cover stock.'},
+  {id:'pp-color-blk', name:'Paper_Coloured_Black', family:'Paper', grade:'Black cover',
+    formula:'Carbon-filled cellulose', color:'#1c1c1e', roughness:0.7, ior:1.47, clearcoat:0, clearcoatRoughness:0.88,
+    transmission:0, sss:0.04, density:0.8, notes:'Deep matte black paper. Almost no SSS.'},
+  {id:'pp-color-pnk', name:'Paper_Coloured_Pink', family:'Paper', grade:'Tissue / craft',
+    formula:'Dyed cellulose', color:'#e8a0b4', roughness:0.7, ior:1.47, clearcoat:0, clearcoatRoughness:0.88,
+    transmission:0.08, thickness:0.25, atten:'#e090a8', attenDist:0.4, sss:0.28, density:0.45, notes:'Thin coloured tissue. Some show-through.'},
+  {id:'pp-card-red', name:'Cardboard_Coloured_Red', family:'Cardboard', grade:'C-flute print liner',
+    formula:'Kraft + flexo ink', color:'#b83228', roughness:0.62, ior:1.47, clearcoat:0.05, clearcoatRoughness:0.75,
+    transmission:0, sss:0.08, density:0.6, notes:'Printed shipping carton. Ink sits on kraft, still matte.'},
+  {id:'pp-card-blu', name:'Cardboard_Coloured_Blue', family:'Cardboard', grade:'Coated carton',
+    formula:'SBS + CMYK', color:'#2c5aa0', roughness:0.5, ior:1.48, clearcoat:0.12, clearcoatRoughness:0.65,
+    transmission:0, sss:0.08, density:0.8, notes:'Folding carton with light clay coat.'},
+  {id:'pp-watercolor', name:'Paper_Watercolour_ColdPress', family:'Paper', grade:'Cotton rag 300 gsm',
+    formula:'Cotton linters', color:'#f2ebe0', roughness:0.8, ior:1.46, clearcoat:0, clearcoatRoughness:0.95,
+    transmission:0.05, sss:0.22, density:0.9, notes:'Cold-press tooth. Very matte, high scatter.'},
+  {id:'pp-tracing', name:'Paper_Tracing', family:'Paper', grade:'Translucent sketch',
+    formula:'Highly beaten cellulose', color:'#f0ece4', roughness:0.45, ior:1.48, clearcoat:0.05, clearcoatRoughness:0.6,
+    transmission:0.55, thickness:0.2, atten:'#e8e0d0', attenDist:0.35, sss:0.4, density:0.9, notes:'Calendered tracing. Diffuse transmission.'},
+  {id:'pp-foil', name:'Paper_Foil_Gold', family:'Paper', grade:'Hot-foil stamp on board',
+    formula:'Paper + Al/Au foil', color:'#d4a017', roughness:0.18, ior:1.5, clearcoat:0.4, clearcoatRoughness:0.2,
+    transmission:0, sss:0, density:1.0, notes:'Foil is metallic flakes on paper. Treated as glossy dielectric + gold albedo (no metalness map).'}
+];
+
+const CERAMICS = [
+  {id:'ce-porc', name:'Ceramic_Porcelain_White', family:'Porcelain', grade:'Hard-paste glaze',
+    formula:'Kaolin + feldspar + quartz', color:'#f4f1ea', roughness:0.12, ior:1.55, clearcoat:1.0, clearcoatRoughness:0.08,
+    transmission:0.08, thickness:0.8, atten:'#eee8dc', attenDist:0.9, sss:0.22, density:2.4, melt:1400, youngs:70,
+    notes:'Glazed porcelain. Body SSS + glassy clearcoat (feldspar glaze IOR ~1.5).'},
+  {id:'ce-porc-blu', name:'Ceramic_Porcelain_Blue', family:'Porcelain', grade:'Underglaze cobalt',
+    formula:'Porcelain + Co aluminate', color:'#2a4a8c', roughness:0.14, ior:1.55, clearcoat:1.0, clearcoatRoughness:0.1,
+    transmission:0.04, sss:0.12, density:2.4, melt:1400, youngs:70,
+    notes:'Cobalt under transparent glaze. Colour in body, gloss from coat.'},
+  {id:'ce-stone', name:'Ceramic_Stoneware', family:'Stoneware', grade:'High-fire glazed',
+    formula:'Fireclay + glaze', color:'#c4b49a', roughness:0.22, ior:1.54, clearcoat:0.7, clearcoatRoughness:0.18,
+    transmission:0, sss:0.08, density:2.3, melt:1280, youngs:55,
+    notes:'Opaque, warmer than porcelain. Satin-to-gloss glaze.'},
+  {id:'ce-earthen', name:'Ceramic_Earthenware', family:'Earthenware', grade:'Terracotta bisque',
+    formula:'Iron-rich clay', color:'#b85a32', roughness:0.62, ior:1.5, clearcoat:0, clearcoatRoughness:0.8,
+    transmission:0, sss:0.1, density:1.9, melt:1050, youngs:20,
+    notes:'Unglazed terracotta. Matte, porous, iron-red.'},
+  {id:'ce-terra-glz', name:'Ceramic_Terracotta_Glazed', family:'Earthenware', grade:'Lead/tin glaze',
+    formula:'Terracotta + glaze', color:'#c45a28', roughness:0.18, ior:1.54, clearcoat:0.85, clearcoatRoughness:0.14,
+    transmission:0, sss:0.08, density:2.0, melt:1050, youngs:22,
+    notes:'Glazed flower-pot look. Body red, coat glassy.'},
+  {id:'ce-tile', name:'Ceramic_Tile_Gloss_White', family:'Tile', grade:'Whiteware wall tile',
+    formula:'Talcum body + zircon glaze', color:'#f7f5f0', roughness:0.08, ior:1.56, clearcoat:1.0, clearcoatRoughness:0.05,
+    transmission:0, sss:0.04, density:2.3, notes:'Bathroom tile. Very smooth glaze, high clearcoat.'},
+  {id:'ce-tile-matte', name:'Ceramic_Tile_Matte', family:'Tile', grade:'Matt glaze floor',
+    formula:'Stoneware + matt glaze', color:'#d0ccc4', roughness:0.45, ior:1.54, clearcoat:0.15, clearcoatRoughness:0.5,
+    transmission:0, sss:0.04, density:2.4, notes:'Satin floor tile. Micro-crystalline glaze kills gloss.'},
+  {id:'ce-china', name:'Ceramic_BoneChina', family:'Bone china', grade:'Bone ash porcelain',
+    formula:'~50% bone ash + kaolin', color:'#f8f4ec', roughness:0.1, ior:1.54, clearcoat:1.0, clearcoatRoughness:0.06,
+    transmission:0.18, thickness:0.7, atten:'#f0e8d8', attenDist:0.7, sss:0.35, density:2.5, melt:1250, youngs:80,
+    notes:'Translucent tableware. Higher SSS than hard porcelain.'},
+  {id:'ce-tech', name:'Ceramic_Alumina', family:'Technical', grade:'99% Al₂O₃',
+    formula:'Al₂O₃ sintered', color:'#ece8e0', roughness:0.28, ior:1.76, clearcoat:0.1, clearcoatRoughness:0.35,
+    transmission:0, sss:0.05, density:3.9, melt:2050, youngs:300,
+    notes:'Engineering alumina. High IOR, dense, little glaze. Ivory-white.'},
+  {id:'ce-zirconia', name:'Ceramic_Zirconia_Dental', family:'Technical', grade:'Y-TZP',
+    formula:'Y₂O₃-stabilised ZrO₂', color:'#f2eee6', roughness:0.2, ior:2.15, clearcoat:0.35, clearcoatRoughness:0.2,
+    transmission:0.12, thickness:0.8, atten:'#eee4d4', attenDist:0.6, sss:0.2, density:6.0, melt:2700, youngs:200,
+    notes:'Dental zirconia. High IOR ~2.15, slightly translucent when thin.'}
+];
+
+const WAXES = [
+  {id:'wx-par', name:'Wax_Paraffin', family:'Paraffin', grade:'Candle paraffin',
+    formula:'CₙH₂ₙ₊₂ mix', color:'#f4ecd4', roughness:0.35, ior:1.44, clearcoat:0.15, clearcoatRoughness:0.4,
+    transmission:0.45, thickness:1.1, atten:'#e8d8a8', attenDist:0.55, sss:0.75, density:0.9, melt:55, youngs:0.2,
+    notes:'Classic candle. Strong SSS, low IOR 1.43–1.45, waxy sheen.'},
+  {id:'wx-soy', name:'Wax_Soy', family:'Soy', grade:'Hydrogenated soy',
+    formula:'Triglycerides', color:'#efe6c8', roughness:0.42, ior:1.46, clearcoat:0.08, clearcoatRoughness:0.5,
+    transmission:0.35, thickness:1.1, atten:'#e0d0a0', attenDist:0.5, sss:0.8, density:0.89, melt:50, youngs:0.15,
+    notes:'Creamier, more opaque than paraffin. High SSS.'},
+  {id:'wx-bee', name:'Wax_Beeswax', family:'Beeswax', grade:'Filtered yellow',
+    formula:'Esters + palmitate', color:'#e0b84a', roughness:0.38, ior:1.44, clearcoat:0.2, clearcoatRoughness:0.35,
+    transmission:0.4, thickness:1.0, atten:'#c49220', attenDist:0.35, sss:0.7, density:0.96, melt:62, youngs:0.2,
+    notes:'Natural yellow. Strong orange attenuation + SSS.'},
+  {id:'wx-white', name:'Wax_Beeswax_White', family:'Beeswax', grade:'Capped / bleached',
+    formula:'Beeswax, bleached', color:'#f5f0e0', roughness:0.36, ior:1.44, clearcoat:0.18, clearcoatRoughness:0.38,
+    transmission:0.5, thickness:1.1, atten:'#eee4c8', attenDist:0.7, sss:0.75, density:0.96, melt:62, youngs:0.2,
+    notes:'Ivory beeswax. Cleaner, still subsurface-heavy.'},
+  {id:'wx-carnauba', name:'Wax_Carnauba', family:'Carnauba', grade:'T1 flake',
+    formula:'Palm wax esters', color:'#d4c48a', roughness:0.22, ior:1.46, clearcoat:0.45, clearcoatRoughness:0.22,
+    transmission:0.2, thickness:0.8, atten:'#c8b46a', attenDist:0.45, sss:0.4, density:0.99, melt:83, youngs:0.5,
+    notes:'Hardest commercial wax. Higher gloss/clearcoat, used in polishes.'},
+  {id:'wx-micro', name:'Wax_Microcrystalline', family:'Microcrystalline', grade:'Cosmetic / barrier',
+    formula:'Branched C₃₀–C₆₀', color:'#e8e0cc', roughness:0.4, ior:1.45, clearcoat:0.12, clearcoatRoughness:0.45,
+    transmission:0.3, thickness:1.0, atten:'#dcd0b0', attenDist:0.5, sss:0.65, density:0.94, melt:80, youngs:0.18,
+    notes:'Flexible petroleum wax. Cloudy SSS.'},
+  {id:'wx-crayon', name:'Wax_Crayon_Red', family:'Paraffin', grade:'Pigmented crayon',
+    formula:'Paraffin + pigment', color:'#c42828', roughness:0.32, ior:1.44, clearcoat:0.2, clearcoatRoughness:0.35,
+    transmission:0.08, thickness:0.7, atten:'#a01010', attenDist:0.25, sss:0.45, density:0.95, melt:58, youngs:0.2,
+    notes:'Opaque pigmented wax. Colour in albedo + short attenuation.'},
+  {id:'wx-crayon-blu', name:'Wax_Crayon_Blue', family:'Paraffin', grade:'Pigmented crayon',
+    formula:'Paraffin + pigment', color:'#2a5aaa', roughness:0.32, ior:1.44, clearcoat:0.2, clearcoatRoughness:0.35,
+    transmission:0.08, thickness:0.7, atten:'#143a88', attenDist:0.25, sss:0.45, density:0.95, melt:58, youngs:0.2,
+    notes:'Blue crayon. Same wax optics, pigmented body.'},
+  {id:'wx-seal', name:'Wax_Sealing_Red', family:'Sealing', grade:'Shellac + resin',
+    formula:'Shellac / rosin mix', color:'#8b1a1a', roughness:0.18, ior:1.52, clearcoat:0.55, clearcoatRoughness:0.2,
+    transmission:0.15, thickness:0.8, atten:'#6a1010', attenDist:0.3, sss:0.35, density:1.05, melt:70, youngs:0.8,
+    notes:'Letter-seal wax. Harder, glossier, less SSS than candle paraffin.'}
+];
+
+const FABRICS = [
+  {id:'fb-cotton', name:'Cotton_Poplin', family:'Cotton', grade:'Poplin weave',
+    formula:'Cellulose fibre', color:'#e8e2d6', roughness:0.78, ior:1.46, clearcoat:0,
+    sheen:0.45, sheenRoughness:0.85, sheenColor:'#f2ece2', fuzz:0.85,
+    transmission:0, sss:0.08, density:0.4, notes:'Matte cellulose. High fuzz (sheenRoughness), low sheen intensity.'},
+  {id:'fb-linen', name:'Linen_Plain', family:'Linen', grade:'Plain weave flax',
+    formula:'Flax cellulose', color:'#d9cbb0', roughness:0.82, ior:1.47, clearcoat:0,
+    sheen:0.35, sheenRoughness:0.9, sheenColor:'#e8dcc4', fuzz:0.9,
+    sss:0.06, density:0.35, notes:'Slubby flax. Very high fuzz, warm albedo.'},
+  {id:'fb-wool', name:'Wool_Melton', family:'Wool', grade:'Melton / felted',
+    formula:'Keratin', color:'#6b5a4a', roughness:0.88, ior:1.55, clearcoat:0,
+    sheen:0.55, sheenRoughness:0.92, sheenColor:'#8a7868', fuzz:0.95,
+    sss:0.12, density:0.3, notes:'Keratin scales → strong fuzzy sheen, almost no spec.'},
+  {id:'fb-silk', name:'Silk_Habotai', family:'Silk', grade:'Habotai',
+    formula:'Fibroin', color:'#f0e6d8', roughness:0.35, ior:1.56, clearcoat:0.05, clearcoatRoughness:0.4,
+    sheen:1.0, sheenRoughness:0.28, sheenColor:'#fff4e8', fuzz:0.25,
+    sss:0.1, density:0.33, notes:'Triangular fibroin cross-section. Tight bright sheen (low fuzz), characteristic silk highlight.'},
+  {id:'fb-satin', name:'Satin_Acetate', family:'Satin', grade:'Acetate satin',
+    formula:'Cellulose acetate', color:'#1a1a28', roughness:0.28, ior:1.48, clearcoat:0.15, clearcoatRoughness:0.25,
+    sheen:1.0, sheenRoughness:0.22, sheenColor:'#d8d0e8', fuzz:0.18,
+    sss:0.05, density:0.35, notes:'Long float weave. Directional sheen, low fuzz, dark body.'},
+  {id:'fb-velvet', name:'Velvet_Cotton', family:'Velvet', grade:'Cotton velvet',
+    formula:'Pile cellulose', color:'#4a1020', roughness:0.7, ior:1.46, clearcoat:0,
+    sheen:0.95, sheenRoughness:0.55, sheenColor:'#c45a70', fuzz:0.7,
+    sss:0.2, density:0.28, notes:'Pile: grazing sheen + high fuzz. Dark red body, lighter sheen colour.'},
+  {id:'fb-denim', name:'Denim_Indigo', family:'Cotton', grade:'3/1 twill denim',
+    formula:'Cotton + indigo', color:'#2a3a68', roughness:0.72, ior:1.46, clearcoat:0,
+    sheen:0.3, sheenRoughness:0.8, sheenColor:'#6a7aaa', fuzz:0.75,
+    sss:0.05, density:0.45, notes:'Indigo twill. Matte, modest sheen on high yarns.'},
+  {id:'fb-leather', name:'Leather_FullGrain', family:'Leather', grade:'Full-grain bovine',
+    formula:'Crosslinked collagen', color:'#5c3317', roughness:0.48, ior:1.5, clearcoat:0.25, clearcoatRoughness:0.4,
+    sheen:0.4, sheenRoughness:0.5, sheenColor:'#8a5a32', fuzz:0.35,
+    sss:0.12, density:0.86, notes:'Grain leather. Mixed clearcoat (finish) + moderate sheen. Not a woven fuzz.'},
+  {id:'fb-suede', name:'Suede_Nubuck', family:'Leather', grade:'Nubuck',
+    formula:'Buffed collagen', color:'#8b6914', roughness:0.82, ior:1.5, clearcoat:0,
+    sheen:0.65, sheenRoughness:0.88, sheenColor:'#c4a050', fuzz:0.9,
+    sss:0.18, density:0.8, notes:'Napped leather. High fuzz, velvet-like sheen, no clearcoat.'},
+  {id:'fb-poly', name:'Polyester_Microfibre', family:'Polyester', grade:'Microfibre',
+    formula:'PET fibre', color:'#3a3a40', roughness:0.5, ior:1.58, clearcoat:0.05, clearcoatRoughness:0.4,
+    sheen:0.7, sheenRoughness:0.4, sheenColor:'#c8c8d0', fuzz:0.4,
+    sss:0.04, density:0.38, notes:'Synthetic. Higher IOR than cotton, snappier sheen, less fuzz than wool.'}
+];
+
+function extraDielectric(v, kind, subcat) {
+  const a = dielectricAsset(v, kind, subcat);
+  a.sheen = v.sheen || 0;
+  a.sheenRoughness = v.sheenRoughness != null ? v.sheenRoughness : (v.fuzz != null ? v.fuzz : 0.5);
+  a.sheenColor = v.sheenColor || v.color;
+  a.fuzz = v.fuzz || a.sheenRoughness;
+  a.iridescence = v.iridescence || 0;
+  a.iridescenceIOR = v.iridescenceIOR || 1.3;
+  a.iridescenceThickness = v.iridescenceThickness || 400;
+  a.props.sheen = a.sheen; a.props.sheenRoughness = a.sheenRoughness; a.props.fuzz = a.fuzz;
+  a.props.iridescence = a.iridescence;
+  return a;
+}
+
+const CONCRETES = [
+  {id:'cn-raw', name:'Concrete_Raw_Grey', family:'Concrete', grade:'Cast-in-place',
+    formula:'C-S-H + aggregate', color:'#9a968e', roughness:0.78, ior:1.55, clearcoat:0, clearcoatRoughness:0.9,
+    transmission:0, sss:0.04, density:2.4, youngs:30,
+    notes:'Ordinary grey concrete. High roughness, weak dielectric spec, no coat.'},
+  {id:'cn-pol', name:'Concrete_Polished', family:'Concrete', grade:'Honed / polished slab',
+    formula:'Dense C-S-H', color:'#b0aca4', roughness:0.28, ior:1.55, clearcoat:0.25, clearcoatRoughness:0.3,
+    sss:0.03, density:2.45, youngs:35,
+    notes:'Power-trowel / polish. Lower roughness, slight densifier sheen.'},
+  {id:'cn-wet', name:'Concrete_Wet', family:'Concrete', grade:'Rain-wet',
+    formula:'Concrete + water film', color:'#6e6a64', roughness:0.22, ior:1.55, clearcoat:0.45, clearcoatRoughness:0.25,
+    sss:0.05, density:2.4, youngs:30,
+    notes:'Darker wet albedo, thin water-like clearcoat.'},
+  {id:'cn-exp', name:'Concrete_Exposed_Agg', family:'Concrete', grade:'Exposed aggregate',
+    formula:'Cement + coarse agg', color:'#8a8478', roughness:0.72, ior:1.55, clearcoat:0, sss:0.03, density:2.35, youngs:28,
+    notes:'Washed aggregate face. Very matte, warmer stones in mix (albedo only).'},
+  {id:'cn-fair', name:'Concrete_Fairface', family:'Concrete', grade:'Architectural fair-face',
+    formula:'Fine mix, formwork', color:'#a8a49c', roughness:0.55, ior:1.55, clearcoat:0.05, clearcoatRoughness:0.6,
+    sss:0.04, density:2.4, youngs:32,
+    notes:'Board-formed architectural. Mid roughness, almost no gloss.'},
+  {id:'cn-block', name:'Concrete_CMU_Block', family:'Concrete', grade:'Hollow CMU',
+    formula:'Cinder / CMU', color:'#8e8a82', roughness:0.82, ior:1.54, clearcoat:0, sss:0.02, density:1.8, youngs:15,
+    notes:'Masonry block. Porous, dead matte, slightly darker.'}
+];
+
+const STONES = [
+  {id:'st-gran', name:'Stone_Granite_Grey', family:'Granite', grade:'Polished slab',
+    formula:'Qtz + feldspar + mica', color:'#7a7874', roughness:0.18, ior:1.55, clearcoat:0.55, clearcoatRoughness:0.12,
+    sss:0.02, density:2.7, youngs:70,
+    notes:'Polished granite. Dielectric, mid-grey, clearcoat = polish.'},
+  {id:'st-gran-r', name:'Stone_Granite_Honed', family:'Granite', grade:'Honed',
+    formula:'Granite, matte', color:'#6e6c68', roughness:0.45, ior:1.55, clearcoat:0.08, clearcoatRoughness:0.5,
+    density:2.7, youngs:70, notes:'Honed granite. Satin, no mirror.'},
+  {id:'st-marb', name:'Stone_Marble_Carrara', family:'Marble', grade:'Polished Carrara',
+    formula:'Calcite CaCO₃', color:'#e8e4dc', roughness:0.12, ior:1.49, clearcoat:0.7, clearcoatRoughness:0.08,
+    transmission:0.04, sss:0.12, density:2.71, youngs:50,
+    notes:'White marble. Slight SSS, high polish, IOR ~1.49.'},
+  {id:'st-marb-c', name:'Stone_Marble_Crema', family:'Marble', grade:'Cream honed',
+    formula:'Calcite', color:'#e0d4bc', roughness:0.32, ior:1.49, clearcoat:0.25, clearcoatRoughness:0.28,
+    sss:0.1, density:2.7, youngs:50, notes:'Warm cream marble, honed.'},
+  {id:'st-lim', name:'Stone_Limestone', family:'Limestone', grade:'Cut / sawn',
+    formula:'CaCO₃ sedimentary', color:'#d4cbb8', roughness:0.62, ior:1.48, clearcoat:0, sss:0.08, density:2.5, youngs:20,
+    notes:'Soft, matte, warm beige. Weak spec.'},
+  {id:'st-sand', name:'Stone_Sandstone', family:'Sandstone', grade:'Quarry face',
+    formula:'Quartz arenite', color:'#c4a070', roughness:0.7, ior:1.54, clearcoat:0, sss:0.05, density:2.3, youngs:15,
+    notes:'Warm tan, grainy, very matte.'},
+  {id:'st-slate', name:'Stone_Slate_Dark', family:'Slate', grade:'Cleft',
+    formula:'Metamorphic mudstone', color:'#3a3c40', roughness:0.58, ior:1.55, clearcoat:0.08, clearcoatRoughness:0.45,
+    density:2.7, youngs:40, notes:'Dark cleft slate. Anisotropic in real life; here matte dielectric.'},
+  {id:'st-bas', name:'Stone_Basalt_Black', family:'Basalt', grade:'Fine aphanitic',
+    formula:'Mafic volcanic', color:'#2a2a2c', roughness:0.4, ior:1.58, clearcoat:0.12, clearcoatRoughness:0.35,
+    density:2.9, youngs:60, notes:'Dense black volcanic. Slightly snappier IOR.'},
+  {id:'st-tra', name:'Stone_Travertine', family:'Travertine', grade:'Filled / honed',
+    formula:'Banded calcite', color:'#d8c8a8', roughness:0.48, ior:1.49, clearcoat:0.15, clearcoatRoughness:0.4,
+    sss:0.08, density:2.5, youngs:20, notes:'Pitted calcite, honed fill. Warm.'},
+  {id:'st-qtz', name:'Stone_Quartzite', family:'Quartzite', grade:'Polished',
+    formula:'Metamorphic quartz', color:'#c8c4bc', roughness:0.14, ior:1.55, clearcoat:0.65, clearcoatRoughness:0.1,
+    density:2.65, youngs:80, notes:'Hard, glassy polish, cool grey-white.'}
+];
+
+const LEATHERS = [
+  {id:'lt-fg', name:'Leather_FullGrain_Tan', family:'Leather', grade:'Full-grain bovine',
+    formula:'Crosslinked collagen', color:'#8b5a2b', roughness:0.45, ior:1.5, clearcoat:0.22, clearcoatRoughness:0.38,
+    sheen:0.35, sheenRoughness:0.55, sheenColor:'#c49a6a', fuzz:0.3, sss:0.14, density:0.86, youngs:0.05,
+    notes:'Full-grain. Pore sheen + light finish coat. Soft SSS.'},
+  {id:'lt-fg-blk', name:'Leather_FullGrain_Black', family:'Leather', grade:'Aniline black',
+    formula:'Collagen + dye', color:'#1c1614', roughness:0.42, ior:1.5, clearcoat:0.28, clearcoatRoughness:0.35,
+    sheen:0.4, sheenRoughness:0.5, sheenColor:'#4a3a32', fuzz:0.25, sss:0.08, density:0.86,
+    notes:'Black aniline. Still dielectric; sheen in grazing.'},
+  {id:'lt-fg-brn', name:'Leather_FullGrain_DarkBrown', family:'Leather', grade:'Drum-dyed',
+    formula:'Collagen', color:'#4a2c18', roughness:0.46, ior:1.5, clearcoat:0.2, clearcoatRoughness:0.4,
+    sheen:0.32, sheenRoughness:0.55, sheenColor:'#7a4a28', sss:0.12, density:0.86,
+    notes:'Dark brown upholstery.'},
+  {id:'lt-cor', name:'Leather_Corrected_Grain', family:'Leather', grade:'Pigmented corrected',
+    formula:'Collagen + finish', color:'#6b3a22', roughness:0.38, ior:1.5, clearcoat:0.4, clearcoatRoughness:0.32,
+    sheen:0.2, sheenRoughness:0.45, sss:0.06, density:0.9,
+    notes:'Painted finish. More clearcoat, less pore sheen.'},
+  {id:'lt-pat', name:'Leather_Patent', family:'Leather', grade:'Patent PU coat',
+    formula:'Leather + PU gloss', color:'#1a0e0c', roughness:0.08, ior:1.5, clearcoat:1.0, clearcoatRoughness:0.06,
+    sheen:0.1, sss:0.02, density:0.95,
+    notes:'Mirror PU film. High clearcoat, very low roughness.'},
+  {id:'lt-sue', name:'Leather_Suede', family:'Suede', grade:'Split / napped',
+    formula:'Buffed collagen', color:'#8b6914', roughness:0.84, ior:1.5, clearcoat:0,
+    sheen:0.7, sheenRoughness:0.88, sheenColor:'#c4a050', fuzz:0.92, sss:0.18, density:0.8,
+    notes:'Napped. High fuzz, almost no spec.'},
+  {id:'lt-nub', name:'Leather_Nubuck', family:'Nubuck', grade:'Grain-napped',
+    formula:'Light buff grain', color:'#c4a070', roughness:0.78, ior:1.5, clearcoat:0,
+    sheen:0.55, sheenRoughness:0.82, fuzz:0.85, sss:0.16, density:0.84,
+    notes:'Finer nap than suede. Pale tan.'},
+  {id:'lt-worn', name:'Leather_Worn_Oil', family:'Leather', grade:'Pull-up / oil',
+    formula:'Oiled collagen', color:'#5c3a22', roughness:0.52, ior:1.5, clearcoat:0.12, clearcoatRoughness:0.5,
+    sheen:0.45, sheenRoughness:0.6, sheenColor:'#a07040', sss:0.16, density:0.88,
+    notes:'Pull-up oil. Softer, slightly greasy sheen.'}
+];
+
+const MASONRY = [
+  {id:'ms-brk', name:'Brick_Red_Clay', family:'Brick', grade:'Fired clay',
+    formula:'Fired clay + sand', color:'#a84832', roughness:0.72, ior:1.52, clearcoat:0, sss:0.06, density:1.9, youngs:12,
+    notes:'Common red brick. Matte, iron-red albedo.'},
+  {id:'ms-brk-w', name:'Brick_White_Lime', family:'Brick', grade:'Calcium silicate',
+    formula:'Lime-sand brick', color:'#e4e0d6', roughness:0.7, ior:1.5, clearcoat:0, sss:0.05, density:1.8, youngs:10,
+    notes:'Pale sand-lime brick.'},
+  {id:'ms-mort', name:'Mortar_Cement', family:'Mortar', grade:'Cement-lime',
+    formula:'Cement + sand', color:'#c8c4b8', roughness:0.76, ior:1.52, clearcoat:0, density:1.8, youngs:5,
+    notes:'Pointing mortar. Chalky, matte.'},
+  {id:'ms-plas', name:'Plaster_Gypsum', family:'Plaster', grade:'Interior gypsum',
+    formula:'CaSO₄·2H₂O', color:'#f0ece4', roughness:0.68, ior:1.52, clearcoat:0, sss:0.08, density:1.2, youngs:3,
+    notes:'Drywall / plaster. Very matte, high albedo.'},
+  {id:'ms-stuc', name:'Stucco_Exterior', family:'Stucco', grade:'Cement stucco',
+    formula:'Cement render', color:'#d8d0c4', roughness:0.74, ior:1.52, clearcoat:0, density:1.9, youngs:8,
+    notes:'Exterior render. Coarse, matte.'},
+  {id:'ms-asp', name:'Asphalt_Road', family:'Asphalt', grade:'HMA pavement',
+    formula:'Bitumen + agg', color:'#2a2a2c', roughness:0.7, ior:1.55, clearcoat:0.05, density:2.3, youngs:2,
+    notes:'Blacktop. Dark, rough, almost no gloss dry.'}
+];
+
+const ORGANICS2 = [
+  {id:'ck-nat', name:'Cork_Natural', family:'Cork', grade:'Agglomerate',
+    formula:'Suberin cells', color:'#c4a060', roughness:0.78, ior:1.47, clearcoat:0, sss:0.12, density:0.24, youngs:0.02,
+    notes:'Very light, matte, warm. Cellular scatter.'},
+  {id:'ic-clr', name:'Ice_Clear', family:'Ice', grade:'Ih',
+    formula:'H₂O ice', color:'#e8f4fa', roughness:0.06, ior:1.31, clearcoat:0.4, clearcoatRoughness:0.08,
+    transmission:0.85, thickness:1.4, atten:'#c8e0f0', attenDist:2.5, sss:0.2, density:0.917, melt:0, youngs:9,
+    notes:'Clear ice. Low IOR 1.31, weak Fresnel, volume blue-white.'},
+  {id:'sn-fresh', name:'Snow_Fresh', family:'Snow', grade:'Fresh powder',
+    formula:'Ice crystals + air', color:'#f4f6f8', roughness:0.92, ior:1.31, clearcoat:0, sss:0.55, density:0.1, youngs:0.001,
+    notes:'High albedo, extreme roughness, strong SSS, almost no spec.'}
+];
+
+const GLASS_ASSETS = GLASSES.map(v => dielectricAsset(v, 'glass', 'Glass'));
+const RUBBER_ASSETS = RUBBERS.map(v => dielectricAsset(v, 'rubber', 'Rubber'));
+const GEM_ASSETS = GEMS.map(v => extraDielectric(v, 'gem', 'Gemstones'));
+const BONE_ASSETS = ORGANICS.map(v => extraDielectric(v, 'bone', 'Bone'));
+const PAPER_ASSETS = PAPERS.map(v => extraDielectric(v, 'paper', 'Paper / Cardboard'));
+const FABRIC_ASSETS = FABRICS.map(v => extraDielectric(v, 'fabric', 'Fabrics'));
+const CERAMIC_ASSETS = CERAMICS.map(v => extraDielectric(v, 'ceramic', 'Ceramics'));
+const WAX_ASSETS = WAXES.map(v => extraDielectric(v, 'wax', 'Wax'));
+const CONCRETE_ASSETS = CONCRETES.map(v => extraDielectric(v, 'concrete', 'Concrete'));
+const STONE_ASSETS = STONES.map(v => extraDielectric(v, 'stone', 'Stone'));
+const LEATHER_ASSETS = LEATHERS.map(v => extraDielectric(v, 'leather', 'Leather'));
+const MASONRY_ASSETS = MASONRY.map(v => extraDielectric(v, 'masonry', 'Masonry'));
+const MISC_ASSETS = ORGANICS2.map(v => extraDielectric(v, v.family.toLowerCase(), v.family === 'Ice' || v.family === 'Snow' ? 'Ice / Snow' : 'Cork'));
+
+const PAINTS = [
+  {id:'pt-oil-g', name:'Paint_Oil_Gloss_White', family:'Oil', grade:'Alkyd gloss enamel',
+    formula:'Drying oil + pigment', color:'#f4f2ec', roughness:0.08, ior:1.5, clearcoat:0.85, clearcoatRoughness:0.08,
+    density:1.4, notes:'Traditional oil/alkyd gloss. Hard film, high clearcoat.'},
+  {id:'pt-oil-s', name:'Paint_Oil_Satin', family:'Oil', grade:'Alkyd satin',
+    formula:'Alkyd + matting', color:'#eeeae2', roughness:0.28, ior:1.5, clearcoat:0.35, clearcoatRoughness:0.3,
+    density:1.35, notes:'Satin oil. Mid sheen, still a film.'},
+  {id:'pt-oil-m', name:'Paint_Oil_Matte', family:'Oil', grade:'Flat oil',
+    formula:'High PVC alkyd', color:'#e8e4dc', roughness:0.62, ior:1.5, clearcoat:0.05, clearcoatRoughness:0.7,
+    density:1.3, notes:'Flat oil. Pigment-volume kills gloss.'},
+  {id:'pt-acr-g', name:'Paint_Acrylic_Gloss', family:'Acrylic', grade:'Waterborne acrylic gloss',
+    formula:'Acrylic emulsion', color:'#f0f2f4', roughness:0.12, ior:1.49, clearcoat:0.7, clearcoatRoughness:0.12,
+    density:1.25, notes:'Modern acrylic gloss. Slightly softer than alkyd.'},
+  {id:'pt-acr-s', name:'Paint_Acrylic_Satin', family:'Acrylic', grade:'Emulsion satin',
+    formula:'Acrylic latex', color:'#ece8e0', roughness:0.32, ior:1.49, clearcoat:0.25, clearcoatRoughness:0.35,
+    density:1.2, notes:'Wall satin acrylic.'},
+  {id:'pt-acr-m', name:'Paint_Acrylic_Matte_Wall', family:'Acrylic', grade:'Matt emulsion',
+    formula:'High-PVC latex', color:'#f2eee6', roughness:0.78, ior:1.49, clearcoat:0, density:1.15,
+    notes:'Interior wall paint. Dead matte, high albedo.'},
+  {id:'pt-cover', name:'Paint_Cover_Emulsion', family:'Emulsion', grade:'High-hide vinyl',
+    formula:'PVA / vinyl + TiO2', color:'#f6f4ee', roughness:0.72, ior:1.48, clearcoat:0, density:1.18,
+    notes:'Cover / matte emulsion. Cheap, chalky, excellent hide.'},
+  {id:'pt-wood-g', name:'Paint_Wood_Enamel_White', family:'Wood paint', grade:'Trim enamel',
+    formula:'Alkyd on timber', color:'#f7f5f0', roughness:0.1, ior:1.5, clearcoat:0.8, clearcoatRoughness:0.1,
+    density:1.3, notes:'Door/trim wood enamel. Smooth film, no grain maps.'},
+  {id:'pt-wood-st', name:'Paint_Wood_Stain_Walnut', family:'Wood stain', grade:'Penetrating stain',
+    formula:'Dye + oil in timber', color:'#5c3a22', roughness:0.38, ior:1.47, clearcoat:0.2, clearcoatRoughness:0.35,
+    density:0.7, notes:'Stain is colour in the wood, not a thick film. Modest sheen.'},
+  {id:'pt-wood-v', name:'Paint_Wood_Varnish_Gloss', family:'Varnish', grade:'Polyurethane varnish',
+    formula:'PU clear on wood', color:'#c4a070', roughness:0.12, ior:1.5, clearcoat:0.9, clearcoatRoughness:0.08,
+    density:1.05, notes:'Clear varnish over mid wood albedo. High coat, no grain texture.'},
+  {id:'pt-spr-g', name:'Paint_Spray_Gloss_Red', family:'Spray', grade:'Aerosol enamel',
+    formula:'Solvent acrylic spray', color:'#c42828', roughness:0.14, ior:1.5, clearcoat:0.75, clearcoatRoughness:0.12,
+    density:1.2, notes:'Rattle-can gloss. Slight orange-peel possible; here smooth-ish film.'},
+  {id:'pt-spr-m', name:'Paint_Spray_Matte_Black', family:'Spray', grade:'Aerosol flat',
+    formula:'Flat spray', color:'#1a1a1c', roughness:0.7, ior:1.5, clearcoat:0, density:1.15,
+    notes:'Matte spray. Very low spec.'},
+  {id:'pt-spr-met', name:'Paint_Spray_Metallic_Silver', family:'Spray', grade:'Metallic flake',
+    formula:'Al flake in binder', color:'#c0c4c8', roughness:0.28, ior:1.5, clearcoat:0.45, clearcoatRoughness:0.2,
+    density:1.25, notes:'Metallic spray is still dielectric binder + flake. No metalness map.'},
+  {id:'pt-auto', name:'Paint_Automotive_BaseClear', family:'Automotive', grade:'Base + 2K clear',
+    formula:'Melamine / PU clear', color:'#1a3a88', roughness:0.06, ior:1.5, clearcoat:1.0, clearcoatRoughness:0.05,
+    density:1.3, notes:'Car paint: colour in base, optics from thick clearcoat.'},
+  {id:'pt-prim', name:'Paint_Primer_Grey', family:'Primer', grade:'Epoxy / acrylic primer',
+    formula:'Filled primer', color:'#9a9aa0', roughness:0.55, ior:1.5, clearcoat:0.05, density:1.4,
+    notes:'High-build primer. Matte, grey, sandable.'},
+  {id:'pt-pow', name:'Paint_Powdercoat_Satin', family:'Powder', grade:'Polyester powder',
+    formula:'Thermoset powder', color:'#3a3a40', roughness:0.35, ior:1.52, clearcoat:0.3, clearcoatRoughness:0.28,
+    density:1.5, notes:'Electrostatic powder. Even satin film.'}
+];
+
+const SOILS = [
+  {id:'sl-dirt', name:'Soil_Dirt_Dry', family:'Soil', grade:'Loam dry',
+    formula:'Mineral + humus', color:'#6b4a28', roughness:0.88, ior:1.5, clearcoat:0, sss:0.04, density:1.4, youngs:0.01,
+    notes:'Dry dirt. Extreme roughness, no spec.'},
+  {id:'sl-wet', name:'Soil_Dirt_Wet', family:'Soil', grade:'Loam wet',
+    formula:'Soil + water', color:'#3a2414', roughness:0.45, ior:1.5, clearcoat:0.15, clearcoatRoughness:0.5,
+    sss:0.08, density:1.7, notes:'Wet soil. Darker, slight film sheen.'},
+  {id:'sl-clay', name:'Soil_Clay_Red', family:'Clay', grade:'Laterite / clay',
+    formula:'Hydrated aluminosilicate', color:'#a85a32', roughness:0.7, ior:1.53, clearcoat:0, sss:0.06, density:1.8, youngs:0.05,
+    notes:'Red clay. Matte, iron-rich.'},
+  {id:'sl-sand', name:'Soil_Sand_Dry', family:'Sand', grade:'Quartz sand',
+    formula:'SiO2 grains', color:'#d4c49a', roughness:0.82, ior:1.54, clearcoat:0, density:1.6, youngs:0.001,
+    notes:'Dry sand. High roughness, warm albedo.'},
+  {id:'sl-mud', name:'Soil_Mud', family:'Mud', grade:'Saturated silt',
+    formula:'Silt + water', color:'#4a3a28', roughness:0.38, ior:1.5, clearcoat:0.2, clearcoatRoughness:0.45,
+    sss:0.1, density:1.8, notes:'Mud. Dark, slightly glossy wet surface.'},
+  {id:'sl-peat', name:'Soil_Peat', family:'Peat', grade:'Organic',
+    formula:'Partly decayed plant', color:'#2a1c14', roughness:0.85, ior:1.47, clearcoat:0, sss:0.08, density:0.4,
+    notes:'Dark organic soil. Very matte, light density.'}
+];
+
+const WATERS = [
+  {id:'wt-clr', name:'Water_Clear', family:'Water', grade:'Pure H2O',
+    formula:'H2O', color:'#ffffff', roughness:0.02, ior:1.333, clearcoat:0.3, clearcoatRoughness:0.04,
+    transmission:1, thickness:1.8, atten:'#a8d0e8', attenDist:8, density:0.997, melt:0, youngs:0.0001,
+    notes:'n_D 1.333. F0 ~2%. Colour is attenuation, not albedo.'},
+  {id:'wt-sea', name:'Water_Seawater', family:'Water', grade:'Ocean',
+    formula:'H2O + salts', color:'#ffffff', roughness:0.04, ior:1.34, clearcoat:0.25, clearcoatRoughness:0.06,
+    transmission:1, thickness:1.8, atten:'#1a6a88', attenDist:1.2, density:1.025,
+    notes:'Stronger blue-green attenuation than pure water.'},
+  {id:'wt-pool', name:'Water_Pool', family:'Water', grade:'Chlorinated',
+    formula:'H2O + chlorine', color:'#ffffff', roughness:0.03, ior:1.333, clearcoat:0.3,
+    transmission:1, thickness:1.6, atten:'#40c8c8', attenDist:2.5, density:1.0,
+    notes:'Turquoise pool attenuation.'},
+  {id:'wt-murk', name:'Water_Murky', family:'Water', grade:'Silted',
+    formula:'H2O + particulates', color:'#ffffff', roughness:0.08, ior:1.34, clearcoat:0.15,
+    transmission:0.55, thickness:1.2, atten:'#6a5a30', attenDist:0.25, sss:0.25, density:1.02,
+    notes:'Short attenuation, some SSS from scatter.'}
+];
+
+const FOAMS = [
+  {id:'fm-pu', name:'Foam_PU_OpenCell', family:'Foam', grade:'Flexible PU',
+    formula:'Polyurethane foam', color:'#e8dcc4', roughness:0.9, ior:1.5, clearcoat:0, sss:0.55, density:0.03, youngs:0.001,
+    notes:'Cushion foam. Extreme roughness, high SSS, almost no spec.'},
+  {id:'fm-mem', name:'Foam_Memory', family:'Foam', grade:'Viscoelastic',
+    formula:'MDI PU', color:'#d4a070', roughness:0.88, ior:1.5, clearcoat:0, sss:0.45, density:0.05, youngs:0.002,
+    notes:'Memory foam. Warm tan, matte, scatter.'},
+  {id:'fm-eps', name:'Foam_EPS_Bead', family:'Foam', grade:'Expanded polystyrene',
+    formula:'PS beads', color:'#f2f0ea', roughness:0.82, ior:1.59, clearcoat:0, sss:0.35, density:0.02, youngs:0.01,
+    notes:'White bead foam. High albedo, matte.'},
+  {id:'fm-eva', name:'Foam_EVA', family:'Foam', grade:'Closed-cell EVA',
+    formula:'Ethylene-vinyl acetate', color:'#2a4a8c', roughness:0.55, ior:1.48, clearcoat:0.08, sss:0.25, density:0.15, youngs:0.02,
+    notes:'Yoga-mat foam. Slightly denser, a bit of sheen.'},
+  {id:'fm-sea', name:'Foam_Sea_Sponge', family:'Foam', grade:'Natural sponge',
+    formula:'Spongin', color:'#e8c878', roughness:0.92, ior:1.47, clearcoat:0, sss:0.5, density:0.05,
+    notes:'Open pores. Very matte, warm yellow.'}
+];
+
+const CARBONS = [
+  {id:'cf-twill', name:'CarbonFiber_Twill_Gloss', family:'CFRP', grade:'2x2 twill + clear',
+    formula:'C fibre + epoxy', color:'#1a1a1e', roughness:0.12, ior:1.55, clearcoat:0.9, clearcoatRoughness:0.08,
+    density:1.55, youngs:70,
+    notes:'Gloss CFRP. Dark dielectric epoxy coat; weave not mapped.'},
+  {id:'cf-twill-m', name:'CarbonFiber_Twill_Matte', family:'CFRP', grade:'Matte clear',
+    formula:'C fibre + matte epoxy', color:'#1c1c20', roughness:0.42, ior:1.55, clearcoat:0.15, clearcoatRoughness:0.4,
+    density:1.55, youngs:70, notes:'Matte CFRP. Same albedo, less coat.'},
+  {id:'cf-ud', name:'CarbonFiber_UD_Prepreg', family:'CFRP', grade:'Unidirectional',
+    formula:'UD carbon + resin', color:'#141416', roughness:0.22, ior:1.55, clearcoat:0.5, clearcoatRoughness:0.18,
+    density:1.6, youngs:130, notes:'UD tape look as dark anisotropic dielectric (no fibre map).'},
+  {id:'cf-forged', name:'CarbonFiber_Forged', family:'CFRP', grade:'Chopped / forged',
+    formula:'Chopped carbon + resin', color:'#222226', roughness:0.28, ior:1.55, clearcoat:0.55, clearcoatRoughness:0.2,
+    density:1.5, youngs:40, notes:'Forged carbon. Mottled chips approximated as mid roughness + coat.'}
+];
+
+const WOODS = [
+  {id:'wd-oak', name:'Wood_Oak', family:'Oak', grade:'Quercus, unfinished',
+    formula:'Cellulose + lignin', color:'#c4a06a', roughness:0.55, ior:1.47, clearcoat:0.08, clearcoatRoughness:0.5,
+    sss:0.08, density:0.75, youngs:11, notes:'Simple oak dielectric. No grain texture.'},
+  {id:'wd-oak-p', name:'Wood_Oak_Polished', family:'Oak', grade:'Lacquered furniture',
+    formula:'Oak + lacquer', color:'#b89058', roughness:0.22, ior:1.47, clearcoat:0.65, clearcoatRoughness:0.15,
+    sss:0.06, density:0.75, notes:'Same oak albedo, furniture clearcoat.'},
+  {id:'wd-wal', name:'Wood_Walnut', family:'Walnut', grade:'Juglans',
+    formula:'Hardwood', color:'#5c3a28', roughness:0.48, ior:1.47, clearcoat:0.12, clearcoatRoughness:0.4,
+    sss:0.07, density:0.64, youngs:12, notes:'Dark walnut. Colour only, no figure map.'},
+  {id:'wd-pin', name:'Wood_Pine', family:'Pine', grade:'Softwood',
+    formula:'Softwood', color:'#e0c488', roughness:0.58, ior:1.47, clearcoat:0.05, sss:0.08, density:0.45, youngs:9,
+    notes:'Pale pine. Simple dielectric.'},
+  {id:'wd-map', name:'Wood_Maple', family:'Maple', grade:'Hard maple',
+    formula:'Acer', color:'#e8d8b8', roughness:0.42, ior:1.47, clearcoat:0.18, clearcoatRoughness:0.32,
+    sss:0.06, density:0.7, youngs:13, notes:'Cream maple. Tight grain implied by lower roughness only.'},
+  {id:'wd-ch', name:'Wood_Cherry', family:'Cherry', grade:'Prunus',
+    formula:'Hardwood', color:'#8b3a2a', roughness:0.4, ior:1.47, clearcoat:0.22, clearcoatRoughness:0.3,
+    sss:0.08, density:0.58, youngs:10, notes:'Red-brown cherry. No ribbon map.'},
+  {id:'wd-mah', name:'Wood_Mahogany', family:'Mahogany', grade:'Swietenia',
+    formula:'Tropical hardwood', color:'#6e2a1e', roughness:0.38, ior:1.47, clearcoat:0.25, clearcoatRoughness:0.28,
+    sss:0.07, density:0.55, youngs:10, notes:'Red mahogany dielectric.'},
+  {id:'wd-eb', name:'Wood_Ebony', family:'Ebony', grade:'Diospyros',
+    formula:'Dense hardwood', color:'#1a1410', roughness:0.22, ior:1.47, clearcoat:0.45, clearcoatRoughness:0.18,
+    density:1.1, youngs:17, notes:'Near-black, dense, takes a polish.'},
+  {id:'wd-teak', name:'Wood_Teak', family:'Teak', grade:'Tectona',
+    formula:'Oily hardwood', color:'#b88848', roughness:0.42, ior:1.47, clearcoat:0.15, clearcoatRoughness:0.35,
+    sss:0.05, density:0.65, youngs:12, notes:'Golden teak. Natural oil = slight sheen, not lacquer.'},
+  {id:'wd-ply', name:'Wood_Plywood_Birch', family:'Plywood', grade:'Birch ply',
+    formula:'Veneers + glue', color:'#d4c4a0', roughness:0.5, ior:1.47, clearcoat:0.1, density:0.65, youngs:10,
+    notes:'Pale ply. Flat dielectric, no layer map.'}
+];
+
+const PAINT_ASSETS = PAINTS.map(v => extraDielectric(v, 'paint', 'Paints / Coatings'));
+const SOIL_ASSETS = SOILS.map(v => extraDielectric(v, 'soil', 'Soil / Dirt'));
+const WATER_ASSETS = WATERS.map(v => extraDielectric(v, 'water', 'Water'));
+const FOAM_ASSETS = FOAMS.map(v => extraDielectric(v, 'foam', 'Foam'));
+const CARBON_ASSETS = CARBONS.map(v => extraDielectric(v, 'carbon', 'Carbon fibre'));
+const WOOD_ASSETS = WOODS.map(v => extraDielectric(v, 'wood', 'Wood'));
+
+
+
+/* ---------- Noise generator (GPU fragment shader, no maps) ---------- */
+const NOISE_GLSL = `
+float nhash(vec2 p){
+  p += uNSeed * 17.13;
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float nvnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  float a = nhash(i), b = nhash(i+vec2(1.0,0.0));
+  float c = nhash(i+vec2(0.0,1.0)), d = nhash(i+vec2(1.0,1.0));
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+}
+float nfbm(vec2 p){
+  float s = 0.0, a = 1.0, n = 0.0;
+  for(int i=0;i<8;i++){
+    float on = step(float(i), uNOct - 0.5);
+    s += a * nvnoise(p) * on;
+    n += a * on;
+    p *= uNLac;
+    a *= uNPers;
+  }
+  return s / max(n, 0.0001);
+}
+vec2 nvoronoi(vec2 p){
+  vec2 n = floor(p), f = fract(p);
+  float f1 = 8.0, f2 = 8.0;
+  for(int j=-1;j<=1;j++)
+  for(int i=-1;i<=1;i++){
+    vec2 g = vec2(float(i), float(j));
+    vec2 o = vec2(nhash(n+g), nhash(n+g+19.1));
+    vec2 r = g + o - f;
+    float d = dot(r,r);
+    if(d < f1){ f2 = f1; f1 = d; }
+    else if(d < f2) f2 = d;
+  }
+  return vec2(sqrt(f1), sqrt(f2));
+}
+float nfield(vec2 uv){
+  vec2 p = uv * uNScale;
+  float w = uNWarp;
+  if(w > 0.001){
+    vec2 q = vec2(nfbm(p), nfbm(p + 19.2));
+    p += (q - 0.5) * w;
+  }
+  float n = 0.5;
+  float t = uNType;
+  if(t < 0.5) n = nvnoise(p);
+  else if(t < 1.5) n = nfbm(p);
+  else if(t < 2.5) n = 1.0 - abs(nfbm(p)*2.0 - 1.0);
+  else if(t < 3.5) n = abs(nfbm(p)*2.0 - 1.0);
+  else if(t < 4.5) n = nvoronoi(p).x;
+  else if(t < 5.5){ vec2 v = nvoronoi(p); n = clamp(v.y - v.x, 0.0, 1.0); }
+  else if(t < 6.5) n = nfbm(p);
+  else if(t < 7.5){
+    float s = 0.0, a = 1.0;
+    vec2 pp = p;
+    for(int i=0;i<8;i++){
+      float on = step(float(i), uNOct - 0.5);
+      s += a * abs(nvnoise(pp)*2.0-1.0) * on;
+      pp *= uNLac; a *= uNPers;
+    }
+    n = s;
+  } else {
+    n = sin(p.x * 2.2 + nfbm(p) * 6.28318) * 0.5 + 0.5;
+  }
+  n = (n - 0.5) * uNContrast + 0.5;
+  return clamp(n, 0.0, 1.0);
+}
+`;
+
+const noiseState = {
+  type: 0,
+  scale: 28,
+  octaves: 3,
+  pers: 0.45,
+  lac: 2.2,
+  bump: 3.2,
+  contrast: 1.6,
+  show: 0.55,
+  rough: 0.52,
+  roughAmt: 0.35,
+  warp: 0.35,
+  irreg: 1.15,
+  dir: 0,
+  peel: 1.4,
+  speckle: 1.2,
+  seed: 0.0,
+  gloss: 0.28,
+  colA: '#2a2a2e',
+  colB: '#c8c4bc'
+};
+
+function noiseUniformsFromState(){
+  return {
+    uNType: { value: noiseState.type },
+    uNScale: { value: noiseState.scale },
+    uNOct: { value: noiseState.octaves },
+    uNPers: { value: noiseState.pers },
+    uNLac: { value: noiseState.lac },
+    uNBump: { value: noiseState.bump },
+    uNContrast: { value: noiseState.contrast },
+    uNShow: { value: noiseState.show },
+    uNRough: { value: noiseState.rough },
+    uNRoughAmt: { value: noiseState.roughAmt },
+    uNWarp: { value: noiseState.warp },
+    uNSeed: { value: noiseState.seed },
+    uNColA: { value: new THREE.Color(noiseState.colA) },
+    uNColB: { value: new THREE.Color(noiseState.colB) }
+  };
+}
+function syncNoiseUniforms(u){
+  if(!u) return;
+  u.uNType.value = noiseState.type;
+  u.uNScale.value = noiseState.scale;
+  u.uNOct.value = noiseState.octaves;
+  u.uNPers.value = noiseState.pers;
+  u.uNLac.value = noiseState.lac;
+  u.uNBump.value = noiseState.bump;
+  u.uNContrast.value = noiseState.contrast;
+  u.uNShow.value = noiseState.show;
+  u.uNRough.value = noiseState.rough;
+  u.uNRoughAmt.value = noiseState.roughAmt;
+  u.uNWarp.value = noiseState.warp;
+  u.uNSeed.value = noiseState.seed;
+  u.uNColA.value.set(noiseState.colA);
+  u.uNColB.value.set(noiseState.colB);
+}
+function njsHash(x,y){
+  const s = Math.sin((x+noiseState.seed*17.13)*127.1 + y*311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function njsV(x,y){
+  const ix=Math.floor(x), iy=Math.floor(y), fx=x-ix, fy=y-iy;
+  const ux=fx*fx*(3-2*fx), uy=fy*fy*(3-2*fy);
+  const a=njsHash(ix,iy), b=njsHash(ix+1,iy), c=njsHash(ix,iy+1), d=njsHash(ix+1,iy+1);
+  return a+(b-a)*ux + (c+(d-c)*ux - (a+(b-a)*ux))*uy;
+}
+function njsFbm(x,y){
+  let s=0, a=1, n=0, oct=noiseState.octaves, lac=noiseState.lac, pers=noiseState.pers;
+  for(let i=0;i<8;i++){
+    if(i>=oct) break;
+    s+=a*njsV(x,y); n+=a; x*=lac; y*=lac; a*=pers;
+  }
+  return s/Math.max(n,1e-6);
+}
+function njsVor(x,y){
+  const ix=Math.floor(x), iy=Math.floor(y);
+  let f1=9, f2=9;
+  for(let j=-1;j<=1;j++) for(let i=-1;i<=1;i++){
+    const hx=njsHash(ix+i,iy+j), hy=njsHash(ix+i+19.1, iy+j+7.7);
+    const dx=x-(ix+i+hx), dy=y-(iy+j+hy);
+    const d=dx*dx+dy*dy;
+    if(d<f1){ f2=f1; f1=d; } else if(d<f2) f2=d;
+  }
+  return [Math.sqrt(f1), Math.sqrt(f2)];
+}
+function njsField(u,v){
+  /* Plastic grain: orange-peel lumps + dense speckle (moulded / bead-blast). */
+  let x=u*noiseState.scale, y=v*noiseState.scale;
+  const w=noiseState.warp;
+  if(w>0.001){
+    const qx=njsFbm(x*0.45,y*0.45)-0.5, qy=njsFbm(x*0.45+19.2,y*0.45+4.1)-0.5;
+    x+=qx*w; y+=qy*w;
+  }
+  const peel = njsFbm(x*0.55, y*0.55);
+  const speckle = njsV(x*3.4, y*3.4);
+  const grit = njsV(x*8.2+3.1, y*7.6+1.7);
+  let n = 0.5
+    + (peel-0.5) * 0.55 * (noiseState.peel ?? 1)
+    + (speckle-0.5) * 0.35 * (noiseState.speckle ?? 1)
+    + (grit-0.5) * 0.18;
+  n = (n-0.5)*noiseState.contrast + 0.5;
+  return n<0?0:n>1?1:n;
+}
+function hexToRgb(h){
+  h=(h||'#888').replace('#','');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function bakeNoiseCanvases(){
+  const S=128;
+  const A=hexToRgb(noiseState.colA), B=hexToRgb(noiseState.colB);
+  const H=new Float32Array(S*S);
+  const ac=document.createElement('canvas'); ac.width=ac.height=S;
+  const rc=document.createElement('canvas'); rc.width=rc.height=S;
+  const hc=document.createElement('canvas'); hc.width=hc.height=S;
+  const actx=ac.getContext('2d'), rctx=rc.getContext('2d'), hctx=hc.getContext('2d');
+  const ai=actx.createImageData(S,S), ri=rctx.createImageData(S,S), hi=hctx.createImageData(S,S);
+  const show=noiseState.show, r0=noiseState.rough, ra=noiseState.roughAmt;
+  for(let y=0;y<S;y++){
+    for(let x=0;x<S;x++){
+      const n=njsField(x/S, y/S);
+      H[y*S+x]=n;
+      const t=n*show + 0.5*(1-show);
+      const i=(y*S+x)*4;
+      ai.data[i]=A[0]+(B[0]-A[0])*t;
+      ai.data[i+1]=A[1]+(B[1]-A[1])*t;
+      ai.data[i+2]=A[2]+(B[2]-A[2])*t;
+      ai.data[i+3]=255;
+      let r=r0+(n-0.5)*ra*2; r=r<0?0:r>1?1:r;
+      const g=r*255;
+      ri.data[i]=ri.data[i+1]=ri.data[i+2]=g; ri.data[i+3]=255;
+      const hg=n*255;
+      hi.data[i]=hi.data[i+1]=hi.data[i+2]=hg; hi.data[i+3]=255;
+    }
+  }
+  actx.putImageData(ai,0,0); rctx.putImageData(ri,0,0); hctx.putImageData(hi,0,0);
+  return {albedo:ac, rough:rc, height:hc};
+}
+function texFromC(c, lin){
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=4;
+  t.colorSpace = lin ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
+  t.needsUpdate=true;
+  return t;
+}
+const GRAIN_GLSL = `
+uniform float uGScale;
+uniform float uGBump;
+uniform float uGContrast;
+uniform float uGShow;
+uniform float uGRough;
+uniform float uGRoughAmt;
+uniform float uGWarp;
+uniform float uGPeel;
+uniform float uGSpeckle;
+uniform float uGSeed;
+uniform float uGType;
+uniform float uGIrreg;
+uniform float uGDir;
+uniform vec3 uGColA;
+uniform vec3 uGColB;
+varying vec2 vGrainUv;
+varying vec3 vGrainP;
+varying vec3 vGrainN;
+float gHash(vec2 p){
+  p += uGSeed * 17.13;
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float gNoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  float a = gHash(i), b = gHash(i+vec2(1.0,0.0));
+  float c = gHash(i+vec2(0.0,1.0)), d = gHash(i+vec2(1.0,1.0));
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+}
+float gFbm(vec2 p){
+  return 0.50*gNoise(p) + 0.25*gNoise(p*2.20) + 0.125*gNoise(p*4.84);
+}
+float gFlake2(vec2 uv, float dens){
+  vec2 cell = uv * dens;
+  float best = 0.0;
+  for(int j=-1;j<=1;j++)
+  for(int i=-1;i<=1;i++){
+    vec2 gp = floor(cell) + vec2(float(i), float(j));
+    float alive = step(0.08, gHash(gp + 1.7));
+    vec2 jit = vec2(gHash(gp + 2.1), gHash(gp + 7.4));
+    vec2 ctr = gp + 0.14 + 0.72 * jit;
+    vec2 d = cell - ctr;
+    float ang = gHash(gp + 6.2) * 6.2831853;
+    vec2 r1 = vec2(cos(ang), sin(ang));
+    vec2 r2 = vec2(-r1.y, r1.x);
+    vec2 q = vec2(dot(d, r1), dot(d, r2));
+    q.x *= 0.88 + 0.28 * gHash(gp + 4.4);
+    q += uGIrreg * 0.32 * (vec2(gNoise(q * 5.0 + gp), gNoise(q * 5.0 + gp + 9.0)) - 0.5);
+    float dist = length(q);
+    dist += uGIrreg * 0.18 * (gNoise(ctr * 4.0 + q * 7.0) - 0.5);
+    float rad = 0.22 * (0.82 + 0.32 * gHash(gp + 3.3));
+    float hgt = 0.55 + 0.45 * gHash(gp + 9.9);
+    float bump = alive * hgt * smoothstep(rad, rad * 0.16, dist);
+    best = max(best, bump);
+  }
+  return best;
+}
+float gFlakeTP(vec3 p, vec3 nrm, float dens){
+  vec3 w = abs(normalize(nrm));
+  w /= (w.x + w.y + w.z);
+  return gFlake2(p.yz, dens) * w.x + gFlake2(p.zx, dens) * w.y + gFlake2(p.xy, dens) * w.z;
+}
+vec2 gVor2(vec2 p){
+  vec2 n = floor(p), f = fract(p);
+  float f1 = 8.0, f2 = 8.0;
+  for(int j=-1;j<=1;j++)
+  for(int i=-1;i<=1;i++){
+    vec2 g = vec2(float(i), float(j));
+    vec2 o = vec2(gHash(n+g), gHash(n+g+19.1));
+    vec2 r = g + o - f;
+    float d = dot(r,r);
+    if(d < f1){ f2 = f1; f1 = d; }
+    else if(d < f2) f2 = d;
+  }
+  return vec2(sqrt(f1), sqrt(f2));
+}
+float gVorTP(vec3 p, vec3 nrm, float dens){
+  vec3 w = abs(normalize(nrm));
+  w /= (w.x + w.y + w.z);
+  vec2 a = gVor2(p.yz * dens);
+  vec2 b = gVor2(p.zx * dens);
+  vec2 c = gVor2(p.xy * dens);
+  return a.x*w.x + b.x*w.y + c.x*w.z;
+}
+float gVorEdgeTP(vec3 p, vec3 nrm, float dens){
+  vec3 w = abs(normalize(nrm));
+  w /= (w.x + w.y + w.z);
+  vec2 a = gVor2(p.yz * dens);
+  vec2 b = gVor2(p.zx * dens);
+  vec2 c = gVor2(p.xy * dens);
+  float e0 = a.y - a.x, e1 = b.y - b.x, e2 = c.y - c.x;
+  return e0*w.x + e1*w.y + e2*w.z;
+}
+float gLine2(vec2 uv, float dens, float width, float spread, float baseAng){
+  vec2 cell = uv * dens;
+  float best = 0.0;
+  for(int j=-1;j<=1;j++)
+  for(int i=-1;i<=1;i++){
+    vec2 gp = floor(cell) + vec2(float(i), float(j));
+    float alive = step(0.22, gHash(gp + 1.9));
+    float ang = baseAng + (gHash(gp + 4.2) - 0.5) * spread;
+    vec2 dir = vec2(cos(ang), sin(ang));
+    float len = 0.55 + 1.15 * gHash(gp + 7.7);
+    vec2 origin = gp + vec2(gHash(gp + 2.3), gHash(gp + 8.8));
+    vec2 pa = cell - origin;
+    float h = clamp(dot(pa, dir), 0.0, len);
+    float d = length(pa - dir * h);
+    float w = width * (0.45 + 0.7 * gHash(gp + 11.1));
+    float body = 1.0 - smoothstep(0.0, w, d);
+    best = max(best, alive * body);
+  }
+  return best;
+}
+float gLineTP(vec3 p, vec3 nrm, float dens, float width, float spread, float ang){
+  vec3 wt = abs(normalize(nrm));
+  wt /= (wt.x + wt.y + wt.z);
+  return gLine2(p.yz, dens, width, spread, ang) * wt.x
+       + gLine2(p.zx, dens, width, spread, ang) * wt.y
+       + gLine2(p.xy, dens, width, spread, ang) * wt.z;
+}
+float gScrib2(vec2 uv, float dens, float stretch, float curl, float thin){
+  vec2 q = uv * dens;
+  vec2 w1 = vec2(gFbm(q * 0.32 + 1.7), gFbm(q * 0.32 + 8.3));
+  q += (w1 * 2.0 - 1.0) * curl;
+  vec2 w2 = vec2(gFbm(q * 0.68 + 4.1), gFbm(q * 0.68 + 12.4));
+  q += (w2 * 2.0 - 1.0) * curl * 0.55;
+  float n = gNoise(vec2(q.x, q.y * stretch));
+  float ridge = abs(n - 0.5) * 2.0;
+  float line = 1.0 - smoothstep(0.0, thin, ridge);
+  float gate = smoothstep(0.22, 0.52, gFbm(q * 0.18 + 3.0));
+  return line * gate;
+}
+float gScribTP(vec3 p, vec3 nrm, float dens, float stretch, float curl, float thin){
+  vec3 wt = abs(normalize(nrm));
+  wt /= (wt.x + wt.y + wt.z);
+  return gScrib2(p.yz, dens, stretch, curl, thin) * wt.x
+       + gScrib2(p.zx, dens, stretch, curl, thin) * wt.y
+       + gScrib2(p.xy, dens, stretch, curl, thin) * wt.z;
+}
+float gField(){
+  float n = 0.5;
+  if(uGType > 4.5){
+    vec3 p = vGrainP;
+    vec3 nn = vGrainN;
+    float dens = max(uGScale, 2.0) * 3.4;
+    float stretch = mix(7.0, 28.0, clamp(uGPeel * 0.28, 0.0, 1.0));
+    float curl = mix(0.55, 3.2, clamp(uGWarp * 0.22, 0.0, 1.0));
+    float thin = mix(0.16, 0.045, clamp(uGSpeckle * 0.28, 0.0, 1.0));
+    float a = gScribTP(p, nn, dens, stretch, curl, thin);
+    float b = gScribTP(p * 1.07 + 2.3, nn, dens * 0.62, stretch * 0.7, curl * 1.15, thin * 1.2);
+    float acc = max(a, b * 0.72);
+    float brk = mix(0.0, 0.55, clamp(uGIrreg * 0.35, 0.0, 1.0));
+    acc *= mix(1.0, smoothstep(brk, brk + 0.3, gFbm(p.xy * dens * 0.1)), step(0.05, brk));
+    n = 0.62 - acc * 0.58;
+  } else if(uGType > 3.5){
+    vec3 p = vGrainP;
+    vec3 nn = vGrainN;
+    float dens = max(uGScale, 2.0) * 4.5;
+    float width = mix(0.10, 0.028, clamp(uGSpeckle * 0.25, 0.0, 1.0));
+    float spread = mix(0.15, 1.25, clamp(uGPeel * 0.28, 0.0, 1.0));
+    float ang = uGDir * 0.01745329251;
+    float a = gLineTP(p, nn, dens, width, spread, ang);
+    float b = gLineTP(p, nn, dens * 0.55, width * 1.35, spread + 0.2, ang + 0.4);
+    float acc = max(a, b * 0.7);
+    acc *= mix(1.0, step(0.35, gNoise(p.xy * dens * 0.15)), clamp(uGIrreg * 0.5, 0.0, 1.0));
+    n = 0.62 - acc * (0.45 + 0.5 * clamp(uGWarp * 0.3, 0.0, 2.5));
+  } else if(uGType > 2.5){
+    vec3 p = normalize(vGrainP);
+    float yaw = atan(p.z, p.x);
+    float pit = asin(clamp(p.y, -1.0, 1.0));
+    float ang = uGDir * 0.01745329251;
+    float t = yaw * cos(ang) + pit * sin(ang);
+    t *= uGScale * 1.85;
+    float chatter = gFbm(vec2(yaw, pit) * 5.5 + uGSeed);
+    t += chatter * uGSpeckle * 5.5;
+    float groove = 0.5 + 0.5 * sin(t);
+    groove = pow(max(groove, 0.0001), mix(0.38, 1.15, clamp(uGIrreg * 0.35, 0.0, 1.0)));
+    n = 0.56 - (groove - 0.28) * 0.38 * (0.35 + uGPeel);
+  } else if(uGType > 1.5){
+    vec3 p = vGrainP;
+    vec3 nn = vGrainN;
+    float dens = uGScale * 2.8;
+    float f1 = gVorTP(p, nn, dens);
+    float edge = gVorEdgeTP(p, nn, dens);
+    float craterW = mix(0.12, 0.85, clamp(uGPeel * 0.28, 0.0, 1.0));
+    float bowl = 1.0 - smoothstep(0.0, craterW, f1);
+    float rim = smoothstep(0.02, 0.16, edge) * (1.0 - smoothstep(0.18, 0.42, edge));
+    float depth = 0.15 + 0.55 * clamp(uGWarp * 0.2, 0.0, 1.5);
+    n = 0.58 - bowl * depth * (0.7 + 0.3 * uGSpeckle) + rim * 0.22 * uGSpeckle;
+    n += (gNoise(p.xy * dens * 4.0) - 0.5) * 0.04 * uGIrreg;
+  } else if(uGType > 0.5){
+    vec3 p = vGrainP;
+    vec3 nn = vGrainN;
+    float a = gFlakeTP(p, nn, uGScale * 3.4);
+    float b = gFlakeTP(p, nn, uGScale * 6.2);
+    float c = gFlakeTP(p, nn, uGScale * 10.5);
+    float dots = max(a, max(b, c));
+    n = 0.50 + dots * 0.44 * (0.5 + 0.3 * uGPeel + 0.2 * uGSpeckle);
+  } else {
+    vec2 p = vGrainUv * uGScale;
+    vec2 q = vec2(gFbm(p*0.45), gFbm(p*0.45 + 19.2));
+    p += (q - 0.5) * uGWarp;
+    float peel = gFbm(p * 0.55);
+    float speckle = gNoise(p * 3.40);
+    float grit = gNoise(p * 8.20 + vec2(3.1, 1.7));
+    n = 0.5
+      + (peel - 0.5) * 0.55 * uGPeel
+      + (speckle - 0.5) * 0.35 * uGSpeckle
+      + (grit - 0.5) * 0.18;
+  }
+  n = (n - 0.5) * uGContrast + 0.5;
+  return clamp(n, 0.0, 1.0);
+}
+`;
+
+function grainUniforms(){
+  return {
+    uGScale: { value: noiseState.scale },
+    uGBump: { value: noiseState.bump },
+    uGContrast: { value: noiseState.contrast },
+    uGShow: { value: noiseState.show },
+    uGRough: { value: noiseState.rough },
+    uGRoughAmt: { value: noiseState.roughAmt },
+    uGWarp: { value: noiseState.warp },
+    uGPeel: { value: noiseState.peel },
+    uGSpeckle: { value: noiseState.speckle },
+    uGSeed: { value: noiseState.seed },
+    uGType: { value: noiseState.type },
+    uGIrreg: { value: noiseState.irreg != null ? noiseState.irreg : 1.1 },
+    uGColA: { value: new THREE.Color(noiseState.colA) },
+    uGColB: { value: new THREE.Color(noiseState.colB) }
+  };
+}
+function syncGrainUniforms(u){
+  if(!u) return;
+  u.uGScale.value = noiseState.scale;
+  u.uGBump.value = noiseState.bump;
+  u.uGContrast.value = noiseState.contrast;
+  u.uGShow.value = noiseState.show;
+  u.uGRough.value = noiseState.rough;
+  u.uGRoughAmt.value = noiseState.roughAmt;
+  u.uGWarp.value = noiseState.warp;
+  u.uGPeel.value = noiseState.peel;
+  u.uGSpeckle.value = noiseState.speckle;
+  u.uGSeed.value = noiseState.seed;
+  u.uGType.value = noiseState.type;
+  u.uGIrreg.value = noiseState.irreg != null ? noiseState.irreg : 1.1;
+  u.uGDir.value = noiseState.dir != null ? noiseState.dir : 0;
+  u.uGColA.value.set(noiseState.colA);
+  u.uGColB.value.set(noiseState.colB);
+}
+function createNoiseMaterial(){
+  const px = document.createElement('canvas');
+  px.width = px.height = 1;
+  const ctx = px.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,1,1);
+  const dummy = new THREE.CanvasTexture(px);
+  dummy.colorSpace = THREE.SRGBColorSpace;
+  dummy.needsUpdate = true;
+  const u = grainUniforms();
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0,
+    roughness: 0.5,
+    map: dummy,
+    clearcoat: noiseState.gloss,
+    clearcoatRoughness: 0.35,
+    envMapIntensity: 1.35
+  });
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      '#include <common>\nvarying vec2 vGrainUv;\nvarying vec3 vGrainP;\nvarying vec3 vGrainN;'
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <uv_vertex>',
+      '#include <uv_vertex>\nvGrainUv = uv;\nvGrainP = position;\nvGrainN = normal;'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      '#include <common>\n' + GRAIN_GLSL
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      '#include <map_fragment>\nfloat gN = gField();\nvec3 gAlb = mix(uGColA, uGColB, gN);\ndiffuseColor.rgb = mix(diffuseColor.rgb, gAlb, clamp(uGShow, 0.0, 1.0));\n'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      '#include <roughnessmap_fragment>\nroughnessFactor = clamp(uGRough + (gField() - 0.5) * uGRoughAmt * 2.0, 0.0, 1.0);\n'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      '#include <normal_fragment_maps>\n{\n  float gH = gField();\n  normal = normalize(normal - vec3(dFdx(gH), dFdy(gH), 0.0) * uGBump * 0.22);\n}\n'
+    );
+  };
+  mat.customProgramCacheKey = () => 'harbor-grain-infinite-v11';
+  mat.userData.grainU = u;
+  mat.userData.noiseU = u;
+  return mat;
+}
+
+const NOISE_GEN = [
+  {id:'ng-grain', name:'Grain_Plastic_Peel', type:0, color:'#8a8680',
+    notes:'Orange-peel / wavy mould grain (fbm). Infinite res.'},
+  {id:'ng-dots', name:'Grain_Dotted', type:1, color:'#9a9690',
+    notes:'Small dotted bumps of mixed sizes, packed all over. No waves. Infinite res.'},
+  {id:'ng-cell', name:'Grain_Cells', type:2, color:'#c8c4bc',
+    notes:'Moon-like cell / voronoi craters carved in. Rims + bowls. Infinite res.'},
+  {id:'ng-mach', name:'Grain_Machined', type:3, color:'#a8a49c',
+    notes:'Turned / milled grooves. Anisotropic tool marks + chatter. Infinite res.'},
+  {id:'ng-scra', name:'Grain_Scratches', type:4, color:'#b0aaa4',
+    notes:'Straight directional cuts. Sparse hashed line segments. Infinite res.'},
+  {id:'ng-scrib', name:'Grain_Scribbles', type:5, color:'#c4b8ae',
+    notes:'Curved organic scratches: domain-warped ridges, child-scribble / unpredictable. Infinite res.'}
+];
+function noiseAsset(g){
+  return {
+    id:g.id, name:g.name, ext:'gen', size:4096,
+    tags:['generator','grain','plastic'],
+    cat:'generator', subcat:'Grain', source:'library',
+    color:g.color, metalness:0, roughness:0.5, clearcoat:0.25,
+    noiseGen:true, noiseType:g.type,
+    props:{ kind:'noisegen', symbol:'GRN', variant:'Plastic grain', parentName:'Grain', notes:g.notes, color:g.color }
+  };
+}
+const GRAIN_ASSETS = NOISE_GEN.map(noiseAsset);
+
+const ASSETS = [
+  { id:'a1', name:'Turbine_Housing_A', ext:'step', size:48.2*1048576, tags:['mech'], cat:'cad', source:'library' },
+  { id:'a3', name:'Hangar_Interior', ext:'fbx', size:214.9*1048576, tags:['env'], cat:'scene', source:'library' },
+  { id:'a4', name:'Character_Base_Mesh', ext:'obj', size:18.6*1048576, tags:['char'], cat:'mesh', source:'library' },
+  ...METAL_ASSETS,
+  ...PLASTIC_ASSETS,
+  ...GLASS_ASSETS,
+  ...RUBBER_ASSETS,
+  ...GEM_ASSETS,
+  ...BONE_ASSETS,
+  ...PAPER_ASSETS,
+  ...FABRIC_ASSETS,
+  ...CERAMIC_ASSETS,
+  ...WAX_ASSETS,
+  ...CONCRETE_ASSETS,
+  ...STONE_ASSETS,
+  ...LEATHER_ASSETS,
+  ...MASONRY_ASSETS,
+  ...MISC_ASSETS,
+  ...PAINT_ASSETS,
+  ...SOIL_ASSETS,
+  ...WATER_ASSETS,
+  ...FOAM_ASSETS,
+  ...CARBON_ASSETS,
+  ...WOOD_ASSETS,
+  ...GRAIN_ASSETS,
+  { id:'f1', name:'Neue_Haas_Grotesk', ext:'otf', size:1.9*1048576, tags:['ui'], cat:'font', source:'library', fontFamily:'sans-serif' },
+  { id:'s1', name:'Company_Logo', ext:'svg', size:0.05*1048576, tags:['vector'], cat:'svg', source:'library', content:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/></svg>' }
+];
+
+const CAT_INFO = {
+  mesh:{name:'Meshes',icon:'box'}, cad:{name:'CAD',icon:'box-select'}, scene:{name:'Scenes',icon:'layout'},
+  material:{name:'Materials',icon:'palette'}, generator:{name:'Generators',icon:'sparkles'}, font:{name:'Fonts',icon:'type'}, svg:{name:'SVG / Vectors',icon:'pen-tool'}
+};
+
+let state = { root:'library', cat:null, subcat:null, selectedId:null, search:'' };
+const els = {
+  sidebar: document.getElementById('sidebar-content'),
+  grid: document.getElementById('asset-grid'),
+  breadcrumb: document.getElementById('breadcrumb'),
+  inspector: document.getElementById('inspector-content'),
+  preview: document.getElementById('preview-container'),
+  search: document.getElementById('search-input')
+};
+
+let renderer, scene, camera, controls, currentMesh, pmrem, keyLight, fillLight, rimLight, envCache = {}, checkerPlane, envPivot;
+const HDRI_BASE = 'https://unpkg.com/three@0.160.0/examples/textures/equirectangular/';
+const HDRIS = [
+  { id:'studio', name:'Studio (neutral)' },
+  { id:'warm', name:'Warm studio' },
+  { id:'cool', name:'Cool window' },
+  { id:'highcon', name:'High contrast' },
+  { id:'esplanade', name:'Royal Esplanade HDR', url: HDRI_BASE + 'royal_esplanade_1k.hdr' },
+  { id:'venice', name:'Venice Sunset HDR', url: HDRI_BASE + 'venice_sunset_1k.hdr' },
+  { id:'overpass', name:'Pedestrian Overpass HDR', url: HDRI_BASE + 'pedestrian_overpass_1k.hdr' }
+];
+const lightState = { hdri:'studio', exposure:1.1, rot:0, showBg:true, key:true, autoRotate:true, objRot:0 };
+
+function makeGradientEnv(c0, c1, extras) {
+  const scn = new THREE.Scene();
+  const geo = new THREE.SphereGeometry(12, 32, 32);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms: {
+      col0: { value: new THREE.Color(c0) },
+      col1: { value: new THREE.Color(c1) }
+    },
+    vertexShader: 'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: 'varying vec3 vP; uniform vec3 col0; uniform vec3 col1; void main(){ float h=normalize(vP).y*0.5+0.5; gl_FragColor=vec4(mix(col1,col0,h),1.0); }'
+  });
+  scn.add(new THREE.Mesh(geo, mat));
+  (extras||[]).forEach(e => scn.add(e));
+  const tex = pmrem.fromScene(scn, 0.04).texture;
+  geo.dispose(); mat.dispose();
+  return tex;
+}
+
+function makeStudioEnv(warmth) {
+  const scn = new THREE.Scene();
+  scn.add(new RoomEnvironment());
+  if (warmth) {
+    const l = new THREE.DirectionalLight(warmth, 4);
+    l.position.set(4, 6, 2);
+    scn.add(l);
+  }
+  return pmrem.fromScene(scn, 0.04).texture;
+}
+
+function syncMeshEnv() {
+  if (!currentMesh || !scene.environment) return;
+  const mats = Array.isArray(currentMesh.material) ? currentMesh.material : [currentMesh.material];
+  mats.forEach(m => {
+    m.envMap = scene.environment;
+    m.envMapIntensity = 1.35;
+    m.needsUpdate = true;
+  });
+}
+
+function applyLights() {
+  if (!renderer || !scene) return;
+  renderer.toneMappingExposure = lightState.exposure;
+  if (keyLight) keyLight.visible = !!lightState.key;
+  if (fillLight) fillLight.visible = !!lightState.key;
+  if (rimLight) rimLight.visible = !!lightState.key;
+  if (envPivot) envPivot.rotation.y = lightState.rot * Math.PI / 180;
+  if (lightState.showBg && scene.environment) scene.background = scene.environment;
+  else scene.background = new THREE.Color(0x111214);
+  if (controls) controls.autoRotate = !!lightState.autoRotate;
+  if (currentMesh) currentMesh.rotation.y = lightState.objRot * Math.PI / 180;
+  syncMeshEnv();
+}
+
+function ensureLocalEnv(id) {
+  if (envCache[id]) return envCache[id];
+  if (id === 'studio') envCache[id] = makeStudioEnv(null);
+  else if (id === 'warm') envCache[id] = makeGradientEnv('#ffd9a8', '#3a2218', []);
+  else if (id === 'cool') envCache[id] = makeGradientEnv('#d8ecff', '#1a2a44', []);
+  else if (id === 'highcon') envCache[id] = makeGradientEnv('#ffffff', '#050505', []);
+  else envCache[id] = makeStudioEnv(null);
+  return envCache[id];
+}
+
+function setHdri(id) {
+  lightState.hdri = id;
+  const spec = HDRIS.find(h => h.id === id) || HDRIS[0];
+  if (!renderer) return;
+  if (!spec.url) {
+    scene.environment = ensureLocalEnv(id);
+    applyLights();
+    return;
+  }
+  if (envCache[id]) { scene.environment = envCache[id]; applyLights(); return; }
+  scene.environment = ensureLocalEnv('studio');
+  applyLights();
+  new RGBELoader().load(spec.url, (hdr) => {
+    envCache[id] = pmrem.fromEquirectangular(hdr).texture;
+    hdr.dispose();
+    if (lightState.hdri === id) { scene.environment = envCache[id]; applyLights(); }
+  }, undefined, () => {
+    if (lightState.hdri === id) { scene.environment = ensureLocalEnv('studio'); applyLights(); }
+  });
+}
+
+function bindLightUi() {
+  const btn = document.getElementById('settings-btn');
+  const panel = document.getElementById('settings-panel');
+  if (btn && panel && !btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) panel.classList.add('hidden');
+    });
+  }
+  const sel = document.getElementById('hdri-select');
+  if (!sel || sel.dataset.bound) return;
+  sel.dataset.bound = '1';
+  sel.innerHTML = HDRIS.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+  sel.value = lightState.hdri;
+  sel.addEventListener('change', () => { initThree(); setHdri(sel.value); });
+  const exp = document.getElementById('hdri-exposure');
+  const expv = document.getElementById('hdri-exposure-val');
+  exp.addEventListener('input', () => { initThree(); lightState.exposure = parseFloat(exp.value); expv.textContent = lightState.exposure.toFixed(2); applyLights(); });
+  document.getElementById('hdri-rot').addEventListener('input', (e) => { initThree(); lightState.rot = parseFloat(e.target.value); applyLights(); });
+  document.getElementById('obj-rot').addEventListener('input', (e) => { initThree(); lightState.objRot = parseFloat(e.target.value); applyLights(); });
+  document.getElementById('hdri-bg').addEventListener('change', (e) => { initThree(); lightState.showBg = e.target.checked; applyLights(); });
+  document.getElementById('key-light').addEventListener('change', (e) => { initThree(); lightState.key = e.target.checked; applyLights(); });
+  document.getElementById('auto-rotate').addEventListener('change', (e) => { initThree(); lightState.autoRotate = e.target.checked; applyLights(); });
+}
+
+function initThree() {
+  if (renderer) return;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111214);
+  camera = new THREE.PerspectiveCamera(40, Math.max(els.preview.clientWidth,1)/Math.max(els.preview.clientHeight,1), 0.1, 100);
+  camera.position.set(0, 0.12, 2.2);
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(Math.max(els.preview.clientWidth, 1), Math.max(els.preview.clientHeight, 1));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = lightState.exposure;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  keyLight = new THREE.DirectionalLight(0xfff4e8, 0.85); keyLight.position.set(3.2,4.4,2.6); scene.add(keyLight);
+  fillLight = new THREE.DirectionalLight(0xb8d4ff, 0.22); fillLight.position.set(-3.5,1.2,-2); scene.add(fillLight);
+  rimLight = new THREE.DirectionalLight(0xffffff, 0.35); rimLight.position.set(-1.2,2.8,-3.4); scene.add(rimLight);
+  const chTex = document.createElement('canvas');
+  chTex.width = 8; chTex.height = 8;
+  const ctx = chTex.getContext('2d');
+  ctx.fillStyle = '#2a2a2e'; ctx.fillRect(0,0,8,8);
+  ctx.fillStyle = '#3a3a40'; ctx.fillRect(0,0,4,4); ctx.fillRect(4,4,4,4);
+  const map = new THREE.CanvasTexture(chTex);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(8, 8);
+  map.colorSpace = THREE.SRGBColorSpace;
+  checkerPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(6, 6),
+    new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0, color: 0xffffff })
+  );
+  checkerPlane.rotation.x = -Math.PI / 2;
+  checkerPlane.position.y = -0.72;
+  scene.add(checkerPlane);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 1.3;
+  controls.enablePan = false; controls.minDistance = 1.35; controls.maxDistance = 5;
+  window.addEventListener('resize', resizePreview);
+  setHdri(lightState.hdri);
+  (function animate(){
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+    if (renderer && renderer.domElement.parentNode) renderer.render(scene, camera);
+  })();
+}
+function resizePreview() {
+  if (!renderer || !els.preview.clientWidth) return;
+  camera.aspect = els.preview.clientWidth / els.preview.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(els.preview.clientWidth, els.preview.clientHeight);
+}
+function clearMesh() {
+  if (!currentMesh) return;
+  scene.remove(currentMesh);
+  currentMesh.geometry.dispose();
+  const mats = Array.isArray(currentMesh.material) ? currentMesh.material : [currentMesh.material];
+  mats.forEach(m => {
+    ['map','roughnessMap','bumpMap','normalMap'].forEach(k => { if (m[k] && m[k].dispose) m[k].dispose(); });
+    m.dispose();
+  });
+  currentMesh = null;
+}
+function mountCanvas() {
+  Array.from(els.preview.children).forEach(c => { if (c !== renderer.domElement) c.remove(); });
+  if (renderer.domElement.parentNode !== els.preview) els.preview.appendChild(renderer.domElement);
+  resizePreview();
+}
+function showPlaceholder(html) {
+  clearMesh();
+  if (renderer && renderer.domElement.parentNode === els.preview) renderer.domElement.remove();
+  els.preview.innerHTML = html;
+}
+
+function updatePreview(asset) {
+  initThree();
+  if (!asset) { showPlaceholder('<div class="w-full h-full flex items-center justify-center text-neutral-600 text-xs">No preview available</div>'); return; }
+  if (asset.cat === 'font') { showPlaceholder('<div class="w-full h-full flex items-center justify-center text-8xl">Aa</div>'); return; }
+  if (asset.cat === 'svg') { showPlaceholder(`<div class="w-full h-full flex items-center justify-center p-12 text-white">${asset.content}</div>`); return; }
+  mountCanvas(); clearMesh();
+  let geo;
+  if (asset.cat === 'cad') geo = new THREE.CylinderGeometry(0.5,0.5,1,64);
+  else if (asset.cat === 'material' || asset.cat === 'generator') geo = new THREE.SphereGeometry(0.72, 128, 128);
+  else if (asset.cat === 'mesh') geo = new THREE.TorusGeometry(0.5,0.2,48,128);
+  else geo = new THREE.BoxGeometry(1,1,1);
+  geo.computeVertexNormals();
+
+  const kind = asset.props && asset.props.kind;
+  const isGlass = kind === 'glass' || kind === 'gem' || kind === 'water' || kind === 'ice';
+  const isFabric = kind === 'fabric';
+  const trans = isGlass ? Math.max(asset.transmission ?? 1, 0.05) : (asset.transmission || 0);
+  const ior = asset.ior ?? (isGlass ? 1.52 : 1.5);
+  const sheenAmt = isFabric ? (asset.sheen ?? 0.7) : (asset.sheen || (asset.sss ? Math.min(1, asset.sss) : 0));
+  const fuzz = asset.fuzz != null ? asset.fuzz : (asset.sheenRoughness != null ? asset.sheenRoughness : 0.55);
+  let mat = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(asset.color || 0xffffff),
+    metalness: isGlass || isFabric ? 0 : (asset.metalness ?? 0.1),
+    roughness: Math.max(0.0, asset.roughness ?? 0.2),
+    ior: ior,
+    specularIntensity: 1,
+    specularColor: new THREE.Color(0xffffff),
+    clearcoat: isGlass ? Math.max(asset.clearcoat || 0, 0.7) : (asset.clearcoat || 0),
+    clearcoatRoughness: asset.clearcoatRoughness ?? (isGlass ? 0.04 : 0.15),
+    transmission: trans,
+    thickness: trans > 0.01 ? (asset.thickness || 1.5) : 0,
+    attenuationColor: asset.atten ? new THREE.Color(asset.atten) : new THREE.Color(0xffffff),
+    attenuationDistance: asset.attenDist || (isGlass ? 4 : 1),
+    sheen: sheenAmt,
+    sheenRoughness: fuzz,
+    sheenColor: new THREE.Color(asset.sheenColor || asset.color || 0xffffff),
+    iridescence: asset.iridescence || 0,
+    iridescenceIOR: asset.iridescenceIOR || 1.3,
+    iridescenceThicknessRange: [100, asset.iridescenceThickness || 400],
+    envMap: scene.environment || null,
+    envMapIntensity: isGlass ? 1.6 : 1.3,
+    flatShading: false,
+    transparent: trans > 0.02,
+    opacity: 1
+  });
+  if (asset.noiseGen || (asset.props && asset.props.kind === 'noisegen')) {
+    mat = createNoiseMaterial();
+  }
+  if (checkerPlane) checkerPlane.visible = trans > 0.15 && !(asset.noiseGen || asset.grainType);
+  currentMesh = new THREE.Mesh(geo, mat);
+  currentMesh.rotation.y = lightState.objRot * Math.PI / 180;
+  scene.add(currentMesh);
+  applyLights();
+  resizePreview();
+}
+
+function swatchStyle(a) {
+  if ((a.cat !== 'material' && a.cat !== 'generator') || !a.color) return '';
+  return `background: radial-gradient(circle at 35% 30%, ${a.color}ee, ${a.color} 55%, #111 130%);`;
+}
+
+function renderSidebar() {
+  const cats = Array.from(new Set(ASSETS.map(a => a.cat)));
+  let html = `<div><div class="text-[10px] tracking-widest uppercase text-neutral-500 font-medium px-2 py-1">Project</div>
+    <div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${!state.cat?'bg-white/10 text-white':'text-neutral-400'} hover:text-white" onclick="window.nav('library', null, null)">
+      <i data-lucide="folder-open" class="w-3.5 h-3.5"></i><span class="flex-1 truncate text-xs">Project Library</span><span class="text-[10px] font-mono">${ASSETS.length}</span></div>
+    <div class="pl-6 space-y-0.5 mt-0.5">`;
+  cats.forEach(cat => {
+    const info = CAT_INFO[cat] || {name:cat,icon:'box'};
+    const items = ASSETS.filter(a => a.cat === cat);
+    const subcats = Array.from(new Set(items.filter(a=>a.subcat).map(a=>a.subcat)));
+    html += `<div><div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${state.cat===cat&&!state.subcat?'bg-white/10 text-white':'text-neutral-400'} hover:text-white" onclick="window.nav('library','${cat}',null)">
+      ${subcats.length?`<i data-lucide="chevron-down" class="w-3 h-3"></i>`:`<span class="w-3.5"></span>`}
+      <span class="flex-1 truncate text-xs">${info.name}</span><span class="text-[10px] font-mono">${items.length}</span></div>`;
+    if (subcats.length) {
+      html += `<div class="pl-6 space-y-0.5">`;
+      subcats.forEach(sc => {
+        html += `<div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${state.subcat===sc?'bg-white/10 text-white':'text-neutral-400'} hover:text-white" onclick="window.nav('library','${cat}','${sc}')">
+          <span class="flex-1 truncate text-xs">${sc}</span><span class="text-[10px] font-mono">${items.filter(a=>a.subcat===sc).length}</span></div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+  html += `</div></div>`;
+  els.sidebar.innerHTML = html; lucide.createIcons();
+}
+
+function renderGrid() {
+  let list = ASSETS;
+  if (state.cat) list = list.filter(a => a.cat === state.cat);
+  if (state.subcat) list = list.filter(a => a.subcat === state.subcat);
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    list = list.filter(a => (a.name+' '+a.ext+' '+(a.props?.symbol||'')+' '+(a.props?.variant||'')+' '+(a.subcat||'')).toLowerCase().includes(q));
+  }
+  els.grid.innerHTML = list.map(a => {
+    const info = CAT_INFO[a.cat] || {icon:'box'};
+    const p = a.props;
+    const sel = state.selectedId === a.id ? 'border-white/40 ring-1 ring-white/20' : 'border-[#1f1f1f]';
+    return `<div data-asset-id="${a.id}" class="group border ${sel} rounded-xl overflow-hidden cursor-pointer hover:border-white/25 bg-[#111]" style="${swatchStyle(a)}">
+      <div class="aspect-4-3 relative flex items-center justify-center bg-[#0c0c0e]">
+        ${(a.cat==='material' || a.cat==='generator')
+          ? `<div class="w-16 h-16 rounded-full border border-white/10" style="background:radial-gradient(circle at 32% 28%, #fff8, ${a.color} 42%, #0008 120%)"></div>`
+          : `<i data-lucide="${info.icon}" class="w-8 h-8 text-neutral-600"></i>`}
+        <div class="absolute left-2 bottom-2 h-5 px-2 rounded-md bg-black/70 border border-[#1f1f1f] flex items-center gap-1.5 font-mono text-[9px] uppercase text-neutral-400">
+          <div class="w-1.5 h-1.5 rounded-full" style="background:${a.color||'#888'}"></div>${p ? p.symbol : a.ext}
+        </div>
+      </div>
+      <div class="p-2.5"><div class="text-xs text-white truncate font-medium">${a.name}.${a.ext}</div>
+      <div class="mt-1 text-[10px] text-neutral-500 font-mono truncate">${p ? (p.variant||p.symbol) : ''}</div></div>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function propRow(l,v){ if(v==null||v==='')return ''; return `<div class="flex justify-between gap-3 py-0.5"><span class="text-neutral-500 shrink-0">${l}</span><span class="font-mono text-white text-right break-all">${v}</span></div>`; }
+function section(t,b){ return `<div class="p-3 border-b border-[#1f1f1f]"><div class="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mb-2">${t}</div><div class="space-y-0.5 text-xs">${b}</div></div>`; }
+
+function renderInspector() {
+  const asset = ASSETS.find(a => a.id === state.selectedId);
+  const it = document.getElementById('inspector-title');
+  if (it) it.textContent = asset ? asset.name.replace(/_/g,' ') : 'Inspector';
+  updatePreview(asset);
+  if (!asset) { els.inspector.innerHTML = '<div class="p-4 text-center text-neutral-500 text-xs mt-4">Select an asset</div>'; return; }
+  const info = CAT_INFO[asset.cat] || {name:asset.cat,icon:'box'};
+  const p = asset.props;
+  let extra = '';
+  if (p && p.kind === 'metal') {
+    extra =
+      section('Identity', [propRow('Name',p.parentName),propRow('Symbol',p.symbol),propRow('Latin',p.latin),propRow('Grade',p.variant),propRow('Finish',p.finish),propRow('Composition',p.composition)].join('')) +
+      section('Periodic table', [propRow('Z',p.z),propRow('Period / group',p.period+' / '+p.group),propRow('Block',p.block),propRow('Series',p.series),propRow('Electrons',p.electrons),propRow('Oxidation',p.oxidation),propRow('Crystal',p.crystal),propRow('Appearance',p.appearance)].join('')) +
+      section('Mass', [propRow('Atomic mass',p.mass.toFixed(5)+' u'),propRow('Density',p.density.toFixed(3)+' g/cm³'),propRow('kg/m³',p.massKgPerM3.toFixed(0)),propRow('Molar volume',p.molarVolume.toFixed(3)+' cm³/mol')].join('')) +
+      section('Optical / PBR', [propRow('F0 sRGB',asset.color),propRow('F0 linear',p.f0.map(x=>x.toFixed(3)).join(', ')),propRow('n',p.n.toFixed(3)),propRow('k',p.k.toFixed(3)),propRow('R (normal)',(p.reflectance*100).toFixed(1)+' %'),propRow('Metalness',Number(asset.metalness).toFixed(2)),propRow('Roughness',Number(asset.roughness).toFixed(2))].join('')) +
+      section('Thermal / electrical', [propRow('Melting',p.meltingC.toLocaleString()+' °C'),propRow('Boiling',p.boilingC.toLocaleString()+' °C'),propRow('k_th',p.conductivity+' W/m·K'),propRow('Resistivity',p.resistivity+' nΩ·m'),propRow('IACS',(172.41/p.resistivity*100).toFixed(1)+' %')].join('')) +
+      section('Mechanical', [propRow("Young's",p.youngs+' GPa'),propRow('Poisson',p.poisson),propRow('HV',p.hardnessHV)].join('')) +
+      `<div class="p-3 border-b border-[#1f1f1f]"><div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-2">Notes</div><p class="text-xs text-neutral-300 leading-relaxed">${p.notes||''}</p></div>`;
+  } else if (p && p.kind === 'noisegen') {
+    const ns = noiseState;
+    const gtype = ns.type|0;
+    extra =
+      section(gtype===5 ? 'Scribbles' : gtype===4 ? 'Scratches' : gtype===3 ? 'Machined grain' : gtype===2 ? 'Cell grain' : gtype===1 ? 'Dotted grain' : 'Peel grain', [
+        propRow('Look', gtype===5 ? 'Curved organic / child-scribble' : gtype===4 ? 'Straight directional cuts' : gtype===3 ? 'Turned / milled grooves' : gtype===2 ? 'Voronoi craters carved in (moon)' : gtype===1 ? 'Organic flakes / stipple (triplanar)' : 'Orange-peel fbm'),
+        propRow('Res', 'per-pixel shader')
+      ].join('')) +
+      `<div class="p-3 border-b border-[#1f1f1f] space-y-2 text-[10px] text-neutral-400">
+        <div class="text-[10px] uppercase tracking-widest text-neutral-500 font-medium">Appearance</div>
+        <label class="flex items-center gap-2">Dark <input type="color" value="${ns.colA}" oninput="window.setNoise('colA', this.value)"></label>
+        <label class="flex items-center gap-2">Light <input type="color" value="${ns.colB}" oninput="window.setNoise('colB', this.value)"></label>
+        <label class="flex items-center gap-2">Show <input class="flex-1" type="range" min="0" max="1" step="0.01" value="${ns.show}" oninput="window.setNoise('show', this.value)"></label>
+        <label class="flex items-center gap-2">Scale <input class="flex-1" type="range" min="4" max="220" step="0.2" value="${ns.scale}" oninput="window.setNoise('scale', this.value)"></label>
+        ${gtype===5 ? `
+        <label class="flex items-center gap-2">Curl <input class="flex-1" type="range" min="0" max="8" step="0.05" value="${ns.warp}" oninput="window.setNoise('warp', this.value)"></label>
+        <label class="flex items-center gap-2">Length <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Thin <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Break <input class="flex-1" type="range" min="0" max="3" step="0.05" value="${ns.irreg}" oninput="window.setNoise('irreg', this.value)"></label>
+        ` : gtype===4 ? `
+        <label class="flex items-center gap-2">Dir <input class="flex-1" type="range" min="0" max="360" step="1" value="${ns.dir}" oninput="window.setNoise('dir', this.value)"></label>
+        <label class="flex items-center gap-2">Length <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Thin <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Depth <input class="flex-1" type="range" min="0" max="8" step="0.05" value="${ns.warp}" oninput="window.setNoise('warp', this.value)"></label>
+        <label class="flex items-center gap-2">Break <input class="flex-1" type="range" min="0" max="3" step="0.05" value="${ns.irreg}" oninput="window.setNoise('irreg', this.value)"></label>
+        ` : gtype===3 ? `
+        <label class="flex items-center gap-2">Dir <input class="flex-1" type="range" min="0" max="360" step="1" value="${ns.dir}" oninput="window.setNoise('dir', this.value)"></label>
+        <label class="flex items-center gap-2">Depth <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Chatter <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Sharp <input class="flex-1" type="range" min="0" max="3" step="0.05" value="${ns.irreg}" oninput="window.setNoise('irreg', this.value)"></label>
+        ` : gtype===2 ? `
+        <label class="flex items-center gap-2">Crater <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Rim <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Depth <input class="flex-1" type="range" min="0" max="8" step="0.05" value="${ns.warp}" oninput="window.setNoise('warp', this.value)"></label>
+        <label class="flex items-center gap-2">Jitter <input class="flex-1" type="range" min="0" max="3" step="0.05" value="${ns.irreg}" oninput="window.setNoise('irreg', this.value)"></label>
+        ` : gtype===1 ? `
+        <label class="flex items-center gap-2">Size <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Fill <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Irreg <input class="flex-1" type="range" min="0" max="3" step="0.05" value="${ns.irreg}" oninput="window.setNoise('irreg', this.value)"></label>
+        ` : `
+        <label class="flex items-center gap-2">Peel <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.peel}" oninput="window.setNoise('peel', this.value)"></label>
+        <label class="flex items-center gap-2">Speckle <input class="flex-1" type="range" min="0" max="4" step="0.05" value="${ns.speckle}" oninput="window.setNoise('speckle', this.value)"></label>
+        <label class="flex items-center gap-2">Warp <input class="flex-1" type="range" min="0" max="8" step="0.05" value="${ns.warp}" oninput="window.setNoise('warp', this.value)"></label>
+        `}
+        <label class="flex items-center gap-2">Contrast <input class="flex-1" type="range" min="0.2" max="5" step="0.05" value="${ns.contrast}" oninput="window.setNoise('contrast', this.value)"></label>
+        <label class="flex items-center gap-2">Bump <input class="flex-1" type="range" min="0" max="12" step="0.05" value="${ns.bump}" oninput="window.setNoise('bump', this.value)"></label>
+        <label class="flex items-center gap-2">Rough <input class="flex-1" type="range" min="0" max="1" step="0.01" value="${ns.rough}" oninput="window.setNoise('rough', this.value)"></label>
+        <label class="flex items-center gap-2">R. amp <input class="flex-1" type="range" min="0" max="1.5" step="0.01" value="${ns.roughAmt}" oninput="window.setNoise('roughAmt', this.value)"></label>
+        <label class="flex items-center gap-2">Gloss <input class="flex-1" type="range" min="0" max="1" step="0.01" value="${ns.gloss}" oninput="window.setNoise('gloss', this.value)"></label>
+        <label class="flex items-center gap-2">Seed <input class="flex-1" type="range" min="0" max="50" step="0.1" value="${ns.seed}" oninput="window.setNoise('seed', this.value)"></label>
+        <p class="text-neutral-500">${gtype===2 ? 'Crater = bowl width. Rim = lip. Depth = how far they carve in.' : gtype===1 ? 'Triplanar flakes. Irreg = ragged edges.' : 'Peel = orange-peel lumps. Speckle = fine grit.'}</p>
+      </div>` +
+      `<div class="p-3 border-b border-[#1f1f1f]"><div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-2">Notes</div><p class="text-xs text-neutral-300 leading-relaxed">${p.notes||''}</p></div>`;
+  } else if (p && p.kind && p.kind !== 'metal') {
+    extra =
+      section('Identity', [propRow('Family',p.parentName),propRow('Grade',p.variant),propRow('Formula',p.latin),propRow('Density',p.density.toFixed(3)+' g/cm³')].join('')) +
+      section('Dielectric optics (Fresnel)', [
+        propRow('IOR n_D', p.ior.toFixed(3)),
+        propRow('F0 = ((n−1)/(n+1))²', (p.f0diel*100).toFixed(2)+' %  ('+p.f0diel.toFixed(4)+')'),
+        propRow('Metalness', '0.00 (dielectric)'),
+        propRow('Roughness α', Number(asset.roughness).toFixed(2)),
+        propRow('Clearcoat', Number(asset.clearcoat||0).toFixed(2)),
+        propRow('Clearcoat roughness', Number(asset.clearcoatRoughness||0).toFixed(2)),
+        propRow('Transmission', Number(asset.transmission||0).toFixed(2)),
+        propRow('Thickness (m, shader)', (asset.thickness||0).toFixed(2)),
+        propRow('Attenuation colour', asset.atten || '—'),
+        propRow('Attenuation distance', asset.attenDist || '—'),
+        propRow('Sheen', Number(asset.sheen||0).toFixed(2)),
+        propRow('Fuzz / sheen roughness', Number(asset.fuzz != null ? asset.fuzz : (asset.sheenRoughness||0)).toFixed(2)),
+        propRow('Sheen colour', asset.sheenColor || '—'),
+        propRow('Iridescence', Number(asset.iridescence||0).toFixed(2)),
+        propRow('SSS / sheen weight', Number(asset.sss||0).toFixed(2))
+      ].join('')) +
+      section('Thermal', [propRow('Glass transition Tg', p.tg==null?'thermoset / n/a':p.tg+' °C'), propRow('Melt / process', p.meltingC==null?'—':p.meltingC+' °C'), propRow("Young's", p.youngs+' GPa')].join('')) +
+      `<div class="p-3 border-b border-[#1f1f1f]"><div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-2">Notes</div><p class="text-xs text-neutral-300 leading-relaxed">${p.notes||''}</p></div>`;
+  }
+  els.inspector.innerHTML = `
+    <div class="p-3 border-b border-[#1f1f1f] flex gap-3">
+      <div class="w-10 h-10 rounded-lg border border-[#1f1f1f] flex items-center justify-center" style="background:${asset.color||'#17171b'}">
+        <span class="text-[11px] font-mono font-semibold text-black/70">${p?p.symbol:''}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-[13px] font-medium text-white truncate">${asset.name}<span class="text-neutral-500">.${asset.ext}</span></h3>
+        <div class="flex flex-wrap gap-1 mt-1.5">${asset.tags.map(t=>`<span class="text-[10px] text-neutral-400 border border-[#1f1f1f] rounded px-1.5">${t}</span>`).join('')}</div>
+      </div>
+    </div>
+    <div class="p-3 border-b border-[#1f1f1f] space-y-0.5 text-xs">
+      ${propRow('Format', asset.ext.toUpperCase())}${propRow('Category', info.name)}${asset.subcat?propRow('Family', asset.subcat):''}
+    </div>
+    ${extra}
+    <div class="p-3"><button class="w-full h-9 rounded-md bg-white text-black text-xs font-medium">Import</button></div>`;
+}
+
+function renderBreadcrumb() {
+  let html = `<span class="cursor-pointer hover:text-white" onclick="window.nav('library',null,null)">Harbor</span> / `;
+  if (state.cat) {
+    const info = CAT_INFO[state.cat] || {name:state.cat};
+    html += state.subcat
+      ? `<span class="cursor-pointer hover:text-white" onclick="window.nav('library','${state.cat}',null)">${info.name}</span> / <span class="text-white font-medium">${state.subcat}</span>`
+      : `<span class="text-white font-medium">${info.name}</span>`;
+  } else html += `<span class="text-white font-medium">Project Library</span>`;
+  els.breadcrumb.innerHTML = html;
+}
+
+window.nav = (root, cat, subcat) => { state.root=root; state.cat=cat; state.subcat=subcat; state.selectedId=null; updateAll(); };
+window.setNoise = (k, val) => {
+  if (k === 'colA' || k === 'colB') noiseState[k] = val;
+  else noiseState[k] = parseFloat(val);
+  if (currentMesh && currentMesh.material && currentMesh.material.userData.grainU) {
+    syncGrainUniforms(currentMesh.material.userData.grainU);
+    currentMesh.material.clearcoat = noiseState.gloss;
+    currentMesh.material.roughness = noiseState.rough;
+  } else {
+    const asset = ASSETS.find(a => a.id === state.selectedId);
+    try { updatePreview(asset); } catch (err) { console.error(err); }
+  }
+};
+window.selectAsset = (id) => {
+  state.selectedId = id;
+  const a = ASSETS.find(x => x.id === id);
+  if (a && a.noiseGen) {
+    noiseState.type = a.noiseType != null ? a.noiseType : 0;
+    if (noiseState.type === 5) {
+      noiseState.scale = 8; noiseState.warp = 3.2; noiseState.peel = 1.8;
+      noiseState.speckle = 1.2; noiseState.show = 0.85; noiseState.bump = 5; noiseState.irreg = 0.4;
+    } else if (noiseState.type === 4) {
+      noiseState.scale = 10; noiseState.warp = 2.4; noiseState.show = 0.85; noiseState.bump = 5;
+    }
+  }
+  renderGrid();
+  try { renderInspector(); } catch (err) { console.error(err); }
+};
+els.grid.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-asset-id]');
+  if (!card) return;
+  window.selectAsset(card.getAttribute('data-asset-id'));
+});
+els.search.addEventListener('input', e => { state.search=e.target.value; renderGrid(); });
+function updateAll(){ renderSidebar(); renderBreadcrumb(); renderGrid(); renderInspector(); }
+bindLightUi();
+updateAll();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2e27656eaf50f09',t:'MTc4NzI0MDA2Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+ml>

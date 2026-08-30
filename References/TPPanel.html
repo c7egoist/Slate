@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Texture Paint Studio · Layer Stack</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-black: #000000;
+      --bg-header: #0a0a0a;
+      --bg-panel: #0e0e0e;
+      --bg-card: #141414;
+      --bg-elevated: #1a1a1a;
+      --bg-hover: #1f1f1f;
+      --border-subtle: #1c1c1c;
+      --border-medium: #2a2a30;
+      --border-bright: #3a3a44;
+      --text-main: #ededed;
+      --text-muted: #8a8a8a;
+      --text-dim: #6a6a6a;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-yellow: #ffd24a;
+      --accent-green: #10b981;
+      --accent-purple: #8b5cf6;
+      --accent-red: #e05a5a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-black);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 16px;
+      user-select: none;
+      -webkit-user-select: none;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+
+    .studio-shell {
+      width: 100%;
+      max-width: 480px;
+      height: 820px;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── APPLICATION TOP HEADER ── */
+    .app-header {
+      height: 42px;
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      width: 22px;
+      height: 22px;
+      background: #ffffff;
+      color: #000000;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 800;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .nav-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background-color: var(--bg-card);
+      padding: 2px 6px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+    }
+
+    .nav-btn.active-layers {
+      background-color: #ffffff;
+      color: #000000;
+      font-weight: 600;
+    }
+
+    .nav-btn.active-channels {
+      background-color: var(--accent-blue);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .nav-btn.active-mask {
+      background-color: var(--accent-gold);
+      color: #000000;
+      font-weight: 600;
+    }
+
+    .nav-divider {
+      color: var(--text-dim);
+      font-size: 10px;
+    }
+
+    .shortcut-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 9.5px;
+      color: var(--text-dim);
+      background: rgba(0, 0, 0, 0.4);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border-medium);
+      margin-left: 2px;
+    }
+
+    /* ── CAROUSEL STAGE & SLIDES ── */
+    .carousel-stage {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      width: 100%;
+      height: calc(100% - 42px);
+    }
+
+    .carousel-track {
+      display: flex;
+      width: 300%;
+      height: 100%;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
+    }
+
+    .carousel-slide {
+      width: 33.333333%;
+      height: 100%;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-panel);
+      overflow: hidden;
+    }
+
+    /* ── LAYER STACK HEADER & TOOLBAR ── */
+    .panel-header {
+      height: 44px;
+      background-color: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      flex-shrink: 0;
+    }
+
+    .panel-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-box {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .count-pill {
+      padding: 2px 6px;
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      border: 1px solid var(--border-medium);
+    }
+
+    .solo-indicator {
+      padding: 2px 7px;
+      font-size: 9.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      border-radius: 9999px;
+      background: var(--accent-yellow);
+      color: #000000;
+      cursor: pointer;
+      border: none;
+    }
+
+    .panel-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .inspect-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 9999px;
+      background: var(--bg-hover);
+      color: var(--text-main);
+      border: 1px solid var(--border-medium);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .inspect-btn:hover {
+      background: #282830;
+    }
+
+    .icon-circle-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-medium);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .icon-circle-btn:hover {
+      background: var(--bg-hover);
+      color: #ffffff;
+    }
+
+    .icon-circle-btn:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* ── FILTER & TOOLBAR ── */
+    .filter-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      background-color: #0a0a0a;
+      flex-shrink: 0;
+    }
+
+    .search-input-box {
+      flex: 1;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .search-input-box:focus-within {
+      border-color: var(--border-medium);
+    }
+
+    .search-input-box input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 11.5px;
+      color: var(--text-main);
+      margin-left: 6px;
+    }
+
+    .search-input-box input::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* ── LAYER LIST (STRICTLY RECTANGULAR, NO ROUNDING) ── */
+    .layer-list-container {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 0;
+      background: var(--bg-panel);
+    }
+
+    .layer-list-container::-webkit-scrollbar {
+      width: 5px;
+    }
+    .layer-list-container::-webkit-scrollbar-thumb {
+      background: var(--border-medium);
+      border-radius: 3px;
+    }
+
+    /* Strict requirement: entries in layer stack must be rectangles with NO ROUNDING */
+    .layer-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 46px;
+      padding-right: 10px;
+      border-radius: 0px !important;
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+      border-left: 3px solid transparent;
+      background-color: #0d0d0d;
+      color: var(--text-main);
+      border-bottom: 1px solid #181818;
+    }
+
+    .layer-row.is-folder {
+      background-color: #121215;
+    }
+
+    .layer-row:hover {
+      background-color: #141414;
+    }
+
+    .layer-row.is-folder:hover {
+      background-color: #18181c;
+    }
+
+    .layer-row.selected {
+      background-color: #1f1f1f !important;
+      border-left-color: #ffffff !important;
+    }
+
+    .layer-row.is-folder.selected {
+      background-color: #222225 !important;
+      border-left-color: #ffffff !important;
+    }
+
+    .layer-row.is-hidden {
+      opacity: 0.4;
+    }
+
+    .layer-row.is-dimmed {
+      opacity: 0.25;
+    }
+
+    .tree-guide-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-left: 1px solid var(--border-medium);
+      pointer-events: none;
+    }
+
+    .row-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0;
+      transition: color 0.1s;
+    }
+
+    .row-btn:hover {
+      color: var(--text-main);
+    }
+
+    .layer-thumb-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 0px !important;
+      border: 1px solid var(--border-medium);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .layer-meta-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .layer-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .layer-name-label {
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .layer-row.is-folder .layer-name-label {
+      font-weight: 600;
+    }
+
+    .layer-info-subtitle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text-muted);
+      line-height: 1;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .layer-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .channel-count-pill {
+      padding: 2px 6px;
+      font-size: 9.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 4px;
+      background: #141414;
+      color: var(--text-muted);
+      border: 1px solid #222222;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .channel-count-pill:hover {
+      background: var(--border-medium);
+      color: var(--text-main);
+    }
+
+    .mask-attached-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      font-size: 9.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .mask-attached-pill:hover {
+      background: rgba(245, 158, 11, 0.3);
+    }
+
+    /* ── MASK SUB-ROW (STRICT RECTANGULAR, INDENTED) ── */
+    .mask-sub-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding-right: 10px;
+      border-radius: 0px !important;
+      cursor: pointer;
+      background-color: #090909;
+      color: var(--text-muted);
+      border-left: 3px solid transparent;
+      border-bottom: 1px solid #181818;
+      transition: background-color 0.12s ease;
+    }
+
+    .mask-sub-row:hover {
+      background-color: #121212;
+    }
+
+    .mask-sub-row.selected {
+      background-color: #1a1815 !important;
+      border-left-color: var(--accent-gold) !important;
+      color: var(--text-main);
+    }
+
+    .mask-branch-connector {
+      position: absolute;
+      top: 0;
+      bottom: 50%;
+      width: 10px;
+      border-left: 1px solid var(--border-medium);
+      border-bottom: 1px solid var(--border-medium);
+      pointer-events: none;
+    }
+
+    /* ── STACK FOOTER CONTROLS ── */
+    .stack-footer {
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border-subtle);
+      background-color: #0a0a0a;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .footer-meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text-dim);
+    }
+
+    .footer-meta-line strong {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .footer-controls-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dropdown-trigger-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      height: 26px;
+      padding: 0 10px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .dropdown-trigger-btn:hover {
+      background: var(--bg-elevated);
+    }
+
+    .opacity-slider-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .slider-track-input {
+      flex: 1;
+      height: 4px;
+      background: var(--border-subtle);
+      border-radius: 4px;
+      appearance: none;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-track-input::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .slider-val-tag {
+      width: 36px;
+      text-align: right;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .reorder-btns {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      border-left: 1px solid var(--border-subtle);
+      padding-left: 8px;
+    }
+
+    /* ── PROPERTY INSPECTORS (CHANNELS & MASK) ── */
+    .inspector-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: var(--bg-panel);
+    }
+
+    .inspector-body::-webkit-scrollbar {
+      width: 5px;
+    }
+    .inspector-body::-webkit-scrollbar-thumb {
+      background: var(--border-medium);
+      border-radius: 3px;
+    }
+
+    .inspector-card {
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      background-color: var(--bg-panel);
+      overflow: hidden;
+    }
+
+    .inspector-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 34px;
+      padding: 0 10px;
+      background-color: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background-color 0.12s;
+    }
+
+    .inspector-card-header:hover {
+      background-color: var(--bg-card);
+    }
+
+    .inspector-card-content {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: rgba(10, 10, 10, 0.5);
+    }
+
+    .chips-box {
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      background-color: var(--bg-panel);
+      padding: 10px;
+    }
+
+    .chips-box-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .chips-flex-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .channel-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      font-size: 11.5px;
+      color: var(--text-main);
+    }
+
+    .channel-chip .remove-chip-btn {
+      background: var(--bg-hover);
+      border: none;
+      color: var(--text-muted);
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-left: 2px;
+    }
+
+    .channel-chip .remove-chip-btn:hover {
+      background: var(--accent-red);
+      color: #ffffff;
+    }
+
+    .source-segmented-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .segmented-control {
+      display: flex;
+      height: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 2px;
+    }
+
+    .seg-btn {
+      background: transparent;
+      border: none;
+      padding: 0 10px;
+      font-size: 10.5px;
+      font-weight: 500;
+      border-radius: 9999px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .seg-btn.active {
+      background: #ededed;
+      color: #111111;
+      font-weight: 600;
+    }
+
+    .prop-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .prop-label {
+      width: 52px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .tabular-num-box {
+      display: flex;
+      align-items: center;
+      height: 26px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .tabular-num-box input {
+      width: 48px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 11.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .tabular-num-box .unit-tag {
+      height: 100%;
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text-muted);
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .color-swatch-picker-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+    }
+
+    .color-swatch-picker-btn:hover {
+      background: var(--bg-elevated);
+    }
+
+    .swatch-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .hex-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+    }
+
+    /* Popover menus */
+    .popover-menu {
+      position: absolute;
+      z-index: 100;
+      background: #141416;
+      border: 1px solid var(--border-medium);
+      border-radius: 10px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .popover-menu button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 11.5px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.12s;
+    }
+
+    .popover-menu button:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Color picker modal */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(2px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-box {
+      width: 280px;
+      background: #141416;
+      border: 1px solid var(--border-medium);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.95);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .modal-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .palette-cell {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: transform 0.12s;
+    }
+
+    .palette-cell:hover {
+      transform: scale(1.1);
+    }
+
+    /* SVG Icon utility */
+    svg {
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="studio-shell">
+    <!-- ── APPLICATION TOP HEADER & CAROUSEL BREADCRUMB ── -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-badge">P</div>
+        <span class="brand-title">Texture Paint Studio</span>
+      </div>
+
+      <!-- Carousel Breadcrumb Navigation -->
+      <div class="nav-breadcrumb">
+        <button id="nav-btn-layers" class="nav-btn active-layers" onclick="navigateToPage('layers')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <span>Layers</span>
+        </button>
+
+        <span class="nav-divider">/</span>
+
+        <button id="nav-btn-channels" class="nav-btn" onclick="navigateToPage('channels')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          <span>Channels</span>
+        </button>
+
+        <span class="nav-divider">/</span>
+
+        <button id="nav-btn-mask" class="nav-btn" onclick="navigateToPage('mask')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/><path d="M6 11c1.5 0 3 .5 3 2-2 0-3-1-3-2Z"/><path d="M18 11c-1.5 0-3 .5-3 2 2 0 3-1 3-2Z"/></svg>
+          <span>Mask</span>
+        </button>
+
+        <span class="shortcut-pill">Tab / Esc</span>
+      </div>
+    </header>
+
+    <!-- ── 3-PAGE CAROUSEL STAGE ── -->
+    <div class="carousel-stage">
+      <div id="carousel-track" class="carousel-track">
+
+        <!-- ════════════════════════════════════════════════════════════
+             PAGE 1: LAYER STACK VIEW
+        ════════════════════════════════════════════════════════════ -->
+        <div class="carousel-slide" id="slide-layers">
+          <!-- Panel Header -->
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <div class="icon-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <span class="panel-title">Layers</span>
+              <span id="layer-count-badge" class="count-pill">6</span>
+              <button id="solo-clear-btn" class="solo-indicator" style="display:none;" onclick="clearSolo()">SOLO ON (CLEAR)</button>
+            </div>
+
+            <!-- Inspect Switcher Button & Quick Actions -->
+            <div class="panel-header-actions">
+              <button id="carousel-inspect-btn" class="inspect-btn" onclick="inspectCurrentSelection()" title="Slide to Channel / Mask Inspector (Tab)">
+                <span id="inspect-btn-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </span>
+                <span id="inspect-btn-label">Channels</span>
+                <span class="shortcut-pill">Tab</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+
+              <button class="icon-circle-btn" onclick="groupSelectedLayer()" title="Group Selected Layer (Cmd+G)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffd24a" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+              </button>
+
+              <!-- Add Dropdown -->
+              <div style="position: relative;">
+                <button id="add-layer-dropdown-btn" class="icon-circle-btn" onclick="toggleAddMenu()" title="Add Layer (+)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div id="add-layer-menu" class="popover-menu" style="display:none; right: 0; top: 34px; width: 220px;">
+                  <div style="padding: 4px 8px; font-size: 9.5px; text-transform: uppercase; font-weight: 600; color: var(--text-dim);">Add to Layer Stack</div>
+                  <button onclick="createNewFolder('New Group Folder', false)" style="color: #ffd24a; font-weight: 600;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffd24a" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                    <span>New Group Folder</span>
+                    <span style="margin-left: auto; font-family: monospace; font-size: 9px; color: var(--text-dim);">Cmd+G</span>
+                  </button>
+                  <div style="height: 1px; background: var(--border-subtle); margin: 2px 0;"></div>
+                  <button onclick="addLayer('paint', 'Paint Layer')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="m14 12-8.5 8.5a2.12 2.12 0 1 1-3-3L11 9"/><path d="M15 13 9 7l4-4 6 6h3a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2l-7-1Z"/></svg>
+                    <span>Paint Layer</span>
+                    <span style="margin-left: auto; font-family: monospace; font-size: 9px; color: var(--text-dim);">P</span>
+                  </button>
+                  <button onclick="addLayer('fill', 'Fill Layer')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/></svg>
+                    <span>Fill Layer</span>
+                    <span style="margin-left: auto; font-family: monospace; font-size: 9px; color: var(--text-dim);">F</span>
+                  </button>
+                  <button onclick="addLayer('decal', '3D Decal Layer')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+                    <span>3D Decal Layer</span>
+                    <span style="margin-left: auto; font-family: monospace; font-size: 9px; color: var(--text-dim);">D</span>
+                  </button>
+                  <button onclick="addLayer('adj', 'Adjustment Layer')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/></svg>
+                    <span>Adjustment Layer</span>
+                    <span style="margin-left: auto; font-family: monospace; font-size: 9px; color: var(--text-dim);">A</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter & Toolbar -->
+          <div class="filter-toolbar">
+            <div class="search-input-box">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="layer-search-input" placeholder="Filter layers & groups ( / )" oninput="handleSearch(this.value)" />
+            </div>
+
+            <button class="icon-circle-btn" onclick="groupSelectedLayer()" title="New Folder / Group Selected (Cmd+G)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffd24a" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+            </button>
+
+            <button id="toggle-mask-toolbar-btn" class="icon-circle-btn" onclick="toggleSelectedMask()" title="Toggle Attached Mask (M)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>
+            </button>
+
+            <button id="dup-layer-btn" class="icon-circle-btn" onclick="duplicateSelectedLayer()" title="Duplicate Layer (Cmd+D)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+
+            <button id="del-layer-btn" class="icon-circle-btn" onclick="deleteSelectedLayer()" title="Delete Layer (Backspace)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+          </div>
+
+          <!-- Layer List: Strictly Rectangular entries with no rounding -->
+          <div id="layer-list" class="layer-list-container">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Stack Footer: Quick blend mode, Opacity & Reorder -->
+          <div id="stack-footer" class="stack-footer">
+            <div class="footer-meta-line">
+              <div>
+                <span>Selected: </span>
+                <strong id="footer-selected-name">Base Metal Body</strong>
+              </div>
+              <button id="ungroup-btn" style="display:none; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-muted); padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-family: monospace; cursor: pointer;" onclick="ungroupSelected()">Ungroup</button>
+            </div>
+
+            <div class="footer-controls-line">
+              <div style="position: relative;">
+                <button id="footer-blend-btn" class="dropdown-trigger-btn" onclick="toggleBlendMenu()">
+                  <span id="footer-blend-label">Normal</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div id="blend-menu" class="popover-menu" style="display:none; bottom: 32px; left: 0; width: 180px; max-height: 220px; overflow-y: auto;">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+
+              <div class="opacity-slider-wrap">
+                <input type="range" id="footer-opacity-slider" class="slider-track-input" min="0" max="100" value="100" oninput="handleFooterOpacityChange(this.value)" />
+                <span id="footer-opacity-label" class="slider-val-tag">100%</span>
+              </div>
+
+              <div class="reorder-btns">
+                <button class="row-btn" onclick="moveSelectedLayer('up')" title="Move Layer Up">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 15-6-6-6 6"/></svg>
+                </button>
+                <button class="row-btn" onclick="moveSelectedLayer('down')" title="Move Layer Down">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════
+             PAGE 2: CHANNEL PROPERTIES VIEW
+        ════════════════════════════════════════════════════════════ -->
+        <div class="carousel-slide" id="slide-channels">
+          <!-- Channel Properties Header -->
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <button class="icon-circle-btn" onclick="navigateToPage('layers')" title="Back to Layer Stack (Tab / Esc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+              </button>
+              <div id="channel-layer-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #8b5cf6;"></div>
+              <div style="display: flex; flex-direction: column;">
+                <span id="channel-layer-name" style="font-size: 12.5px; font-weight: 600; line-height: 1.2;">Base Metal Body</span>
+                <span id="channel-layer-sub" style="font-size: 10px; font-family: monospace; color: var(--text-dim); line-height: 1;">Material · Normal</span>
+              </div>
+            </div>
+
+            <button class="inspect-btn" onclick="navigateToPage('layers')">
+              <span>Stack</span>
+              <span class="shortcut-pill">Tab</span>
+            </button>
+          </div>
+
+          <!-- Channel Properties Scrollable Content -->
+          <div class="inspector-body" id="channel-inspector-body">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════
+             PAGE 3: MASK PROPERTIES VIEW
+        ════════════════════════════════════════════════════════════ -->
+        <div class="carousel-slide" id="slide-mask">
+          <!-- Mask Header -->
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <button class="icon-circle-btn" onclick="navigateToPage('layers')" title="Back to Layer Stack (Tab / Esc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+              </button>
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-medium); display: flex; align-items: center; justify-content: center; color: var(--accent-gold);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 12.5px; font-weight: 600; line-height: 1.2;">Mask Inspector</span>
+                  <span style="font-size: 10px; font-family: monospace; color: var(--accent-gold); background: rgba(245, 158, 11, 0.15); padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">ACTIVE</span>
+                </div>
+                <span id="mask-clips-name" style="font-size: 10px; font-family: monospace; color: var(--text-dim); line-height: 1;">Clips to: Surface Edge Wear</span>
+              </div>
+            </div>
+
+            <button class="inspect-btn" onclick="navigateToPage('layers')">
+              <span>Stack</span>
+              <span class="shortcut-pill">Tab</span>
+            </button>
+          </div>
+
+          <!-- Mask Properties Scrollable Content -->
+          <div class="inspector-body" id="mask-inspector-body">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Picker Modal -->
+  <div id="color-picker-modal" class="modal-overlay" style="display: none;" onclick="closeColorPicker(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span>Color Palette</span>
+        <button class="row-btn" onclick="closeColorPicker()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="modal-content">
+        <div class="palette-grid" id="palette-grid"></div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+          <span style="font-size: 11px; color: var(--text-muted);">Custom Hex:</span>
+          <input type="text" id="custom-hex-input" style="flex: 1; height: 26px; background: #000; border: 1px solid var(--border-medium); border-radius: 6px; padding: 0 8px; color: #fff; font-family: monospace; font-size: 11px;" />
+          <button class="inspect-btn" onclick="applyCustomHex()">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ══════════════════════════════════════════════════════════════════
+       DATA CATALOGUE & INITIAL DATA
+    ══════════════════════════════════════════════════════════════════ */
+    const CHANNEL_SLOTS = {
+      baseColour: { group: 'Surface', hue: '#b87333', label: 'Base Colour', edit: 'colour' },
+      metallic: { group: 'Surface', hue: '#8b5cf6', label: 'Metallic', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      roughness: { group: 'Surface', hue: '#3b82f6', label: 'Roughness', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      height: { group: 'Surface', hue: '#8a8a8a', label: 'Height', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      normal: { group: 'Surface', hue: '#10b981', label: 'Normal', edit: 'derived' },
+      opacity: { group: 'Surface', hue: '#94a3b8', label: 'Opacity', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      emission: { group: 'Radiance', hue: '#f59e0b', label: 'Emissive', edit: 'colour' },
+      ambientOcclusion: { group: 'Radiance', hue: '#6b7280', label: 'Ambient Occlusion', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      anisotropy: { group: 'Reflectance', hue: '#22d3ee', label: 'Anisotropy', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      anisotropyAngle: { group: 'Reflectance', hue: '#0ea5e9', label: 'Anisotropy Angle', edit: 'scalar', min: 0, max: 360, step: 1, unit: '°' },
+      clearcoat: { group: 'Reflectance', hue: '#e2e8f0', label: 'Clearcoat', edit: 'scalar', min: 0, max: 1, step: 0.01 },
+      refractionIndex: { group: 'Reflectance', hue: '#a78bfa', label: 'Refraction Index', edit: 'scalar', min: 1, max: 3, step: 0.01 },
+      sheen: { group: 'Scattering', hue: '#f472b6', label: 'Sheen', edit: 'colour' },
+      subsurface: { group: 'Scattering', hue: '#fb7185', label: 'Subsurface', edit: 'colour' }
+    };
+
+    const CHANNEL_ORDER = Object.keys(CHANNEL_SLOTS);
+    const CHANNEL_GROUPS = ['Surface', 'Radiance', 'Reflectance', 'Scattering'];
+
+    const BLEND_MODES = [
+      'Normal', 'Passthrough', 'Replace', 'Multiply', 'Screen', 'Overlay',
+      'Soft Light', 'Hard Light', 'Linear Dodge (Add)', 'Color Dodge',
+      'Linear Burn', 'Subtract', 'Difference', 'Signed Addition (AddSub)',
+      'Darken (Min)', 'Lighten (Max)'
+    ];
+
+    const MASK_SOURCES = ['Generator', 'Paint', 'Bitmap', 'Baked Map', 'Polygon Fill', 'Color Selection', 'Anchor Point'];
+
+    const GENERATOR_CATALOGUE = [
+      {
+        key: 'CurvatureEdges',
+        label: 'Curvature',
+        parameters: [
+          { key: 'Balance', label: 'Balance', min: 0, max: 1, default: 0.5 },
+          { key: 'Contrast', label: 'Contrast', min: 0, max: 1, default: 0.7 },
+          { key: 'Radius', label: 'Radius', min: 0, max: 1, default: 0.25 },
+          { key: 'Blur', label: 'Blur', min: 0, max: 1, default: 0.1 }
+        ]
+      },
+      {
+        key: 'AmbientOcclusion',
+        label: 'Ambient Occlusion',
+        parameters: [
+          { key: 'Spread', label: 'Spread', min: 0, max: 1, default: 0.4 },
+          { key: 'Contrast', label: 'Contrast', min: 0, max: 1, default: 0.6 },
+          { key: 'Intensity', label: 'Intensity', min: 0, max: 1, default: 0.75 }
+        ]
+      },
+      {
+        key: 'MetalEdgeWear',
+        label: 'Metal Edge Wear',
+        parameters: [
+          { key: 'Intensity', label: 'Intensity', min: 0, max: 1, default: 0.6 },
+          { key: 'Softness', label: 'Softness', min: 0, max: 1, default: 0.3 },
+          { key: 'Roughness', label: 'Grain', min: 0, max: 1, default: 0.45 },
+          { key: 'GrungeAmount', label: 'Grunge Amount', min: 0, max: 1, default: 0.35 }
+        ]
+      },
+      {
+        key: 'DirtAccumulation',
+        label: 'Dirt Grime',
+        parameters: [
+          { key: 'Amount', label: 'Amount', min: 0, max: 1, default: 0.5 },
+          { key: 'Scale', label: 'Scale', min: 0, max: 1, default: 0.3 },
+          { key: 'Contrast', label: 'Contrast', min: 0, max: 1, default: 0.55 }
+        ]
+      }
+    ];
+
+    const SWATCH_PALETTE = [
+      '#b87333', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+      '#64748b', '#94a3b8', '#cbd5e1', '#ffffff', '#000000', '#fbbf24',
+      '#a855f7', '#ec4899', '#14b8a6', '#06b6d4', '#84cc16', '#eab308'
+    ];
+
+    /* Initial Layers Data */
+    let layersState = [
+      {
+        id: 'f1',
+        name: 'Armor Plating Group',
+        type: 'folder',
+        classification: 'Material',
+        color: '#ffd24a',
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'Passthrough',
+        open: true,
+        children: [
+          {
+            id: 'l1',
+            name: 'Surface Edge Wear',
+            type: 'fill',
+            classification: 'Generator',
+            color: '#10b981',
+            visible: true,
+            locked: false,
+            opacity: 100,
+            blend: 'Normal',
+            mask: {
+              visible: true,
+              source: 'Generator',
+              generatorKey: 'CurvatureEdges',
+              generatorParams: { Balance: 0.52, Contrast: 0.78, Radius: 0.3, Blur: 0.08 },
+              density: 95,
+              blend: 'Multiply',
+              invert: false,
+              channels: ['baseColour', 'roughness', 'height']
+            },
+            channels: {
+              baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#d1d5db' },
+              metallic: { enabled: true, mode: 'Value', value: 0.95, colour: '#8b5cf6' },
+              roughness: { enabled: true, mode: 'Value', value: 0.28, colour: '#3b82f6' },
+              height: { enabled: true, mode: 'Value', value: 0.54, colour: '#8a8a8a' },
+              normal: { enabled: true, mode: 'Derived', value: 1, colour: '#10b981' }
+            }
+          },
+          {
+            id: 'l2',
+            name: 'Base Metal Body',
+            type: 'fill',
+            classification: 'Material',
+            color: '#3b82f6',
+            visible: true,
+            locked: false,
+            opacity: 100,
+            blend: 'Normal',
+            mask: null,
+            channels: {
+              baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#1e293b' },
+              metallic: { enabled: true, mode: 'Value', value: 0.88, colour: '#8b5cf6' },
+              roughness: { enabled: true, mode: 'Value', value: 0.42, colour: '#3b82f6' },
+              height: { enabled: true, mode: 'Value', value: 0.5, colour: '#8a8a8a' },
+              normal: { enabled: true, mode: 'Derived', value: 1, colour: '#10b981' },
+              ambientOcclusion: { enabled: true, mode: 'Value', value: 1.0, colour: '#6b7280' }
+            }
+          },
+          {
+            id: 'l6',
+            name: 'Cavity Dirt & Dust',
+            type: 'fill',
+            classification: 'Flood',
+            color: '#78716c',
+            visible: true,
+            locked: false,
+            opacity: 70,
+            blend: 'Multiply',
+            mask: {
+              visible: true,
+              source: 'Generator',
+              generatorKey: 'AmbientOcclusion',
+              generatorParams: { Spread: 0.5, Contrast: 0.75, Intensity: 0.85 },
+              density: 80,
+              blend: 'Multiply',
+              invert: false,
+              channels: ['baseColour', 'roughness']
+            },
+            channels: {
+              baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#44403c' },
+              metallic: { enabled: true, mode: 'Value', value: 0.0, colour: '#8b5cf6' },
+              roughness: { enabled: true, mode: 'Value', value: 0.95, colour: '#3b82f6' },
+              height: { enabled: true, mode: 'Value', value: 0.48, colour: '#8a8a8a' },
+              normal: { enabled: true, mode: 'Derived', value: 1, colour: '#10b981' }
+            }
+          }
+        ],
+        channels: {
+          baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#1e293b' }
+        }
+      },
+      {
+        id: 'l3',
+        name: 'Industrial Hazard Stencil',
+        type: 'decal',
+        classification: 'Generator',
+        color: '#f59e0b',
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'Normal',
+        mask: {
+          visible: true,
+          source: 'Bitmap',
+          generatorKey: '',
+          generatorParams: {},
+          density: 100,
+          blend: 'Multiply',
+          invert: false,
+          channels: ['baseColour', 'roughness']
+        },
+        channels: {
+          baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#fbbf24' },
+          metallic: { enabled: true, mode: 'Value', value: 0.05, colour: '#8b5cf6' },
+          roughness: { enabled: true, mode: 'Value', value: 0.52, colour: '#3b82f6' },
+          height: { enabled: true, mode: 'Value', value: 0.58, colour: '#8a8a8a' },
+          normal: { enabled: true, mode: 'Derived', value: 1, colour: '#10b981' }
+        }
+      }
+    ];
+
+    let selectedId = 'l1';
+    let selectedIsMask = false;
+    let currentPage = 'layers'; // 'layers' | 'channels' | 'mask'
+    let soloId = null;
+    let searchQuery = '';
+    let openDropdown = null;
+    let colorPickerTarget = null;
+    let collapsedChannels = new Set(['height', 'normal', 'ambientOcclusion']);
+
+    /* ══════════════════════════════════════════════════════════════════
+       TREE UTILITIES
+    ══════════════════════════════════════════════════════════════════ */
+    function findLayerById(layers, id) {
+      for (const l of layers) {
+        if (l.id === id) return l;
+        if (l.children) {
+          const found = findLayerById(l.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function findParentFolder(layers, childId) {
+      for (const l of layers) {
+        if (l.children) {
+          const idx = l.children.findIndex(c => c.id === childId);
+          if (idx !== -1) return { folder: l, index: idx };
+          const found = findParentFolder(l.children, childId);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function flattenLayers(layers) {
+      const res = [];
+      function trav(items) {
+        for (const it of items) {
+          res.push(it);
+          if (it.children) trav(it.children);
+        }
+      }
+      trav(layers);
+      return res;
+    }
+
+    function updateLayerInTree(layers, id, updater) {
+      return layers.map(l => {
+        if (l.id === id) return updater(l);
+        if (l.children) {
+          return { ...l, children: updateLayerInTree(l.children, id, updater) };
+        }
+        return l;
+      });
+    }
+
+    function deleteLayerFromTree(layers, id) {
+      return layers.filter(l => l.id !== id).map(l => {
+        if (l.children) {
+          return { ...l, children: deleteLayerFromTree(l.children, id) };
+        }
+        return l;
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CAROUSEL NAVIGATION
+    ══════════════════════════════════════════════════════════════════ */
+    function navigateToPage(page) {
+      const selected = findLayerById(layersState, selectedId);
+      
+      // Auto-provision mask if switching to mask without one
+      if (page === 'mask' && selected && !selected.mask) {
+        selected.mask = {
+          visible: true,
+          source: 'Generator',
+          generatorKey: 'CurvatureEdges',
+          generatorParams: { Balance: 0.5, Contrast: 0.7, Radius: 0.25, Blur: 0.1 },
+          density: 100,
+          blend: 'Multiply',
+          invert: false,
+          channels: ['baseColour', 'roughness', 'height']
+        };
+        selectedIsMask = true;
+      } else if (page === 'mask') {
+        selectedIsMask = true;
+      } else if (page === 'channels') {
+        selectedIsMask = false;
+      }
+
+      currentPage = page;
+
+      // Update carousel track translation
+      const track = document.getElementById('carousel-track');
+      if (page === 'layers') track.style.transform = 'translateX(0%)';
+      else if (page === 'channels') track.style.transform = 'translateX(-33.333333%)';
+      else if (page === 'mask') track.style.transform = 'translateX(-66.666666%)';
+
+      // Update header nav buttons
+      document.getElementById('nav-btn-layers').className = 'nav-btn' + (page === 'layers' ? ' active-layers' : '');
+      document.getElementById('nav-btn-channels').className = 'nav-btn' + (page === 'channels' ? ' active-channels' : '');
+      document.getElementById('nav-btn-mask').className = 'nav-btn' + (page === 'mask' ? ' active-mask' : '');
+
+      renderAll();
+    }
+
+    function inspectCurrentSelection() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      if (selectedIsMask && selected.mask) {
+        navigateToPage('mask');
+      } else {
+        navigateToPage('channels');
+      }
+    }
+
+    /* Keyboard navigation */
+    window.addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (currentPage === 'layers') {
+          inspectCurrentSelection();
+        } else {
+          navigateToPage('layers');
+        }
+      } else if (e.key === 'Escape') {
+        if (currentPage !== 'layers') {
+          e.preventDefault();
+          navigateToPage('layers');
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        groupSelectedLayer();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        duplicateSelectedLayer();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedLayer();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const flat = flattenLayers(layersState);
+        const currIdx = flat.findIndex(l => l.id === selectedId);
+        if (currIdx === -1) return;
+        const nextIdx = e.key === 'ArrowUp' ? Math.max(0, currIdx - 1) : Math.min(flat.length - 1, currIdx + 1);
+        selectLayer(flat[nextIdx].id, false);
+      }
+    });
+
+    /* ══════════════════════════════════════════════════════════════════
+       LAYER STACK ACTIONS
+    ══════════════════════════════════════════════════════════════════ */
+    function selectLayer(id, isMask = false) {
+      selectedId = id;
+      selectedIsMask = isMask;
+      renderAll();
+    }
+
+    function toggleLayerVisibility(id, e) {
+      e.stopPropagation();
+      if (e.altKey) {
+        soloId = soloId === id ? null : id;
+      } else {
+        layersState = updateLayerInTree(layersState, id, l => ({ ...l, visible: !l.visible }));
+      }
+      renderAll();
+    }
+
+    function clearSolo() {
+      soloId = null;
+      renderAll();
+    }
+
+    function toggleFolderOpen(id, e) {
+      e.stopPropagation();
+      layersState = updateLayerInTree(layersState, id, l => ({ ...l, open: !l.open }));
+      renderAll();
+    }
+
+    function toggleSelectedMask() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      if (selected.mask) {
+        selected.mask = null;
+        selectedIsMask = false;
+      } else {
+        selected.mask = {
+          visible: true,
+          source: 'Generator',
+          generatorKey: 'CurvatureEdges',
+          generatorParams: { Balance: 0.5, Contrast: 0.7, Radius: 0.25, Blur: 0.1 },
+          density: 100,
+          blend: 'Multiply',
+          invert: false,
+          channels: ['baseColour', 'roughness', 'height']
+        };
+        selectedIsMask = true;
+      }
+      renderAll();
+    }
+
+    function groupSelectedLayer() {
+      const selected = findLayerById(layersState, selectedId);
+      const newFolderId = 'f_' + Date.now();
+      const newFolder = {
+        id: newFolderId,
+        name: selected ? 'Group (' + selected.name + ')' : 'New Folder Group',
+        type: 'folder',
+        classification: 'Material',
+        color: '#ffd24a',
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'Passthrough',
+        open: true,
+        children: selected ? [JSON.parse(JSON.stringify(selected))] : [],
+        channels: { baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#ffffff' } }
+      };
+
+      if (selected) {
+        layersState = deleteLayerFromTree(layersState, selectedId);
+      }
+      layersState.unshift(newFolder);
+      selectedId = newFolderId;
+      selectedIsMask = false;
+      renderAll();
+    }
+
+    function ungroupSelected() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || selected.type !== 'folder') return;
+      const children = selected.children || [];
+      const parent = findParentFolder(layersState, selectedId);
+      
+      layersState = deleteLayerFromTree(layersState, selectedId);
+      if (parent) {
+        parent.folder.children.splice(parent.index, 0, ...children);
+      } else {
+        layersState.unshift(...children);
+      }
+      if (children.length > 0) selectedId = children[0].id;
+      renderAll();
+    }
+
+    function addLayer(type, name) {
+      const newId = 'l_' + Date.now();
+      const newLayer = {
+        id: newId,
+        name: name,
+        type: type,
+        classification: type === 'paint' ? 'Brushwork' : type === 'fill' ? 'Material' : 'Generator',
+        color: '#3b82f6',
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'Normal',
+        mask: null,
+        channels: {
+          baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#94a3b8' },
+          metallic: { enabled: true, mode: 'Value', value: 0.5, colour: '#8b5cf6' },
+          roughness: { enabled: true, mode: 'Value', value: 0.5, colour: '#3b82f6' },
+          height: { enabled: true, mode: 'Value', value: 0.5, colour: '#8a8a8a' },
+          normal: { enabled: true, mode: 'Derived', value: 1, colour: '#10b981' }
+        }
+      };
+
+      layersState.unshift(newLayer);
+      selectedId = newId;
+      selectedIsMask = false;
+      document.getElementById('add-layer-menu').style.display = 'none';
+      renderAll();
+    }
+
+    function createNewFolder(name) {
+      const newFolderId = 'f_' + Date.now();
+      const newFolder = {
+        id: newFolderId,
+        name: name,
+        type: 'folder',
+        classification: 'Material',
+        color: '#ffd24a',
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'Passthrough',
+        open: true,
+        children: [],
+        channels: { baseColour: { enabled: true, mode: 'Value', value: 1, colour: '#ffffff' } }
+      };
+      layersState.unshift(newFolder);
+      selectedId = newFolderId;
+      selectedIsMask = false;
+      document.getElementById('add-layer-menu').style.display = 'none';
+      renderAll();
+    }
+
+    function duplicateSelectedLayer() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      const clone = JSON.parse(JSON.stringify(selected));
+      clone.id = 'l_' + Date.now();
+      clone.name = selected.name + ' Copy';
+      layersState.unshift(clone);
+      selectedId = clone.id;
+      renderAll();
+    }
+
+    function deleteSelectedLayer() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || selected.locked) return;
+      if (selectedIsMask && selected.mask) {
+        selected.mask = null;
+        selectedIsMask = false;
+      } else {
+        layersState = deleteLayerFromTree(layersState, selectedId);
+        const flat = flattenLayers(layersState);
+        if (flat.length > 0) selectedId = flat[0].id;
+      }
+      renderAll();
+    }
+
+    function moveSelectedLayer(dir) {
+      const flat = flattenLayers(layersState);
+      const idx = layersState.findIndex(l => l.id === selectedId);
+      if (idx === -1) return;
+      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= layersState.length) return;
+      const item = layersState.splice(idx, 1)[0];
+      layersState.splice(targetIdx, 0, item);
+      renderAll();
+    }
+
+    function toggleAddMenu() {
+      const menu = document.getElementById('add-layer-menu');
+      menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function toggleBlendMenu() {
+      const menu = document.getElementById('blend-menu');
+      menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function handleSearch(q) {
+      searchQuery = q.trim().toLowerCase();
+      renderLayerList();
+    }
+
+    function handleFooterOpacityChange(val) {
+      val = Number(val);
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      if (selectedIsMask && selected.mask) {
+        selected.mask.density = val;
+      } else {
+        selected.opacity = val;
+      }
+      document.getElementById('footer-opacity-label').innerText = val + '%';
+      renderLayerList();
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       RENDER LAYER LIST (Strictly RECTANGULAR, NO ROUNDING)
+    ══════════════════════════════════════════════════════════════════ */
+    function renderLayerList() {
+      const container = document.getElementById('layer-list');
+      const flatLayers = flattenLayers(layersState);
+      document.getElementById('layer-count-badge').innerText = flatLayers.length;
+
+      const soloBtn = document.getElementById('solo-clear-btn');
+      soloBtn.style.display = soloId ? 'inline-block' : 'none';
+
+      let html = '';
+
+      function renderNode(layer, depth) {
+        const isSelected = selectedId === layer.id && !selectedIsMask;
+        const isMaskSelected = selectedId === layer.id && selectedIsMask;
+        const isDimmed = soloId !== null && soloId !== layer.id;
+        const isFolder = layer.type === 'folder';
+        const isOpen = layer.open ?? true;
+        const childCount = layer.children ? layer.children.length : 0;
+
+        if (searchQuery && !layer.name.toLowerCase().includes(searchQuery)) {
+          return '';
+        }
+
+        const activeChCount = Object.values(layer.channels || {}).filter(c => c && c.enabled).length;
+        const paddingLeft = Math.max(10, depth * 22 + 10);
+
+        let rowHtml = `
+          <div class="layer-row ${isFolder ? 'is-folder' : ''} ${isSelected ? 'selected' : ''} ${!layer.visible ? 'is-hidden' : ''} ${isDimmed ? 'is-dimmed' : ''}"
+               style="padding-left: ${paddingLeft}px; border-left-color: ${isSelected ? '#ffffff' : (layer.color || '#4a90e2')};"
+               onclick="selectLayer('${layer.id}', false)">
+               
+            ${depth > 0 ? `<div class="tree-guide-line" style="left: ${depth * 22 - 4}px;"></div>` : ''}
+
+            ${isFolder ? `
+              <button class="row-btn" onclick="toggleFolderOpen('${layer.id}', event)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  ${isOpen ? '<path d="m6 9 6 6 6-6"/>' : '<path d="m9 18 6-6-6-6"/>'}
+                </svg>
+              </button>
+            ` : '<div style="width: 4px;"></div>'}
+
+            <button class="row-btn" onclick="toggleLayerVisibility('${layer.id}', event)" title="Toggle Visibility (Alt+click to Solo)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${layer.visible 
+                  ? '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
+                  : '<path d="m2 2 20 20M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>'
+                }
+              </svg>
+            </button>
+
+            <div class="layer-thumb-box" style="background-color: ${isFolder ? '#1c1c22' : (layer.channels?.baseColour?.colour || '#232323')}">
+              ${isFolder 
+                ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd24a" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>`
+                : layer.type === 'paint'
+                ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><path d="m14 12-8.5 8.5a2.12 2.12 0 1 1-3-3L11 9"/><path d="M15 13 9 7l4-4 6 6h3a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2l-7-1Z"/></svg>`
+                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/></svg>`
+              }
+            </div>
+
+            <div class="layer-meta-col">
+              <div class="layer-name-row">
+                <span class="layer-name-label">${layer.name}</span>
+                ${isFolder ? `<span class="count-pill">${childCount} items</span>` : ''}
+              </div>
+              <div class="layer-info-subtitle">
+                <span>${isFolder ? 'FOLDER' : layer.classification}</span>
+                <span>·</span>
+                <span>${layer.blend}</span>
+                <span>·</span>
+                <span>${layer.opacity}%</span>
+              </div>
+            </div>
+
+            <div class="layer-actions-group">
+              ${!isFolder ? `
+                <button class="channel-count-pill" onclick="event.stopPropagation(); selectLayer('${layer.id}', false); navigateToPage('channels');">
+                  ${activeChCount} CH
+                </button>
+              ` : ''}
+
+              ${layer.mask ? `
+                <button class="mask-attached-pill" onclick="event.stopPropagation(); selectLayer('${layer.id}', true); navigateToPage('mask');">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>
+                  <span>MASK</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        // Attached Mask Sub-row
+        if (layer.mask) {
+          const maskPaddingLeft = Math.max(28, depth * 22 + 28);
+          rowHtml += `
+            <div class="mask-sub-row ${isMaskSelected ? 'selected' : ''}"
+                 style="padding-left: ${maskPaddingLeft}px;"
+                 onclick="selectLayer('${layer.id}', true)">
+              <div class="mask-branch-connector" style="left: ${Math.max(14, depth * 22 + 14)}px;"></div>
+              
+              <button class="row-btn" onclick="event.stopPropagation(); layer.mask.visible = !layer.mask.visible; renderAll();">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  ${layer.mask.visible 
+                    ? '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
+                    : '<path d="m2 2 20 20M9.88 9.88a3 3 0 1 0 4.24 4.24"/>'
+                  }
+                </svg>
+              </button>
+
+              <div style="width: 22px; height: 22px; background: #141414; border: 1px solid var(--border-medium); display: flex; align-items: center; justify-content: center; color: var(--accent-gold);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>
+              </div>
+
+              <div class="layer-meta-col">
+                <div class="layer-name-row">
+                  <span style="font-size: 11px; font-family: monospace; font-weight: 600; color: var(--accent-gold);">MASK</span>
+                  <span style="font-size: 11px; color: var(--text-main);">${layer.mask.source === 'Generator' ? layer.mask.generatorKey : layer.mask.source}</span>
+                </div>
+                <div class="layer-info-subtitle">
+                  <span>${layer.mask.density}% Density · ${layer.mask.blend}</span>
+                </div>
+              </div>
+
+              <button class="channel-count-pill" onclick="event.stopPropagation(); selectLayer('${layer.id}', true); navigateToPage('mask');">
+                Props &rarr;
+              </button>
+            </div>
+          `;
+        }
+
+        // Children recursion
+        if (isFolder && isOpen && layer.children) {
+          for (const child of layer.children) {
+            rowHtml += renderNode(child, depth + 1);
+          }
+        }
+
+        return rowHtml;
+      }
+
+      for (const rootLayer of layersState) {
+        html += renderNode(rootLayer, 0);
+      }
+
+      container.innerHTML = html;
+      updateFooterState();
+    }
+
+    function updateFooterState() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+
+      document.getElementById('footer-selected-name').innerText = selected.name + (selectedIsMask ? ' / Mask' : '');
+      document.getElementById('ungroup-btn').style.display = selected.type === 'folder' ? 'inline-block' : 'none';
+
+      const blend = selectedIsMask && selected.mask ? selected.mask.blend : selected.blend;
+      const opacity = selectedIsMask && selected.mask ? selected.mask.density : selected.opacity;
+
+      document.getElementById('footer-blend-label').innerText = blend;
+      document.getElementById('footer-opacity-slider').value = opacity;
+      document.getElementById('footer-opacity-label').innerText = opacity + '%';
+
+      // Inspect Button in Header
+      const inspectLabel = document.getElementById('inspect-btn-label');
+      const inspectIcon = document.getElementById('inspect-btn-icon');
+      if (selectedIsMask) {
+        inspectLabel.innerText = 'Mask Props';
+        inspectIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>`;
+      } else {
+        inspectLabel.innerText = selected.type === 'folder' ? 'Folder Props' : 'Channels';
+        inspectIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>`;
+      }
+
+      // Blend Mode Menu options
+      const blendMenu = document.getElementById('blend-menu');
+      let bHtml = '';
+      for (const b of BLEND_MODES) {
+        bHtml += `<button onclick="setLayerBlend('${b}')">${b}</button>`;
+      }
+      blendMenu.innerHTML = bHtml;
+    }
+
+    function setLayerBlend(b) {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      if (selectedIsMask && selected.mask) {
+        selected.mask.blend = b;
+      } else {
+        selected.blend = b;
+      }
+      document.getElementById('blend-menu').style.display = 'none';
+      renderAll();
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       RENDER CHANNEL PROPERTIES VIEW
+    ══════════════════════════════════════════════════════════════════ */
+    function renderChannelProperties() {
+      const container = document.getElementById('channel-inspector-body');
+      const selected = findLayerById(layersState, selectedId) || layersState[0];
+      if (!selected) return;
+
+      document.getElementById('channel-layer-name').innerText = selected.name;
+      document.getElementById('channel-layer-sub').innerText = selected.classification + ' · ' + selected.blend;
+      document.getElementById('channel-layer-dot').style.backgroundColor = selected.color || '#8b5cf6';
+
+      const enabledKeys = CHANNEL_ORDER.filter(k => selected.channels && selected.channels[k] && selected.channels[k].enabled);
+
+      let html = '';
+
+      // Chips region
+      html += `
+        <div class="chips-box">
+          <div class="chips-box-header">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-dim);">
+              <span>Channels</span>
+              <span class="count-pill" style="background: #ededed; color: #111; font-weight: 700;">${enabledKeys.length}</span>
+            </div>
+            ${enabledKeys.length > 1 ? `<button onclick="clearAllChannels()" style="background: none; border: none; color: var(--text-dim); font-size: 10px; cursor: pointer;">Clear all</button>` : ''}
+          </div>
+
+          <div class="chips-flex-wrap">
+            ${enabledKeys.map(k => {
+              const slot = CHANNEL_SLOTS[k];
+              const isLocked = k === 'baseColour';
+              return `
+                <div class="channel-chip">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${slot.hue};"></span>
+                  <span style="font-size: 11px; font-weight: 500;">${slot.label}</span>
+                  ${!isLocked ? `<button class="remove-chip-btn" onclick="toggleChannelEnabled('${k}')">&times;</button>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      // Accordion Channel Cards
+      for (const k of enabledKeys) {
+        const slot = CHANNEL_SLOTS[k];
+        const ch = selected.channels[k] || { enabled: true, mode: 'Value', value: 0.5, colour: slot.hue };
+        const isFolded = collapsedChannels.has(k);
+        const mode = slot.edit === 'derived' ? 'Derived' : (ch.mode || 'Value');
+
+        html += `
+          <div class="inspector-card" id="card-${k}">
+            <div class="inspector-card-header" onclick="toggleChannelFold('${k}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2" style="transform: ${isFolded ? 'rotate(-90deg)' : 'rotate(0deg)'}; transition: transform 0.15s;">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: ${slot.hue};"></span>
+              <span style="font-size: 11.5px; font-weight: 600; flex: 1;">${slot.label}</span>
+              <span style="font-size: 9.5px; font-family: monospace; text-transform: uppercase; color: var(--text-dim);">${mode}</span>
+            </div>
+
+            ${!isFolded ? `
+              <div class="inspector-card-content">
+                ${slot.edit === 'derived' ? `
+                  <div style="padding: 8px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted);">
+                    <div>Derived from height normals in real-time.</div>
+                  </div>
+                ` : `
+                  <div class="source-segmented-row">
+                    <span style="font-size: 11px; color: var(--text-muted);">Source</span>
+                    <div class="segmented-control">
+                      <button class="seg-btn ${mode === 'Value' ? 'active' : ''}" onclick="setChannelSourceMode('${k}', 'Value')">Value</button>
+                      <button class="seg-btn ${mode === 'Texture' ? 'active' : ''}" onclick="setChannelSourceMode('${k}', 'Texture')">Texture</button>
+                      <button class="seg-btn ${mode === 'Generator' ? 'active' : ''}" onclick="setChannelSourceMode('${k}', 'Generator')">Generator</button>
+                    </div>
+                  </div>
+
+                  ${mode === 'Value' ? `
+                    ${slot.edit === 'colour' ? `
+                      <div class="prop-row" style="justify-content: space-between;">
+                        <span class="prop-label">Colour</span>
+                        <div class="color-swatch-picker-btn" onclick="openColorPicker('${k}', '${ch.colour || slot.hue}')">
+                          <span class="swatch-dot" style="background-color: ${ch.colour || slot.hue};"></span>
+                          <span class="hex-code">${ch.colour || slot.hue}</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                      </div>
+                    ` : `
+                      <div class="prop-row">
+                        <span class="prop-label">Amount</span>
+                        <div class="tabular-num-box">
+                          <input type="number" step="${slot.step || 0.01}" min="${slot.min ?? 0}" max="${slot.max ?? 1}" value="${ch.value}" onchange="setChannelScalarValue('${k}', Number(this.value))" />
+                          <div class="unit-tag">${slot.unit || '–'}</div>
+                        </div>
+                        <input type="range" class="slider-track-input" min="${slot.min ?? 0}" max="${slot.max ?? 1}" step="${slot.step || 0.01}" value="${ch.value}" oninput="setChannelScalarValue('${k}', Number(this.value))" />
+                      </div>
+                    `}
+                  ` : ''}
+
+                  ${mode === 'Generator' ? `
+                    <div style="padding: 8px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 11px; font-weight: 600;">Procedural Edge Wear</span>
+                        <span class="count-pill">Baked</span>
+                      </div>
+                      <div class="prop-row">
+                        <span class="prop-label">Contrast</span>
+                        <input type="range" class="slider-track-input" min="0" max="1" step="0.01" value="0.7" />
+                      </div>
+                    </div>
+                  ` : ''}
+                `}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function toggleChannelFold(k) {
+      if (collapsedChannels.has(k)) collapsedChannels.delete(k);
+      else collapsedChannels.add(k);
+      renderChannelProperties();
+    }
+
+    function toggleChannelEnabled(k) {
+      if (k === 'baseColour') return;
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected) return;
+      if (!selected.channels) selected.channels = {};
+      const current = selected.channels[k];
+      const isEnabled = current?.enabled ?? false;
+      selected.channels[k] = {
+        ...current,
+        enabled: !isEnabled,
+        mode: current?.mode || 'Value',
+        value: current?.value ?? 0.5,
+        colour: current?.colour ?? CHANNEL_SLOTS[k].hue
+      };
+      renderAll();
+    }
+
+    function clearAllChannels() {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || !selected.channels) return;
+      for (const k of CHANNEL_ORDER) {
+        if (k !== 'baseColour' && selected.channels[k]) {
+          selected.channels[k].enabled = false;
+        }
+      }
+      renderAll();
+    }
+
+    function setChannelSourceMode(k, mode) {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || !selected.channels[k]) return;
+      selected.channels[k].mode = mode;
+      renderChannelProperties();
+    }
+
+    function setChannelScalarValue(k, val) {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || !selected.channels[k]) return;
+      selected.channels[k].value = val;
+      renderChannelProperties();
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       RENDER MASK PROPERTIES VIEW
+    ══════════════════════════════════════════════════════════════════ */
+    function renderMaskProperties() {
+      const container = document.getElementById('mask-inspector-body');
+      const selected = findLayerById(layersState, selectedId) || layersState[0];
+      if (!selected || !selected.mask) {
+        container.innerHTML = `
+          <div style="padding: 30px; text-align: center; color: var(--text-dim);">
+            <div>No mask attached to this layer.</div>
+            <button class="inspect-btn" style="margin: 12px auto 0;" onclick="toggleSelectedMask()">Create Mask</button>
+          </div>
+        `;
+        return;
+      }
+
+      const mask = selected.mask;
+      document.getElementById('mask-clips-name').innerText = 'Clips to: ' + selected.name;
+
+      let html = `
+        <div class="inspector-card">
+          <div class="inspector-card-content">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-2.5a6 6 0 0 0-4.5 2 6 6 0 0 0-4.5-2H2v5Z"/></svg>
+                <span>Mask Configuration</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button class="inspect-btn" style="padding: 2px 8px; font-size: 10px; ${mask.invert ? 'background: #fff; color: #000;' : ''}" onclick="mask.invert = !mask.invert; renderMaskProperties();">Invert</button>
+                <button class="row-btn" onclick="mask.visible = !mask.visible; renderMaskProperties();">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    ${mask.visible ? '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>' : '<path d="m2 2 20 20M9.88 9.88a3 3 0 1 0 4.24 4.24"/>'}
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Density slider -->
+            <div class="prop-row">
+              <span class="prop-label">Density</span>
+              <div class="tabular-num-box">
+                <input type="number" min="0" max="100" value="${mask.density}" onchange="mask.density = Number(this.value); renderMaskProperties();" />
+                <div class="unit-tag">%</div>
+              </div>
+              <input type="range" class="slider-track-input" min="0" max="100" value="${mask.density}" oninput="mask.density = Number(this.value); renderMaskProperties();" />
+            </div>
+
+            <!-- Mask Blend Mode -->
+            <div class="prop-row" style="justify-content: space-between;">
+              <span class="prop-label">Blend Mode</span>
+              <select style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: #fff; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 11px;" onchange="mask.blend = this.value; renderMaskProperties();">
+                <option value="Multiply" ${mask.blend === 'Multiply' ? 'selected' : ''}>Multiply</option>
+                <option value="Replace" ${mask.blend === 'Replace' ? 'selected' : ''}>Replace</option>
+                <option value="Linear Dodge (Add)" ${mask.blend === 'Linear Dodge (Add)' ? 'selected' : ''}>Linear Dodge (Add)</option>
+                <option value="Subtract" ${mask.blend === 'Subtract' ? 'selected' : ''}>Subtract</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mask Source Preset -->
+        <div class="inspector-card">
+          <div class="inspector-card-header">
+            <span style="font-size: 11.5px; font-weight: 600;">Procedural Generator</span>
+          </div>
+          <div class="inspector-card-content">
+            <div class="prop-row" style="justify-content: space-between;">
+              <span class="prop-label">Preset</span>
+              <select style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: #fff; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 11px;" onchange="mask.generatorKey = this.value; renderMaskProperties();">
+                ${GENERATOR_CATALOGUE.map(g => `<option value="${g.key}" ${mask.generatorKey === g.key ? 'selected' : ''}>${g.label}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="prop-row">
+              <span class="prop-label">Balance</span>
+              <input type="range" class="slider-track-input" min="0" max="1" step="0.01" value="0.5" />
+            </div>
+            <div class="prop-row">
+              <span class="prop-label">Contrast</span>
+              <input type="range" class="slider-track-input" min="0" max="1" step="0.01" value="0.75" />
+            </div>
+            <div class="prop-row">
+              <span class="prop-label">Radius</span>
+              <input type="range" class="slider-track-input" min="0" max="1" step="0.01" value="0.25" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Channels -->
+        <div class="chips-box">
+          <div class="chips-box-header">
+            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-dim);">Applies to Channels</span>
+          </div>
+          <div class="chips-flex-wrap">
+            ${['baseColour', 'metallic', 'roughness', 'height'].map(k => {
+              const active = mask.channels.includes(k);
+              return `
+                <button class="channel-chip" style="${active ? 'border-color: var(--accent-gold); color: #fff;' : 'opacity: 0.5;'}" onclick="toggleMaskTargetChannel('${k}')">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${CHANNEL_SLOTS[k].hue};"></span>
+                  <span>${CHANNEL_SLOTS[k].label}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function toggleMaskTargetChannel(k) {
+      const selected = findLayerById(layersState, selectedId);
+      if (!selected || !selected.mask) return;
+      const idx = selected.mask.channels.indexOf(k);
+      if (idx !== -1) selected.mask.channels.splice(idx, 1);
+      else selected.mask.channels.push(k);
+      renderMaskProperties();
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       COLOR PICKER MODAL
+    ══════════════════════════════════════════════════════════════════ */
+    function openColorPicker(chKey, currentHex) {
+      colorPickerTarget = { channelKey: chKey, hex: currentHex };
+      const modal = document.getElementById('color-picker-modal');
+      const grid = document.getElementById('palette-grid');
+      document.getElementById('custom-hex-input').value = currentHex;
+
+      grid.innerHTML = SWATCH_PALETTE.map(hex => `
+        <div class="palette-cell" style="background-color: ${hex};" onclick="selectColorSwatch('${hex}')"></div>
+      `).join('');
+
+      modal.style.display = 'flex';
+    }
+
+    function selectColorSwatch(hex) {
+      if (!colorPickerTarget) return;
+      const selected = findLayerById(layersState, selectedId);
+      if (selected && selected.channels && selected.channels[colorPickerTarget.channelKey]) {
+        selected.channels[colorPickerTarget.channelKey].colour = hex;
+      }
+      closeColorPicker();
+      renderAll();
+    }
+
+    function applyCustomHex() {
+      const hex = document.getElementById('custom-hex-input').value;
+      if (hex) selectColorSwatch(hex);
+    }
+
+    function closeColorPicker() {
+      document.getElementById('color-picker-modal').style.display = 'none';
+      colorPickerTarget = null;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       INITIAL MOUNT & RENDER ALL
+    ══════════════════════════════════════════════════════════════════ */
+    function renderAll() {
+      renderLayerList();
+      renderChannelProperties();
+      renderMaskProperties();
+    }
+
+    // Initialize on load
+    renderAll();
+  </script>
+</body>
+</html>

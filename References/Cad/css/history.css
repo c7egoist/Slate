@@ -1,0 +1,54 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   history.css — RIGHT-dock History pane: branch-tab strip + the timeline of
+                 edit events (rail, node, body, time).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── HISTORY pane ─── */
+.hx-head{display:flex;align-items:center;padding:11px 12px;border-bottom:1px solid var(--border);background:var(--panel-2);flex-shrink:0;}
+.hx-title{font-weight:600;font-size:13px;flex:1;}
+.hx-acts{display:flex;gap:2px;}
+
+/* branch tabs */
+.hx-trees{display:flex;align-items:center;gap:5px;padding:8px 10px 4px;flex-wrap:wrap;flex-shrink:0;}
+.hx-tree{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);font-size:11px;cursor:pointer;transition:.13s;}
+.hx-tree:hover{color:var(--text);border-color:var(--row-selected-bd);}
+.hx-tree.active{background:var(--cad-soft);color:var(--text);border-color:var(--cad-bd);}
+.hx-tree .lico{width:12px;height:12px;}
+.hx-tree-nm{font-weight:500;}
+.hx-tree-ct{font-size:9px;font-weight:700;color:var(--text-faint);background:var(--panel-3);border-radius:5px;padding:1px 5px;}
+.hx-tree-x{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-faint);}
+.hx-tree-x:hover{background:rgba(239,68,68,.16);color:var(--red);}
+.hx-tree-x .lico{width:11px;height:11px;}
+.hx-tree-add{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-faint);background:var(--panel-2);border:1px solid var(--border);transition:.13s;}
+.hx-tree-add:hover{color:var(--text);background:var(--row-hover);}
+.hx-tree-add .lico{width:13px;height:13px;}
+
+.hx-scroll{flex:1;overflow-y:auto;padding:8px;position:relative;}
+.hx-empty{padding:30px 22px;text-align:center;color:var(--text-faint);font-size:12px;line-height:1.7;}
+
+/* event rows */
+.hx-ev{display:flex;gap:11px;padding:2px 6px 2px 2px;cursor:pointer;position:relative;border-radius:10px;transition:background .13s;}
+.hx-ev:hover{background:var(--row-hover);}
+.hx-ev.at-cursor{background:var(--row-selected);box-shadow:inset 0 0 0 1px var(--row-selected-bd);}
+.hx-ev.future{opacity:.4;}
+.hx-rail{width:22px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;}
+.hx-line{width:2px;flex:1;min-height:6px;background:var(--border);}
+.hx-line.hidden{background:transparent;}
+.hx-node{width:11px;height:11px;border-radius:50%;background:var(--panel-3);box-shadow:0 0 0 2px var(--border);flex-shrink:0;z-index:1;display:flex;align-items:center;justify-content:center;color:var(--text);margin:2px 0;}
+.hx-node.glyph{width:20px;height:20px;background:var(--panel-2);box-shadow:0 0 0 2px var(--border);}
+.hx-node.glyph .lico{width:12px;height:12px;}
+.hx-ev.at-cursor .hx-node{background:var(--cad);box-shadow:0 0 0 3px var(--cad-soft);color:#0a0a0a;}
+.hx-body{flex:1;min-width:0;padding:6px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.hx-main{min-width:0;flex:1;}
+.hx-evt-title{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hx-evt-meta{display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;}
+.hx-type{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);background:var(--panel-3);border-radius:999px;padding:2px 7px;}
+.hx-type .lico{width:11px;height:11px;}
+.hx-type.gen{color:#c084fc;}.hx-type.mat{color:#7dd3fc;}.hx-type.param{color:#fbbf24;}
+.hx-sub{font-size:10px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hx-layerline{display:flex;align-items:center;gap:7px;font-size:12px;min-width:0;}
+.hx-verb{color:var(--text-dim);flex-shrink:0;}
+.hx-chip{font-size:10px;font-weight:600;color:#0a0a0a;border-radius:999px;padding:2px 8px;flex-shrink:0;}
+.hx-lname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hx-lname.gone{text-decoration:line-through;color:var(--text-faint);}
+.hx-time{font-size:10px;color:var(--text-faint);flex-shrink:0;white-space:nowrap;font-variant-numeric:tabular-nums;}

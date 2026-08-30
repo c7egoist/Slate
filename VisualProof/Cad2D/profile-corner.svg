@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+<rect width="100%" height="100%" fill="#0b0d10"/>
+<text x="40.00" y="40.00" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Chamfer / Fillet Proof</text>
+<polygon points="180.00,180.00 420.00,180.00 420.00,420.00 180.00,420.00" fill="none" stroke="#2a313a" stroke-width="2" opacity="1.0"/>
+<polyline points="180.00,180.00 370.00,180.00 420.00,230.00 420.00,420.00 180.00,420.00 180.00,180.00" fill="none" stroke="#ff9f6e" stroke-width="4" opacity="1.0"/>
+<polyline points="680.00,180.00 920.00,180.00 920.00,350.00 919.73,356.10 918.94,362.16 917.61,368.12 915.78,373.94 913.44,379.58 910.62,385.00 907.34,390.15 903.62,395.00 899.50,399.50 895.00,403.62 890.15,407.34 885.00,410.62 879.58,413.44 873.94,415.78 868.12,417.61 862.16,418.94 856.10,419.73 680.00,420.00 680.00,180.00" fill="none" stroke="#78c6ff" stroke-width="4" opacity="1.0"/>
+<text x="150.00" y="470.00" fill="#ff9f6e" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Chamfered corner</text>
+<text x="730.00" y="470.00" fill="#78c6ff" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Filleted corner</text>
+</svg>

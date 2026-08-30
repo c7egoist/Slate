@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harbor Asset Library</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Three.js via Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  
+  <style>
+    body { 
+      background-color: #000; 
+      color: #fff; 
+      margin: 0; 
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+    }
+    
+    /* Custom Scrollbar for dark theme */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+    
+    .aspect-4-3 { aspect-ratio: 4/3; }
+  </style>
+</head>
+<body class="h-screen w-full flex overflow-hidden text-sm bg-black antialiased">
+  
+  <!-- Sidebar -->
+  <div class="w-60 flex-none border-r border-[#1f1f1f] bg-[#0a0a0a] flex flex-col overflow-hidden text-sm">
+    <div class="p-4 pb-2 flex items-center justify-between">
+      <span class="text-[10px] tracking-widest uppercase text-neutral-500 font-medium">Sources</span>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto px-2 pb-4 space-y-4 mt-2" id="sidebar-content">
+      <!-- Injected by JavaScript -->
+    </div>
+    
+    <div class="border-t border-[#1f1f1f] p-4 flex flex-col gap-2">
+      <div class="flex justify-between items-center text-[10px] text-neutral-500">
+        <span>Library cache</span>
+        <span class="font-mono text-white">12.<span class="text-neutral-500">4</span> GB</span>
+      </div>
+      <div class="h-1 rounded-full bg-white/10 overflow-hidden flex">
+        <div class="bg-white h-full" style="width: 38%"></div>
+        <div class="bg-neutral-500 h-full" style="width: 24%"></div>
+        <div class="bg-white/20 h-full" style="width: 12%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="flex-1 flex flex-col min-w-0">
+    
+    <!-- Topbar -->
+    <div class="h-14 flex-none border-b border-[#1f1f1f] bg-[#0a0a0a] flex items-center gap-3 px-4">
+      <div class="flex-1 max-w-md h-8 flex items-center gap-2 px-3 bg-[#111] border border-[#1f1f1f] rounded-full focus-within:border-white/40 transition-all">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-neutral-500"></i>
+        <input type="text" id="search-input" placeholder="Search assets, formats, tags..." class="flex-1 bg-transparent text-xs text-white placeholder:text-neutral-600 outline-none" />
+        <span class="font-mono text-[10px] text-neutral-500 border border-[#1f1f1f] rounded px-1.5 py-0.5 bg-white/5">/</span>
+      </div>
+      
+      <div class="ml-auto flex items-center gap-2">
+        <button class="h-8 px-3 rounded-full flex items-center gap-2 border border-[#1f1f1f] bg-white/5 text-neutral-300 text-xs hover:bg-white/10 hover:text-white transition-colors">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> Create
+        </button>
+        <button class="h-8 px-3 rounded-full flex items-center gap-2 border border-white bg-white text-black font-medium text-xs hover:bg-neutral-200 transition-colors">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Import
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Split -->
+    <div class="flex-1 flex overflow-hidden">
+      
+      <!-- Grid -->
+      <div class="flex-1 flex flex-col min-w-0 overflow-y-auto relative bg-black">
+        <div class="p-4 pb-2 border-b border-[#1f1f1f] bg-[#0c0c0e] flex items-center justify-between sticky top-0 z-10">
+          <div class="flex items-center gap-2 text-xs text-neutral-500" id="breadcrumb">
+            <span class="text-white font-medium">Project Library</span>
+          </div>
+        </div>
+        
+        <div class="flex-1 p-4">
+          <div id="asset-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            <!-- Injected by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Inspector -->
+      <div class="w-80 flex-none border-l border-[#1f1f1f] bg-[#0a0a0a] flex flex-col overflow-hidden">
+        <div class="flex p-2 border-b border-[#1f1f1f] bg-[#0c0c0e] gap-1">
+          <button class="flex-1 h-8 rounded-md text-xs flex items-center justify-center gap-1.5 bg-white/10 text-white">
+            <i data-lucide="info" class="w-3.5 h-3.5"></i> Details
+          </button>
+          <button class="flex-1 h-8 rounded-md text-xs flex items-center justify-center gap-1.5 text-neutral-500 hover:text-neutral-300">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Create
+          </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto flex flex-col">
+          <div class="h-48 border-b border-[#1f1f1f] flex-none relative bg-black" id="preview-container">
+            <!-- 3D Canvas / 2D Preview -->
+            <div class="w-full h-full flex items-center justify-center text-neutral-600 text-xs bg-black">No preview available</div>
+          </div>
+          
+          <div id="inspector-content" class="flex flex-col flex-1">
+            <div class="p-4 text-center text-neutral-500 text-xs mt-4">Select an asset to inspect</div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --------------------------------------------------------
+    // Embedded Data & State
+    // --------------------------------------------------------
+    const ASSETS = [
+      { id: 'a1', name: 'Turbine_Housing_A', ext: 'step', size: 48.2 * 1048576, tags: ['mech'], cat: 'cad', source: 'library' },
+      { id: 'a3', name: 'Hangar_Interior', ext: 'fbx', size: 214.9 * 1048576, tags: ['env', 'hero'], cat: 'scene', source: 'library' },
+      { id: 'a4', name: 'Character_Base_Mesh', ext: 'obj', size: 18.6 * 1048576, tags: ['char'], cat: 'mesh', source: 'library' },
+      { id: 'm1', name: 'Polished_Copper', ext: 'mat', size: 1.2 * 1048576, tags: ['metal'], cat: 'material', subcat: 'Metals', source: 'library', color: '#b87333', metalness: 1.0, roughness: 0.1 },
+      { id: 'm2', name: 'Brushed_Aluminium', ext: 'mat', size: 2.1 * 1048576, tags: ['metal'], cat: 'material', subcat: 'Metals', source: 'library', color: '#d9d9d9', metalness: 0.8, roughness: 0.4 },
+      { id: 'm4', name: 'Matte_Red_Plastic', ext: 'mat', size: 0.5 * 1048576, tags: ['plastic'], cat: 'material', subcat: 'Plastics', source: 'library', color: '#cc0000', metalness: 0.0, roughness: 0.8 },
+      { id: 'f1', name: 'Neue_Haas_Grotesk', ext: 'otf', size: 1.9 * 1048576, tags: ['ui'], cat: 'font', source: 'library', fontFamily: 'sans-serif' },
+      { id: 's1', name: 'Company_Logo', ext: 'svg', size: 0.05 * 1048576, tags: ['vector'], cat: 'svg', source: 'library', content: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/></svg>' }
+    ];
+
+    const CAT_INFO = {
+      mesh: { name: 'Meshes', icon: 'box' },
+      cad: { name: 'CAD', icon: 'box-select' },
+      scene: { name: 'Scenes', icon: 'layout' },
+      material: { name: 'Materials', icon: 'palette' },
+      font: { name: 'Fonts', icon: 'type' },
+      svg: { name: 'SVG / Vectors', icon: 'pen-tool' }
+    };
+
+    let state = {
+      root: 'library',
+      cat: null,
+      subcat: null,
+      selectedId: null,
+      search: ''
+    };
+
+    // --------------------------------------------------------
+    // DOM Elements
+    // --------------------------------------------------------
+    const els = {
+      sidebar: document.getElementById('sidebar-content'),
+      grid: document.getElementById('asset-grid'),
+      breadcrumb: document.getElementById('breadcrumb'),
+      inspector: document.getElementById('inspector-content'),
+      preview: document.getElementById('preview-container'),
+      search: document.getElementById('search-input')
+    };
+
+    // --------------------------------------------------------
+    // Three.js Logic
+    // --------------------------------------------------------
+    let renderer, scene, camera, controls, currentMesh;
+    
+    function initThree() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+      
+      camera = new THREE.PerspectiveCamera(45, els.preview.clientWidth / els.preview.clientHeight, 0.1, 100);
+      camera.position.set(2, 2, 2);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(els.preview.clientWidth, els.preview.clientHeight);
+      els.preview.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+      dirLight.position.set(10, 10, 10);
+      scene.add(dirLight);
+
+      const grid = new THREE.GridHelper(10, 10, 0x333333, 0x111111);
+      scene.add(grid);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 2;
+
+      window.addEventListener('resize', () => {
+        if (!els.preview.clientWidth || !renderer) return;
+        camera.aspect = els.preview.clientWidth / els.preview.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(els.preview.clientWidth, els.preview.clientHeight);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    function updatePreview(asset) {
+      if (!renderer) initThree();
+      
+      els.preview.innerHTML = ''; // clear preview container
+      
+      if (currentMesh) {
+        scene.remove(currentMesh);
+        currentMesh.geometry.dispose();
+        currentMesh.material.dispose();
+        currentMesh = null;
+      }
+
+      if (!asset) {
+        els.preview.innerHTML = '<div class="w-full h-full flex items-center justify-center text-neutral-600 text-xs bg-black">No preview available</div>';
+        return;
+      }
+
+      if (asset.cat === 'font') {
+        els.preview.innerHTML = `
+          <div class="w-full h-full bg-black relative flex items-center justify-center border-b border-[#1f1f1f] overflow-hidden">
+             <div class="text-8xl text-white select-none" style="font-family: ${asset.fontFamily || 'sans-serif'}; font-weight: 500">Aa</div>
+             <div class="absolute top-2 left-2 flex gap-1 pointer-events-none">
+                <span class="text-[9px] uppercase tracking-wider text-neutral-500">2d preview</span>
+             </div>
+             <div class="absolute top-2 right-2 flex gap-1 pointer-events-none">
+                <span class="text-[9px] uppercase tracking-wider text-neutral-500">${asset.ext}</span>
+             </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (asset.cat === 'svg') {
+        els.preview.innerHTML = `
+          <div class="w-full h-full bg-[#050505] relative flex items-center justify-center p-12 border-b border-[#1f1f1f] overflow-hidden">
+             <div class="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0_1px,transparent_1px_7px)] opacity-50 pointer-events-none"></div>
+             <div class="w-full h-full text-white [&>svg]:w-full [&>svg]:h-full [&>svg]:opacity-90 drop-shadow-2xl flex items-center justify-center">
+                ${asset.content}
+             </div>
+             <div class="absolute top-2 left-2 flex gap-1 pointer-events-none">
+                <span class="text-[9px] uppercase tracking-wider text-neutral-500">2d preview</span>
+             </div>
+             <div class="absolute top-2 right-2 flex gap-1 pointer-events-none">
+                <span class="text-[9px] uppercase tracking-wider text-neutral-500">${asset.ext}</span>
+             </div>
+          </div>
+        `;
+        return;
+      }
+
+      els.preview.appendChild(renderer.domElement);
+      
+      let geo;
+      if (asset.cat === 'cad') geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+      else if (asset.cat === 'material') geo = new THREE.SphereGeometry(0.8, 64, 64);
+      else if (asset.cat === 'mesh') geo = new THREE.TorusGeometry(0.5, 0.2, 16, 100);
+      else geo = new THREE.BoxGeometry(1, 1, 1);
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: asset.color || 0xffffff,
+        metalness: asset.metalness ?? 0.1,
+        roughness: asset.roughness ?? 0.2
+      });
+
+      currentMesh = new THREE.Mesh(geo, mat);
+      scene.add(currentMesh);
+    }
+
+    // --------------------------------------------------------
+    // UI Rendering Logic
+    // --------------------------------------------------------
+    function renderSidebar() {
+      const cats = Array.from(new Set(ASSETS.map(a => a.cat)));
+      let html = `
+        <div>
+          <div class="text-[10px] tracking-widest uppercase text-neutral-500 font-medium px-2 py-1">Project</div>
+          <div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-neutral-400 hover:text-white hover:bg-white/5 transition-colors ${!state.cat ? 'bg-white/10 text-white' : ''}" onclick="window.nav('library', null, null)">
+            <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
+            <span class="flex-1 truncate text-xs">Project Library</span>
+            <span class="text-[10px] font-mono">${ASSETS.length}</span>
+          </div>
+          <div class="pl-6 space-y-0.5 mt-0.5">
+      `;
+
+      cats.forEach(cat => {
+        const info = CAT_INFO[cat] || { name: cat, icon: 'box' };
+        const items = ASSETS.filter(a => a.cat === cat);
+        const subcats = Array.from(new Set(items.filter(a => a.subcat).map(a => a.subcat)));
+        
+        const isActiveCat = state.cat === cat && !state.subcat;
+        
+        html += `
+          <div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-neutral-400 hover:text-white hover:bg-white/5 transition-colors ${isActiveCat ? 'bg-white/10 text-white' : ''}" onclick="window.nav('library', '${cat}', null)">
+              ${subcats.length > 0 ? `<i data-lucide="chevron-down" class="w-3 h-3"></i>` : `<span class="w-3.5 h-3.5"></span>`}
+              <span class="flex-1 truncate text-xs">${info.name}</span>
+              <span class="text-[10px] font-mono">${items.length}</span>
+            </div>
+        `;
+        
+        if (subcats.length > 0) {
+          html += `<div class="pl-6 space-y-0.5 mt-0.5">`;
+          subcats.forEach(sc => {
+            const isActiveSc = state.subcat === sc;
+            const scCount = items.filter(a => a.subcat === sc).length;
+            html += `
+              <div class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-neutral-400 hover:text-white hover:bg-white/5 transition-colors ${isActiveSc ? 'bg-white/10 text-white' : ''}" onclick="window.nav('library', '${cat}', '${sc}')">
+                <span class="flex-1 truncate text-xs">${sc}</span>
+                <span class="text-[10px] font-mono">${scCount}</span>
+              </div>
+            `;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+
+      html += `</div></div>`;
+      els.sidebar.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    function renderGrid() {
+      let list = ASSETS;
+      if (state.cat) list = list.filter(a => a.cat === state.cat);
+      if (state.subcat) list = list.filter(a => a.subcat === state.subcat);
+      if (state.search) {
+        const q = state.search.toLowerCase();
+        list = list.filter(a => (a.name + ' ' + a.ext + ' ' + a.cat).toLowerCase().includes(q));
+      }
+
+      els.grid.innerHTML = list.map(a => {
+        const info = CAT_INFO[a.cat] || { name: a.cat, icon: 'box' };
+        const isSelected = state.selectedId === a.id;
+        
+        return `
+          <div class="group border border-[#1f1f1f] rounded-xl bg-gradient-to-b from-[#131316] to-[#0f0f12] overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-white/30 hover:shadow-2xl ${isSelected ? 'border-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]' : ''}" onclick="window.selectAsset('${a.id}')">
+            <div class="aspect-4-3 relative flex items-center justify-center bg-[#1a1a1e] border-b border-[#1f1f1f] overflow-hidden">
+              <div class="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0_1px,transparent_1px_7px)] opacity-50"></div>
+              <i data-lucide="${info.icon}" class="w-8 h-8 text-neutral-600 transition-transform group-hover:scale-105 group-hover:text-neutral-400"></i>
+              <div class="absolute left-2 bottom-2 h-5 px-2 rounded-md bg-black/70 backdrop-blur-md border border-[#1f1f1f] flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-400">
+                <div class="w-1.5 h-1.5 rounded-full bg-neutral-400"></div>
+                ${a.ext}
+              </div>
+            </div>
+            <div class="p-2.5">
+              <div class="text-xs text-white truncate font-medium">${a.name}.${a.ext}</div>
+              <div class="flex items-center gap-1.5 mt-1 text-[10px] text-neutral-500 font-mono">
+                <span>${(a.size / 1048576).toFixed(1)} MB</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderInspector() {
+      const asset = ASSETS.find(a => a.id === state.selectedId);
+      updatePreview(asset);
+
+      if (!asset) {
+        els.inspector.innerHTML = `
+          <div class="p-4 text-center mt-4">
+            <div class="text-sm font-medium text-white mb-2">Nothing selected</div>
+            <div class="text-xs text-neutral-500 leading-relaxed">
+              Select an asset to inspect its metadata and import options.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const info = CAT_INFO[asset.cat] || { name: asset.cat, icon: 'box' };
+
+      els.inspector.innerHTML = `
+        <div class="p-3 border-b border-[#1f1f1f] flex gap-3">
+          <div class="w-10 h-10 rounded-lg bg-[#17171b] border border-[#1f1f1f] flex-none flex items-center justify-center text-neutral-400">
+            <i data-lucide="${info.icon}" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-[13px] font-medium text-white truncate">${asset.name}<span class="text-neutral-500">.${asset.ext}</span></h3>
+            <div class="flex flex-wrap gap-1 mt-1.5">
+              ${asset.tags.map(t => `<span class="text-[10px] text-neutral-400 border border-[#1f1f1f] rounded px-1.5 bg-white/[0.02]">${t}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="p-3 border-b border-[#1f1f1f]">
+          <div class="text-[10px] uppercase tracking-widest text-neutral-500 font-medium mb-3">Properties</div>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between"><span class="text-neutral-500">Format</span><span class="font-mono text-white">${asset.ext.toUpperCase()}</span></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Category</span><span class="font-mono text-white">${info.name}</span></div>
+            ${asset.subcat ? `<div class="flex justify-between"><span class="text-neutral-500">Subcategory</span><span class="font-mono text-white">${asset.subcat}</span></div>` : ''}
+            <div class="flex justify-between"><span class="text-neutral-500">Size</span><span class="font-mono text-white">${(asset.size / 1048576).toFixed(1)} MB</span></div>
+          </div>
+        </div>
+        <div class="p-3 flex gap-2 mt-auto">
+          <button class="flex-1 h-9 rounded-md flex items-center justify-center gap-2 text-xs border border-white bg-white text-black font-medium hover:bg-neutral-200 transition-colors">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Import
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function renderBreadcrumb() {
+      let html = `<span class="cursor-pointer hover:text-white" onclick="window.nav('library', null, null)">Harbor</span> <span>/</span> `;
+      if (state.cat) {
+        const info = CAT_INFO[state.cat] || { name: state.cat };
+        if (state.subcat) {
+          html += `<span class="cursor-pointer hover:text-white" onclick="window.nav('library', '${state.cat}', null)">${info.name}</span> <span>/</span> <span class="text-white font-medium">${state.subcat}</span>`;
+        } else {
+          html += `<span class="text-white font-medium">${info.name}</span>`;
+        }
+      } else {
+        html += `<span class="text-white font-medium">Project Library</span>`;
+      }
+      els.breadcrumb.innerHTML = html;
+    }
+
+    // --------------------------------------------------------
+    // Events
+    // --------------------------------------------------------
+    window.nav = (root, cat, subcat) => {
+      state.root = root;
+      state.cat = cat;
+      state.subcat = subcat;
+      state.selectedId = null;
+      updateAll();
+    };
+
+    window.selectAsset = (id) => {
+      state.selectedId = id;
+      renderGrid(); 
+      renderInspector();
+    };
+
+    els.search.addEventListener('input', (e) => {
+      state.search = e.target.value;
+      renderGrid();
+    });
+
+    function updateAll() {
+      renderSidebar();
+      renderBreadcrumb();
+      renderGrid();
+      renderInspector();
+    }
+
+    // Initial render
+    updateAll();
+  </script>
+</body>
+</html>

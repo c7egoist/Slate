@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontier · CAD Workspace</title>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap" rel="stylesheet">
+<!-- ════ STYLES (load order matters: theme → tabs → layout → features) ════ -->
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/tabs.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/browser.css">
+<link rel="stylesheet" href="css/cad-toolbar.css">
+<link rel="stylesheet" href="css/controls.css">
+<link rel="stylesheet" href="css/cad-features.css">
+<link rel="stylesheet" href="css/history.css">
+</head>
+<body>
+
+<!-- ════ TAB BAR ════ -->
+<div class="tab-bar">
+  <div class="tab-strip" id="tabStrip"></div>
+</div>
+
+<!-- ════ TOP HEADER ════ -->
+<div class="top-header">
+  <div class="th-brand"><span class="logo" id="brandLogo"></span> Frontier CAD</div>
+  <div class="th-sep"></div>
+  <button class="icon-btn" id="dockLeftBtn" data-tip="Toggle outliner"></button>
+  <div class="spacer"></div>
+  <div class="hdr-title"><b id="hdrPart">Part01</b> <span class="unit-chip">mm</span></div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="dockRightBtn" data-tip="Toggle inspector"></button>
+</div>
+
+<!-- ════ BODY ════ -->
+<div class="editor-body">
+
+  <!-- LEFT DOCK: Browser ⇄ Tools -->
+  <aside class="left-dock" id="leftDock">
+    <div class="di-carousel"><div class="di-pill" id="leftPill"></div></div>
+
+    <!-- BROWSER (feature/body tree) -->
+    <div class="lpane" id="paneBrowser">
+      <div class="ol-toolbar">
+        <div class="ol-search"><span class="lico" data-ic="search"></span><input id="olSearch" placeholder="Filter outliner..."></div>
+        <button class="icon-btn" data-tip="New sketch" data-toast="New sketch on plane" data-ic="pencil-ruler"></button>
+      </div>
+      <div class="tree" id="tree"></div>
+      <div class="dock-footer">
+        <span class="df-stat"><span class="lico" data-ic="box"></span> <b id="bodyCount">1</b> body</span>
+        <span class="df-sep"></span>
+        <span class="df-stat"><span class="lico" data-ic="git-commit-vertical"></span> <b id="featCountFoot">0</b> features</span>
+        <span class="live"><span class="pulse"></span> Live</span>
+      </div>
+    </div>
+
+    <!-- TOOLS (environment + grouped tools) -->
+    <div class="lpane" id="paneTools" style="display:none">
+      <div class="cdt-env" id="cdtEnv"></div>
+      <div class="cdt-search"><span class="lico" data-ic="search"></span><input id="toolSearch" placeholder="Search tools..."></div>
+      <div class="cdt-scroll" id="cdtScroll"></div>
+      <div class="dock-footer">
+        <span class="df-stat"><span class="lico" data-ic="mouse-pointer-2"></span> <b id="activeToolFoot">Line</b></span>
+        <span class="live"><span class="pulse"></span> Ready</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="resizer" id="resizerLeft"></div>
+
+  <!-- CENTER VIEWPORT -->
+  <div class="viewport-panel">
+    <div class="canvas-stage" id="stage">
+      <canvas id="vpCanvas"></canvas>
+      <div class="vp-pill"><span class="dot"></span> <b id="vpPart">Part01</b> <span class="vp-pill-env" id="vpEnv">MODEL</span></div>
+
+      <!-- interaction-mode toggle (Object ⇄ Sketch, like Blender). Click or Tab. -->
+      <button class="vp-mode" id="vpMode" data-mode="object" data-tip="Toggle Object / Sketch mode (Tab)">OBJECT</button>
+
+      <!-- view controls (display toggles + viewport settings) -->
+      <div class="vp-viewtools">
+        <div class="vp-dispbar" id="dispBar"></div>
+        <!-- viewport settings: ground-grid style -->
+        <div class="vp-settings" id="vpSettings">
+          <button class="vp-set-trig" id="vpSetTrig" data-tip="Viewport settings"><span class="lico" data-ic="settings-2"></span></button>
+          <div class="vp-set-menu" id="vpSetMenu">
+            <div class="vp-set-title">Ground grid</div>
+            <div class="vp-set-seg" id="gridSeg">
+              <button class="vp-seg-btn" data-grid="dots">Dots</button>
+              <button class="vp-seg-btn" data-grid="lines">Grid</button>
+              <button class="vp-seg-btn" data-grid="off">None</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- context command bar (shows for active operation) -->
+      <div class="vp-cmdbar" id="cmdBar">
+        <div class="vp-cmd-ico" id="cmdIco"></div>
+        <div><div class="vp-cmd-name" id="cmdName">Extrude</div><div class="vp-cmd-hint" id="cmdHint">Select a profile</div></div>
+        <div class="vp-cmd-sep"></div>
+        <div class="vp-cmd-opts" id="cmdOpts"></div>
+        <div class="vp-cmd-btns">
+          <button class="vp-cmd-btn cancel" id="cmdCancel"><span class="lico" data-ic="x"></span> Cancel</button>
+          <button class="vp-cmd-btn ok" id="cmdOk"><span class="lico" data-ic="check"></span> OK</button>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <div class="status-bar">
+      <span class="stat"><span class="lico" data-ic="layout-grid"></span> <b id="stEnv">Model</b></span>
+      <div class="vf-sep"></div>
+      <span class="stat"><span class="lico" data-ic="move"></span> <b id="stMode">Object</b></span>
+      <div class="vf-sep"></div>
+      <span class="stat"><span class="lico" data-ic="mouse-pointer-2"></span> <b id="stSel">Nothing selected</b></span>
+      <div class="vf-sep"></div>
+      <span class="stat"><span class="lico" data-ic="ruler"></span> <b id="stUnit">mm · 0.01 tol</b></span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="stat"><span class="lico" data-ic="grid-3x3"></span> Snap <b id="stSnap">On</b></span>
+      <div class="vf-sep"></div>
+      <span class="live"><span class="pulse"></span> Rebuilt</span>
+    </div>
+  </div>
+
+  <div class="resizer" id="resizerRight"></div>
+
+  <!-- RIGHT DOCK: Properties ⇄ Features ⇄ History -->
+  <aside class="right-dock" id="rightDock">
+    <div class="di-carousel"><div class="di-pill" id="rightPill"></div></div>
+
+    <!-- PROPERTIES -->
+    <div class="rpane" id="paneProps">
+      <div class="rd-head">
+        <div class="rdh-ico" id="propIco"><span class="lico" data-ic="sliders-horizontal"></span></div>
+        <div class="rdh-text">
+          <div class="rdh-name" id="propName">Properties</div>
+          <div class="rdh-sub" id="propSub"><span class="rdh-tag"><span class="rdh-tagdot"></span> No selection</span></div>
+        </div>
+      </div>
+      <div class="rd-empty" id="propEmpty">
+        <span class="lico" data-ic="mouse-pointer-square-dashed"></span>
+        <div class="rde-title">Nothing selected</div>
+        <div class="rde-sub">Pick a feature in the timeline or an entity in the viewport to edit its parameters.</div>
+      </div>
+      <div class="props-body" id="propsBody" style="display:none"></div>
+    </div>
+
+    <!-- FEATURES (timeline) -->
+    <div class="rpane cdf-pane" id="paneFeatures" style="display:none">
+      <div class="cdf-head">
+        <div class="cdf-head-ico" id="featHeadIco"></div>
+        <div class="cdf-head-text"><div class="cdf-head-name">Part01</div><div class="cdf-head-sub" id="featHeadSub">0 features</div></div>
+        <button class="cdf-add-btn" id="featAddBtn" data-tip="Add feature"><span class="lico" data-ic="plus"></span></button>
+      </div>
+      <div class="cdf-list" id="featList"></div>
+      <div class="cdf-foot">
+        <button class="cdf-foot-btn" id="featCollapseAll"><span class="lico" data-ic="chevrons-down-up"></span> Collapse</button>
+        <button class="cdf-foot-btn primary" id="featRollEnd"><span class="lico" data-ic="chevrons-down"></span> Roll to end</button>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="rpane" id="paneHistory" style="display:none">
+      <div class="hx-head">
+        <div class="hx-title">History</div>
+        <div class="hx-acts">
+          <button class="icon-btn" data-tip="Undo" data-hist="undo" data-ic="undo-2"></button>
+          <button class="icon-btn" data-tip="Redo" data-hist="redo" data-ic="redo-2"></button>
+        </div>
+      </div>
+      <div class="hx-scroll" id="hxScroll"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- ════ ADD-FEATURE / COMMAND PICKER ════ -->
+<div class="cdf-picker" id="picker">
+  <div class="cdf-picker-scrim" id="pickerScrim"></div>
+  <div class="cdf-picker-panel" role="dialog" aria-label="Add Feature">
+    <div class="cdf-picker-head">
+      <div class="cdf-ph-ico"><span class="lico" data-ic="git-commit-vertical"></span></div>
+      <div style="flex:1"><div class="cdf-ph-title">Add Feature</div><div class="cdf-ph-sub">Parametric — edit or roll back any time</div></div>
+    </div>
+    <div class="cdf-pk-search"><span class="lico" data-ic="search"></span><input id="pickerSearch" placeholder="Search features..."></div>
+    <div class="cdf-pk-grid" id="pickerGrid"></div>
+  </div>
+</div>
+
+<!-- ════ SCRIPTS ════
+     Self-contained coloured-SVG icons first, then modules in dependency order:
+     icons → data → controls → carousel → browser → properties → features →
+     toolbar → history → viewport → dock → tabs → main. They share one global
+     scope; main.js boots last. No network / Lucide dependency. -->
+<script src="js/icons.js"></script>
+<script src="js/data.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/carousel.js"></script>
+<script src="js/browser.js"></script>
+<script src="js/properties.js"></script>
+<script src="js/features.js"></script>
+<script src="js/toolbar.js"></script>
+<script src="js/history.js"></script>
+<script src="js/mat4.js"></script>
+<script src="js/part-geometry.js"></script>
+<script src="js/viewport3d.js"></script>
+<script src="js/sketch.js"></script>
+<script src="js/gizmo.js"></script>
+<script src="js/points.js"></script>
+<script src="js/subselect.js"></script>
+<script src="js/contextmenu.js"></script>
+<script src="js/joinmenu.js"></script>
+<script src="js/constraints.js"></script>
+<script src="js/constrainpick.js"></script>
+<script src="js/constraintdraw.js"></script>
+<script src="js/boolean2d.js"></script>
+<script src="js/bevel.js"></script>
+<script src="js/viewport.js"></script>
+<script src="js/dock.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

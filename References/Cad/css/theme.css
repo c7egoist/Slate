@@ -1,0 +1,22 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   theme.css — design tokens + base reset. Load FIRST (every other sheet reads
+               these custom properties). Extracted verbatim from the original
+               single-file Frontier CAD prototype.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── DESIGN TOKENS ─── */
+:root{
+  --bg:#000;--panel:#0a0a0a;--panel-2:#0e0e0e;--panel-3:#141414;--header:#070707;
+  --row-hover:#1a1a1a;--row-selected:#1f1f1f;--row-selected-bd:#3a3a3a;
+  --text:#ededed;--text-dim:#8a8a8a;--text-faint:#5a5a5a;--border:#1c1c1c;
+  --accent:#fff;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+  --cad:#fff;--cad-soft:rgba(255,255,255,.14);--cad-bd:rgba(255,255,255,.42);
+  --amber:#f59e0b;--purple:#a855f7;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none;}
+html,body{height:100%;width:100%;background:#000;overflow:hidden;}
+body{font-family:'General Sans','Segoe UI',Roboto,system-ui,Arial,sans-serif;font-size:13px;color:var(--text);display:flex;flex-direction:column;height:100vh;letter-spacing:.1px;}
+.lico{width:15px;height:15px;stroke-width:2;display:inline-flex;}
+svg.lucide{display:block;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;font-family:inherit;}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
+<rect width="100%" height="100%" fill="#0b0d10"/>
+<text x="40.00" y="40.00" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Solver Stress Proof</text>
+<line x1="160.00" y1="180.00" x2="420.00" y2="180.00" stroke="#78c6ff" stroke-width="4" opacity="1.0"/>
+<line x1="420.00" y1="180.00" x2="420.00" y2="420.00" stroke="#ff9f6e" stroke-width="4" opacity="1.0"/>
+<line x1="720.00" y1="180.00" x2="980.00" y2="260.00" stroke="#8ee3ef" stroke-width="4" opacity="1.0"/>
+<polyline points="1270.00,250.00 1269.47,255.88 1267.89,261.71 1265.26,267.42 1261.63,272.96 1257.01,278.28 1251.46,283.33 1245.03,288.06 1237.78,292.43 1229.78,296.38 1221.11,299.89 1211.85,302.92 1202.10,305.43 1191.93,307.42 1181.46,308.85 1170.78,309.71 1160.00,310.00 1149.22,309.71 1138.54,308.85 1128.07,307.42 1117.90,305.43 1108.15,302.92 1098.89,299.89 1090.22,296.38 1082.22,292.43 1074.97,288.06 1068.54,283.33 1062.99,278.28 1058.37,272.96 1054.74,267.42 1052.11,261.71 1050.53,255.88 1050.00,250.00 1050.53,244.12 1052.11,238.29 1054.74,232.58 1058.37,227.04 1062.99,221.72 1068.54,216.67 1074.97,211.94 1082.22,207.57 1090.22,203.62 1098.89,200.11 1108.15,197.08 1117.90,194.57 1128.07,192.58 1138.54,191.15 1149.22,190.29 1160.00,190.00 1170.78,190.29 1181.46,191.15 1191.93,192.58 1202.10,194.57 1211.85,197.08 1221.11,200.11 1229.78,203.62 1237.78,207.57 1245.03,211.94 1251.46,216.67 1257.01,221.72 1261.63,227.04 1265.26,232.58 1267.89,238.29 1269.47,244.12 1270.00,250.00" fill="none" stroke="#f4d35e" stroke-width="3" opacity="1.0"/>
+<line x1="1050.00" y1="250.00" x2="940.00" y2="250.00" stroke="#ffffff" stroke-width="4" opacity="1.0"/>
+<text x="110.00" y="500.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Horizontal / vertical / equal / perpendicular / tangent stress</text>
+<text x="720.00" y="500.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Angle-driven line against base line</text>
+<text x="1010.00" y="500.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="400">Ellipse tangent line target</text>
+<circle cx="160.00" cy="180.00" r="5" fill="#ffd166"/>
+<circle cx="420.00" cy="180.00" r="5" fill="#ffd166"/>
+<circle cx="420.00" cy="420.00" r="5" fill="#ffd166"/>
+<circle cx="160.00" cy="420.00" r="5" fill="#ffd166"/>
+<circle cx="1050.00" cy="250.00" r="5" fill="#ffd166"/>
+<circle cx="940.00" cy="250.00" r="5" fill="#ffd166"/>
+<line x1="160.00" y1="140.00" x2="420.00" y2="140.00" stroke="#d8dde6" stroke-width="2" opacity="1.0" stroke-dasharray="8 8"/>
+<text x="255.00" y="132.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">H 260</text>
+<line x1="460.00" y1="180.00" x2="460.00" y2="420.00" stroke="#d8dde6" stroke-width="2" opacity="1.0" stroke-dasharray="8 8"/>
+<text x="470.00" y="305.00" fill="#d8dde6" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">V 240</text>
+<circle cx="720.00" cy="180.00" r="55.00" fill="none" stroke="#9dff9a" stroke-width="2" opacity="1.0"/>
+<text x="748.00" y="148.00" fill="#9dff9a" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="400">Angle</text>
+</svg>

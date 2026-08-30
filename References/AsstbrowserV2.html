@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HARBOR — Asset Browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:#0A0A0B;
+  --panel:#empty;
+  --panel:#',';
+  --panel:#131315;
+  --panel-2:#161619;
+  --elev:#1C1C20;
+  --elev-2:#232329;
+  --line:rgba(255,255,255,.075);
+  --line-2:rgba(255,255,255,.13);
+  --txt:#EAEAEC;
+  --txt-2:#93939B;
+  --txt-3:#65656D;
+  --acc:#BDF14E;
+  --acc-soft:rgba(189,241,78,.13);
+  --acc-ink:#0C1005;
+  --warn:#E9B44C;
+  --info:#7FA8D9;
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:22px;
+  --tile:158px;
+  --row-h:30px;
+  --hatch:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 1px,transparent 1px 7px);
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:13px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  letter-spacing:.005em;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:radial-gradient(120% 90% at 50% 0%,transparent 45%,rgba(0,0,0,.55) 100%);
+  mix-blend-mode:multiply;
+}
+button,input,select{font:inherit;color:inherit;background:none;border:none;outline:none}
+button{cursor:pointer}
+::selection{background:rgba(189,241,78,.25)}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:400;font-variant-numeric:tabular-nums}
+.dim{color:var(--txt-3)}
+.icon{width:17px;height:17px;flex:none;display:block;color:currentColor}
+.icon.sm{width:14px;height:14px}
+.icon.lg{width:22px;height:22px}
+.hatch{background-image:var(--hatch)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* scrollbars */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:20px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18);background-clip:content-box}
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.app{height:100vh;display:flex;background:var(--bg)}
+
+/* ---- rail ---- */
+.rail{
+  width:56px;flex:none;display:flex;flex-direction:column;align-items:center;
+  padding:14px 0 12px;gap:6px;border-right:1px solid var(--line);
+  background:linear-gradient(180deg,#101012,#0C0C0E);
+}
+.brand{width:26px;height:26px;margin-bottom:14px;position:relative;display:grid;place-items:center}
+.brand svg{width:22px;height:22px;color:var(--acc)}
+.rail-sep{width:20px;height:1px;background:var(--line);margin:6px 0}
+.rbtn{
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:var(--txt-3);
+  position:relative;transition:.16s var(--ease);
+}
+.rbtn:hover{background:rgba(255,255,255,.05);color:var(--txt-2)}
+.rbtn.on{background:var(--acc-soft);color:var(--acc)}
+.rbtn.on::before{content:'';position:absolute;left:-9px;top:50%;transform:translateY(-50%);width:2px;height:16px;border-radius:2px;background:var(--acc)}
+.rbtn .dot{position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 2px #0C0C0E}
+.rail .spacer{flex:1}
+.tip{
+  position:absolute;left:46px;top:50%;transform:translateY(-50%) translateX(-4px);
+  background:var(--elev-2);border:1px solid var(--line-2);padding:4px 9px;border-radius:8px;
+  font-size:11.5px;white-space:nowrap;color:var(--txt);opacity:0;pointer-events:none;transition:.14s var(--ease);z-index:60;
+  box-shadow:0 8px 24px rgba(0,0,0,.55);
+}
+.rbtn:hover .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+
+/* ---- main column ---- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ---- topbar ---- */
+.topbar{
+  height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px 0 16px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#101012,#0D0D0F);
+}
+.dots{display:flex;gap:6px;margin-right:4px}
+.dots i{width:9px;height:9px;border-radius:50%;background:#2A2A2F;display:block}
+.dots i:nth-child(1){background:#3A3A40}
+.navarrows{display:flex;gap:2px}
+.sq{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--txt-3);transition:.15s}
+.sq:hover{background:rgba(255,255,255,.06);color:var(--txt)}
+.sq:disabled{opacity:.32;cursor:default;background:none}
+.sq.on{background:var(--acc-soft);color:var(--acc)}
+.searchwrap{
+  flex:1;max-width:460px;height:34px;display:flex;align-items:center;gap:9px;padding:0 12px;
+  background:#0E0E10;border:1px solid var(--line);border-radius:99px;transition:.18s var(--ease);
+}
+.searchwrap:focus-within{border-color:rgba(189,241,78,.45);background:#101210;box-shadow:0 0 0 3px rgba(189,241,78,.06)}
+.searchwrap input{flex:1;font-size:12.5px}
+.searchwrap input::placeholder{color:var(--txt-3)}
+.kbd{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-3);border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:rgba(255,255,255,.02)}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill{
+  height:32px;padding:0 13px;border-radius:99px;display:inline-flex;align-items:center;gap:7px;
+  border:1px solid var(--line);color:var(--txt-2);font-size:12.5px;background:rgba(255,255,255,.02);transition:.16s var(--ease);
+}
+.pill:hover{border-color:var(--line-2);color:var(--txt);background:rgba(255,255,255,.045)}
+.pill.on{background:var(--acc-soft);border-color:rgba(189,241,78,.32);color:var(--acc)}
+.pill.solid{background:#F2F2F0;border-color:#F2F2F0;color:#0B0B0C;font-weight:500}
+.pill.solid:hover{background:#fff}
+.pill.acc{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:500}
+.pill.acc:hover{filter:brightness(1.06)}
+.avatars{display:flex;align-items:center;gap:-6px;padding-left:4px}
+.av{width:26px;height:26px;border-radius:50%;border:1.5px solid #0D0D0F;margin-left:-8px;background:#26262B;display:grid;place-items:center;font-size:10px;color:var(--txt-2);font-weight:500}
+.av:first-child{margin-left:0}
+.av.a{background:linear-gradient(140deg,#3D4A2E,#26301C);color:#C9E88F}
+.av.b{background:linear-gradient(140deg,#2E3A4A,#1C2430);color:#9EC0E0}
+.badge-count{height:20px;min-width:20px;padding:0 6px;border-radius:99px;background:var(--acc);color:var(--acc-ink);font-size:10.5px;font-weight:600;display:grid;place-items:center}
+
+/* ---- workspace ---- */
+.workspace{flex:1;min-height:0;display:flex}
+
+/* ---- sources ---- */
+.sources{
+  width:236px;flex:none;border-right:1px solid var(--line);background:#0D0D0F;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.src-head{padding:14px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.lbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--txt-3);font-weight:500}
+.tree{flex:1;overflow-y:auto;padding:0 8px 14px}
+.grp{margin-bottom:2px}
+.tnode{
+  height:var(--row-h);display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:8px;
+  color:var(--txt-2);cursor:pointer;user-select:none;transition:.13s var(--ease);position:relative;font-size:12.5px;
+}
+.tnode:hover{background:rgba(255,255,255,.045);color:var(--txt)}
+.tnode.on{background:rgba(255,255,255,.07);color:var(--txt)}
+.tnode.on::after{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;border-radius:2px;background:var(--acc)}
+.tnode .chev{width:12px;height:12px;color:var(--txt-3);transition:transform .18s var(--ease);flex:none}
+.tnode.open .chev{transform:rotate(90deg)}
+.tnode .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tnode .ct{font-size:10.5px;color:var(--txt-3);font-family:'JetBrains Mono',monospace}
+.tnode .lock{color:var(--txt-3);width:12px;height:12px}
+.tkids{overflow:hidden;display:none}
+.tkids.open{display:block}
+.tkids .tnode{padding-left:24px}
+.tkids .tnode .fi{opacity:.85}
+.grp-title{
+  display:flex;align-items:center;gap:7px;height:26px;padding:0 8px;margin-top:12px;
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--txt-3);font-weight:500;
+}
+.src-foot{border-top:1px solid var(--line);padding:11px 12px;display:flex;flex-direction:column;gap:9px}
+.meter{height:4px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;display:flex}
+.meter i{display:block;height:100%}
+.meter i.a{background:var(--acc)}
+.meter i.b{background:#4E5A38}
+.meter i.c{background-image:var(--hatch);background-color:rgba(255,255,255,.07)}
+.foot-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--txt-3)}
+
+/* ---- content ---- */
+.content{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg);position:relative}
+.chead{padding:12px 16px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:11px;background:#0B0B0C}
+.crumbs{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--txt-3);min-height:22px}
+.crumbs b{font-weight:500;color:var(--txt);cursor:default}
+.crumbs a{color:var(--txt-3);cursor:pointer;text-decoration:none;transition:.14s}
+.crumbs a:hover{color:var(--txt)}
+.crumbs .sep{color:var(--txt-3);opacity:.5}
+.crumb-tag{margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-3);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{
+  height:28px;padding:0 10px;border-radius:99px;display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--txt-2);border:1px solid var(--line);background:rgba(255,255,255,.02);transition:.15s var(--ease);
+}
+.chip:hover{color:var(--txt);border-color:var(--line-2)}
+.chip.on{color:var(--acc);border-color:rgba(189,241,78,.3);background:var(--acc-soft)}
+.chip .n{font-family:'JetBrains Mono',monospace;font-size:10.5px;opacity:.75}
+.filters .grow{flex:1}
+.viewtoggle{display:flex;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:99px;padding:2px;gap:2px}
+.viewtoggle button{width:26px;height:22px;border-radius:99px;display:grid;place-items:center;color:var(--txt-3)}
+.viewtoggle button.on{background:rgba(255,255,255,.09);color:var(--txt)}
+.zoom{display:flex;align-items:center;gap:8px;padding:0 4px}
+input[type=range]{-webkit-appearance:none;width:74px;height:3px;border-radius:99px;background:rgba(255,255,255,.1)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--txt-2);cursor:pointer;transition:.15s}
+input[type=range]::-webkit-slider-thumb:hover{background:var(--acc)}
+
+.scroll{flex:1;overflow-y:auto;padding:16px;position:relative}
+.sect-title{display:flex;align-items:center;gap:9px;margin:2px 0 12px}
+.sect-title .lbl{white-space:nowrap}
+.sect-title .rule{flex:1;height:1px;background:var(--line)}
+
+/* ---- grid tiles ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr));gap:12px;margin-bottom:22px}
+.tile{
+  border:1px solid var(--line);border-radius:var(--r-l);background:linear-gradient(180deg,#131316,#0F0F12);
+  overflow:hidden;cursor:pointer;position:relative;transition:.17s var(--ease);
+}
+.tile:hover{border-color:var(--line-2);transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(0,0,0,.9)}
+.tile.sel{border-color:rgba(189,241,78,.55);box-shadow:0 0 0 1px rgba(189,241,78,.25),0 14px 30px -16px rgba(0,0,0,.9)}
+.thumb{
+  aspect-ratio:4/3;position:relative;display:grid;place-items:center;
+  background:radial-gradient(120% 100% at 50% 0%,#1A1A1E,#0E0E11 70%);
+  border-bottom:1px solid var(--line);overflow:hidden;
+}
+.thumb::before{content:'';position:absolute;inset:0;background:var(--hatch);opacity:.5}
+.thumb .glyph{width:44%;max-width:62px;color:#5C5C66;filter:drop-shadow(0 8px 14px rgba(0,0,0,.7));position:relative;transition:.25s var(--ease)}
+.tile:hover .thumb .glyph{color:#7B7B87;transform:translateY(-2px) scale(1.02)}
+.tile.sel .thumb .glyph{color:var(--acc);opacity:.9}
+.thumb .swatch{position:absolute;inset:0}
+.fmt{
+  position:absolute;left:9px;bottom:9px;height:19px;padding:0 7px;border-radius:6px;display:flex;align-items:center;gap:5px;
+  background:rgba(8,8,9,.72);border:1px solid var(--line);backdrop-filter:blur(8px);
+  font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:var(--txt-2);text-transform:uppercase;
+}
+.fmt .cdot{width:5px;height:5px;border-radius:50%}
+.thumb .qa{
+  position:absolute;right:8px;top:8px;display:flex;gap:5px;opacity:0;transform:translateY(-4px);transition:.18s var(--ease);
+}
+.tile:hover .qa{opacity:1;transform:none}
+.qbtn{
+  width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--txt-2);
+  background:rgba(10,10,11,.78);border:1px solid var(--line);backdrop-filter:blur(8px);transition:.14s;
+}
+.qbtn:hover{color:var(--txt);border-color:var(--line-2);background:rgba(28,28,32,.9)}
+.qbtn.acc:hover{color:var(--acc-ink);background:var(--acc);border-color:var(--acc)}
+.qbtn.on{color:var(--acc)}
+.tmeta{padding:9px 11px 11px}
+.tname{font-size:12.5px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:450}
+.tsub{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:10.5px;color:var(--txt-3);font-family:'JetBrains Mono',monospace}
+.tsub .bul{width:2px;height:2px;border-radius:50%;background:currentColor;opacity:.6}
+.tile .star{position:absolute;left:9px;top:9px;color:var(--acc);opacity:0;transition:.15s}
+.tile.fav .star{opacity:1}
+.tile .engbadge{
+  position:absolute;right:9px;bottom:9px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-3);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:rgba(8,8,9,.6);backdrop-filter:blur(6px);
+}
+.rename-in{width:100%;font-size:12.5px;background:#0A0A0B;border:1px solid rgba(189,241,78,.5);border-radius:6px;padding:1px 5px;color:var(--txt)}
+
+/* folder tile */
+.tile.folder .thumb{background:radial-gradient(120% 110% at 50% 10%,#1C1C21,#0F0F12 72%)}
+.tile.folder .thumb .glyph{width:52%;max-width:78px;color:#4E4E57}
+.tile.folder:hover .thumb .glyph{color:#6E6E7A}
+.folder-cap{
+  position:absolute;left:0;right:0;bottom:0;padding:9px 11px;display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(10,10,11,0),rgba(10,10,11,.85));
+}
+
+/* ---- list view ---- */
+.list{border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;background:#0F0F11;margin-bottom:22px}
+.lrow{
+  display:grid;grid-template-columns:32px minmax(150px,2.2fr) 84px 82px 110px 96px 76px;
+  align-items:center;gap:10px;height:38px;padding:0 12px;border-bottom:1px solid var(--line);
+  font-size:12px;color:var(--txt-2);cursor:pointer;transition:.12s;
+}
+.lrow:last-child{border-bottom:none}
+.lrow:hover{background:rgba(255,255,255,.035)}
+.lrow.sel{background:rgba(189,241,78,.07);color:var(--txt)}
+.lrow.head{height:32px;color:var(--txt-3);font-size:10px;letter-spacing:.11em;text-transform:uppercase;background:#0C0C0E;cursor:default}
+.lrow.head:hover{background:#0C0C0E}
+.lrow .ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:#17171B;border:1px solid var(--line);color:#7B7B87}
+.lrow .nm{color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .acts{display:flex;gap:4px;justify-content:flex-end;opacity:0;transition:.14s}
+.lrow:hover .acts{opacity:1}
+.sortable{cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.sortable:hover{color:var(--txt-2)}
+
+.empty{
+  border:1px dashed var(--line-2);border-radius:var(--r-l);padding:44px;text-align:center;color:var(--txt-3);
+  display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,.012);
+}
+.empty .glyph{width:44px;height:44px;color:#3A3A42}
+
+/* ---- inspector ---- */
+.inspector{
+  width:326px;flex:none;border-left:1px solid var(--line);background:#0D0D0F;display:flex;flex-direction:column;overflow:hidden;
+}
+.tabs{display:flex;gap:2px;padding:10px 12px;border-bottom:1px solid var(--line);background:#0C0C0E}
+.tab{
+  flex:1;height:29px;border-radius:8px;font-size:12px;color:var(--txt-3);display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s var(--ease);
+}
+.tab:hover{color:var(--txt-2);background:rgba(255,255,255,.04)}
+.tab.on{background:rgba(255,255,255,.08);color:var(--txt)}
+.tab .n{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-3);background:rgba(255,255,255,.07);border-radius:99px;padding:0 5px}
+.tab.on .n{color:var(--acc);background:var(--acc-soft)}
+.ipanel{flex:1;overflow-y:auto;display:none;flex-direction:column}
+.ipanel.on{display:flex}
+
+.stage{position:relative;height:198px;flex:none;border-bottom:1px solid var(--line);background:radial-gradient(110% 90% at 50% 30%,#141418,#0A0A0C 75%);overflow:hidden}
+.stage canvas{width:100%;height:100%;display:block;touch-action:none}
+.stage .ovl{position:absolute;inset:0;pointer-events:none;padding:10px;display:flex;flex-direction:column;justify-content:space-between}
+.stage .ovl .row{display:flex;justify-content:space-between;align-items:flex-start}
+.tagmini{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:var(--txt-3);text-transform:uppercase}
+.stage .corner{position:absolute;width:12px;height:12px;border-color:rgba(255,255,255,.14);border-style:solid;border-width:0}
+.stage .c1{top:8px;left:8px;border-left-width:1px;border-top-width:1px}
+.stage .c2{top:8px;right:8px;border-right-width:1px;border-top-width:1px}
+.stage .c3{bottom:8px;left:8px;border-left-width:1px;border-bottom-width:1px}
+.stage .c4{bottom:8px;right:8px;border-right-width:1px;border-bottom-width:1px}
+.stage.drop{outline:1px dashed rgba(189,241,78,.7);outline-offset:-6px;background:radial-gradient(110% 90% at 50% 30%,#161A12,#0A0C08 75%)}
+.stage-tools{position:absolute;right:10px;bottom:10px;display:flex;gap:5px;pointer-events:auto}
+
+.sec{padding:13px 14px;border-bottom:1px solid var(--line)}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kv{display:flex;align-items:center;justify-content:space-between;height:24px;font-size:12px}
+.kv .k{color:var(--txt-3)}
+.kv .v{color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11.5px}
+.assethead{padding:14px;display:flex;gap:11px;align-items:flex-start;border-bottom:1px solid var(--line)}
+.assethead .box{width:42px;height:42px;border-radius:11px;background:#17171B;border:1px solid var(--line);display:grid;place-items:center;color:#7E7E8A;flex:none}
+.assethead h3{font-size:13.5px;font-weight:500;line-height:1.3;word-break:break-word}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:10.5px;color:var(--txt-3);border:1px solid var(--line);border-radius:5px;padding:1px 6px;background:rgba(255,255,255,.02)}
+.field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:12px;color:var(--txt-2)}
+.sel-in,.num-in{
+  height:27px;background:#0A0A0B;border:1px solid var(--line);border-radius:7px;padding:0 8px;font-size:11.5px;
+  font-family:'JetBrains Mono',monospace;color:var(--txt);min-width:96px;transition:.14s;
+}
+.sel-in:focus,.num-in:focus{border-color:rgba(189,241,78,.45)}
+.num-in{width:74px;min-width:0;text-align:right}
+select.sel-in{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2393939B' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 8px center;padding-right:22px}
+.sw{width:34px;height:19px;border-radius:99px;background:rgba(255,255,255,.1);position:relative;transition:.18s var(--ease);flex:none}
+.sw::after{content:'';position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;background:#8A8A93;transition:.18s var(--ease)}
+.sw.on{background:var(--acc-soft)}
+.sw.on::after{left:17.5px;background:var(--acc)}
+.btnrow{display:flex;gap:8px;padding:13px 14px}
+.btn{
+  flex:1;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font-size:12.5px;border:1px solid var(--line);color:var(--txt-2);background:rgba(255,255,255,.025);transition:.15s var(--ease);
+}
+.btn:hover{color:var(--txt);border-color:var(--line-2);background:rgba(255,255,255,.05)}
+.btn.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:500}
+.btn.acc:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+
+/* primitives */
+.prims{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:13px 14px}
+.prim{
+  aspect-ratio:1/.92;border:1px solid var(--line);border-radius:11px;background:linear-gradient(180deg,#141417,#101013);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--txt-3);transition:.15s var(--ease);
+}
+.prim:hover{border-color:var(--line-2);color:var(--txt-2);transform:translateY(-1px)}
+.prim.on{border-color:rgba(189,241,78,.5);background:rgba(189,241,78,.07);color:var(--acc)}
+.prim svg{width:24px;height:24px}
+.prim span{font-size:10px;letter-spacing:.03em}
+
+/* session list */
+.slist{padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.sitem{
+  display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.02);transition:.14s;cursor:pointer;
+}
+.sitem:hover{border-color:var(--line-2);background:rgba(255,255,255,.045)}
+.sitem.on{border-color:rgba(189,241,78,.45);background:rgba(189,241,78,.07)}
+.sitem .ic{width:26px;height:26px;border-radius:7px;background:#17171B;border:1px solid var(--line);display:grid;place-items:center;color:#7E7E8A;flex:none}
+.sitem .txt{flex:1;min-width:0}
+.sitem .n1{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sitem .n2{font-size:10px;color:var(--txt-3);font-family:'JetBrains Mono',monospace}
+.sitem .x{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--txt-3);opacity:0;transition:.14s}
+.sitem:hover .x{opacity:1}
+.sitem .x:hover{background:rgba(255,255,255,.07);color:var(--txt)}
+.sitem .x.on{opacity:1;color:var(--acc)}
+
+/* ---- statusbar ---- */
+.statusbar{
+  height:34px;flex:none;border-top:1px solid var(--line);background:#0C0C0E;display:flex;align-items:center;
+  gap:14px;padding:0 14px;font-size:11px;color:var(--txt-3);
+}
+.statusbar .sep{width:1px;height:13px;background:var(--line)}
+.statusbar .grow{flex:1}
+.stat{display:flex;align-items:center;gap:6px}
+.stat b{font-weight:500;color:var(--txt-2);font-family:'JetBrains Mono',monospace}
+.livedot{width:6px;height:6px;border-radius:50%;background:var(--acc);position:relative}
+.livedot::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid rgba(189,241,78,.35);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{transform:scale(.7);opacity:1}100%{transform:scale(1.5);opacity:0}}
+.qbar{width:120px;height:3px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--acc);width:0;transition:width .2s linear}
+
+/* ---- popovers / menu / modal / toast ---- */
+.pop{
+  position:fixed;z-index:200;min-width:206px;background:#151519;border:1px solid var(--line-2);border-radius:12px;
+  padding:6px;box-shadow:0 24px 60px -20px rgba(0,0,0,.9);display:none;
+  animation:popin .14s var(--ease);
+}
+@keyframes popin{from{opacity:0;transform:translateY(-4px) scale(.985)}}
+.pop.on{display:block}
+.mi{
+  height:30px;display:flex;align-items:center;gap:9px;padding:0 9px;border-radius:8px;color:var(--txt-2);font-size:12.5px;cursor:pointer;width:100%;
+}
+.mi:hover{background:rgba(255,255,255,.07);color:var(--txt)}
+.mi.danger:hover{background:rgba(226,90,80,.14);color:#E88A82}
+.mi .sc{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-3)}
+.mi .ck{margin-left:auto;color:var(--acc);opacity:0}
+.mi.checked .ck{opacity:1}
+.mdiv{height:1px;background:var(--line);margin:5px 4px}
+.pop .ph{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-3);padding:7px 9px 5px}
+
+.scrim{position:fixed;inset:0;background:rgba(5,5,6,.72);backdrop-filter:blur(3px);z-index:300;display:none;align-items:center;justify-content:center}
+.scrim.on{display:flex}
+.sheet{
+  width:600px;max-width:92vw;background:#111114;border:1px solid var(--line-2);border-radius:20px;overflow:hidden;
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.95);animation:popin .18s var(--ease);
+}
+.sheet-h{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between}
+.sheet-h h2{font-size:16px;font-weight:500}
+.sheet-h p{font-size:12px;color:var(--txt-3);margin-top:3px}
+.srcgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:18px 20px}
+.srccard{
+  border:1px solid var(--line);border-radius:14px;padding:15px 13px;text-align:left;background:linear-gradient(180deg,#151518,#0F0F12);
+  transition:.16s var(--ease);display:flex;flex-direction:column;gap:9px;
+}
+.srccard:hover{border-color:rgba(189,241,78,.35);transform:translateY(-2px);box-shadow:0 16px 32px -18px #000}
+.srccard .g{width:30px;height:30px;border-radius:9px;background:#1B1B20;border:1px solid var(--line);display:grid;place-items:center;color:var(--acc)}
+.srccard h4{font-size:12.5px;font-weight:500}
+.srccard p{font-size:11px;color:var(--txt-3);line-height:1.5}
+.dropzone{
+  margin:0 20px 18px;border:1px dashed var(--line-2);border-radius:14px;padding:22px;text-align:center;color:var(--txt-3);
+  font-size:12px;background:rgba(255,255,255,.012);transition:.16s;
+}
+.dropzone.hot{border-color:rgba(189,241,78,.6);background:rgba(189,241,78,.05);color:var(--acc)}
+.sheet-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;background:#0D0D0F}
+
+.toasts{position:fixed;right:18px;bottom:48px;z-index:400;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.toast{
+  min-width:250px;background:#17171B;border:1px solid var(--line-2);border-radius:12px;padding:11px 13px;
+  display:flex;align-items:center;gap:10px;font-size:12px;box-shadow:0 18px 40px -18px rgba(0,0,0,.95);
+  animation:tin .22s var(--ease);
+}
+@keyframes tin{from{opacity:0;transform:translateX(14px)}}
+.toast.out{animation:tout .2s var(--ease) forwards}
+@keyframes tout{to{opacity:0;transform:translateX(14px)}}
+.toast .ti{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:var(--acc-soft);color:var(--acc);flex:none}
+.toast .tt{flex:1}
+.toast .tt small{display:block;color:var(--txt-3);font-size:10.5px}
+.toast button.u{font-size:11.5px;color:var(--acc);padding:4px 8px;border-radius:7px}
+.toast button.u:hover{background:var(--acc-soft)}
+
+/* import queue */
+.qrow{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.02);margin-bottom:6px}
+.qrow .ic{width:28px;height:28px;border-radius:8px;background:#17171B;border:1px solid var(--line);display:grid;place-items:center;color:#7E7E8A;flex:none}
+.qrow .b{flex:1;min-width:0}
+.qrow .t{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow .bar{height:3px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+.qrow .bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .25s linear}
+.qrow .pc{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--txt-3);width:34px;text-align:right}
+
+.dragghost{
+  position:fixed;pointer-events:none;z-index:500;background:#17171B;border:1px solid rgba(189,241,78,.5);
+  border-radius:10px;padding:7px 11px;font-size:12px;display:flex;align-items:center;gap:8px;opacity:0;transform:translate(-50%,-50%);
+  box-shadow:0 14px 30px -12px #000;
+}
+@media (max-width:1180px){.inspector{width:290px}.sources{width:206px}}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SVG SPRITE
+     ============================================================ -->
+<svg style="display:none" aria-hidden="true">
+<defs>
+  <g id="s" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></g>
+</defs>
+
+<symbol id="ico-brand" viewBox="0 0 24 24"><path d="M12 2.6c.7 3.6 2.3 5.9 5.6 6.9-3.3 1-4.9 3.3-5.6 6.9-.7-3.6-2.3-5.9-5.6-6.9 3.3-1 4.9-3.3 5.6-6.9Z" fill="currentColor"/><circle cx="17.6" cy="17.4" r="2.1" fill="currentColor" opacity=".55"/><circle cx="7" cy="18.6" r="1.3" fill="currentColor" opacity=".3"/></symbol>
+
+<!-- ui -->
+<symbol id="ico-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></symbol>
+<symbol id="ico-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.6" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.6" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="ico-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="M15.8 15.8 20 20"/></symbol>
+<symbol id="ico-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+<symbol id="ico-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5.5 12h13"/></symbol>
+<symbol id="ico-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+<symbol id="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+<symbol id="ico-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 16 12l-6.5 6.5"/></symbol>
+<symbol id="ico-chev-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 9.5 12 16l6.5-6.5"/></symbol>
+<symbol id="ico-arr-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5.5M11 5.5 4.6 12l6.4 6.5"/></symbol>
+<symbol id="ico-arr-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13.5M13 5.5 19.4 12 13 18.5"/></symbol>
+<symbol id="ico-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16.5V4.5m0 0L7.6 9M12 4.5 16.4 9"/><path d="M4.2 15v3.2a2 2 0 0 0 2 2h11.6a2 2 0 0 0 2-2V15"/></symbol>
+<symbol id="ico-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4.4-4.5M12 16l-4.4-4.5"/><path d="M4.2 15v3.2a2 2 0 0 0 2 2h11.6a2 2 0 0 0 2-2V15"/></symbol>
+<symbol id="ico-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></symbol>
+<symbol id="ico-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="12" cy="12" r="2.9"/><path d="M12 3.2 13.4 5a7.7 7.7 0 0 1 2.1.9l2.2-.5 1.4 2.4-1.5 1.6c.1.4.1.8.1 1.2s0 .8-.1 1.2l1.5 1.6-1.4 2.4-2.2-.5a7.7 7.7 0 0 1-2.1.9L12 20.8 10.6 19a7.7 7.7 0 0 1-2.1-.9l-2.2.5-1.4-2.4 1.5-1.6a7.6 7.6 0 0 1 0-2.4L4.9 8.6l1.4-2.4 2.2.5A7.7 7.7 0 0 1 10.6 5Z"/></symbol>
+<symbol id="ico-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.6 14.3 9l5.7.5-4.3 3.8 1.3 5.6L12 15.9l-5 3 1.3-5.6L4 9.5 9.7 9Z"/></symbol>
+<symbol id="ico-star-o" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3.9 14.2 9.1l5.4.5-4.1 3.6 1.2 5.3L12 15.7l-4.7 2.8 1.2-5.3-4.1-3.6 5.4-.5Z"/></symbol>
+<symbol id="ico-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6.6h14.8M9.4 6.6V4.9a1 1 0 0 1 1-1h3.2a1 1 0 0 1 1 1v1.7"/><path d="M6.4 6.6 7.3 19a1.4 1.4 0 0 0 1.4 1.3h6.6a1.4 1.4 0 0 0 1.4-1.3l.9-12.4"/><path d="M10.4 10.2v6.2M13.6 10.2v6.2"/></symbol>
+<symbol id="ico-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6 5.9 12 5.9 21.4 12 21.4 12 18 18.1 12 18.1 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.7"/></symbol>
+<symbol id="ico-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.4 20 19.6"/><path d="M9.4 9.6a2.7 2.7 0 0 0 3.7 3.8"/><path d="M6.6 6.9C4.1 8.5 2.6 12 2.6 12s3.4 6.1 9.4 6.1a9.4 9.4 0 0 0 4-.9M17.9 15.6c2-1.5 3.5-3.6 3.5-3.6S18 5.9 12 5.9a8.9 8.9 0 0 0-2 .2"/></symbol>
+<symbol id="ico-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="5" y="10.4" width="14" height="9.4" rx="2.2"/><path d="M8.3 10.4V8a3.7 3.7 0 0 1 7.4 0v2.4"/></symbol>
+<symbol id="ico-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a8 8 0 1 0-.8 4.6"/><path d="M20.2 4.6v5.1h-5.1"/></symbol>
+<symbol id="ico-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6.6h16M7 12h10M10 17.4h4"/></symbol>
+<symbol id="ico-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.8v14.4m0 0L3.9 16M7 19.2 10.1 16"/><path d="M17 19.2V4.8m0 0L13.9 8M17 4.8 20.1 8"/></symbol>
+<symbol id="ico-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 11v5.2"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="ico-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5H20v5.5M9.5 19.5H4V14"/><path d="M20 4.5 13.6 11M4 19.5 10.4 13"/></symbol>
+<symbol id="ico-drag" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></symbol>
+<symbol id="ico-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.1 2"/></symbol>
+<symbol id="ico-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.4 20.6 8 12 12.6 3.4 8Z"/><path d="M3.4 12.4 12 17l8.6-4.6M3.4 16.6 12 21.2l8.6-4.6"/></symbol>
+<symbol id="ico-orbit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3.2"/><ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(-28 12 12)"/></symbol>
+<symbol id="ico-frame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8.5V5.6a1.6 1.6 0 0 1 1.6-1.6H8.5M15.5 4h2.9A1.6 1.6 0 0 1 20 5.6v2.9M20 15.5v2.9a1.6 1.6 0 0 1-1.6 1.6h-2.9M8.5 20H5.6A1.6 1.6 0 0 1 4 18.4v-2.9"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1"/></symbol>
+<symbol id="ico-grid3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3.5 8.5h17M3.5 15.5h17M8.5 3.5v17M15.5 3.5v17"/></symbol>
+<symbol id="ico-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M9.7 9.4a2.4 2.4 0 1 1 3.2 2.3c-.6.3-.9.8-.9 1.5v.4"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/></symbol>
+
+<!-- categories / formats -->
+<symbol id="ico-mesh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2.9 20.4 7.6v8.8L12 21.1 3.6 16.4V7.6Z"/><path d="M12 12.2 20.4 7.6M12 12.2v8.9M12 12.2 3.6 7.6"/><path d="M7.8 5.2v9.7l8.4 3.6M16.2 5.2v9.7L7.8 18.5" opacity=".45"/></symbol>
+<symbol id="ico-cad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 14.2V6.8a1.8 1.8 0 0 1 1.8-1.8h4.6l4.9 4v5.2"/><path d="M12.7 5v4h4.9" opacity=".5"/><path d="M4.4 18.6h15.2M4.4 16.9v3.4M19.6 16.9v3.4"/></symbol>
+<symbol id="ico-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.6"/><circle cx="8.8" cy="9.6" r="1.6"/><path d="M4.2 16.6 9 11.9l3.5 3.4 3-2.9 4.3 4.2"/></symbol>
+<symbol id="ico-hdr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.3"/><path d="M3.7 12h16.6"/><path d="M12 3.7c2.7 2.3 2.7 14 0 16.6M12 3.7c-2.7 2.3-2.7 14 0 16.6"/></symbol>
+<symbol id="ico-material" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.3"/><path d="M12 3.7a8.3 8.3 0 0 1 0 16.6Z" fill="currentColor" opacity=".22" stroke="none"/><path d="M7.6 7.4a5.6 5.6 0 0 1 2.6-1.7" opacity=".7"/></symbol>
+<symbol id="ico-font" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 19 11 5.2h1.9L18.4 19"/><path d="M8 14.4h8"/><path d="M4 21h16" opacity=".4"/></symbol>
+<symbol id="ico-cloth" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.6 7c2.1 0 2.1 2.3 4.2 2.3S9.9 7 12 7s2.1 2.3 4.2 2.3S18.3 7 20.4 7"/><path d="M3.6 12c2.1 0 2.1 2.3 4.2 2.3S9.9 12 12 12s2.1 2.3 4.2 2.3S18.3 12 20.4 12"/><path d="M3.6 17c2.1 0 2.1 2.3 4.2 2.3S9.9 17 12 17s2.1 2.3 4.2 2.3S18.3 17 20.4 17"/></symbol>
+<symbol id="ico-uv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.4"/><path d="M3.6 14.2 9.3 8.5l4.6 4.6 6.5-6.4" stroke-dasharray="3 2.4"/><circle cx="9.3" cy="8.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="13.9" cy="13.1" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="ico-anim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2.6 12h3.2M18.2 12h3.2"/><path d="M12 8.2 15.8 12 12 15.8 8.2 12Z"/><path d="M7.4 10.6 5.9 12l1.5 1.4M16.6 10.6 18.1 12l-1.5 1.4" opacity=".5"/></symbol>
+<symbol id="ico-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2.9 20.4 7.6v8.8L12 21.1 3.6 16.4V7.6Z"/><circle cx="12" cy="10.5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="13.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" opacity=".6"/></symbol>
+<symbol id="ico-points" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="8" r="1.2"/><circle cx="11" cy="5.6" r="1.2"/><circle cx="16.6" cy="8.4" r="1.2"/><circle cx="8.4" cy="12.6" r="1.2"/><circle cx="13.6" cy="11.4" r="1.2"/><circle cx="18.4" cy="13.4" r="1.2"/><circle cx="6.4" cy="17.4" r="1.2"/><circle cx="11.6" cy="16.6" r="1.2"/><circle cx="16.4" cy="18.4" r="1.2"/></symbol>
+<symbol id="ico-audio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.4 10.4v3.2M7.2 7.4v9.2M11 3.8v16.4M14.8 8.6v6.8M18.6 10.8v2.4M21.6 11.4v1.2"/></symbol>
+<symbol id="ico-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.2" y="5" width="17.6" height="14" rx="2.8"/><path d="M10.4 9.6 15 12l-4.6 2.4Z"/><path d="M3.4 9h17.2" opacity=".35"/></symbol>
+<symbol id="ico-script" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.8 6.6 3.9 12l4.9 5.4M15.2 6.6 20.1 12l-4.9 5.4"/><path d="M13.2 4.6 10.8 19.4" opacity=".55"/></symbol>
+<symbol id="ico-data" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.4"/><path d="M3.5 9.4h17.1M3.5 14.4h17.1M9.4 9.4v10"/></symbol>
+<symbol id="ico-scene" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3.4 20.6 8 12 12.6 3.4 8Z"/><path d="M3.4 12.6 12 17.2l8.6-4.6"/><circle cx="12" cy="8" r="1.4" fill="currentColor" stroke="none" opacity=".6"/></symbol>
+<symbol id="ico-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.4" y="6.4" width="17.2" height="13.2" rx="2.4"/><path d="M3.5 10.6h17.1"/><path d="M12 6.5v13" stroke-dasharray="2 2.2"/></symbol>
+<symbol id="ico-shader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3.4" y="8.4" width="6" height="7.2" rx="1.6"/><rect x="14.6" y="4.4" width="6" height="6" rx="1.6"/><rect x="14.6" y="13.6" width="6" height="6" rx="1.6"/><path d="M9.4 11.2h2.4a1.4 1.4 0 0 1 1.4 1.4v4M9.4 12.8h2.4a1.4 1.4 0 0 0 1.4-1.4v-4"/></symbol>
+<symbol id="ico-brush" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="m14.4 4.6 5 5-7.7 7.7-5-5Z"/><path d="M6.7 12.3 4.4 19.6l7.3-2.3"/><path d="m16.4 2.6 5 5" opacity=".5"/></symbol>
+
+<!-- folder -->
+<symbol id="ico-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.2 6.6a2 2 0 0 1 2-2h3.5l1.9 2.2h8.2a2 2 0 0 1 2 2v8.6a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2Z"/></symbol>
+<symbol id="ico-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.2 17.4V6.6a2 2 0 0 1 2-2h3.5l1.9 2.2h8.2a2 2 0 0 1 2 2v1.4"/><path d="M3.2 17.4 5.6 10h16l-2.4 7.4a2 2 0 0 1-1.9 1.4H5.2a2 2 0 0 1-2-1.4Z"/></symbol>
+<symbol id="ico-folder-big" viewBox="0 0 64 48" fill="none"><path d="M2 8a5 5 0 0 1 5-5h13.2l4.6 5.4H57a5 5 0 0 1 5 5V40a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5Z" fill="#1D1D22" stroke="rgba(255,255,255,.14)" stroke-width="1.2"/><path d="M2 15.6h60" stroke="rgba(255,255,255,.07)" stroke-width="1.2"/><rect x="24" y="1" width="16" height="4" rx="2" fill="#26262C"/></symbol>
+
+<!-- primitives -->
+<symbol id="ico-p-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2.6 15.4 12 9.2l9.4 6.2-9.4 4.4Z"/><path d="M7.3 12.3 16.7 17M16.7 12.3 7.3 17" opacity=".45"/></symbol>
+<symbol id="ico-p-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M12 3.4 20.2 8v8L12 20.6 3.8 16V8Z"/><path d="M12 12.2 20.2 8M12 12.2v8.4M12 12.2 3.8 8"/></symbol>
+<symbol id="ico-p-sphere" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="8.4"/><ellipse cx="12" cy="12" rx="8.4" ry="3.4"/><ellipse cx="12" cy="12" rx="3.4" ry="8.4"/></symbol>
+<symbol id="ico-p-cylinder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="12" cy="6.4" rx="6.6" ry="2.8"/><path d="M5.4 6.4v11.2M18.6 6.4v11.2"/><path d="M5.4 17.6a6.6 2.8 0 0 0 13.2 0"/></symbol>
+<symbol id="ico-p-cone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 3.4 18.6 17.4M12 3.4 5.4 17.4"/><ellipse cx="12" cy="17.4" rx="6.6" ry="2.8"/></symbol>
+<symbol id="ico-p-torus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="12" cy="12" rx="9" ry="5"/><ellipse cx="12" cy="12" rx="3.4" ry="1.8"/><path d="M4.4 9.6a9 5 0 0 0 15.2 0" opacity=".45"/></symbol>
+<symbol id="ico-p-capsule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.2 9.4a5.8 5.8 0 0 1 11.6 0v5.2a5.8 5.8 0 0 1-11.6 0Z"/><ellipse cx="12" cy="9.4" rx="5.8" ry="2.5"/></symbol>
+<symbol id="ico-p-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="12" cy="12" rx="9" ry="4.6"/><path d="M3 12v1.8a9 4.6 0 0 0 18 0V12"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="ico-p-tube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="12" cy="7" rx="6.6" ry="2.8"/><ellipse cx="12" cy="7" rx="3.2" ry="1.3"/><path d="M5.4 7v10M18.6 7v10"/><path d="M5.4 17a6.6 2.8 0 0 0 13.2 0"/></symbol>
+<symbol id="ico-p-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M5 6.6V4.8h14v1.8M12 4.8v14.4M9.4 19.2h5.2"/></symbol>
+<symbol id="ico-p-curve" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.6 17.6c4.4 0 3.6-11 8.4-11s4 11 8.4 11"/><circle cx="3.6" cy="17.6" r="1.7"/><circle cx="20.4" cy="17.6" r="1.7"/><circle cx="12" cy="6.6" r="1.7"/></symbol>
+<symbol id="ico-p-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="10.6" r="4.4"/><path d="M12 2.6v1.8M12 16.8v1.6M4.6 10.6H2.8M21.2 10.6h-1.8M6.8 5.4 5.5 4.1M18.5 4.1l-1.3 1.3"/><path d="M9.8 19.6h4.4M10.6 21.8h2.8"/></symbol>
+<symbol id="ico-p-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.4 8.4a2 2 0 0 1 2-2h7.4a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2Z"/><path d="m14.8 11 5.8-3.2v8.4L14.8 13Z"/></symbol>
+<symbol id="ico-p-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 4v16M4 12h16"/><circle cx="12" cy="12" r="2.2"/></symbol>
+</svg>
+
+<!-- ============================================================
+     APP
+     ============================================================ -->
+<div class="app">
+
+  <!-- RAIL -->
+  <aside class="rail">
+    <div class="brand"><svg class="icon"><use href="#ico-brand"/></svg></div>
+    <button class="rbtn on" data-mode="assets"><svg class="icon"><use href="#ico-grid"/></svg><span class="tip">Asset Browser</span></button>
+    <button class="rbtn" data-mode="recent"><svg class="icon"><use href="#ico-clock"/></svg><span class="tip">Recent</span></button>
+    <button class="rbtn" data-mode="fav"><svg class="icon"><use href="#ico-star-o"/></svg><span class="tip">Favourites</span></button>
+    <div class="rail-sep"></div>
+    <button class="rbtn" data-mode="session"><svg class="icon"><use href="#ico-layers"/></svg><span class="dot" id="railSessionDot" style="display:none"></span><span class="tip">Session Scene</span></button>
+    <button class="rbtn" data-mode="create"><svg class="icon"><use href="#ico-p-box"/></svg><span class="tip">Create Object</span></button>
+    <button class="rbtn" data-mode="queue"><svg class="icon"><use href="#ico-down"/></svg><span class="tip">Import Queue</span></button>
+    <div class="spacer"></div>
+    <button class="rbtn" id="btnSettings"><svg class="icon"><use href="#ico-gear"/></svg><span class="tip">Preferences</span></button>
+    <button class="rbtn" id="btnHelp"><svg class="icon"><use href="#ico-help"/></svg><span class="tip">Shortcuts</span></button>
+  </aside>
+
+  <div class="main">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="navarrows">
+        <button class="sq" id="navBack" disabled><svg class="icon sm"><use href="#ico-arr-l"/></svg></button>
+        <button class="sq" id="navFwd" disabled><svg class="icon sm"><use href="#ico-arr-r"/></svg></button>
+        <button class="sq" id="navRefresh"><svg class="icon sm"><use href="#ico-refresh"/></svg></button>
+      </div>
+      <div class="searchwrap">
+        <svg class="icon sm" style="color:var(--txt-3)"><use href="#ico-search"/></svg>
+        <input id="search" type="text" placeholder="Search assets, formats, tags…" spellcheck="false" />
+        <span class="kbd" id="searchKbd">/</span>
+      </div>
+      <div class="top-right">
+        <button class="pill" id="btnCreate"><svg class="icon sm"><use href="#ico-p-box"/></svg>Create</button>
+        <button class="pill solid" id="btnImport"><svg class="icon sm"><use href="#ico-up"/></svg>Import</button>
+        <div class="avatars">
+          <span class="badge-count" id="sessionCount" title="Objects in session">0</span>
+          <span class="av a">KW</span><span class="av b">DR</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <!-- SOURCES -->
+      <nav class="sources">
+        <div class="src-head">
+          <span class="lbl">Sources</span>
+          <button class="sq" id="btnCollapseAll" title="Collapse all"><svg class="icon sm"><use href="#ico-minus"/></svg></button>
+        </div>
+        <div class="tree" id="tree"></div>
+        <div class="src-foot">
+          <div class="foot-row"><span>Library cache</span><span class="mono" id="cacheTxt">12.<span class="dim">4</span> GB</span></div>
+          <div class="meter"><i class="a" style="width:38%"></i><i class="b" style="width:24%"></i><i class="c" style="width:12%"></i></div>
+          <div class="foot-row"><span>Geometry · Textures · Staged</span><span class="dim">64 GB</span></div>
+        </div>
+      </nav>
+
+      <!-- CONTENT -->
+      <section class="content">
+        <div class="chead">
+          <div class="crumbs" id="crumbs"></div>
+          <div class="filters">
+            <button class="chip" id="chipType"><svg class="icon sm"><use href="#ico-filter"/></svg>Type<span class="n" id="typeN">all</span></button>
+            <button class="chip" id="chipSource"><svg class="icon sm"><use href="#ico-layers"/></svg>Source<span class="n" id="srcN">all</span></button>
+            <button class="chip" id="chipSort"><svg class="icon sm"><use href="#ico-sort"/></svg><span id="sortLabel">Name</span></button>
+            <button class="chip" id="chipFav"><svg class="icon sm"><use href="#ico-star-o"/></svg>Favourites</button>
+            <span class="grow"></span>
+            <div class="zoom">
+              <svg class="icon sm" style="color:var(--txt-3)"><use href="#ico-grid"/></svg>
+              <input type="range" id="density" min="112" max="260" value="158" />
+            </div>
+            <div class="viewtoggle">
+              <button id="vGrid" class="on" title="Grid (G)"><svg class="icon sm"><use href="#ico-grid"/></svg></button>
+              <button id="vList" title="List (L)"><svg class="icon sm"><use href="#ico-list"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="scroll" id="scroll"></div>
+      </section>
+
+      <!-- INSPECTOR -->
+      <aside class="inspector">
+        <div class="tabs">
+          <button class="tab on" data-tab="inspector"><svg class="icon sm"><use href="#ico-info"/></svg>Details</button>
+          <button class="tab" data-tab="create"><svg class="icon sm"><use href="#ico-p-sphere"/></svg>Create</button>
+          <button class="tab" data-tab="session"><svg class="icon sm"><use href="#ico-layers"/></svg>Session<span class="n" id="tabSessionN">0</span></button>
+        </div>
+
+        <!-- DETAILS -->
+        <div class="ipanel on" id="panel-inspector">
+          <div class="stage" id="stageA">
+            <canvas id="cvA"></canvas>
+            <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+            <div class="ovl">
+              <div class="row"><span class="tagmini" id="stageTagL">no selection</span><span class="tagmini" id="stageTagR">—</span></div>
+              <div class="row"><span class="tagmini">persp · 50mm</span><span class="tagmini" id="stageTris"></span></div>
+            </div>
+            <div class="stage-tools">
+              <button class="qbtn" id="frameA" title="Frame selection"><svg class="icon sm"><use href="#ico-frame"/></svg></button>
+              <button class="qbtn on" id="spinA" title="Auto-orbit"><svg class="icon sm"><use href="#ico-orbit"/></svg></button>
+              <button class="qbtn" id="gridA" title="Toggle ground grid"><svg class="icon sm"><use href="#ico-grid3"/></svg></button>
+            </div>
+          </div>
+          <div id="inspBody"></div>
+        </div>
+
+        <!-- CREATE -->
+        <div class="ipanel" id="panel-create">
+          <div class="stage" id="stageB">
+            <canvas id="cvB"></canvas>
+            <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+            <div class="ovl">
+              <div class="row"><span class="tagmini">procedural preview</span><span class="tagmini" id="primTag">SPHERE</span></div>
+              <div class="row"><span class="tagmini">units · m</span><span class="tagmini" id="primTris">—</span></div>
+            </div>
+            <div class="stage-tools">
+              <button class="qbtn on" id="spinB" title="Auto-orbit"><svg class="icon sm"><use href="#ico-orbit"/></svg></button>
+              <button class="qbtn" id="gridB" title="Toggle ground grid"><svg class="icon sm"><use href="#ico-grid3"/></svg></button>
+            </div>
+          </div>
+          <div class="sec" style="padding-bottom:2px"><div class="sec-h"><span class="lbl">Primitive</span><span class="tagmini" id="primHint">click to switch</span></div></div>
+          <div class="prims" id="prims"></div>
+          <div class="sec">
+            <div class="sec-h"><span class="lbl">Parameters</span><button class="tagmini" id="primReset" style="cursor:pointer">reset</button></div>
+            <div id="primParams"></div>
+          </div>
+          <div class="sec">
+            <div class="field"><label>Name</label><input class="sel-in" id="primName" value="Sphere_01" /></div>
+            <div class="field"><label>Pivot</label>
+              <select class="sel-in" id="primPivot"><option>Base</option><option selected>Center</option><option>Origin</option></select>
+            </div>
+            <div class="field"><label>Snap to grid</label><div class="sw on" id="primSnap"></div></div>
+            <div class="field"><label>Shade smooth</label><div class="sw on" id="primSmooth"></div></div>
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="primDup"><svg class="icon sm"><use href="#ico-layers"/></svg>Duplicate last</button>
+            <button class="btn acc" id="primAdd"><svg class="icon sm"><use href="#ico-plus"/></svg>Add to session</button>
+          </div>
+        </div>
+
+        <!-- SESSION -->
+        <div class="ipanel" id="panel-session">
+          <div class="stage" id="stageC" style="height:236px">
+            <canvas id="cvC"></canvas>
+            <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+            <div class="ovl">
+              <div class="row"><span class="tagmini">live session · viewport</span><span class="tagmini" id="sessTag">0 objects</span></div>
+              <div class="row"><span class="tagmini">drag assets here to import</span><span class="tagmini" id="sessTris">0 tris</span></div>
+            </div>
+            <div class="stage-tools">
+              <button class="qbtn" id="frameC" title="Frame all"><svg class="icon sm"><use href="#ico-frame"/></svg></button>
+              <button class="qbtn" id="gridC" title="Toggle ground grid"><svg class="icon sm"><use href="#ico-grid3"/></svg></button>
+            </div>
+          </div>
+          <div class="sec" style="border-bottom:none;padding-bottom:4px">
+            <div class="sec-h"><span class="lbl">Scene contents</span><button class="tagmini" id="clearSession" style="cursor:pointer">clear all</button></div>
+          </div>
+          <div class="slist" id="sessionList"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- STATUS -->
+    <footer class="statusbar">
+      <span class="stat"><span class="livedot"></span> session live</span>
+      <span class="sep"></span>
+      <span class="stat">Items <b id="stItems">0</b></span>
+      <span class="stat">Selected <b id="stSel">0</b></span>
+      <span class="stat">Size <b id="stSize">0 MB</b></span>
+      <span class="sep"></span>
+      <span class="stat" id="stQueueWrap" style="display:none">Importing <span class="qbar"><i id="stQueueBar"></i></span><b id="stQueuePc">0%</b></span>
+      <span class="grow"></span>
+      <span class="stat dim">Viewport <b id="stTris">0</b> tris</span>
+      <span class="sep"></span>
+      <span class="stat dim"><span class="kbd">/</span> search <span class="kbd">G</span>/<span class="kbd">L</span> view <span class="kbd">⏎</span> import</span>
+    </footer>
+  </div>
+</div>
+
+<!-- POPOVERS -->
+<div class="pop" id="popType"></div>
+<div class="pop" id="popSource"></div>
+<div class="pop" id="popSort"></div>
+<div class="pop" id="popCtx"></div>
+<div class="pop" id="popSettings"></div>
+<div class="pop" id="popHelp"></div>
+
+<!-- IMPORT SHEET -->
+<div class="scrim" id="sheet">
+  <div class="sheet">
+    <div class="sheet-h">
+      <div><h2>Import assets</h2><p>Bring geometry, textures, CAD, fonts or simulation caches into the current session.</p></div>
+      <button class="sq" id="sheetClose"><svg class="icon"><use href="#ico-x"/></svg></button>
+    </div>
+    <div class="srcgrid">
+      <button class="srccard" id="srcLocal"><span class="g"><svg class="icon"><use href="#ico-folder-open"/></svg></span><h4>From folder</h4><p>Read files from disk. Formats are detected and categorised automatically.</p></button>
+      <button class="srccard" id="srcLibrary"><span class="g"><svg class="icon"><use href="#ico-archive"/></svg></span><h4>Project library</h4><p>Versioned team library with resolved dependencies and material graphs.</p></button>
+      <button class="srccard" id="srcEngine"><span class="g"><svg class="icon"><use href="#ico-shader"/></svg></span><h4>Engine assets</h4><p>Read-only built-ins: base primitives, core materials, lighting rigs, post FX.</p></button>
+    </div>
+    <div class="dropzone" id="dropzone">Drop files here — <span class="dim">obj · fbx · glb · usd · step · exr · png · ttf · zprj · vdb · abc</span></div>
+    <div class="sheet-f">
+      <span class="tagmini" id="sheetHint">nothing staged</span>
+      <span class="grow" style="flex:1"></span>
+      <button class="pill" id="sheetCancel">Cancel</button>
+      <button class="pill acc" id="sheetGo">Open picker</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="filepick" multiple class="sr" />
+<div class="toasts" id="toasts"></div>
+<div class="dragghost" id="ghost"></div>
+
+<script>
+/* ============================================================
+   1. TAXONOMY
+   ============================================================ */
+const CATS = {
+  mesh:      {name:'Meshes',        icon:'ico-mesh',     tint:'#A9C46A'},
+  cad:       {name:'CAD',           icon:'ico-cad',      tint:'#7FA8D9'},
+  texture:   {name:'Textures',      icon:'ico-image',    tint:'#9A8FC7'},
+  hdri:      {name:'HDRI',          icon:'ico-hdr',      tint:'#D6A85C'},
+  material:  {name:'Materials',     icon:'ico-material', tint:'#69B39C'},
+  font:      {name:'Fonts',         icon:'ico-font',     tint:'#C2A08A'},
+  cloth:     {name:'Cloth & Sim',   icon:'ico-cloth',    tint:'#C08D9E'},
+  uv:        {name:'UV Sets',       icon:'ico-uv',       tint:'#8FA3B8'},
+  anim:      {name:'Animation',     icon:'ico-anim',     tint:'#B99BD1'},
+  volume:    {name:'Volumes',       icon:'ico-volume',   tint:'#6FA5B5'},
+  points:    {name:'Point Clouds',  icon:'ico-points',   tint:'#93A2AE'},
+  audio:     {name:'Audio',         icon:'ico-audio',    tint:'#8FB8A8'},
+  video:     {name:'Video',         icon:'ico-video',    tint:'#B58C8C'},
+  script:    {name:'Scripts',       icon:'ico-script',   tint:'#A0A6B4'},
+  data:      {name:'Data',          icon:'ico-data',     tint:'#98A88E'},
+  scene:     {name:'Scenes',        icon:'ico-scene',    tint:'#BFC06A'},
+  paint:     {name:'Paint',         icon:'ico-brush',    tint:'#C69B6D'},
+  archive:   {name:'Archives',      icon:'ico-archive',  tint:'#8B8B93'}
+};
+const FMT = {
+  fbx:'mesh', obj:'mesh', glb:'mesh', gltf:'mesh', usd:'mesh', usdz:'mesh', abc:'mesh', blend:'mesh', ply:'mesh', stl:'mesh', c4d:'mesh', ma:'mesh',
+  step:'cad', stp:'cad', iges:'cad', igs:'cad', dwg:'cad', dxf:'cad', sldprt:'cad', '3dm':'cad', catpart:'cad', x_t:'cad',
+  png:'texture', jpg:'texture', jpeg:'texture', tga:'texture', tif:'texture', psd:'texture', svg:'texture', webp:'texture',
+  exr:'hdri', hdr:'hdri',
+  mtlx:'material', mat:'material', sbsar:'material', mdl:'material',
+  ttf:'font', otf:'font', woff2:'font', woff:'font',
+  zprj:'cloth', sim:'cloth', cloth:'cloth',
+  uv:'uv', ptex:'uv', udim:'uv',
+  bvh:'anim', anim:'anim', fbxanim:'anim',
+  vdb:'volume', vol:'volume',
+  las:'points', e57:'points', ptx:'points',
+  wav:'audio', mp3:'audio', aiff:'audio',
+  mp4:'video', mov:'video', webm:'video',
+  py:'script', lua:'script', glsl:'script', hlsl:'script', js:'script',
+  json:'data', csv:'data', xml:'data', yaml:'data',
+  scene:'scene', prefab:'scene', level:'scene',
+  spp:'paint', tbscene:'paint',
+  zip:'archive', rar:'archive', '7z':'archive'
+};
+const catOf = ext => FMT[(ext||'').toLowerCase()] || 'archive';
+
+/* ============================================================
+   2. LIBRARY DATA
+   ============================================================ */
+let UID = 0;
+function A(name, ext, mb, days, tags, extra){
+  return Object.assign({
+    id:'a'+(++UID), name, ext, size:Math.round(mb*1048576),
+    date:Date.now()-days*86400000, tags:tags||[], cat:catOf(ext), source:'library'
+  }, extra||{});
+}
+const LIB = [
+  A('Turbine_Housing_A','step',48.2,2,['mech','sealed'],{parts:214,units:'mm'}),
+  A('Bracket_Mount_v4','step',6.4,5,['mech'],{parts:12,units:'mm'}),
+  A('Chassis_Frame','iges',92.7,11,['mech','legacy'],{parts:388,units:'mm'}),
+  A('Facade_Panel_Rev3','dwg',3.1,1,['arch','2d'],{layers:24}),
+  A('Gearbox_Assembly','sldprt',128.5,19,['mech'],{parts:640,units:'mm'}),
+  A('Hangar_Interior','fbx',214.9,3,['env','hero'],{tris:1842000,uvsets:2}),
+  A('Crate_Modular_Set','fbx',34.2,7,['props','kit'],{tris:186400,uvsets:1}),
+  A('Character_Base_Mesh','obj',18.6,14,['char','sculpt'],{tris:98000,uvsets:1}),
+  A('Drone_Scout_LOD0','glb',41.3,1,['props','hero'],{tris:412300,uvsets:2}),
+  A('Terrain_Sector_04','usd',309.4,6,['env'],{tris:3120000,uvsets:1}),
+  A('Retopo_Head_Clean','obj',4.8,21,['char','retopo'],{tris:14200,uvsets:1}),
+  A('Rock_Scan_Cluster','ply',488.1,9,['scan','env'],{tris:6400000}),
+  A('Bench_Furniture','stl',9.9,28,['props'],{tris:64200}),
+  A('Concrete_Rough_4K','png',62.4,4,['pbr','albedo'],{res:'4096×4096',bits:8}),
+  A('Concrete_Rough_NRM','png',74.8,4,['pbr','normal'],{res:'4096×4096',bits:16}),
+  A('Steel_Brushed_2K','tga',18.2,12,['pbr'],{res:'2048×2048',bits:8}),
+  A('Decal_Warning_Pack','psd',96.1,8,['decal'],{res:'2048×2048',bits:8}),
+  A('Fabric_Weave_Tile','jpg',5.7,16,['tileable'],{res:'1024×1024',bits:8}),
+  A('UI_Iconography','svg',0.4,2,['vector','ui'],{res:'vector'}),
+  A('Studio_Softbox_8K','exr',312.6,10,['lighting'],{res:'8192×4096',bits:32}),
+  A('Overcast_Dusk','hdr',148.2,23,['lighting','exterior'],{res:'4096×2048',bits:32}),
+  A('Alloy_Anodised','mtlx',0.8,3,['pbr','graph'],{nodes:42}),
+  A('Carbon_Weave','sbsar',12.4,17,['substance'],{nodes:88}),
+  A('Glass_Frosted','mtlx',0.3,6,['transmissive'],{nodes:19}),
+  A('Neue Haas Grotesk','otf',1.9,31,['ui','display'],{glyphs:842}),
+  A('IBM Plex Mono','ttf',1.2,31,['mono','tech'],{glyphs:678}),
+  A('Editorial Serif','woff2',0.6,44,['display'],{glyphs:512}),
+  A('Jacket_Technical','zprj',86.3,5,['garment','marvelous'],{pattern:38}),
+  A('Drape_Sim_Cache','sim',940.2,5,['cache','solver'],{frames:240}),
+  A('Curtain_Wind_Test','sim',412.7,13,['cache'],{frames:120}),
+  A('Character_UV_Layout','uv',2.1,14,['uv','islands'],{islands:46}),
+  A('Prop_Kit_UDIM','udim',7.6,9,['uv','udim'],{islands:128}),
+  A('Walk_Cycle_Loop','bvh',3.4,7,['locomotion'],{frames:64}),
+  A('Combat_Idle_A','anim',5.8,15,['combat'],{frames:180}),
+  A('Smoke_Plume_Dense','vdb',1284.0,2,['fx','volumetric'],{frames:96}),
+  A('Cloud_Bank_Low','vdb',642.5,18,['sky'],{frames:1}),
+  A('Site_Survey_North','las',2140.0,20,['survey','scan'],{pointsn:184000000}),
+  A('Room_Scan_E57','e57',890.4,26,['scan'],{pointsn:62000000}),
+  A('Ambience_Hangar','wav',48.9,12,['loop'],{dur:'02:14'}),
+  A('UI_Click_Set','wav',3.2,22,['ui','foley'],{dur:'00:09'}),
+  A('Turntable_Ref','mp4',186.4,4,['reference'],{dur:'00:32'}),
+  A('Batch_Retopo','py',0.1,1,['tool','pipeline'],{lines:284}),
+  A('Toon_Outline','glsl',0.05,9,['shader'],{lines:96}),
+  A('Asset_Manifest','json',0.9,1,['pipeline'],{records:3721}),
+  A('Shot_010_Layout','scene',24.6,3,['layout'],{objects:186}),
+  A('Hero_Paint_Pass','spp',612.3,6,['paint','substance'],{layers:34})
+];
+const ENGINE = [
+  A('Engine_Cube','mesh_native'?'usd':'usd',0.02,120,['builtin'],{tris:12}),
+  A('Engine_Sphere','usd',0.06,120,['builtin'],{tris:960}),
+  A('Engine_Plane','usd',0.01,120,['builtin'],{tris:2}),
+  A('Standard_Lit','mtlx',0.2,120,['builtin','core'],{nodes:24}),
+  A('Unlit_Vertex','mtlx',0.1,120,['builtin'],{nodes:8}),
+  A('Studio_3Point_Rig','scene',1.4,120,['lighting','rig'],{objects:9}),
+  A('PostFX_Filmic','mtlx',0.3,120,['post'],{nodes:31}),
+  A('Debug_Checker_2K','png',4.1,120,['debug'],{res:'2048×2048',bits:8}),
+  A('Physics_Cloth_Preset','sim',0.9,120,['preset'],{frames:1}),
+  A('Editor_Grid_Shader','glsl',0.02,120,['debug'],{lines:64})
+].map(a=>(a.source='engine',a.readonly=true,a));
+const ALL = [...LIB,...ENGINE];
+
+/* ============================================================
+   3. STATE
+   ============================================================ */
+const state = {
+  view:'grid', sort:'name', dir:1, query:'',
+  source:'all', types:new Set(), favOnly:false,
+  cat:null, root:'library', mode:'assets',
+  sel:new Set(), lastIdx:-1, tab:'inspector',
+  fav:new Set(['a6','a20','a25']), recent:[], deleted:new Set(),
+  session:[], sessionSel:null, queue:[],
+  history:[], hIdx:-1,
+  prefs:{hidden:false, autoFrame:true, engineRO:true, mono:false}
+};
+
+/* ============================================================
+   4. HELPERS
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const svg = (id,cls) => '<svg class="icon '+(cls||'')+'"><use href="#'+id+'"/></svg>';
+function fsize(b){
+  if(b<1024) return b+' B';
+  if(b<1048576) return (b/1024).toFixed(1)+' KB';
+  if(b<1073741824) return (b/1048576).toFixed(1)+' MB';
+  return (b/1073741824).toFixed(2)+' GB';
+}
+function splitNum(t){ const s=String(t); const i=s.indexOf('.')>-1?s.indexOf('.'):Math.max(0,s.length-3);
+  return '<span class="mono">'+esc(s.slice(0,i))+'<span class="dim">'+esc(s.slice(i))+'</span></span>'; }
+function ago(t){
+  const d=(Date.now()-t)/86400000;
+  if(d<1) return 'today'; if(d<2) return 'yesterday';
+  if(d<30) return Math.floor(d)+'d ago'; if(d<365) return Math.floor(d/30)+'mo ago';
+  return Math.floor(d/365)+'y ago';
+}
+function nfmt(n){ return n.toLocaleString('en-US'); }
+function detailOf(a){
+  if(a.tris) return nfmt(a.tris)+' tris';
+  if(a.parts) return a.parts+' parts';
+  if(a.res) return a.res;
+  if(a.frames) return a.frames+' frames';
+  if(a.glyphs) return a.glyphs+' glyphs';
+  if(a.nodes) return a.nodes+' nodes';
+  if(a.pointsn) return (a.pointsn/1e6).toFixed(0)+'M pts';
+  if(a.dur) return a.dur;
+  if(a.islands) return a.islands+' islands';
+  if(a.layers) return a.layers+' layers';
+  if(a.records) return nfmt(a.records)+' rows';
+  if(a.objects) return a.objects+' objects';
+  if(a.lines) return a.lines+' lines';
+  if(a.pattern) return a.pattern+' patterns';
+  return fsize(a.size);
+}
+
+/* ============================================================
+   5. WIREFRAME VIEWPORT (canvas 2D, no libs)
+   ============================================================ */
+const GEO = {
+  plane(p){const s=p.size||2,n=Math.max(1,p.segs||4),v=[],e=[];
+    for(let i=0;i<=n;i++){const t=-s/2+s*i/n;
+      v.push([t,0,-s/2]); v.push([t,0,s/2]); e.push([v.length-2,v.length-1]);
+      v.push([-s/2,0,t]); v.push([s/2,0,t]); e.push([v.length-2,v.length-1]);}
+    return {v,e,tris:n*n*2};},
+  box(p){const x=(p.width||1.4)/2,y=(p.height||1.4)/2,z=(p.depth||1.4)/2,n=p.segs||1;
+    const v=[],e=[];
+    const c=[[-x,-y,-z],[x,-y,-z],[x,-y,z],[-x,-y,z],[-x,y,-z],[x,y,-z],[x,y,z],[-x,y,z]];
+    c.forEach(q=>v.push(q));
+    [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(q=>e.push(q));
+    if(n>1){for(let i=1;i<n;i++){const t=-y+2*y*i/n;
+      const b=v.length; v.push([-x,t,-z],[x,t,-z],[x,t,z],[-x,t,z]);
+      e.push([b,b+1],[b+1,b+2],[b+2,b+3],[b+3,b]);}}
+    return {v,e,tris:12*n};},
+  sphere(p){const r=p.radius||1,rg=p.rings||8,sg=p.segments||16,v=[],e=[];
+    for(let i=1;i<rg;i++){const phi=Math.PI*i/rg,y=Math.cos(phi)*r,rr=Math.sin(phi)*r,b=v.length;
+      for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*rr,y,Math.sin(th)*rr]);e.push([b+j,b+(j+1)%sg]);}}
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/8))){const th=2*Math.PI*j/sg,b=v.length;
+      for(let i=0;i<=rg;i++){const phi=Math.PI*i/rg;v.push([Math.cos(th)*Math.sin(phi)*r,Math.cos(phi)*r,Math.sin(th)*Math.sin(phi)*r]);if(i)e.push([b+i-1,b+i]);}}
+    return {v,e,tris:rg*sg*2};},
+  cylinder(p){const r=p.radius||.8,h=p.height||1.8,sg=p.segments||20,v=[],e=[];
+    for(const y of [h/2,-h/2]){const b=v.length;
+      for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*r,y,Math.sin(th)*r]);e.push([b+j,b+(j+1)%sg]);}}
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/8))) e.push([j,sg+j]);
+    return {v,e,tris:sg*4};},
+  cone(p){const r=p.radius||.9,h=p.height||1.8,sg=p.segments||20,v=[[0,h/2,0]],e=[];
+    for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*r,-h/2,Math.sin(th)*r]);e.push([1+j,1+(j+1)%sg]);}
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/8))) e.push([0,1+j]);
+    return {v,e,tris:sg*2};},
+  torus(p){const R=p.radius||1,r=p.tube||.34,sg=p.segments||20,sd=p.sides||10,v=[],e=[];
+    for(let i=0;i<sg;i++){const u=2*Math.PI*i/sg;
+      for(let j=0;j<sd;j++){const t=2*Math.PI*j/sd,cx=(R+r*Math.cos(t));
+        v.push([Math.cos(u)*cx,r*Math.sin(t),Math.sin(u)*cx]);
+        const cur=i*sd+j; e.push([cur,i*sd+(j+1)%sd]); e.push([cur,((i+1)%sg)*sd+j]);}}
+    return {v,e,tris:sg*sd*2};},
+  capsule(p){const r=p.radius||.6,h=p.height||1.4,sg=p.segments||16,rg=6,v=[],e=[];
+    const cap=(sy,off)=>{for(let i=0;i<=rg;i++){const phi=Math.PI/2*i/rg,y=off+sy*Math.cos(phi)*r,rr=Math.sin(phi)*r,b=v.length;
+      for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*rr,y,Math.sin(th)*rr]);e.push([b+j,b+(j+1)%sg]);if(i)e.push([b+j,b-sg+j]);}}};
+    cap(1,h/2); cap(-1,-h/2);
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/8))){const b=v.length;v.push([Math.cos(2*Math.PI*j/sg)*r,h/2,Math.sin(2*Math.PI*j/sg)*r],[Math.cos(2*Math.PI*j/sg)*r,-h/2,Math.sin(2*Math.PI*j/sg)*r]);e.push([b,b+1]);}
+    return {v,e,tris:sg*(rg*4+2)};},
+  disc(p){const r=p.radius||1.1,sg=p.segments||28,v=[[0,0,0]],e=[];
+    for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*r,0,Math.sin(th)*r]);e.push([1+j,1+(j+1)%sg]);}
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/10))) e.push([0,1+j]);
+    return {v,e,tris:sg};},
+  tube(p){const r=p.radius||1,ir=p.inner||.6,h=p.height||1,sg=p.segments||24,v=[],e=[];
+    [[r,h/2],[r,-h/2],[ir,h/2],[ir,-h/2]].forEach(([rad,y])=>{const b=v.length;
+      for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg;v.push([Math.cos(th)*rad,y,Math.sin(th)*rad]);e.push([b+j,b+(j+1)%sg]);}});
+    for(let j=0;j<sg;j+=Math.max(1,Math.round(sg/8))){e.push([j,sg+j]);e.push([2*sg+j,3*sg+j]);e.push([j,2*sg+j]);}
+    return {v,e,tris:sg*8};},
+  text(p){const v=[],e=[],w=p.size||1.6,d=p.depth||.3;
+    const glyph=[[-.5,-.5],[-.5,.5],[.5,.5],[.5,-.5]];
+    const bars=[[-.75,.5,1.5,.18],[-.09,-.55,.18,1.05]];
+    bars.forEach(([bx,by,bw,bh])=>{const s=w;
+      const pts=[[bx,by,0],[bx+bw,by,0],[bx+bw,by+bh,0],[bx,by+bh,0]].map(q=>[q[0]*s,q[1]*s,0]);
+      const b=v.length;
+      pts.forEach(q=>v.push([q[0],q[1],-d/2])); pts.forEach(q=>v.push([q[0],q[1],d/2]));
+      for(let i=0;i<4;i++){e.push([b+i,b+(i+1)%4]);e.push([b+4+i,b+4+(i+1)%4]);e.push([b+i,b+4+i]);}});
+    return {v,e,tris:96};},
+  curve(p){const v=[],e=[],n=p.segments||40,amp=p.amplitude||1,len=p.length||3;
+    for(let i=0;i<=n;i++){const t=i/n;v.push([-len/2+len*t,Math.sin(t*Math.PI*2)*amp*.5,Math.cos(t*Math.PI*2)*amp*.35]);if(i)e.push([i-1,i]);}
+    return {v,e,tris:0};},
+  light(p){const v=[],e=[],r=p.radius||.5,sg=12;
+    for(let a=0;a<3;a++){const b=v.length;
+      for(let j=0;j<sg;j++){const th=2*Math.PI*j/sg,c=Math.cos(th)*r,s=Math.sin(th)*r;
+        v.push(a===0?[c,s,0]:a===1?[c,0,s]:[0,c,s]); e.push([b+j,b+(j+1)%sg]);}}
+    for(let j=0;j<8;j++){const th=2*Math.PI*j/8,b=v.length;
+      v.push([Math.cos(th)*r*1.35,Math.sin(th)*r*1.35,0],[Math.cos(th)*r*1.9,Math.sin(th)*r*1.9,0]);e.push([b,b+1]);}
+    return {v,e,tris:0};},
+  camera(p){const v=[],e=[],w=.5,h=.36,d=.7;
+    const body=[[-w,-h,-d],[w,-h,-d],[w,h,-d],[-w,h,-d],[-w,-h,d*.2],[w,-h,d*.2],[w,h,d*.2],[-w,h,d*.2]];
+    body.forEach(q=>v.push(q));
+    [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(q=>e.push(q));
+    const b=v.length; v.push([0,0,d*.2],[w*1.3,h*1.2,d*1.5],[-w*1.3,h*1.2,d*1.5],[w*1.3,-h*1.2,d*1.5],[-w*1.3,-h*1.2,d*1.5]);
+    e.push([b,b+1],[b,b+2],[b,b+3],[b,b+4],[b+1,b+2],[b+2,b+4],[b+4,b+3],[b+3,b+1]);
+    return {v,e,tris:0};},
+  empty(p){const s=p.size||.7;return {v:[[-s,0,0],[s,0,0],[0,-s,0],[0,s,0],[0,0,-s],[0,0,s]],e:[[0,1],[2,3],[4,5]],tris:0};},
+  billboard(p){const w=(p.width||1.6)/2,h=(p.height||1)/2,v=[[-w,-h,0],[w,-h,0],[w,h,0],[-w,h,0]],e=[[0,1],[1,2],[2,3],[3,0],[0,2],[1,3]];
+    return {v,e,tris:2};}
+};
+
+function Viewport(canvas, opts){
+  opts = opts||{};
+  const ctx = canvas.getContext('2d');
+  const vp = {
+    canvas, ctx, objects:[], yaw:.68, pitch:.42, dist:6.2, spin:opts.spin!==false,
+    grid:true, target:[0,0,0], accentId:null, running:true, hover:false
+  };
+  let drag=null, idle=0;
+  function size(){
+    const dpr = Math.min(2, window.devicePixelRatio||1);
+    const r = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1,r.width*dpr); canvas.height = Math.max(1,r.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0); vp.w=r.width; vp.h=r.height;
+  }
+  new ResizeObserver(size).observe(canvas);
+  size();
+
+  canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);idle=0;});
+  canvas.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    vp.yaw += (e.clientX-drag.x)*.008; vp.pitch += (e.clientY-drag.y)*.006;
+    vp.pitch = Math.max(-1.35,Math.min(1.35,vp.pitch)); drag={x:e.clientX,y:e.clientY}; idle=0;
+  });
+  canvas.addEventListener('pointerup',()=>drag=null);
+  canvas.addEventListener('pointerleave',()=>drag=null);
+  canvas.addEventListener('wheel',e=>{e.preventDefault();vp.dist=Math.max(1.6,Math.min(30,vp.dist*(1+Math.sign(e.deltaY)*.08)));idle=0;},{passive:false});
+
+  function proj(p){
+    const cy=Math.cos(vp.yaw), sy=Math.sin(vp.yaw), cp=Math.cos(vp.pitch), sp=Math.sin(vp.pitch);
+    let x=p[0]-vp.target[0], y=p[1]-vp.target[1], z=p[2]-vp.target[2];
+    let x1=x*cy - z*sy, z1=x*sy + z*cy;
+    let y1=y*cp - z1*sp, z2=y*sp + z1*cp;
+    const zc = vp.dist - z2;
+    if(zc<=.15) return null;
+    const f = vp.h*.92;
+    return [vp.w/2 + x1*f/zc, vp.h/2 - y1*f/zc, zc];
+  }
+  function strokeGeo(g, off, color, width, alphaMul){
+    ctx.beginPath(); let drawn=0;
+    for(let i=0;i<g.e.length;i++){
+      const a=g.v[g.e[i][0]], b=g.v[g.e[i][1]];
+      const pa=proj([a[0]+off[0],a[1]+off[1],a[2]+off[2]]);
+      const pb=proj([b[0]+off[0],b[1]+off[1],b[2]+off[2]]);
+      if(!pa||!pb) continue;
+      ctx.moveTo(pa[0],pa[1]); ctx.lineTo(pb[0],pb[1]); drawn++;
+    }
+    ctx.strokeStyle=color; ctx.lineWidth=width; ctx.globalAlpha=alphaMul; ctx.stroke(); ctx.globalAlpha=1;
+    return drawn;
+  }
+  function drawGrid(){
+    const n=10, s=1;
+    ctx.lineWidth=1;
+    for(let i=-n;i<=n;i++){
+      const fade = 1 - Math.abs(i)/n;
+      const a1=proj([i*s,0,-n*s]), a2=proj([i*s,0,n*s]);
+      const b1=proj([-n*s,0,i*s]), b2=proj([n*s,0,i*s]);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.035+fade*0.045).toFixed(3)+')';
+      if(a1&&a2){ctx.beginPath();ctx.moveTo(a1[0],a1[1]);ctx.lineTo(a2[0],a2[1]);ctx.stroke();}
+      if(b1&&b2){ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);ctx.stroke();}
+    }
+    const ox=proj([-n,0,0]), ox2=proj([n,0,0]), oz=proj([0,0,-n]), oz2=proj([0,0,n]);
+    ctx.strokeStyle='rgba(189,241,78,.16)';
+    if(ox&&ox2){ctx.beginPath();ctx.moveTo(ox[0],ox[1]);ctx.lineTo(ox2[0],ox2[1]);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,255,255,.10)';
+    if(oz&&oz2){ctx.beginPath();ctx.moveTo(oz[0],oz[1]);ctx.lineTo(oz2[0],oz2[1]);ctx.stroke();}
+  }
+  function frame(){
+    if(!vp.objects.length){vp.target=[0,0,0];vp.dist=6.2;return;}
+    let mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
+    vp.objects.forEach(o=>o.geo.v.forEach(p=>{for(let i=0;i<3;i++){
+      const val=p[i]+o.pos[i]; if(val<mn[i])mn[i]=val; if(val>mx[i])mx[i]=val;}}));
+    vp.target=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+    const r=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]);
+    vp.dist=Math.max(2.6, r*1.85+1.4);
+  }
+  vp.frame = frame;
+
+  function loop(){
+    if(!vp.running){requestAnimationFrame(loop);return;}
+    const r = canvas.getBoundingClientRect();
+    if(r.width===0){requestAnimationFrame(loop);return;}
+    idle++;
+    if(vp.spin && !drag && idle>40) vp.yaw += .0035;
+    ctx.clearRect(0,0,vp.w,vp.h);
+    if(vp.grid) drawGrid();
+    vp.objects.forEach(o=>{
+      const on = vp.accentId===o.id;
+      strokeGeo(o.geo, o.pos, on?'rgba(189,241,78,.95)':'rgba(210,214,220,.62)', on?1.15:.9, o.visible===false?.16:1);
+      if(on){ // subtle bounds
+        strokeGeo(boundsGeo(o.geo), o.pos, 'rgba(189,241,78,.22)', .8, 1);
+      }
+    });
+    requestAnimationFrame(loop);
+  }
+  function boundsGeo(g){
+    let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+    g.v.forEach(p=>{for(let i=0;i<3;i++){if(p[i]<mn[i])mn[i]=p[i];if(p[i]>mx[i])mx[i]=p[i];}});
+    const c=[[mn[0],mn[1],mn[2]],[mx[0],mn[1],mn[2]],[mx[0],mn[1],mx[2]],[mn[0],mn[1],mx[2]],
+             [mn[0],mx[1],mn[2]],[mx[0],mx[1],mn[2]],[mx[0],mx[1],mx[2]],[mn[0],mx[1],mx[2]]];
+    return {v:c,e:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]};
+  }
+  requestAnimationFrame(loop);
+  return vp;
+}
+
+const vpA = Viewport($('#cvA'));
+const vpB = Viewport($('#cvB'));
+const vpC = Viewport($('#cvC'), {spin:false});
+vpC.dist = 9; vpC.pitch = .55;
+
+/* proxy geometry for library assets */
+function proxyFor(a){
+  const c=a.cat, seedN=[...a.name].reduce((s,ch)=>s+ch.charCodeAt(0),0);
+  if(c==='mesh'||c==='scene') return [GEO.torus({radius:1,tube:.36,segments:22,sides:11}),GEO.box({width:1.6,height:1.6,depth:1.6,segs:2}),GEO.capsule({}),GEO.sphere({radius:1.15,rings:9,segments:18})][seedN%4];
+  if(c==='cad') return GEO.tube({radius:1.1,inner:.55,height:.8,segments:26});
+  if(c==='texture'||c==='paint'||c==='uv') return GEO.plane({size:2.4,segs:6});
+  if(c==='hdri') return GEO.sphere({radius:1.4,rings:9,segments:20});
+  if(c==='material') return GEO.sphere({radius:1.15,rings:10,segments:20});
+  if(c==='font') return GEO.text({size:1.3,depth:.34});
+  if(c==='cloth') return GEO.plane({size:2.2,segs:9});
+  if(c==='anim') return GEO.capsule({radius:.5,height:1.4});
+  if(c==='volume') return GEO.box({width:1.8,height:1.8,depth:1.8,segs:3});
+  if(c==='points') return GEO.sphere({radius:1.2,rings:6,segments:12});
+  if(c==='audio'||c==='video'||c==='data'||c==='script') return GEO.billboard({width:2.2,height:1.4});
+  return GEO.box({width:1.4,height:1.4,depth:1.4});
+}
+
+/* ============================================================
+   6. TREE
+   ============================================================ */
+function counts(){
+  const m={}; ALL.forEach(a=>{ if(state.deleted.has(a.id))return; m[a.cat]=(m[a.cat]||0)+1; });
+  return m;
+}
+function buildTree(){
+  const c = counts();
+  const libCats = Object.keys(CATS).filter(k=>LIB.some(a=>a.cat===k&&!state.deleted.has(a.id)));
+  const engCats = [...new Set(ENGINE.map(a=>a.cat))];
+  let h = '';
+  h += '<div class="grp-title">Project</div>';
+  h += node('library', null, 'Project Library', 'ico-folder-open', LIB.filter(a=>!state.deleted.has(a.id)).length, true);
+  h += '<div class="tkids open" data-kids="library">'+ libCats.map(k=>
+        node('library', k, CATS[k].name, CATS[k].icon, LIB.filter(a=>a.cat===k&&!state.deleted.has(a.id)).length)).join('') +'</div>';
+  h += '<div class="grp-title">Engine</div>';
+  h += node('engine', null, 'Engine Assets', 'ico-shader', ENGINE.length, true, true);
+  h += '<div class="tkids" data-kids="engine">'+ engCats.map(k=>
+        node('engine', k, CATS[k].name, CATS[k].icon, ENGINE.filter(a=>a.cat===k).length,false,true)).join('') +'</div>';
+  h += '<div class="grp-title">Session</div>';
+  h += node('imported', null, 'Imported', 'ico-down', state.session.length, false);
+  h += node('recent', null, 'Recent', 'ico-clock', state.recent.length, false);
+  h += node('fav', null, 'Favourites', 'ico-star-o', state.fav.size, false);
+  $('#tree').innerHTML = h;
+
+
+  $$('#tree .tnode').forEach(n=>{
+    n.onclick = e=>{
+      const root=n.dataset.root, cat=n.dataset.cat||null;
+      if(n.dataset.parent==='1'){
+        const kids=$('.tkids[data-kids="'+root+'"]');
+        if(kids && e.target.closest('.chev')){ kids.classList.toggle('open'); n.classList.toggle('open'); return; }
+        if(kids && !kids.classList.contains('open')){ kids.classList.add('open'); n.classList.add('open'); }
+      }
+      navigate(root, cat);
+    };
+  });
+  syncTree();
+}
+function node(root, cat, label, icon, n, open, ro){
+  return '<div class="tnode'+(open?' open':'')+'" data-root="'+root+'" '+(cat?'data-cat="'+cat+'"':'')+' '+((cat===null&&(root==='library'||root==='engine'))?'data-parent="1"':'')+'>'
+    + ((cat===null&&(root==='library'||root==='engine')) ? '<svg class="icon chev"><use href="#ico-chev-r"/></svg>' : '<span style="width:12px;flex:none"></span>')
+    + '<span class="fi" style="color:'+(cat?CATS[cat].tint:'#8C8C96')+';opacity:.85;display:flex">'+svg(icon,'sm')+'</span>'
+    + '<span class="nm">'+esc(label)+'</span>'
+    + (ro?'<svg class="icon lock"><use href="#ico-lock"/></svg>':'')
+    + '<span class="ct">'+n+'</span></div>';
+}
+function syncTree(){
+
+  $$('#tree .tnode').forEach(n=>{
+    const active = n.dataset.root===state.root && (n.dataset.cat||null)===state.cat;
+    n.classList.toggle('on', active);
+  });
+}
+
+/* ============================================================
+   7. NAVIGATION + FILTERING
+   ============================================================ */
+function navigate(root, cat, push=true){
+  state.root=root; state.cat=cat; state.sel.clear();
+  if(push){ state.history=state.history.slice(0,state.hIdx+1); state.history.push({root,cat}); state.hIdx=state.history.length-1; }
+  $('#navBack').disabled = state.hIdx<=0;
+  $('#navFwd').disabled = state.hIdx>=state.history.length-1;
+  render();
+}
+function pool(){
+  if(state.root==='engine') return ENGINE;
+  if(state.root==='fav') return ALL.filter(a=>state.fav.has(a.id));
+  if(state.root==='recent') return state.recent.map(id=>ALL.find(a=>a.id===id)).filter(Boolean);
+  if(state.root==='imported') return state.session.filter(o=>o.asset).map(o=>o.asset);
+  return LIB;
+}
+function visible(){
+  let list = pool().filter(a=>!state.deleted.has(a.id));
+  if(state.cat) list = list.filter(a=>a.cat===state.cat);
+  if(state.types.size) list = list.filter(a=>state.types.has(a.cat));
+  if(state.source!=='all') list = list.filter(a=>a.source===state.source);
+  if(state.favOnly) list = list.filter(a=>state.fav.has(a.id));
+  const q = state.query.trim().toLowerCase();
+  if(q) list = list.filter(a=>(a.name+' '+a.ext+' '+a.cat+' '+a.tags.join(' ')).toLowerCase().includes(q));
+  const s = state.sort, d = state.dir;
+  list = [...list].sort((x,y)=>{
+    let r=0;
+    if(s==='name') r = x.name.localeCompare(y.name);
+    else if(s==='size') r = x.size-y.size;
+    else if(s==='date') r = x.date-y.date;
+    else if(s==='type') r = (x.cat+x.ext).localeCompare(y.cat+y.ext);
+    return r*d;
+  });
+  return list;
+}
+function folderView(){ return state.cat===null && (state.root==='library'||state.root==='engine') && !state.query && !state.types.size; }
+
+/* ============================================================
+   8. RENDER
+   ============================================================ */
+function render(){ renderCrumbs(); renderMain(); renderStatus(); syncTree(); renderChipState(); }
+
+function renderCrumbs(){
+  const names = {library:'Project Library', engine:'Engine Assets', fav:'Favourites', recent:'Recent', imported:'Imported'};
+  let h = '<a data-go="library">Harbor</a><span class="sep">/</span>';
+  if(state.cat) h += '<a data-go="'+state.root+'">'+names[state.root]+'</a><span class="sep">/</span><b>'+CATS[state.cat].name+'</b>';
+  else h += '<b>'+names[state.root]+'</b>';
+  if(state.root==='engine') h += '<span class="crumb-tag">read only</span>';
+  if(state.query) h += '<span class="crumb-tag">search “'+esc(state.query)+'”</span>';
+  $('#crumbs').innerHTML = h;
+
+  $$('#crumbs a').forEach(a=>a.onclick=()=>navigate(a.dataset.go,null));
+}
+
+function renderMain(){
+  const box = $('#scroll');
+  if(state.mode==='queue'){ box.innerHTML = renderQueue(); bindQueue(); return; }
+  const list = visible();
+  let h = '';
+  if(folderView()){
+    const src = state.root==='engine'?ENGINE:LIB;
+    const cats = [...new Set(src.filter(a=>!state.deleted.has(a.id)).map(a=>a.cat))];
+    h += '<div class="sect-title"><span class="lbl">Collections</span><span class="rule"></span><span class="tagmini">'+cats.length+'</span></div>';
+    h += '<div class="grid">'+cats.map(k=>{
+      const items = src.filter(a=>a.cat===k&&!state.deleted.has(a.id));
+      const bytes = items.reduce((s,a)=>s+a.size,0);
+      return '<div class="tile folder" data-folder="'+k+'">'
+        +'<div class="thumb">'
+          +'<svg viewBox="0 0 64 48" class="glyph" style="width:60%"><use href="#ico-folder-big"/></svg>'
+          +'<span style="position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);color:'+CATS[k].tint+';opacity:.62">'+svg(CATS[k].icon,'lg')+'</span>'
+          +'<div class="folder-cap"><span class="fmt"><span class="cdot" style="background:'+CATS[k].tint+'"></span>'+items.length+' items</span>'
+          +'<span class="tagmini">'+fsize(bytes)+'</span></div>'
+        +'</div>'
+        +'<div class="tmeta"><div class="tname">'+CATS[k].name+'</div>'
+        +'<div class="tsub">'+splitNum(nfmt(items.length))+' records<span class="bul"></span>'+(state.root==='engine'?'engine':'library')+'</div></div></div>';
+    }).join('')+'</div>';
+    h += '<div class="sect-title"><span class="lbl">All assets</span><span class="rule"></span><span class="tagmini">'+list.length+'</span></div>';
+  }
+
+  if(!list.length){
+    h += '<div class="empty">'+svg('ico-search','glyph')+'<div><b style="color:var(--txt-2);display:block;font-weight:500">Nothing matches this filter</b>'
+      +'<span style="font-size:12px">Clear the search, or import files from disk to populate this collection.</span></div>'
+      +'<button class="pill" id="emptyImport">'+svg('ico-up','sm')+'Import files</button></div>';
+  } else if(state.view==='grid'){
+    h += '<div class="grid">'+list.map(tile).join('')+'</div>';
+  } else {
+    h += '<div class="list"><div class="lrow head"><span></span>'
+      +'<span class="sortable" data-s="name">Name '+svg('ico-sort','sm')+'</span>'
+      +'<span class="sortable" data-s="type">Type</span>'
+      +'<span class="sortable" data-s="size">Size</span>'
+      +'<span>Detail</span>'
+      +'<span class="sortable" data-s="date">Modified</span>'
+      +'<span style="text-align:right">Actions</span></div>'
+      + list.map(row).join('')+'</div>';
+  }
+  box.innerHTML = h;
+  bindItems(list);
+}
+
+function tile(a){
+  const c = CATS[a.cat];
+  return '<div class="tile'+(state.sel.has(a.id)?' sel':'')+(state.fav.has(a.id)?' fav':'')+'" data-id="'+a.id+'" draggable="true">'
+    +'<div class="thumb">'
+      +'<span class="glyph">'+svg(c.icon)+'</span>'
+      +'<svg class="icon sm star"><use href="#ico-star"/></svg>'
+      +'<span class="fmt"><span class="cdot" style="background:'+c.tint+'"></span>'+esc(a.ext)+'</span>'
+      +(a.source==='engine'?'<span class="engbadge">engine</span>':'')
+      +'<div class="qa">'
+        +'<button class="qbtn" data-act="fav" title="Favourite">'+svg(state.fav.has(a.id)?'ico-star':'ico-star-o','sm')+'</button>'
+        +'<button class="qbtn acc" data-act="import" title="Import to session">'+svg('ico-plus','sm')+'</button>'
+        +'<button class="qbtn" data-act="menu" title="More">'+svg('ico-dots','sm')+'</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="tmeta"><div class="tname" data-name>'+esc(a.name)+'.'+esc(a.ext)+'</div>'
+    +'<div class="tsub"><span>'+detailOf(a)+'</span><span class="bul"></span><span>'+fsize(a.size)+'</span></div></div></div>';
+}
+function row(a){
+  const c = CATS[a.cat];
+  return '<div class="lrow'+(state.sel.has(a.id)?' sel':'')+'" data-id="'+a.id+'" draggable="true">'
+    +'<span class="ic" style="color:'+c.tint+'">'+svg(c.icon,'sm')+'</span>'
+    +'<span class="nm" data-name>'+esc(a.name)+'.'+esc(a.ext)+'</span>'
+    +'<span class="mono" style="font-size:10.5px;text-transform:uppercase">'+esc(a.ext)+'</span>'
+    +'<span class="mono" style="font-size:11px">'+fsize(a.size)+'</span>'
+    +'<span class="mono" style="font-size:11px;color:var(--txt-3)">'+detailOf(a)+'</span>'
+    +'<span style="font-size:11px;color:var(--txt-3)">'+ago(a.date)+'</span>'
+    +'<span class="acts"><button class="qbtn" data-act="fav">'+svg(state.fav.has(a.id)?'ico-star':'ico-star-o','sm')+'</button>'
+    +'<button class="qbtn acc" data-act="import">'+svg('ico-plus','sm')+'</button>'
+    +'<button class="qbtn" data-act="menu">'+svg('ico-dots','sm')+'</button></span></div>';
+}
+
+function bindItems(list){
+  const em = $('#emptyImport'); if(em) em.onclick = openSheet;
+
+  $$('.tile.folder').forEach(f=>f.onclick=()=>navigate(state.root, f.dataset.folder));
+
+  $$('[data-s]').forEach(s=>s.onclick=()=>{ if(state.sort===s.dataset.s) state.dir*=-1; else {state.sort=s.dataset.s;state.dir=1;} $('#sortLabel').textContent=({name:'Name',size:'Size',date:'Modified',type:'Type'})[state.sort]; render(); });
+
+
+  $$('[data-id]').forEach(el=>{
+    const id = el.dataset.id;
+    el.addEventListener('click', e=>{
+      const btn = e.target.closest('[data-act]');
+      if(btn){ e.stopPropagation(); act(btn.dataset.act, id, e); return; }
+      selectItem(id, e, list);
+    });
+    el.addEventListener('dblclick', e=>{ if(e.target.closest('[data-act]'))return; importAssets([byId(id)]); });
+    el.addEventListener('contextmenu', e=>{ e.preventDefault(); if(!state.sel.has(id)) selectItem(id,{},list); ctxMenu(e, id); });
+    el.addEventListener('dragstart', e=>{
+      if(!state.sel.has(id)) selectItem(id,{},list);
+      e.dataTransfer.setData('application/x-harbor', [...state.sel].join(','));
+      e.dataTransfer.effectAllowed='copy';
+      const g=$('#ghost'); g.innerHTML=svg('ico-down','sm')+'<span>'+state.sel.size+' asset'+(state.sel.size>1?'s':'')+'</span>';
+      g.style.opacity='1';
+      const img=new Image(); img.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      e.dataTransfer.setDragImage(img,0,0);
+    });
+    el.addEventListener('drag', e=>{ const g=$('#ghost'); if(e.clientX){g.style.left=e.clientX+18+'px';g.style.top=e.clientY+14+'px';} });
+    el.addEventListener('dragend', ()=>{ $('#ghost').style.opacity='0'; });
+  });
+}
+const byId = id => ALL.find(a=>a.id===id);
+
+function selectItem(id, e, list){
+  list = list||visible();
+  const idx = list.findIndex(a=>a.id===id);
+  if(e && e.shiftKey && state.lastIdx>-1){
+    const [s,t] = [Math.min(state.lastIdx,idx), Math.max(state.lastIdx,idx)];
+    for(let i=s;i<=t;i++) state.sel.add(list[i].id);
+  } else if(e && (e.metaKey||e.ctrlKey)){
+    state.sel.has(id) ? state.sel.delete(id) : state.sel.add(id);
+  } else { state.sel.clear(); state.sel.add(id); }
+  state.lastIdx = idx;
+  pushRecent(id);
+  renderMain(); renderStatus(); renderInspector();
+  if(state.tab!=='inspector' && state.sel.size===1) setTab('inspector');
+}
+function pushRecent(id){ state.recent = [id, ...state.recent.filter(x=>x!==id)].slice(0,24); }
+
+function act(kind, id, e){
+  const a = byId(id);
+  if(kind==='fav'){ state.fav.has(id)?state.fav.delete(id):state.fav.add(id); renderMain(); buildTree(); }
+  else if(kind==='import'){ importAssets([a]); }
+  else if(kind==='menu'){ ctxMenu(e, id); }
+}
+
+/* ============================================================
+   9. INSPECTOR
+   ============================================================ */
+function renderInspector(){
+  const ids=[...state.sel], body=$('#inspBody');
+  if(!ids.length){
+    vpA.objects=[]; $('#stageTagL').textContent='no selection'; $('#stageTagR').textContent='—'; $('#stageTris').textContent='';
+    body.innerHTML = '<div class="sec"><div class="sec-h"><span class="lbl">Nothing selected</span></div>'
+      +'<p style="font-size:12px;color:var(--txt-3);line-height:1.6">Select an asset to inspect its metadata and import options, or switch to <b style="color:var(--txt-2);font-weight:500">Create</b> to author a primitive directly in the session.</p></div>';
+    return;
+  }
+  if(ids.length>1){
+    const sel = ids.map(byId).filter(Boolean);
+    const bytes = sel.reduce((s,a)=>s+a.size,0);
+    vpA.objects=[]; $('#stageTagL').textContent='multi-selection'; $('#stageTagR').textContent=sel.length+' items';
+    $('#stageTris').textContent='';
+    body.innerHTML = '<div class="sec"><div class="sec-h"><span class="lbl">Multi-selection</span><span class="tagmini">'+sel.length+' assets</span></div>'
+      +kv('Total size',fsize(bytes))+kv('Categories',[...new Set(sel.map(a=>a.cat))].length)
+      +kv('Read-only',sel.filter(a=>a.readonly).length)+'</div>'
+      +'<div class="btnrow"><button class="btn" id="iFav">'+svg('ico-star-o','sm')+'Favourite</button>'
+      +'<button class="btn acc" id="iImport">'+svg('ico-down','sm')+'Import '+sel.length+'</button></div>';
+    $('#iImport').onclick=()=>importAssets(sel);
+    $('#iFav').onclick=()=>{sel.forEach(a=>state.fav.add(a.id));renderMain();buildTree();toast('Added to favourites', sel.length+' assets');};
+    return;
+  }
+  const a = byId(ids[0]); if(!a) return;
+  const c = CATS[a.cat];
+  vpA.objects = [{id:'preview', geo:proxyFor(a), pos:[0,0,0], visible:true}];
+  vpA.accentId='preview'; vpA.frame();
+  $('#stageTagL').textContent = a.cat+' proxy';
+  $('#stageTagR').textContent = a.ext.toUpperCase();
+  $('#stageTris').textContent = a.tris? nfmt(a.tris)+' tris' : detailOf(a);
+
+  let props = '';
+  const P = [['Format',a.ext.toUpperCase()],['Category',c.name],['Size',fsize(a.size)],['Modified',ago(a.date)],['Source',a.source==='engine'?'Engine (read-only)':'Project library']];
+  if(a.tris) P.push(['Triangles',nfmt(a.tris)]);
+  if(a.parts) P.push(['Parts',a.parts]);
+  if(a.units) P.push(['Units',a.units]);
+  if(a.res) P.push(['Resolution',a.res]);
+  if(a.bits) P.push(['Bit depth',a.bits+' bit']);
+  if(a.uvsets) P.push(['UV sets',a.uvsets]);
+  if(a.frames) P.push(['Frames',a.frames]);
+  if(a.glyphs) P.push(['Glyphs',a.glyphs]);
+  if(a.nodes) P.push(['Graph nodes',a.nodes]);
+  if(a.pointsn) P.push(['Points',nfmt(a.pointsn)]);
+  if(a.dur) P.push(['Duration',a.dur]);
+  props = P.map(p=>kv(p[0],p[1])).join('');
+
+  body.innerHTML =
+    '<div class="assethead"><span class="box" style="color:'+c.tint+'">'+svg(c.icon)+'</span>'
+    +'<div style="min-width:0;flex:1"><h3>'+esc(a.name)+'<span class="dim">.'+esc(a.ext)+'</span></h3>'
+    +'<div class="tags">'+a.tags.map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+(a.readonly?'<span class="tag">read-only</span>':'')+'</div></div>'
+    +'<button class="qbtn" id="iFav2">'+svg(state.fav.has(a.id)?'ico-star':'ico-star-o','sm')+'</button></div>'
+    +'<div class="sec"><div class="sec-h"><span class="lbl">Properties</span></div>'+props+'</div>'
+    +'<div class="sec"><div class="sec-h"><span class="lbl">Import settings</span></div>'
+      +field('Unit scale','<input class="num-in" id="isScale" value="1.000" />')
+      +field('Up axis','<select class="sel-in" id="isAxis"><option>Y up</option><option>Z up</option><option>-Z up</option></select>')
+      +field('Placement','<select class="sel-in" id="isPlace"><option>Grid slot</option><option>World origin</option><option>Cursor</option></select>')
+      +field('Generate LODs','<div class="sw'+(a.cat==='mesh'?' on':'')+'" data-toggle></div>')
+      +field('Import materials','<div class="sw on" data-toggle></div>')
+      +field('Keep instanced','<div class="sw" data-toggle></div>')
+    +'</div>'
+    +'<div class="btnrow"><button class="btn" id="iStage">'+svg('ico-eye','sm')+'Stage</button>'
+    +'<button class="btn acc" id="iImport">'+svg('ico-down','sm')+'Import to session</button></div>';
+
+  $('#iFav2').onclick=()=>{state.fav.has(a.id)?state.fav.delete(a.id):state.fav.add(a.id);renderMain();renderInspector();buildTree();};
+  $('#iImport').onclick=()=>importAssets([a]);
+  $('#iStage').onclick=()=>{ setTab('session'); toast('Staged for review', a.name+'.'+a.ext); };
+
+  $$('#inspBody [data-toggle]').forEach(t=>t.onclick=()=>t.classList.toggle('on'));
+}
+const kv = (k,v)=>'<div class="kv"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>';
+const field = (l,c)=>'<div class="field"><label>'+esc(l)+'</label>'+c+'</div>';
+
+/* ============================================================
+   10. PRIMITIVES / CREATE
+   ============================================================ */
+const PRIMS = [
+  {k:'plane',    n:'Plane',    i:'ico-p-plane',    p:[['size','Size',2,.1,20,.1],['segs','Segments',4,1,64,1]]},
+  {k:'box',      n:'Box',      i:'ico-p-box',      p:[['width','Width',1.4,.1,20,.1],['height','Height',1.4,.1,20,.1],['depth','Depth',1.4,.1,20,.1],['segs','Subdiv',1,1,24,1]]},
+  {k:'sphere',   n:'Sphere',   i:'ico-p-sphere',   p:[['radius','Radius',1,.1,10,.05],['rings','Rings',10,3,48,1],['segments','Segments',20,3,64,1]]},
+  {k:'cylinder', n:'Cylinder', i:'ico-p-cylinder', p:[['radius','Radius',.8,.1,10,.05],['height','Height',1.8,.1,20,.1],['segments','Sides',22,3,64,1]]},
+  {k:'cone',     n:'Cone',     i:'ico-p-cone',     p:[['radius','Radius',.9,.1,10,.05],['height','Height',1.8,.1,20,.1],['segments','Sides',22,3,64,1]]},
+  {k:'torus',    n:'Torus',    i:'ico-p-torus',    p:[['radius','Radius',1,.2,10,.05],['tube','Tube',.34,.02,4,.02],['segments','Segments',24,3,64,1],['sides','Sides',11,3,32,1]]},
+  {k:'capsule',  n:'Capsule',  i:'ico-p-capsule',  p:[['radius','Radius',.6,.05,6,.05],['height','Height',1.4,.1,20,.1],['segments','Sides',18,3,48,1]]},
+  {k:'disc',     n:'Disc',     i:'ico-p-disc',     p:[['radius','Radius',1.1,.1,10,.05],['segments','Sides',30,3,72,1]]},
+  {k:'tube',     n:'Tube',     i:'ico-p-tube',     p:[['radius','Outer',1,.2,10,.05],['inner','Inner',.6,.05,9,.05],['height','Height',1,.05,20,.05],['segments','Sides',26,3,64,1]]},
+  {k:'text',     n:'Text',     i:'ico-p-text',     p:[['size','Size',1.6,.2,8,.1],['depth','Extrude',.3,.02,4,.02]]},
+  {k:'curve',    n:'Curve',    i:'ico-p-curve',    p:[['length','Length',3,.5,20,.1],['amplitude','Amplitude',1,0,8,.05],['segments','Resolution',40,4,200,2]]},
+  {k:'light',    n:'Light',    i:'ico-p-light',    p:[['radius','Size',.5,.1,4,.05]]},
+  {k:'camera',   n:'Camera',   i:'ico-p-camera',   p:[]},
+  {k:'empty',    n:'Locator',  i:'ico-p-empty',    p:[['size','Size',.7,.1,6,.05]]}
+];
+const prim = {k:'sphere', v:{}};
+
+function primDef(){ return PRIMS.find(p=>p.k===prim.k); }
+function resetPrim(){ prim.v={}; primDef().p.forEach(([k,,d])=>prim.v[k]=d); }
+function buildPrims(){
+  $('#prims').innerHTML = PRIMS.map(p=>
+    '<button class="prim'+(p.k===prim.k?' on':'')+'" data-p="'+p.k+'">'+svg(p.i)+'<span>'+p.n+'</span></button>').join('');
+
+  $$('#prims .prim').forEach(b=>b.onclick=()=>setPrim(b.dataset.p));
+}
+function setPrim(k){
+  prim.k=k; resetPrim(); buildPrims(); renderPrimParams();
+  $('#primName').value = uniqueName(primDef().n);
+  updatePrimPreview();
+}
+function renderPrimParams(){
+  const d = primDef();
+  if(!d.p.length){ $('#primParams').innerHTML='<p style="font-size:11.5px;color:var(--txt-3);line-height:1.6">This object has no build parameters. Transform and lens settings are edited in the viewport after placement.</p>'; return; }
+  $('#primParams').innerHTML = d.p.map(([k,l,,mn,mx,st])=>
+    '<div class="field"><label>'+l+'</label><input class="num-in" type="number" data-pk="'+k+'" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+prim.v[k]+'" /></div>').join('');
+
+  $$('#primParams [data-pk]').forEach(i=>{
+    i.oninput = ()=>{ const v=parseFloat(i.value); if(!isNaN(v)){ prim.v[i.dataset.pk]=v; updatePrimPreview(); } };
+  });
+}
+function updatePrimPreview(){
+  const g = GEO[prim.k](prim.v);
+  vpB.objects = [{id:'p', geo:g, pos:[0,0,0], visible:true}];
+  vpB.accentId='p'; vpB.frame();
+  $('#primTag').textContent = primDef().n.toUpperCase();
+  $('#primTris').textContent = g.tris ? nfmt(g.tris)+' tris' : g.v.length+' points';
+}
+function uniqueName(base){
+  let i=1, nm;
+  do { nm = base.replace(/\s/g,'_')+'_'+String(i).padStart(2,'0'); i++; }
+  while(state.session.some(o=>o.name===nm));
+  return nm;
+}
+
+/* ============================================================
+   11. SESSION
+   ============================================================ */
+let slotIdx = 0;
+function nextSlot(){
+  const n=slotIdx++, ring=Math.floor(Math.sqrt(n)), step=3.2;
+  const x=(n%5-2)*step, z=(Math.floor(n/5)-1)*step;
+  return [x,0,z];
+}
+function addToSession(obj){
+  state.session.push(obj);
+  renderSession(); buildTree(); renderStatus();
+}
+function renderSession(){
+  vpC.objects = state.session;
+  const n = state.session.length;
+  $('#sessTag').textContent = n+' object'+(n===1?'':'s');
+  const tris = state.session.reduce((s,o)=>s+(o.tris||0),0);
+  $('#sessTris').textContent = nfmt(tris)+' tris';
+  $('#stTris').textContent = nfmt(tris);
+  $('#tabSessionN').textContent = n;
+  $('#sessionCount').textContent = n;
+  $('#railSessionDot').style.display = n?'block':'none';
+  const box = $('#sessionList');
+  if(!n){
+    box.innerHTML = '<div class="empty" style="padding:26px 18px">'+svg('ico-layers','glyph')
+      +'<div><b style="color:var(--txt-2);display:block;font-weight:500">Session is empty</b>'
+      +'<span style="font-size:11.5px">Drag assets onto the viewport, or author a primitive in the Create tab.</span></div></div>';
+    return;
+  }
+  box.innerHTML = state.session.map(o=>
+    '<div class="sitem'+(state.sessionSel===o.id?' on':'')+'" data-so="'+o.id+'">'
+    +'<span class="ic" style="color:'+(o.tint||'#8C8C96')+'">'+svg(o.icon,'sm')+'</span>'
+    +'<span class="txt"><span class="n1">'+esc(o.name)+'</span><span class="n2">'+(o.tris?nfmt(o.tris)+' tris':o.kind)+' · '+o.origin+'</span></span>'
+    +'<button class="x'+(o.visible===false?' on':'')+'" data-so-vis="'+o.id+'">'+svg(o.visible===false?'ico-eye-off':'ico-eye','sm')+'</button>'
+    +'<button class="x" data-so-del="'+o.id+'">'+svg('ico-trash','sm')+'</button></div>').join('');
+
+  $$('[data-so]').forEach(el=>el.onclick=e=>{
+    if(e.target.closest('[data-so-vis]')||e.target.closest('[data-so-del]'))return;
+    state.sessionSel = el.dataset.so; vpC.accentId = el.dataset.so; renderSession();
+  });
+
+  $$('[data-so-vis]').forEach(b=>b.onclick=()=>{
+    const o=state.session.find(x=>x.id===b.dataset.soVis); o.visible = o.visible===false; renderSession();
+  });
+
+  $$('[data-so-del]').forEach(b=>b.onclick=()=>{
+    const o=state.session.find(x=>x.id===b.dataset.soDel);
+    state.session = state.session.filter(x=>x.id!==b.dataset.soDel);
+    renderSession(); buildTree(); renderStatus();
+    toast('Removed from session', o.name, ()=>{ state.session.push(o); renderSession(); buildTree(); renderStatus(); });
+  });
+}
+
+/* ============================================================
+   12. IMPORT
+   ============================================================ */
+function importAssets(assets){
+  if(!assets||!assets.length) return;
+  assets.forEach(a=>{
+    addToSession({
+      id:'o'+(++UID), name:a.name, kind:a.cat, origin:a.source==='engine'?'engine':'library',
+      icon:CATS[a.cat].icon, tint:CATS[a.cat].tint, geo:proxyFor(a), pos:nextSlot(),
+      tris:a.tris||GEO.box({}).tris, visible:true, asset:a
+    });
+    pushRecent(a.id);
+  });
+  vpC.frame();
+  setTab('session');
+  toast('Imported into session', assets.length===1 ? assets[0].name+'.'+assets[0].ext : assets.length+' assets');
+}
+function handleFiles(fileList){
+  const files=[...fileList]; if(!files.length) return;
+  closeSheet();
+  setRailMode('queue');
+  files.forEach(f=>{
+    const dot=f.name.lastIndexOf('.');
+    const ext=dot>-1?f.name.slice(dot+1).toLowerCase():'bin';
+    const q={id:'q'+(++UID), name:dot>-1?f.name.slice(0,dot):f.name, ext, cat:catOf(ext), size:f.size, pc:0, done:false};
+    state.queue.push(q);
+  });
+  render(); tickQueue();
+}
+let queueTimer=null;
+function tickQueue(){
+  if(queueTimer) return;
+  queueTimer = setInterval(()=>{
+    const live = state.queue.filter(q=>!q.done);
+    if(!live.length){
+      clearInterval(queueTimer); queueTimer=null; $('#stQueueWrap').style.display='none'; return;
+    }
+    live.forEach(q=>{
+      q.pc = Math.min(100, q.pc + 4 + Math.random()*11);
+      if(q.pc>=100){
+        q.done=true;
+        const a = A(q.name, q.ext, q.size/1048576 || 0.4, 0, ['imported']);
+        a.source='library'; LIB.push(a); ALL.push(a);
+        q.assetId = a.id;
+        importAssets([a]);
+        buildTree();
+      }
+    });
+    const avg = Math.round(state.queue.reduce((s,q)=>s+q.pc,0)/state.queue.length);
+    $('#stQueueWrap').style.display='flex';
+    $('#stQueueBar').style.width = avg+'%';
+    $('#stQueuePc').textContent = avg+'%';
+    if(state.mode==='queue') renderMain();
+  }, 130);
+}
+function renderQueue(){
+  if(!state.queue.length)
+    return '<div class="sect-title"><span class="lbl">Import queue</span><span class="rule"></span></div>'
+      +'<div class="empty">'+svg('ico-down','glyph')+'<div><b style="color:var(--txt-2);display:block;font-weight:500">Queue is empty</b>'
+      +'<span style="font-size:12px">Drop files anywhere in the browser, or use Import to open the file picker.</span></div>'
+      +'<button class="pill" id="emptyImport">'+svg('ico-up','sm')+'Import files</button></div>';
+  const act = state.queue.filter(q=>!q.done).length;
+  return '<div class="sect-title"><span class="lbl">Import queue</span><span class="rule"></span><span class="tagmini">'+act+' active · '+state.queue.length+' total</span></div>'
+    + state.queue.map(q=>{
+      const c=CATS[q.cat];
+      return '<div class="qrow"><span class="ic" style="color:'+c.tint+'">'+svg(c.icon,'sm')+'</span>'
+        +'<span class="b"><span class="t">'+esc(q.name)+'.'+esc(q.ext)+'</span>'
+        +'<span class="bar"><i style="width:'+q.pc+'%"></i></span></span>'
+        +'<span class="pc">'+(q.done?'done':Math.round(q.pc)+'%')+'</span>'
+        +'<span class="pc" style="width:56px">'+fsize(q.size)+'</span></div>';
+    }).join('')
+    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="pill" id="qClear">'+svg('ico-x','sm')+'Clear finished</button>'
+    + '<button class="pill" id="qAdd">'+svg('ico-plus','sm')+'Add more files</button></div>';
+}
+function bindQueue(){
+  const e=$('#emptyImport'); if(e) e.onclick=openSheet;
+  const c=$('#qClear'); if(c) c.onclick=()=>{state.queue=state.queue.filter(q=>!q.done);renderMain();};
+  const a=$('#qAdd'); if(a) a.onclick=()=>$('#filepick').click();
+}
+
+/* ============================================================
+   13. STATUS / CHIPS / TABS
+   ============================================================ */
+function renderStatus(){
+  const list = visible();
+  $('#stItems').textContent = list.length;
+  $('#stSel').textContent = state.sel.size;
+  $('#stSize').textContent = fsize(list.reduce((s,a)=>s+a.size,0));
+}
+function renderChipState(){
+  $('#chipType').classList.toggle('on', state.types.size>0);
+  $('#typeN').textContent = state.types.size ? state.types.size : 'all';
+  $('#chipSource').classList.toggle('on', state.source!=='all');
+  $('#srcN').textContent = state.source==='all'?'all':state.source;
+  $('#chipFav').classList.toggle('on', state.favOnly);
+  $('#sortLabel').textContent = ({name:'Name',size:'Size',date:'Modified',type:'Type'})[state.sort] + (state.dir<0?' ↓':'');
+}
+function setTab(t){
+  state.tab=t;
+
+  $$('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+
+  $$('.ipanel').forEach(p=>p.classList.toggle('on', p.id==='panel-'+t));
+  if(t==='create'){ updatePrimPreview(); }
+  if(t==='session'){ vpC.frame(); }
+}
+
+$$('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+function setRailMode(m){
+
+  $$('.rbtn[data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode===m));
+  if(m==='recent'){ state.mode='assets'; navigate('recent',null); }
+  else if(m==='fav'){ state.mode='assets'; navigate('fav',null); }
+  else if(m==='session'){ state.mode='assets'; setTab('session'); render(); }
+  else if(m==='create'){ state.mode='assets'; setTab('create'); render(); }
+  else if(m==='queue'){ state.mode='queue'; render(); }
+  else { state.mode='assets'; navigate('library',null); }
+}
+
+$$('.rbtn[data-mode]').forEach(b=>b.onclick=()=>setRailMode(b.dataset.mode));
+
+/* ============================================================
+   14. POPOVERS / MENUS
+   ============================================================ */
+let openPopEl=null;
+function showPop(el, anchor, html, handler){
+  closePops();
+  el.innerHTML = html; el.classList.add('on');
+  const r = anchor.getBoundingClientRect(), pr = el.getBoundingClientRect();
+  let left = Math.min(r.left, window.innerWidth-pr.width-12);
+  let top = r.bottom+7;
+  if(top+pr.height > window.innerHeight-12) top = Math.max(12, r.top-pr.height-7);
+  el.style.left = Math.max(12,left)+'px'; el.style.top = top+'px';
+  openPopEl = el;
+  el.querySelectorAll('.mi').forEach(mi=>mi.onclick=()=>{ handler(mi.dataset.v, mi); });
+}
+function showPopAt(el, x, y, html, handler){
+  closePops();
+  el.innerHTML = html; el.classList.add('on');
+  const pr = el.getBoundingClientRect();
+  el.style.left = Math.min(x, window.innerWidth-pr.width-12)+'px';
+  el.style.top = Math.min(y, window.innerHeight-pr.height-12)+'px';
+  openPopEl = el;
+  el.querySelectorAll('.mi').forEach(mi=>mi.onclick=()=>{ handler(mi.dataset.v, mi); });
+}
+function closePops(){ $$('.pop').forEach(p=>p.classList.remove('on')); openPopEl=null; }
+document.addEventListener('mousedown', e=>{ if(openPopEl && !e.target.closest('.pop') && !e.target.closest('.chip') && !e.target.closest('.rbtn')) closePops(); });
+
+const mi = (v,icon,label,extra,checked)=>'<button class="mi'+(checked?' checked':'')+(extra==='danger'?' danger':'')+'" data-v="'+v+'">'
+  +(icon?svg(icon,'sm'):'<span style="width:14px"></span>')+'<span>'+label+'</span>'
+  +(extra&&extra!=='danger'?'<span class="sc">'+extra+'</span>':'')+svg('ico-check','sm ck')+'</button>';
+
+$('#chipType').onclick = e=>{
+  const cats = [...new Set(pool().map(a=>a.cat))];
+  const html = '<div class="ph">Filter by type</div>'
+    + mi('__all','ico-layers','All types','',state.types.size===0)
+    + '<div class="mdiv"></div>'
+    + cats.map(k=>mi(k,CATS[k].icon,CATS[k].name,'',state.types.has(k))).join('');
+  showPop($('#popType'), e.currentTarget, html, v=>{
+    if(v==='__all') state.types.clear();
+    else state.types.has(v)?state.types.delete(v):state.types.add(v);
+    render(); $('#chipType').click();
+  });
+};
+$('#chipSource').onclick = e=>{
+  const html = '<div class="ph">Source</div>'
+    + mi('all','ico-layers','All sources','',state.source==='all')
+    + mi('library','ico-folder','Project library','',state.source==='library')
+    + mi('engine','ico-shader','Engine assets','',state.source==='engine');
+  showPop($('#popSource'), e.currentTarget, html, v=>{ state.source=v; closePops(); render(); });
+};
+$('#chipSort').onclick = e=>{
+  const html = '<div class="ph">Sort by</div>'
+    + mi('name','ico-list','Name','',state.sort==='name')
+    + mi('type','ico-filter','Type','',state.sort==='type')
+    + mi('size','ico-data','Size','',state.sort==='size')
+    + mi('date','ico-clock','Modified','',state.sort==='date')
+    + '<div class="mdiv"></div>'
+    + mi('__asc','ico-sort','Ascending','',state.dir===1)
+    + mi('__desc','ico-sort','Descending','',state.dir===-1);
+  showPop($('#popSort'), e.currentTarget, html, v=>{
+    if(v==='__asc') state.dir=1; else if(v==='__desc') state.dir=-1; else state.sort=v;
+    closePops(); render();
+  });
+};
+$('#chipFav').onclick = ()=>{ state.favOnly=!state.favOnly; render(); };
+
+$('#btnSettings').onclick = e=>{
+  const p=state.prefs;
+  const html='<div class="ph">Preferences</div>'
+    + mi('hidden','ico-eye','Show hidden files','',p.hidden)
+    + mi('autoFrame','ico-frame','Auto-frame on select','',p.autoFrame)
+    + mi('engineRO','ico-lock','Protect engine assets','',p.engineRO)
+    + mi('mono','ico-material','Monochrome thumbnails','',p.mono)
+    + '<div class="mdiv"></div>' + mi('rescan','ico-refresh','Rescan library','⌘R');
+  showPop($('#popSettings'), e.currentTarget, html, v=>{
+    if(v==='rescan'){ closePops(); toast('Library rescanned', ALL.length+' assets indexed'); return; }
+    state.prefs[v]=!state.prefs[v];
+    if(v==='mono') document.body.style.setProperty('--acc', state.prefs.mono?'#D6D6D2':'#BDF14E');
+    $('#btnSettings').click();
+  });
+};
+$('#btnHelp').onclick = e=>{
+  const html='<div class="ph">Shortcuts</div>'
+    + mi('','ico-search','Focus search','/')
+    + mi('','ico-grid','Grid view','G')
+    + mi('','ico-list','List view','L')
+    + mi('','ico-down','Import selection','⏎')
+    + mi('','ico-star-o','Toggle favourite','F')
+    + mi('','ico-trash','Delete selection','⌫')
+    + mi('','ico-layers','Select all','⌘A')
+    + mi('','ico-x','Clear selection','Esc');
+  showPop($('#popHelp'), e.currentTarget, html, ()=>closePops());
+};
+
+function ctxMenu(e, id){
+  const a = byId(id), multi = state.sel.size>1;
+  const ro = a && a.readonly && state.prefs.engineRO;
+  const html = '<div class="ph">'+(multi?state.sel.size+' assets':esc(a.name)+'.'+esc(a.ext))+'</div>'
+    + mi('import','ico-down','Import to session','⏎')
+    + mi('stage','ico-eye','Preview in viewport')
+    + mi('fav','ico-star-o', state.fav.has(id)?'Remove favourite':'Add to favourite','F')
+    + '<div class="mdiv"></div>'
+    + (ro?'':mi('rename','ico-brush','Rename','F2'))
+    + (ro?'':mi('dupe','ico-layers','Duplicate','⌘D'))
+    + mi('reveal','ico-folder-open','Reveal in library')
+    + mi('copy','ico-data','Copy asset path')
+    + '<div class="mdiv"></div>'
+    + (ro ? mi('locked','ico-lock','Protected — read only')
+          : mi('del','ico-trash','Delete','danger'));
+  showPopAt($('#popCtx'), e.clientX, e.clientY, html, v=>{
+    closePops();
+    const sel = [...state.sel].map(byId).filter(Boolean);
+    if(v==='import') importAssets(sel);
+    else if(v==='stage'){ state.sel=new Set([id]); renderMain(); renderInspector(); setTab('inspector'); }
+    else if(v==='fav'){ sel.forEach(x=>state.fav.has(x.id)?state.fav.delete(x.id):state.fav.add(x.id)); renderMain(); buildTree(); }
+    else if(v==='rename') startRename(id);
+    else if(v==='dupe'){
+      sel.forEach(x=>{ const c=Object.assign({},x,{id:'a'+(++UID),name:x.name+'_copy',date:Date.now()}); LIB.push(c); ALL.push(c); });
+      buildTree(); render(); toast('Duplicated', sel.length+' asset'+(sel.length>1?'s':''));
+    }
+    else if(v==='reveal'){ navigate(a.source==='engine'?'engine':'library', a.cat); toast('Revealed in library', CATS[a.cat].name); }
+    else if(v==='copy'){ const path='/'+(a.source)+'/'+a.cat+'/'+a.name+'.'+a.ext;
+      (navigator.clipboard&&navigator.clipboard.writeText(path).catch(()=>{})); toast('Path copied', path); }
+    else if(v==='del') deleteSel(sel);
+    else if(v==='locked') toast('Asset is protected', 'Engine assets are read-only');
+  });
+}
+function deleteSel(sel){
+  const removable = sel.filter(a=>!(a.readonly&&state.prefs.engineRO));
+  if(!removable.length){ toast('Nothing deleted','Engine assets are protected'); return; }
+  removable.forEach(a=>state.deleted.add(a.id));
+  state.sel.clear(); buildTree(); render(); renderInspector();
+  toast('Moved to trash', removable.length+' asset'+(removable.length>1?'s':''), ()=>{
+    removable.forEach(a=>state.deleted.delete(a.id)); buildTree(); render();
+  });
+}
+function startRename(id){
+  const el = document.querySelector('[data-id="'+id+'"] [data-name]');
+  if(!el) return;
+  const a = byId(id), old = el.innerHTML;
+  el.innerHTML = '<input class="rename-in" value="'+esc(a.name)+'" />';
+  const inp = el.querySelector('input'); inp.focus(); inp.select();
+  const commit = ok=>{
+    if(ok && inp.value.trim()){ a.name = inp.value.trim(); toast('Renamed', a.name+'.'+a.ext); }
+    render(); renderInspector();
+  };
+  inp.onkeydown = ev=>{ if(ev.key==='Enter') commit(true); if(ev.key==='Escape'){ el.innerHTML=old; } ev.stopPropagation(); };
+  inp.onblur = ()=>commit(true);
+  inp.onclick = ev=>ev.stopPropagation();
+}
+
+/* ============================================================
+   15. TOASTS
+   ============================================================ */
+function toast(title, sub, undo){
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML = '<span class="ti">'+svg(undo?'ico-trash':'ico-check','sm')+'</span>'
+    +'<span class="tt">'+esc(title)+'<small>'+esc(sub||'')+'</small></span>'
+    +(undo?'<button class="u">Undo</button>':'');
+  $('#toasts').appendChild(t);
+  if(undo) t.querySelector('.u').onclick=()=>{ undo(); dismiss(); };
+  const to = setTimeout(dismiss, undo?6000:3200);
+  function dismiss(){ clearTimeout(to); t.classList.add('out'); setTimeout(()=>t.remove(),220); }
+}
+
+/* ============================================================
+   16. IMPORT SHEET + DRAG & DROP
+   ============================================================ */
+function openSheet(){ $('#sheet').classList.add('on'); $('#sheetHint').textContent='nothing staged'; }
+function closeSheet(){ $('#sheet').classList.remove('on'); }
+$('#btnImport').onclick = openSheet;
+$('#sheetClose').onclick = closeSheet;
+$('#sheetCancel').onclick = closeSheet;
+$('#sheetGo').onclick = ()=>$('#filepick').click();
+$('#srcLocal').onclick = ()=>$('#filepick').click();
+$('#srcLibrary').onclick = ()=>{ closeSheet(); navigate('library',null); toast('Project library','Showing '+LIB.length+' versioned assets'); };
+$('#srcEngine').onclick = ()=>{ closeSheet(); navigate('engine',null); toast('Engine assets','Read-only built-ins loaded'); };
+$('#filepick').onchange = e=>{ handleFiles(e.target.files); e.target.value=''; };
+$('#btnCreate').onclick = ()=>{ setRailMode('create'); };
+
+['dragenter','dragover'].forEach(ev=>window.addEventListener(ev,e=>{
+  if(![...(e.dataTransfer.types||[])].includes('Files')) return;
+  e.preventDefault();
+  if(!$('#sheet').classList.contains('on')) openSheet();
+  $('#dropzone').classList.add('hot');
+  $('#sheetHint').textContent='release to stage files';
+}));
+window.addEventListener('dragleave', e=>{ if(e.clientX===0&&e.clientY===0) $('#dropzone').classList.remove('hot'); });
+window.addEventListener('drop', e=>{
+  if(e.dataTransfer.files && e.dataTransfer.files.length){ e.preventDefault(); $('#dropzone').classList.remove('hot'); handleFiles(e.dataTransfer.files); }
+});
+
+/* drop harbor assets onto the live viewport */
+['stageC','stageA'].forEach(sid=>{
+  const st = document.getElementById(sid);
+  st.addEventListener('dragover', e=>{
+    if([...(e.dataTransfer.types||[])].includes('application/x-harbor')){ e.preventDefault(); st.classList.add('drop'); }
+  });
+  st.addEventListener('dragleave', ()=>st.classList.remove('drop'));
+  st.addEventListener('drop', e=>{
+    st.classList.remove('drop');
+    const d = e.dataTransfer.getData('application/x-harbor');
+    if(!d) return;
+    e.preventDefault();
+    importAssets(d.split(',').map(byId).filter(Boolean));
+  });
+});
+
+/* ============================================================
+   17. VIEW CONTROLS / TOOLBAR
+   ============================================================ */
+$('#vGrid').onclick = ()=>{ state.view='grid'; $('#vGrid').classList.add('on'); $('#vList').classList.remove('on'); renderMain(); };
+$('#vList').onclick = ()=>{ state.view='list'; $('#vList').classList.add('on'); $('#vGrid').classList.remove('on'); renderMain(); };
+$('#density').oninput = e=>document.documentElement.style.setProperty('--tile', e.target.value+'px');
+$('#search').oninput = e=>{ state.query=e.target.value; state.sel.clear(); render(); };
+$('#search').onfocus = ()=>$('#searchKbd').textContent='esc';
+$('#search').onblur = ()=>$('#searchKbd').textContent='/';
+$('#navBack').onclick = ()=>{ if(state.hIdx>0){ state.hIdx--; const h=state.history[state.hIdx]; navigate(h.root,h.cat,false); } };
+$('#navFwd').onclick = ()=>{ if(state.hIdx<state.history.length-1){ state.hIdx++; const h=state.history[state.hIdx]; navigate(h.root,h.cat,false); } };
+$('#navRefresh').onclick = ()=>{ render(); toast('Refreshed', 'Index synchronised'); };
+$('#btnCollapseAll').onclick = ()=>{ $$('#tree .tkids').forEach(k=>k.classList.remove('open')); $$('#tree .tnode').forEach(n=>n.classList.remove('open')); };
+
+$('#spinA').onclick = e=>{ vpA.spin=!vpA.spin; e.currentTarget.classList.toggle('on', vpA.spin); };
+$('#spinB').onclick = e=>{ vpB.spin=!vpB.spin; e.currentTarget.classList.toggle('on', vpB.spin); };
+$('#gridA').onclick = e=>{ vpA.grid=!vpA.grid; e.currentTarget.classList.toggle('on', vpA.grid); };
+$('#gridB').onclick = e=>{ vpB.grid=!vpB.grid; e.currentTarget.classList.toggle('on', vpB.grid); };
+$('#gridC').onclick = e=>{ vpC.grid=!vpC.grid; e.currentTarget.classList.toggle('on', vpC.grid); };
+$('#frameA').onclick = ()=>vpA.frame();
+$('#frameC').onclick = ()=>vpC.frame();
+
+$('#primAdd').onclick = ()=>{
+  const g = GEO[prim.k](prim.v);
+  const name = ($('#primName').value||uniqueName(primDef().n)).trim();
+  addToSession({ id:'o'+(++UID), name, kind:prim.k, origin:'procedural', icon:primDef().i, tint:'#BDF14E',
+    geo:g, pos:nextSlot(), tris:g.tris, visible:true });
+  vpC.frame(); setTab('session');
+  toast('Object created', name+' · '+(g.tris?nfmt(g.tris)+' tris':'non-mesh'));
+  $('#primName').value = uniqueName(primDef().n);
+};
+$('#primDup').onclick = ()=>{
+  const last = state.session[state.session.length-1];
+  if(!last){ toast('Nothing to duplicate','Session is empty'); return; }
+  const c = Object.assign({}, last, {id:'o'+(++UID), name:uniqueName(last.name.replace(/_\d+$/,'')), pos:nextSlot()});
+  addToSession(c); vpC.frame(); toast('Duplicated', c.name);
+};
+$('#primReset').onclick = ()=>{ resetPrim(); renderPrimParams(); updatePrimPreview(); };
+$('#primSnap').onclick = e=>e.currentTarget.classList.toggle('on');
+$('#primSmooth').onclick = e=>e.currentTarget.classList.toggle('on');
+$('#clearSession').onclick = ()=>{
+  if(!state.session.length) return;
+  const backup = state.session; state.session=[]; slotIdx=0;
+  renderSession(); buildTree(); renderStatus();
+  toast('Session cleared', backup.length+' objects removed', ()=>{ state.session=backup; slotIdx=backup.length; renderSession(); buildTree(); renderStatus(); });
+};
+
+/* ============================================================
+   18. KEYBOARD
+   ============================================================ */
+document.addEventListener('keydown', e=>{
+  const typing = /input|textarea|select/i.test(document.activeElement.tagName);
+  if(e.key==='/' && !typing){ e.preventDefault(); $('#search').focus(); return; }
+  if(e.key==='Escape'){ if($('#sheet').classList.contains('on')) closeSheet(); else if(typing) document.activeElement.blur(); else { state.sel.clear(); closePops(); render(); renderInspector(); } return; }
+  if(typing) return;
+  const k = e.key.toLowerCase();
+  if(k==='g') $('#vGrid').click();
+  else if(k==='l') $('#vList').click();
+  else if(k==='f'){ [...state.sel].forEach(id=>state.fav.has(id)?state.fav.delete(id):state.fav.add(id)); renderMain(); buildTree(); }
+  else if(e.key==='Enter'){ importAssets([...state.sel].map(byId).filter(Boolean)); }
+  else if(e.key==='Backspace'||e.key==='Delete'){ deleteSel([...state.sel].map(byId).filter(Boolean)); }
+  else if((e.metaKey||e.ctrlKey)&&k==='a'){ e.preventDefault(); visible().forEach(a=>state.sel.add(a.id)); renderMain(); renderStatus(); renderInspector(); }
+  else if(e.key==='F2' && state.sel.size===1){ startRename([...state.sel][0]); }
+});
+
+/* ============================================================
+   19. INIT
+   ============================================================ */
+resetPrim();
+buildPrims();
+renderPrimParams();
+updatePrimPreview();
+$('#primName').value = uniqueName(primDef().n);
+buildTree();
+navigate('library', null);
+renderInspector();
+renderSession();
+setTab('inspector');
+setTimeout(()=>toast('Library indexed', ALL.length+' assets across '+Object.keys(CATS).length+' categories'), 500);
+</script>
+</body>
+</html>

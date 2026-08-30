@@ -1,0 +1,164 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   layout.css — top header, editor body, left/right docks, the carousel pill,
+                centre viewport (canvas stage, view tools, command bar, workspaces
+                widget), status bar, toast, and the dock resizers.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ════ TOP HEADER ════ */
+.top-header{display:flex;align-items:center;background:var(--header);border-bottom:1px solid var(--border);height:46px;flex-shrink:0;padding:0 10px;gap:8px;}
+.th-brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:13px;flex-shrink:0;white-space:nowrap;}
+.th-brand .logo{width:20px;height:20px;color:var(--cad);display:flex;}
+.th-sep{width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0;}
+.spacer{flex:1;}
+/* quick document actions in the header */
+.hdr-doc{display:flex;align-items:center;gap:2px;}
+.hdr-doc .icon-btn .lico{width:15px;height:15px;}
+.hdr-title{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
+.hdr-title b{color:var(--text);font-weight:500;}
+.hdr-title .unit-chip{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--cad);background:var(--cad-soft);border:1px solid var(--cad-bd);border-radius:999px;padding:2px 8px;}
+.icon-btn{width:30px;height:30px;border-radius:50%;border:none;background:transparent;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s var(--ease),color .15s var(--ease),transform .12s var(--ease);position:relative;}
+.icon-btn:hover{background:#1f1f1f;color:var(--text);}
+.icon-btn:active{transform:scale(.88);}
+.icon-btn.active{background:var(--accent);color:#000;}
+.icon-btn .lico{width:15px;height:15px;}
+.icon-btn[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--border);color:var(--text);font-size:10.5px;padding:5px 10px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:600;}
+
+/* ════ BODY ════ */
+.editor-body{display:flex;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+
+/* ─── LEFT DOCK ─── */
+.left-dock{width:322px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .28s var(--ease),border-color .28s var(--ease);}
+.left-dock.collapsed{width:0!important;border-right:none;}
+
+/* Carousel tab strip (shared by both docks) — underlined active tab, no pill fill */
+.di-carousel{display:flex;justify-content:center;padding:9px 8px 4px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.di-pill{display:flex;gap:4px;background:transparent;border:0;border-radius:0;padding:0;}
+.di-seg{display:flex;align-items:center;gap:6px;padding:7px 12px 8px;border-radius:0;color:var(--text-dim);font-size:11.5px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-5px;}
+.di-seg:hover{color:var(--text);}
+.di-seg.active{background:transparent;color:var(--text);font-weight:600;border-bottom-color:var(--accent);}
+.di-seg .lico{width:14px;height:14px;}
+
+.lpane{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+
+/* ─── CENTER VIEWPORT ─── */
+.viewport-panel{flex:1;min-width:0;background:#000;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.canvas-stage{flex:1;position:relative;overflow:hidden;background:#050608;cursor:grab;}
+.canvas-stage:active{cursor:grabbing;}
+#vpCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+.vp-pill{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:9px;background:rgba(14,16,20,.85);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:999px;padding:7px 16px;font-size:12px;color:var(--text-dim);pointer-events:none;}
+.vp-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 7px rgba(255,255,255,.6);}
+.vp-pill b{color:var(--text);font-weight:500;}
+.vp-pill .vp-pill-env{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);}
+
+/* interaction-mode toggle pill (Object ⇄ Sketch) under the part pill */
+.vp-mode{position:absolute;top:54px;left:50%;transform:translateX(-50%);z-index:31;display:flex;align-items:center;gap:6px;background:rgba(14,16,20,.85);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:999px;padding:5px 14px;font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--text-dim);cursor:pointer;transition:color .14s,border-color .14s,background .14s;}
+.vp-mode:hover{color:var(--text);border-color:var(--row-selected-bd);}
+.vp-mode[data-mode="object"]{color:var(--accent);border-color:var(--cad-bd);background:var(--cad-soft);}
+.vp-mode[data-mode="sketch"]{color:#38bdf8;border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.1);}
+.vp-mode[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--border);color:var(--text);font-size:10px;padding:4px 9px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:600;}
+
+/* top-right view controls (display toggles + viewport settings) */
+.vp-viewtools{position:absolute;top:14px;right:14px;z-index:31;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+.vp-dispbar{display:flex;gap:3px;background:rgba(14,16,20,.8);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:999px;padding:4px;}
+.vp-dispbar button{width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);transition:.13s;position:relative;}
+.vp-dispbar button:hover{background:var(--row-hover);color:var(--text);}
+.vp-dispbar button.active{background:rgba(255,255,255,.14);color:var(--text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
+.vp-dispbar button .lico{width:15px;height:15px;}
+.vp-dispbar button[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 7px);right:0;background:#000;border:1px solid var(--border);color:var(--text);font-size:10px;padding:4px 9px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:600;}
+
+/* bottom-center context command bar — shows the active tool's inline options */
+.vp-cmdbar{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:32;display:none;align-items:center;gap:10px;background:rgba(14,16,20,.92);backdrop-filter:blur(14px);border:1px solid var(--row-selected-bd);border-radius:14px;padding:10px 12px;box-shadow:0 18px 44px rgba(0,0,0,.7);max-width:min(680px,90vw);}
+.vp-cmdbar.show{display:flex;}
+.vp-cmd-ico{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
+.vp-cmd-ico svg{width:19px;height:19px;}
+.vp-cmd-name{font-weight:600;font-size:12.5px;white-space:nowrap;}
+.vp-cmd-hint{font-size:10.5px;color:var(--text-faint);white-space:nowrap;}
+.vp-cmd-sep{width:1px;height:24px;background:var(--border);flex-shrink:0;}
+.vp-cmd-opts{display:flex;align-items:center;gap:6px;flex:1;overflow:hidden;}
+.vp-cmd-chip{font-size:10.5px;color:var(--text-dim);background:var(--panel-3);border:1px solid var(--border);border-radius:999px;padding:4px 10px;white-space:nowrap;cursor:pointer;transition:.13s;}
+.vp-cmd-chip:hover{color:var(--text);border-color:var(--row-selected-bd);}
+.vp-cmd-chip.on{background:rgba(255,255,255,.14);color:var(--text);border-color:rgba(255,255,255,.35);}
+/* typeable numeric field in the command bar (Sides / Radius / W / H) */
+.cmd-field{display:flex;align-items:center;gap:5px;background:var(--panel-3);border:1px solid var(--border);border-radius:999px;padding:3px 5px 3px 10px;}
+.cmd-field-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);}
+.cmd-field-inp{width:48px;height:22px;background:#000;border:1px solid var(--border);border-radius:999px;outline:0;color:var(--text);text-align:right;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;padding:0 8px;}
+.cmd-field-inp:focus{border-color:var(--accent);}
+.cmd-field-unit{font-size:10px;color:var(--text-faint);}
+/* editable coordinate row in Properties (control points) */
+.coord-ctl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:3px 4px;border-radius:7px;}
+.coord-ctl.hot{background:rgba(245,158,11,.12);box-shadow:inset 0 0 0 1px rgba(245,158,11,.4);}
+.coord-lbl{font-size:11px;color:var(--text-dim);min-width:26px;}
+.coord-fields{display:flex;gap:5px;}
+.coord-inp{width:56px;height:24px;background:#000;border:1px solid var(--border);border-radius:6px;outline:0;color:var(--text);text-align:right;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;padding:0 7px;}
+.coord-inp:focus{border-color:var(--accent);}
+.vp-cmd-btns{display:flex;gap:6px;flex-shrink:0;}
+.vp-cmd-btn{display:flex;align-items:center;gap:6px;height:30px;padding:0 14px;border-radius:999px;font-size:11.5px;font-weight:600;transition:.13s;}
+.vp-cmd-btn.ok{background:var(--accent);color:#000;}
+.vp-cmd-btn.ok:hover{background:#dcdcdc;}
+.vp-cmd-btn.cancel{background:var(--panel-3);color:var(--text-dim);border:1px solid var(--border);}
+.vp-cmd-btn.cancel:hover{color:var(--text);}
+.vp-cmd-btn .lico{width:14px;height:14px;}
+
+.status-bar{display:flex;align-items:center;gap:14px;padding:7px 14px;border-top:1px solid var(--border);background:var(--panel-2);font-size:11px;color:var(--text-dim);flex-shrink:0;z-index:60;}
+.status-bar .stat{display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.status-bar .stat .lico{width:12px;height:12px;color:var(--text-faint);}
+.status-bar .stat b{color:var(--text);font-weight:500;}
+.status-bar .vf-sep{width:1px;height:14px;background:var(--border);}
+.status-bar .live{display:flex;align-items:center;gap:5px;color:var(--green);}
+.status-bar .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.8s ease-in-out infinite;}
+
+/* toast */
+.toast{position:absolute;top:64px;left:50%;transform:translateX(-50%);z-index:130;background:rgba(14,16,20,.94);backdrop-filter:blur(10px);padding:8px 16px;border-radius:999px;font-size:11.5px;color:var(--text);border:1px solid var(--border);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;display:flex;align-items:center;gap:8px;}
+.toast.show{opacity:1;}
+.toast .lico{width:14px;height:14px;color:var(--text);}
+
+/* ─── VIEWPORT SETTINGS POPUP (top-right, gear) — ground-grid style ─── */
+.vp-settings{position:relative;}
+.vp-set-trig{width:34px;height:34px;border-radius:999px;background:rgba(14,16,20,.8);backdrop-filter:blur(10px);border:1px solid var(--border);color:var(--text-dim);display:flex;align-items:center;justify-content:center;transition:.13s;}
+.vp-set-trig:hover{color:var(--text);background:rgba(255,255,255,.1);}
+.vp-set-trig.active{color:var(--text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
+.vp-set-trig .lico{width:16px;height:16px;}
+.vp-set-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:620;min-width:178px;background:rgba(12,14,18,.97);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:11px;box-shadow:0 18px 44px rgba(0,0,0,.7);opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s var(--ease),transform .15s var(--ease);}
+.vp-settings.open .vp-set-menu{opacity:1;transform:none;pointer-events:auto;}
+.vp-set-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);padding:0 2px 8px;}
+.vp-set-seg{display:flex;gap:4px;background:#000;border:1px solid var(--border);border-radius:999px;padding:3px;}
+.vp-seg-btn{flex:1;padding:6px 0;border-radius:999px;color:var(--text-dim);font-size:11px;font-weight:500;transition:background .13s,color .13s;}
+.vp-seg-btn:hover{color:var(--text);}
+.vp-seg-btn.active{background:var(--accent);color:#0a0a0a;font-weight:600;}
+
+/* ─── VIEWPORT CONTEXT MENU (right-click tool picker) ─── */
+.ctx-menu{position:fixed;z-index:900;display:none;min-width:184px;background:rgba(12,14,18,.98);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 20px 50px rgba(0,0,0,.75);opacity:0;transform:translateY(-4px);transition:opacity .12s var(--ease),transform .12s var(--ease);}
+.ctx-menu.open{opacity:1;transform:none;}
+.ctx-sec{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);padding:7px 9px 4px;}
+.ctx-item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:8px;color:var(--text-dim);font-size:12px;transition:background .12s,color .12s;text-align:left;}
+.ctx-item:hover{background:var(--row-hover);color:var(--text);}
+.ctx-ico{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.ctx-ico svg{width:17px;height:17px;}
+.ctx-lbl{flex:1;}
+.ctx-tag{font-size:9.5px;font-weight:600;color:#0a0a0a;background:var(--accent);border-radius:999px;padding:2px 8px;flex-shrink:0;}
+/* live "Sides" number field inside the polygon section */
+.ctx-field{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 9px 7px;}
+.ctx-field-lbl{font-size:11px;color:var(--text-dim);}
+.ctx-step{display:flex;align-items:center;gap:2px;background:#000;border:1px solid var(--border);border-radius:999px;padding:2px;}
+.ctx-step-btn{width:22px;height:22px;border-radius:50%;color:var(--text-dim);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;transition:.12s;}
+.ctx-step-btn:hover{background:var(--row-hover);color:var(--text);}
+.ctx-step-inp{width:34px;height:22px;background:transparent;border:0;outline:0;color:var(--text);text-align:center;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;}
+
+/* ─── GIZMO PRECISE-VALUE HUD (Plasticity-style numeric entry) ─── */
+.gz-hud{position:fixed;z-index:950;display:none;align-items:center;gap:7px;background:rgba(12,14,18,.97);backdrop-filter:blur(12px);border:1px solid var(--row-selected-bd);border-radius:10px;padding:5px 8px;box-shadow:0 12px 32px rgba(0,0,0,.7);pointer-events:auto;}
+.gz-hud.show{display:flex;}
+.gz-hud-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);}
+.gz-hud-inp{width:66px;height:26px;background:#000;border:1px solid var(--border);border-radius:7px;outline:0;color:var(--text);text-align:right;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;padding:0 8px;}
+.gz-hud-inp:focus{border-color:var(--accent);}
+.gz-hud-unit{font-size:11px;color:var(--text-faint);min-width:14px;}
+
+/* ─── RESIZER ─── */
+.resizer{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;z-index:20;}
+.resizer::after{content:"";position:absolute;inset:0 2px;background:var(--border);transition:background .15s;}
+.resizer:hover::after{background:#555;}
+
+/* ─── RIGHT DOCK ─── */
+.right-dock{width:326px;min-width:270px;max-width:480px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .28s var(--ease),border-color .28s var(--ease);}
+.right-dock.collapsed{width:0!important;min-width:0;border-left:none;}
+.rpane{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}

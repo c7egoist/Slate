@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UV Toolkit · Split Workspace</title>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/viewport3d.css">
+<link rel="stylesheet" href="css/uveditor.css">
+<link rel="stylesheet" href="css/props.css">
+</head>
+<body>
+
+<!-- ════ TAB BAR ════ -->
+<div class="tabbar">
+  <div class="tabs" id="tabs">
+    <div class="tab active"><span class="tab-bg"></span><span class="dot" style="background:#3b82f6"></span><span class="name">Suzanne · UV</span></div>
+  </div>
+  <div class="add-tab" title="New (prototype: single doc)">+</div>
+</div>
+
+<!-- ════ TOP HEADER ════ -->
+<div class="top-header">
+  <div class="th-brand"><span class="logo"><i data-lucide="aperture" class="lico"></i></span> UV Toolkit</div>
+  <div class="th-sep"></div>
+  <button class="icon-btn" id="dockLeftBtn" data-tip="Toggle islands"><i data-lucide="panel-left-close" class="lico"></i></button>
+  <div class="spacer"></div>
+  <div class="th-title"><i data-lucide="box" class="lico"></i> Shaderball reference · Suzanne (decimated proxy)</div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="dockRightBtn" data-tip="Toggle properties"><i data-lucide="panel-right-close" class="lico"></i></button>
+</div>
+
+<!-- ════ VISUALIZATION TOOLBAR ════ -->
+<!-- Picks a base display CHANNEL (solid | checker | stretch) shared by 2D + 3D,
+     plus dropdowns for the checker (resolution/mode/project-on-3D) and element
+     overlays (faces/verts/edges) that draw on TOP of the active channel. -->
+<div class="viz-toolbar">
+  <span class="vt-label">View</span>
+  <div class="popup-seg vt-seg" id="channelSeg">
+    <button class="seg-btn active" data-channel="solid">Solid</button>
+    <button class="seg-btn" data-channel="checker">Checker</button>
+    <button class="seg-btn" data-channel="stretch">Stretch</button>
+  </div>
+  <div class="vt-sep"></div>
+  <button class="vt-btn" id="checkerBtn"><i data-lucide="grip" class="lico"></i> Checker <i data-lucide="chevron-down" class="lico sm"></i></button>
+  <button class="vt-btn" id="stretchBtn"><i data-lucide="move-diagonal" class="lico"></i> Stretch <i data-lucide="chevron-down" class="lico sm"></i></button>
+  <button class="vt-btn" id="elemBtn"><i data-lucide="box-select" class="lico"></i> Elements <i data-lucide="chevron-down" class="lico sm"></i></button>
+  <div class="spacer"></div>
+</div>
+
+<!-- ════ BODY ════ -->
+<div class="editor-body">
+
+  <!-- LEFT DOCK: islands list — starts collapsed (toggle from the header) -->
+  <aside class="dock collapsed" id="leftDock">
+    <div class="dock-head"><div class="dh-title"><i data-lucide="layers" class="lico"></i> UV Islands</div><span class="dh-sub"><span id="islCount">0</span></span></div>
+    <div class="ol-toolbar"><span style="font-size:11px;color:var(--text-faint);padding:0 4px">Produced by unwrap</span><div class="spacer"></div><span class="badge" id="islBadge">shells</span></div>
+    <div class="tree" id="islTree"></div>
+  </aside>
+
+  <!-- CENTER: split 3D | resizer | 2D -->
+  <div class="split" id="split">
+
+    <!-- 3D PANE -->
+    <section class="pane pane-3d" id="pane3d" style="width:50%;flex:none;">
+      <div class="pane-head">
+        <span class="ph-title"><i data-lucide="box" class="lico"></i> 3D Viewport</span>
+        <span class="spacer"></span>
+        <span style="font-size:11px;color:var(--text-faint);margin-right:6px">orbit RMB · pan Space+drag · U to unwrap</span>
+        <button class="icon-btn" id="vpDispBtn" data-tip="Display"><i data-lucide="settings-2" class="lico"></i></button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="vp3Canvas"></canvas>
+
+        <!-- SELECTION BAR (bottom center): mode buttons (vert/edge/face/island)
+             + a selection-TOOLS dropdown (click/box/circle/lasso/paint) that
+             pops UPWARD. Replaces the old center-right marquee bar. -->
+        <div class="floaty selmode-bar" id="selModeBar">
+          <div class="smbtn" data-mode="vertex" data-tip="Vertex (1)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg></div>
+          <div class="smbtn" data-mode="edge" data-tip="Edge (2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="2" fill="currentColor"/><circle cx="19" cy="5" r="2" fill="currentColor"/></svg></div>
+          <div class="smbtn active" data-mode="face" data-tip="Face (3)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></div>
+          <div class="smbtn" data-mode="island" data-tip="Island (4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14c2-3 5-3 7 0s5 3 7 0M4 9c2-3 5-3 7 0s5 3 7 0"/></svg></div>
+          <div class="sm-sep"></div>
+          <!-- selection-tool dropdown trigger: shows the active tool's icon -->
+          <button class="sm-tooltrigger" id="selToolTrigger" data-tip="Select tool">
+            <i data-lucide="mouse-pointer-2" class="lico" id="selToolIcon"></i>
+            <i data-lucide="chevron-up" class="lico sm-caret"></i>
+          </button>
+          <div class="sm-sep"></div>
+          <!-- symmetry / mirror-select toggle: mirrors every selection op across
+               the object's plane of symmetry (auto-detected). Works with all
+               tools; disabled automatically on an asymmetric mesh. -->
+          <div class="smbtn" id="opSymmetry" data-tip="Mirror select (M)"><i data-lucide="flip-horizontal-2" class="lico"></i></div>
+        </div>
+
+        <!-- selection-tools popup (opens UPWARD, anchored above the trigger) -->
+        <div class="popup sel-tool-popup" id="selToolPopup">
+          <div class="popup-title">Select Tool</div>
+          <div class="popup-item" data-vptool="pick"><i data-lucide="mouse-pointer-2" class="lico"></i>Click select<span class="key">W</span></div>
+          <div class="popup-item" data-vptool="box"><i data-lucide="square-dashed" class="lico"></i>Box select<span class="key">B</span></div>
+          <div class="popup-item" data-vptool="circle"><i data-lucide="circle-dashed" class="lico"></i>Circle / brush<span class="key">Q</span></div>
+          <div class="popup-item" data-vptool="lasso"><i data-lucide="lasso" class="lico"></i>Lasso select<span class="key">K</span></div>
+          <div class="popup-item" data-vptool="paint"><i data-lucide="brush" class="lico"></i>Paint faces<span class="key">C</span></div>
+        </div>
+
+        <!-- tool sidebar: selection ops + unwrap ops -->
+        <aside class="floaty tool-sidebar collapsed" id="toolSidebar">
+          <div class="ts-header"><span class="ts-logo"><i data-lucide="mouse-pointer-square-dashed" class="lico"></i></span><span class="ts-title">Select</span></div>
+          <div class="ts-scroll">
+            <div class="ts-group-label">Modify Selection</div>
+            <div class="ts-item" id="opGrow" data-tip="Grow (+)"><i data-lucide="maximize-2" class="lico"></i><span class="ts-text">Grow</span><span class="ts-key">+</span></div>
+            <div class="ts-item" id="opShrink" data-tip="Shrink (−)"><i data-lucide="minimize-2" class="lico"></i><span class="ts-text">Shrink</span><span class="ts-key">−</span></div>
+            <div class="ts-item" id="opSimilar" data-tip="Select similar"><i data-lucide="copy-check" class="lico"></i><span class="ts-text">Similar</span></div>
+            <div class="ts-item" id="opIsland" data-tip="Select island"><i data-lucide="git-fork" class="lico"></i><span class="ts-text">Island</span></div>
+            <div class="ts-item" id="opPerimeter" data-tip="Select perimeter"><i data-lucide="scan-line" class="lico"></i><span class="ts-text">Perimeter</span></div>
+            <div class="ts-item" id="opLoop" data-tip="Edge loop"><i data-lucide="spline" class="lico"></i><span class="ts-text">Edge Loop</span></div>
+            <div class="ts-item" id="opInvert" data-tip="Invert (I)"><i data-lucide="flip-horizontal" class="lico"></i><span class="ts-text">Invert</span><span class="ts-key">I</span></div>
+            <div class="ts-item" id="opAll" data-tip="Select all (A)"><i data-lucide="check-square" class="lico"></i><span class="ts-text">All</span><span class="ts-key">A</span></div>
+            <div class="ts-item" id="opNone" data-tip="Deselect"><i data-lucide="square" class="lico"></i><span class="ts-text">None</span></div>
+            <div class="ts-group-label">Seams</div>
+            <div class="ts-item" id="opSeam" data-tip="Mark seam from edges"><i data-lucide="scissors" class="lico"></i><span class="ts-text">Mark Seam</span></div>
+            <div class="ts-item" id="opClearSeam" data-tip="Clear seams"><i data-lucide="eraser" class="lico"></i><span class="ts-text">Clear Seams</span></div>
+          </div>
+          <div class="ts-footer"><button class="ts-toggle" id="toolToggle" title="Collapse"><i data-lucide="chevron-left" class="lico"></i></button></div>
+        </aside>
+
+        <!-- view tools (bottom right) -->
+        <div class="floaty vr-bar">
+          <button class="icon-btn" id="vp3ZoomIn" data-tip="Zoom in">+</button>
+          <button class="icon-btn" id="vp3Frame" data-tip="Frame selection (F)"><i data-lucide="focus" class="lico"></i></button>
+          <button class="icon-btn" id="vp3Reset" data-tip="Reset view (Home)"><i data-lucide="maximize" class="lico"></i></button>
+          <button class="icon-btn" id="vp3ZoomOut" data-tip="Zoom out">−</button>
+        </div>
+
+        <div class="vp-toast" id="vpToast"></div>
+      </div>
+    </section>
+
+    <!-- SPLIT RESIZER -->
+    <div class="vsplit" id="splitResizer"></div>
+
+    <!-- 2D UV PANE -->
+    <section class="pane pane-uv" id="paneUv" style="flex:1;">
+      <div class="pane-head">
+        <span class="ph-title"><i data-lucide="grid-2x2" class="lico"></i> UV Editor</span>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="unwrapBtn" data-tip="Unwrap"><i data-lucide="unfold-horizontal" class="lico"></i></button>
+        <button class="icon-btn" id="dispBtn" data-tip="Display"><i data-lucide="settings-2" class="lico"></i></button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="uvBg"></canvas>
+        <canvas id="uvFg"></canvas>
+        <div class="sel-overlay" id="uvSelBox"></div>
+
+        <!-- 2D tool sidebar (left) -->
+        <div class="uv-tools">
+          <button class="tool active" data-uvtool="select" data-tip="Select (Q)"><i data-lucide="mouse-pointer-2" class="lico"></i></button>
+          <button class="tool" data-uvtool="box" data-tip="Box select"><i data-lucide="square-dashed" class="lico"></i></button>
+          <div class="bsep"></div>
+          <button class="tool" data-uvtool="move" data-tip="Move (G)"><i data-lucide="move" class="lico"></i></button>
+          <button class="tool" data-uvtool="rotate" data-tip="Rotate (R)"><i data-lucide="rotate-cw" class="lico"></i></button>
+          <button class="tool" data-uvtool="scale" data-tip="Scale (S)"><i data-lucide="scaling" class="lico"></i></button>
+        </div>
+
+        <!-- bottom transform toolbar -->
+        <div class="bottom-bar">
+          <button class="tool active" data-uvtool="select" data-tip="Select (Q)"><i data-lucide="mouse-pointer-2" class="lico"></i></button>
+          <button class="tool" data-uvtool="move" data-tip="Move (G)"><i data-lucide="move" class="lico"></i></button>
+          <button class="tool" data-uvtool="rotate" data-tip="Rotate (R)"><i data-lucide="rotate-cw" class="lico"></i></button>
+          <button class="tool" data-uvtool="scale" data-tip="Scale (S)"><i data-lucide="scaling" class="lico"></i></button>
+          <div class="bsep"></div>
+          <button class="tool" id="uvSnap" data-tip="Snap to grid"><i data-lucide="magnet" class="lico"></i></button>
+          <button class="tool" id="uvFlipH" data-tip="Flip horizontal"><i data-lucide="flip-horizontal-2" class="lico"></i></button>
+          <button class="tool" id="uvFlipV" data-tip="Flip vertical"><i data-lucide="flip-vertical-2" class="lico"></i></button>
+        </div>
+
+        <!-- view tools -->
+        <div class="vr-bar">
+          <button class="icon-btn" id="uvZoomIn" data-tip="Zoom in">+</button>
+          <button class="icon-btn" id="uvFit" data-tip="Fit view"><i data-lucide="maximize" class="lico"></i></button>
+          <button class="icon-btn" id="uvZoomOut" data-tip="Zoom out">−</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- PROPS RESIZER -->
+  <div class="props-resizer" id="propsResizer"></div>
+
+  <!-- RIGHT DOCK: properties ⇄ history -->
+  <aside class="props" id="propsDock">
+    <!-- tab strip: Properties ⇄ History + undo/redo -->
+    <div class="rd-tabs">
+      <button class="rd-tab active" data-rdpane="props"><i data-lucide="sliders-horizontal" class="lico"></i>Properties</button>
+      <button class="rd-tab" data-rdpane="history"><i data-lucide="history" class="lico"></i>History</button>
+      <div class="rd-tab-spacer"></div>
+      <button class="rd-hbtn" data-hist="undo" data-tip="Undo (Ctrl+Z)"><i data-lucide="undo-2" class="lico"></i></button>
+      <button class="rd-hbtn" data-hist="redo" data-tip="Redo (Ctrl+Shift+Z)"><i data-lucide="redo-2" class="lico"></i></button>
+    </div>
+
+    <!-- PANE: properties -->
+    <div class="props-body" id="propsPane">
+      <div class="prop-section">
+        <div class="prop-title">Unwrap <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;line-height:1.5">Runs on the current face selection (or the whole mesh if nothing is selected). Mark seams first for cleaner conformal results.</div>
+          <div class="btn-grid">
+            <div class="act-btn full" data-unwrap="unwrap"><i data-lucide="unfold-horizontal" class="lico"></i>Unwrap (seams · LSCM)</div>
+            <div class="act-btn full" data-unwrap="smart"><i data-lucide="sparkles" class="lico"></i>Smart UV Project</div>
+            <div class="act-btn" data-unwrap="planar"><i data-lucide="square" class="lico"></i>Planar</div>
+            <div class="act-btn" data-unwrap="box"><i data-lucide="box" class="lico"></i>Box</div>
+            <div class="act-btn" data-unwrap="cylindrical"><i data-lucide="cylinder" class="lico"></i>Cylinder</div>
+            <div class="act-btn" data-unwrap="spherical"><i data-lucide="globe" class="lico"></i>Sphere</div>
+            <div class="act-btn full" data-unwrap="conformal"><i data-lucide="grid-2x2" class="lico"></i>Conformal (auto-cut)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title">Island <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div class="btn-grid">
+            <div class="act-btn" id="btnFlipH"><i data-lucide="flip-horizontal-2" class="lico"></i>Flip H</div>
+            <div class="act-btn" id="btnFlipV"><i data-lucide="flip-vertical-2" class="lico"></i>Flip V</div>
+          </div>
+          <div style="margin:12px 0 6px;color:var(--text-faint);font-size:10px;text-transform:uppercase;letter-spacing:.7px;font-weight:600;">Island Colour</div>
+          <div class="swatch-strip" id="recolor"></div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title">Shell Tools <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;line-height:1.5">Find identical shells so they can share texture space, then stack them on top of each other.</div>
+          <div class="btn-grid">
+            <div class="act-btn full" id="btnSelSimilar"><i data-lucide="copy-check" class="lico"></i>Select Similar Shells</div>
+            <div class="act-btn full" id="btnSelPerimeter"><i data-lucide="scan-line" class="lico"></i>Select Same Perimeter</div>
+            <div class="act-btn full" id="btnStack"><i data-lucide="layers" class="lico"></i>Stack Selected</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title">Packing <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;line-height:1.5">Layout algorithm used to arrange islands into the 0–1 space.</div>
+          <div class="pill-group" id="packMode">
+            <div class="pill" data-pack="grid" data-tip="Uniform cells">Grid</div>
+            <div class="pill" data-pack="shelf" data-tip="Row shelves">Shelf</div>
+            <div class="pill active" data-pack="skyline" data-tip="Bottom-left skyline">Skyline</div>
+            <div class="pill" data-pack="shapeAware" data-tip="Packs the true footprint so concave shells interlock">Shape</div>
+          </div>
+          <div style="margin-top:10px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;">Margin — gap between islands</div>
+          <div class="weight-row">
+            <label class="weight-field" data-tip="Island gap in texture pixels"><span>px</span><input type="number" id="marginPx" step="1" min="0" max="256" value="0"></label>
+            <label class="weight-field" data-tip="Texture resolution the pixel margin is measured against">
+              <span>res</span>
+              <select id="marginRes" class="weight-select">
+                <option value="512">512</option>
+                <option value="1024" selected>1024</option>
+                <option value="2048">2048</option>
+                <option value="4096">4096</option>
+              </select>
+            </label>
+          </div>
+          <div class="btn-grid" style="margin-top:8px">
+            <div class="act-btn" id="btnPin" data-tip="Freeze selected islands — a repack packs around them, never moving or resizing them"><i data-lucide="pin" class="lico"></i>Pin</div>
+            <div class="act-btn" id="btnUnpin" data-tip="Release selected islands back into the pack"><i data-lucide="pin-off" class="lico"></i>Unpin</div>
+          </div>
+          <div class="act-btn full" id="btnRepack" style="margin-top:8px"><i data-lucide="layout-grid" class="lico"></i>Repack islands</div>
+          <div style="margin-top:12px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;">UDIM tile</div>
+          <div class="weight-row">
+            <label class="weight-field" data-tip="Active UDIM tile (1001 = tile 0,0). Repack targets this tile."><span>#</span><input type="number" id="udimActive" step="1" min="1001" max="1100" value="1001"></label>
+            <div class="act-btn" id="btnAssignTile" data-tip="Move selected islands into the active tile, keeping their layout"><i data-lucide="move" class="lico"></i>Assign</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title">Importance <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;line-height:1.5">Give selected islands more atlas space. Higher weight = larger texel area. Applies to selection, or all islands if none selected.</div>
+          <div class="btn-grid">
+            <div class="act-btn" id="wDown" data-tip="Halve weight"><i data-lucide="minus" class="lico"></i>Less</div>
+            <div class="act-btn" id="wUp" data-tip="Double weight"><i data-lucide="plus" class="lico"></i>More</div>
+          </div>
+          <div class="pill-group" id="weightPreset" style="margin-top:8px">
+            <div class="pill active" data-weight="1">1×</div>
+            <div class="pill" data-weight="2">2×</div>
+            <div class="pill" data-weight="4">4×</div>
+            <div class="pill" data-weight="8">8×</div>
+            <div class="pill" data-weight="16">16×</div>
+            <div class="pill" data-weight="32">32×</div>
+          </div>
+          <div style="margin-top:10px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;">Atlas share — slider &amp; % (100% = fills the box)</div>
+          <div class="weight-row">
+            <input type="range" id="weightSlider" class="weight-slider" min="0" max="1000" value="0">
+          </div>
+          <div class="weight-row">
+            <label class="weight-field"><span>%</span><input type="number" id="weightPct" step="1" min="0" max="99" value="0"></label>
+            <label class="weight-field"><span>×N</span><input type="number" id="weightMult" step="0.1" min="0.1" max="32" value="1"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title">Snapping <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div class="pill-group" id="snapMode">
+            <div class="pill" data-snap="16">1/16</div>
+            <div class="pill" data-snap="8">1/8</div>
+            <div class="pill" data-snap="4">1/4</div>
+            <div class="pill active" data-snap="0">Off</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <div class="prop-title collapsed">Hotkeys (Blender) <i data-lucide="chevron-down" class="lico chev"></i></div>
+        <div class="prop-content">
+          <div class="keymap">
+            <div class="km"><span>Move / Rotate / Scale</span><kbd>G</kbd><kbd>R</kbd><kbd>S</kbd></div>
+            <div class="km"><span>Lock axis (in transform)</span><kbd>X</kbd><kbd>Y</kbd></div>
+            <div class="km"><span>Confirm / Cancel</span><kbd>LMB</kbd><kbd>Esc</kbd></div>
+            <div class="km"><span>Unwrap menu (at cursor)</span><kbd>U</kbd></div>
+            <div class="km"><span>Linked: UV island / connected shell</span><kbd>L</kbd><kbd>Ctrl+L</kbd></div>
+            <div class="km"><span>Select all / none</span><kbd>A / Ctrl+A</kbd><kbd>Alt+A</kbd></div>
+            <div class="km"><span>Loop / ring (1st click) · path between picks (2nd)</span><kbd>Ctrl / Alt +click</kbd></div>
+            <div class="km"><span>Invert</span><kbd>I</kbd></div>
+            <div class="km"><span>Grow / Shrink</span><kbd>+</kbd><kbd>−</kbd></div>
+            <div class="km"><span>Mark / clear seam</span><kbd>Ctrl+E</kbd><kbd>Alt+E</kbd></div>
+            <div class="km"><span>Mirror U / V</span><kbd>⇧X</kbd><kbd>⇧Y</kbd></div>
+            <div class="km"><span>Vertex / Edge / Face / Island</span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></div>
+            <div class="km"><span>Undo / Redo</span><kbd>Ctrl+Z</kbd><kbd>Ctrl+⇧Z</kbd></div>
+            <div class="km"><span>Frame selection / Reset 3D</span><kbd>F</kbd><kbd>Home</kbd></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE: history timeline (rail of recorded steps · click to jump) -->
+    <div class="hxu-pane" id="hxuPane" style="display:none;">
+      <div class="hxu-scroll" id="hxuScroll"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- ════ SHARED STATUS BAR ════ -->
+<div class="status-bar">
+  <span class="stat"><i data-lucide="mouse-pointer-2" class="lico"></i> Mode <b id="stMode">Face</b></span>
+  <span class="stat"><b id="stSel">0</b> selected</span>
+  <div class="vf-sep"></div>
+  <span class="stat"><i data-lucide="layers" class="lico"></i> <b id="stIslands">0</b> islands</span>
+  <span class="stat"><i data-lucide="scissors" class="lico"></i> <b id="stSeams">0</b> seams</span>
+  <div class="vf-sep"></div>
+  <span class="stat"><i data-lucide="box" class="lico"></i> <b id="stFaces">0</b> faces</span>
+  <div class="vf-sep"></div>
+  <span class="stat">U <b id="stU">0.500</b></span>
+  <span class="stat">V <b id="stV">0.500</b></span>
+  <span class="spacer"></span>
+  <span class="live"><span class="pulse"></span> Live</span>
+</div>
+
+<!-- ════ POPUPS ════ -->
+<div class="popup" id="checkerPopup">
+  <div class="popup-title">Checker</div>
+  <div class="popup-item" data-checker="toggle"><i data-lucide="grip" class="lico"></i>Show checker (View → Checker)<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-checker="project3d"><i data-lucide="box" class="lico"></i>Project on 3D viewport<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-hint" style="padding:2px 12px 6px;font-size:10.5px;color:var(--text-faint);line-height:1.5;">3D shows matcap until Project is on.</div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Resolution</div>
+  <div class="popup-seg" id="checkerResSeg">
+    <button class="seg-btn" data-ctiles="4">4</button>
+    <button class="seg-btn active" data-ctiles="8">8</button>
+    <button class="seg-btn" data-ctiles="16">16</button>
+    <button class="seg-btn" data-ctiles="32">32</button>
+  </div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Mode</div>
+  <div class="popup-seg" id="checkerModeSeg">
+    <button class="seg-btn active" data-cmode="twoTone">Two-tone</button>
+    <button class="seg-btn" data-cmode="oriented">Oriented</button>
+  </div>
+</div>
+
+<div class="popup" id="stretchPopup">
+  <div class="popup-title">Stretch</div>
+  <div class="popup-item" data-stretch="toggle"><i data-lucide="move-diagonal" class="lico"></i>Show stretch (View → Stretch)<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item" data-stretch="project3d"><i data-lucide="box" class="lico"></i>Project on 3D viewport<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-hint" style="padding:2px 12px 6px;font-size:10.5px;color:var(--text-faint);line-height:1.5;">3D shows matcap until Project is on.</div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Metric</div>
+  <div class="popup-seg" id="stretchModeSeg">
+    <button class="seg-btn active" data-smode="area">Area</button>
+    <button class="seg-btn" data-smode="angle">Angle</button>
+  </div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Legend</div>
+  <div class="stretch-legend">
+    <div class="sl-bar"></div>
+    <div class="sl-labels"><span>Compressed</span><span>Neutral</span><span>Stretched</span></div>
+  </div>
+</div>
+
+<div class="popup" id="elemPopup">
+  <div class="popup-title">Element overlays</div>
+  <div class="popup-hint" style="padding:2px 12px 6px;font-size:10.5px;color:var(--text-faint);line-height:1.5;">Drawn on top of the active view channel.</div>
+  <div class="tile-toggles">
+    <div class="toggle-tile" data-elem="showFaces"><i data-lucide="square" class="lico"></i><span>Faces</span></div>
+    <div class="toggle-tile" data-elem="showEdges"><i data-lucide="git-commit-horizontal" class="lico"></i><span>Edges</span></div>
+    <div class="toggle-tile" data-elem="showVerts"><i data-lucide="dot" class="lico"></i><span>Vertices</span></div>
+    <div class="toggle-tile checked" data-elem="showWire"><i data-lucide="grid-3x3" class="lico"></i><span>Wireframe</span></div>
+  </div>
+</div>
+
+<div class="popup" id="unwrapPopup">
+  <div class="popup-title">UV Mapping</div>
+  <div class="popup-item" data-unwrap="unwrap"><i data-lucide="unfold-horizontal" class="lico"></i>Unwrap<span class="key">U</span></div>
+  <div class="popup-item" data-unwrap="smart"><i data-lucide="sparkles" class="lico"></i>Smart UV Project</div>
+  <div class="popup-item" data-unwrap="conformal"><i data-lucide="grid-2x2" class="lico"></i>Conformal (auto-cut)</div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Projection</div>
+  <div class="popup-item" data-unwrap="planar"><i data-lucide="square" class="lico"></i>Planar</div>
+  <div class="popup-item" data-unwrap="box"><i data-lucide="box" class="lico"></i>Box (6-way)</div>
+  <div class="popup-item" data-unwrap="cylindrical"><i data-lucide="cylinder" class="lico"></i>Cylindrical</div>
+  <div class="popup-item" data-unwrap="spherical"><i data-lucide="globe" class="lico"></i>Spherical</div>
+</div>
+
+<div class="popup" id="dispPopup">
+  <div class="popup-title">Display</div>
+  <div class="popup-item checked" data-disp="showGrid"><i data-lucide="grid-3x3" class="lico"></i>Show grid<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-disp="showBounds"><i data-lucide="square" class="lico"></i>Show 0–1 bounds<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-disp="showTexels"><i data-lucide="grip" class="lico"></i>Checker<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-disp="showGizmo"><i data-lucide="move-3d" class="lico"></i>Show gizmo<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Islands</div>
+  <div class="popup-item checked" data-disp="showAllIslands"><i data-lucide="layers" class="lico"></i>Show all islands<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-item checked" data-disp="packOnUnwrap"><i data-lucide="layout-grid" class="lico"></i>Auto-pack on unwrap<i data-lucide="check" class="lico check"></i></div>
+  <div class="popup-hint" style="padding:2px 12px 6px;font-size:10.5px;color:var(--text-faint);line-height:1.5;">Show all off: only selected shells fill.<br>Auto-pack off: new unwraps fill 0–1 and<br>overlap until you press Pack.</div>
+  <div class="popup-sep"></div>
+  <div class="popup-title">Grid size</div>
+  <div class="popup-seg">
+    <button class="seg-btn" data-s="S">S</button>
+    <button class="seg-btn" data-s="M">M</button>
+    <button class="seg-btn active" data-s="L">L</button>
+    <button class="seg-btn" data-s="XL">XL</button>
+  </div>
+</div>
+
+<div class="popup settings-grid" id="vpDispPopup">
+  <!-- MATCAP tile grid (top) -->
+  <div class="popup-title">Matcap</div>
+  <div class="mc-grid">
+    <div class="mc-tile active" data-vpmc="clay"><span class="mc-chip"></span><span class="mc-name">Clay</span></div>
+    <div class="mc-tile" data-vpmc="chrome"><span class="mc-chip"></span><span class="mc-name">Chrome</span></div>
+    <div class="mc-tile" data-vpmc="red"><span class="mc-chip"></span><span class="mc-name">Red wax</span></div>
+    <div class="mc-tile" data-vpmc="normal"><span class="mc-chip"></span><span class="mc-name">Normals</span></div>
+    <div class="mc-tile" data-vpmc="gold"><span class="mc-chip"></span><span class="mc-name">Gold</span></div>
+    <div class="mc-tile" data-vpmc="copper"><span class="mc-chip"></span><span class="mc-name">Copper</span></div>
+    <div class="mc-tile" data-vpmc="steel"><span class="mc-chip"></span><span class="mc-name">Steel</span></div>
+    <div class="mc-tile" data-vpmc="grey"><span class="mc-chip"></span><span class="mc-name">Grey</span></div>
+    <div class="mc-tile" data-vpmc="white"><span class="mc-chip"></span><span class="mc-name">White</span></div>
+    <div class="mc-tile" data-vpmc="blue"><span class="mc-chip"></span><span class="mc-name">Blue</span></div>
+    <div class="mc-tile" data-vpmc="green"><span class="mc-chip"></span><span class="mc-name">Green</span></div>
+    <div class="mc-tile" data-vpmc="purple"><span class="mc-chip"></span><span class="mc-name">Purple</span></div>
+    <div class="mc-tile" data-vpmc="skin"><span class="mc-chip"></span><span class="mc-name">Skin</span></div>
+    <div class="mc-tile" data-vpmc="ceramic"><span class="mc-chip"></span><span class="mc-name">Ceramic</span></div>
+    <div class="mc-tile" data-vpmc="cavityGrey"><span class="mc-chip"></span><span class="mc-name">Cavity</span></div>
+    <div class="mc-tile" data-vpmc="cavityClay"><span class="mc-chip"></span><span class="mc-name">Cavity 2</span></div>
+  </div>
+  <div class="popup-sep"></div>
+  <!-- GROUND GRID style -->
+  <div class="popup-title">Ground grid</div>
+  <div class="popup-seg" id="vpGridSeg">
+    <button class="seg-btn active" data-grid="dots">Dots</button>
+    <button class="seg-btn" data-grid="lines">Grid</button>
+    <button class="seg-btn" data-grid="off">None</button>
+  </div>
+  <div class="popup-sep"></div>
+  <!-- toggle tiles -->
+  <div class="popup-title">Overlays</div>
+  <div class="tile-toggles">
+    <div class="toggle-tile checked" data-vpdisp="showWire"><i data-lucide="grid-3x3" class="lico"></i><span>Wireframe</span></div>
+    <div class="toggle-tile" data-legend><span class="seam-chip"></span><span>Seam colour</span></div>
+  </div>
+  <div class="popup-sep"></div>
+  <!-- selection behaviour -->
+  <div class="popup-title">Selection</div>
+  <div class="tile-toggles">
+    <div class="toggle-tile" data-vpdisp="selectThrough"><i data-lucide="scan-eye" class="lico"></i><span>Select through (X-ray)</span></div>
+  </div>
+  <div class="popup-hint" style="padding:2px 12px 8px;font-size:10.5px;color:var(--text-faint);line-height:1.5;">On: box / circle / lasso / paint and click also grab back-facing and occluded geometry.</div>
+</div>
+
+<!-- ════ SCRIPTS (order matters) ════ -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="js/mesh-data.js"></script>
+<script src="js/mat4.js"></script>
+<script src="js/halfedge.js"></script>
+<script src="js/selection.js"></script>
+<script src="js/udim.js"></script>
+<script src="js/unwrap.js"></script>
+<script src="js/checker.js"></script>
+<script src="js/stretch.js"></script>
+<script src="js/viewport3d.js"></script>
+<script src="js/uveditor2d.js"></script>
+<script src="js/history.js"></script>
+<script src="js/app.js"></script>
+<script>
+  // small extras that need the DOM + modules present
+  document.getElementById("toolToggle").onclick = () => document.getElementById("toolSidebar").classList.toggle("collapsed");
+  document.getElementById("btnFlipH").onclick = () => uvedMirrorSel("h");
+  document.getElementById("btnFlipV").onclick = () => uvedMirrorSel("v");
+</script>
+</body>
+</html>
