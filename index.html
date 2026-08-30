@@ -30,10 +30,10 @@
       </div>
     </header>
 
-    <div class="target-card" id="targetCard">
-      <span class="target-kicker">TRACKING</span>
-      <b id="targetName">NO CONTACT</b>
-      <div class="target-line"><i></i><span id="targetRange">—</span></div>
+    <div class="target-card active" id="targetCard">
+      <span class="target-kicker">NAV LOCK</span>
+      <b id="targetName">RIDGEWAY RELAY</b>
+      <div class="target-line"><i></i><span id="targetRange">642M</span></div>
     </div>
 
     <div class="reticle" aria-hidden="true">
@@ -41,6 +41,8 @@
       <span class="reticle-left"></span><span class="reticle-right"></span>
       <i></i>
     </div>
+    <div class="cannon-rig" aria-hidden="true"><div class="cannon-body"><i></i></div><div class="muzzle-flash" id="muzzleFlash"></div></div>
+    <div class="fire-streak" id="fireStreak" aria-hidden="true"></div>
 
     <aside class="left-instruments">
       <section class="instrument health-instrument">
@@ -55,21 +57,19 @@
     </aside>
 
     <aside class="right-instruments">
-      <section class="radar-panel">
-        <div class="panel-heading"><span>TACTICAL RADAR</span><b>12KM</b></div>
-        <div class="radar" id="radar">
-          <div class="radar-rings"></div>
-          <div class="radar-cross x"></div><div class="radar-cross y"></div>
-          <div class="sweep"></div>
-          <div class="radar-center"></div>
-          <div id="radarContacts"></div>
+      <section class="radar-panel nav-panel">
+        <div class="panel-heading"><span>TERRAIN NAVIGATION</span><b id="navHeading">NORTH</b></div>
+        <div class="terrain-map" aria-label="Terrain navigation map">
+          <div class="contour contour-one"></div><div class="contour contour-two"></div><div class="contour contour-three"></div>
+          <div class="map-route"></div><i class="map-player" id="playerMarker"></i><i class="map-relay" id="relayMarker"></i>
+          <span>EMBER BASIN</span>
         </div>
-        <div class="radar-legend"><span><i class="friendly"></i> SENTINEL</span><span><i class="hostile"></i> HOSTILE</span></div>
+        <div class="radar-legend"><span><i class="friendly"></i> SENTINEL</span><span><i class="waypoint"></i> RELAY LOCK</span></div>
       </section>
       <section class="objective-panel">
-        <div class="panel-heading"><span>PRIMARY OBJECTIVE</span><b id="objectiveCount">0 / 8</b></div>
-        <strong>Clear the relay approach</strong>
-        <p id="objectiveText">Hostile armor detected beyond the ridge.</p>
+        <div class="panel-heading"><span>PRIMARY OBJECTIVE</span><b id="objectiveCount">642 M</b></div>
+        <strong>Reach the ridgeway relay</strong>
+        <p id="objectiveText">Follow the navigation lock through the Ember Basin.</p>
       </section>
     </aside>
 
@@ -91,8 +91,8 @@
       <div class="briefing-content">
         <p class="eyebrow accent">SECTOR K-19 • 04:17 LOCAL</p>
         <h2>THE RIDGE IS<br /><em>LISTENING.</em></h2>
-        <p class="intro">A relay convoy vanished at the edge of the Ember Basin. Drive the Sentinel through the uplands, erase the interceptors, and reopen the route.</p>
-        <div class="briefing-meta"><span><b>01</b> ARMOR ONLINE</span><span><b>08</b> HOSTILES</span><span><b>∞</b> LANCE CHARGE</span></div>
+        <p class="intro">The Ridgeway relay has gone dark beyond the Ember Basin. Drive the Sentinel through the uplands, keep the lance calibrated, and restore a line to the ridge.</p>
+        <div class="briefing-meta"><span><b>01</b> ARMOR ONLINE</span><span><b>642M</b> RELAY LOCK</span><span><b>∞</b> LANCE CHARGE</span></div>
         <button id="deployButton"><span>DEPLOY SENTINEL</span><kbd>ENTER</kbd></button>
         <p class="controls"><span>W A S D</span> drive <i>·</i> <span>MOUSE / ← →</span> aim <i>·</i> <span>CLICK / SPACE</span> fire</p>
       </div>
@@ -104,7 +104,7 @@
         <p class="eyebrow accent" id="endKicker">MISSION COMPLETE</p>
         <h2 id="endTitle">RELAY APPROACH<br /><em>SECURED.</em></h2>
         <p id="endCopy">The upland route is clear. Your signal carries beyond the ridge.</p>
-        <div class="end-stats"><div><span>HOSTILES</span><b id="endKills">08</b></div><div><span>HULL</span><b id="endHealth">100%</b></div><div><span>TIME</span><b id="endTime">02:14</b></div></div>
+        <div class="end-stats"><div><span>RANGE</span><b id="endKills">642M</b></div><div><span>HULL</span><b id="endHealth">100%</b></div><div><span>TIME</span><b id="endTime">02:14</b></div></div>
         <button id="restartButton">RUN ANOTHER SWEEP <kbd>R</kbd></button>
       </div>
     </section>
